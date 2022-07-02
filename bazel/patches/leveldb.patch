@@ -1,0 +1,22 @@
+diff --git a/util/env_posix.cc b/util/env_posix.cc
+index d84cd1e..d7de716 100644
+--- a/util/env_posix.cc
++++ b/util/env_posix.cc
+@@ -837,7 +837,7 @@ class SingletonEnv {
+  public:
+   SingletonEnv() {
+ #if !defined(NDEBUG)
+-    env_initialized_.store(true, std::memory_order::memory_order_relaxed);
++    env_initialized_.store(true, std::memory_order_relaxed);
+ #endif  // !defined(NDEBUG)
+     static_assert(sizeof(env_storage_) >= sizeof(EnvType),
+                   "env_storage_ will not fit the Env");
+@@ -854,7 +854,7 @@ class SingletonEnv {
+
+   static void AssertEnvNotInitialized() {
+ #if !defined(NDEBUG)
+-    assert(!env_initialized_.load(std::memory_order::memory_order_relaxed));
++    assert(!env_initialized_.load(std::memory_order_relaxed));
+ #endif  // !defined(NDEBUG)
+   }
+

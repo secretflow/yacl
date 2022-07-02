@@ -1,0 +1,80 @@
+load("//bazel:yasl.bzl", "yasl_cc_binary", "yasl_cc_library", "yasl_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+yasl_cc_library(
+    name = "exception",
+    srcs = [],
+    hdrs = ["exception.h"],
+    deps = [
+        "@com_github_fmtlib_fmt//:fmtlib",
+        "@com_google_absl//absl/debugging:stacktrace",
+        "@com_google_absl//absl/debugging:symbolize",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+yasl_cc_test(
+    name = "exception_test",
+    srcs = ["exception_test.cc"],
+    deps = [
+        ":exception",
+    ],
+)
+
+yasl_cc_library(
+    name = "int128",
+    srcs = ["int128.cc"],
+    hdrs = ["int128.h"],
+    deps = [
+        "@com_google_absl//absl/numeric:int128",
+    ],
+)
+
+yasl_cc_test(
+    name = "int128_test",
+    srcs = ["int128_test.cc"],
+    deps = [
+        ":int128",
+    ],
+)
+
+yasl_cc_library(
+    name = "byte_container_view",
+    hdrs = ["byte_container_view.h"],
+    deps = [
+        ":buffer",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+yasl_cc_binary(
+    name = "int128_bench",
+    srcs = ["int128_bench.cc"],
+    # By default we benchmark the BMI2 `mulx`. Comment `copts & defines` to test `mulq` instead.
+    # NOTE BMI2 is enabled from Intel Haswell series, which also provides AVX2.
+    copts = ["-march=native"],
+    defines = select({
+        "@bazel_tools//src/conditions:darwin_arm64": [
+        ],
+        "@bazel_tools//src/conditions:linux_aarch64": [
+        ],
+        "//conditions:default": [
+            "YASL_ENABLE_BMI2",
+        ],
+    }),
+    linkopts = ["-lm"],
+    deps = [
+        ":int128",
+        "@com_github_google_benchmark//:benchmark_main",
+    ],
+)
+
+yasl_cc_library(
+    name = "buffer",
+    srcs = ["buffer.cc"],
+    hdrs = ["buffer.h"],
+    deps = [
+        ":exception",
+    ],
+)

@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package yasl;
+
+message ArrayOfBuffer {
+  repeated bytes bufs = 1;
+}
+
+message Uint128Proto {
+  uint64 hi = 1;
+  uint64 lo = 2;
+}
+
+message Int128Proto {
+  int64 hi = 1;
+  uint64 lo = 2;
+}

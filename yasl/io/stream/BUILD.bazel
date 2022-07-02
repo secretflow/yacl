@@ -1,0 +1,47 @@
+load("//bazel:yasl.bzl", "yasl_cc_library", "yasl_cc_test")
+
+yasl_cc_library(
+    name = "stream",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":file_io",
+        ":mem_io",
+    ],
+)
+
+yasl_cc_library(
+    name = "interface",
+    hdrs = ["interface.h"],
+    visibility = ["//visibility:public"],
+)
+
+yasl_cc_library(
+    name = "file_io",
+    srcs = ["file_io.cc"],
+    hdrs = ["file_io.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":interface",
+        "//yasl/base:exception",
+        "@com_github_fmtlib_fmt//:fmtlib",
+    ],
+)
+
+yasl_cc_library(
+    name = "mem_io",
+    srcs = ["mem_io.cc"],
+    hdrs = ["mem_io.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":interface",
+        "//yasl/base:exception",
+    ],
+)
+
+yasl_cc_test(
+    name = "test",
+    srcs = ["test.cc"],
+    deps = [
+        ":stream",
+    ],
+)

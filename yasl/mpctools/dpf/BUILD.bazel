@@ -1,0 +1,40 @@
+load("//bazel:yasl.bzl", "yasl_cc_library", "yasl_cc_test")
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@rules_cc//cc:defs.bzl", "cc_proto_library")
+
+package(default_visibility = ["//visibility:public"])
+
+yasl_cc_library(
+    name = "dpf",
+    srcs = ["dpf.cc"],
+    hdrs = ["dpf.h"],
+    deps = [
+        ":serializable_cc_proto",
+        "//yasl/base:int128",
+        "//yasl/crypto:pseudo_random_generator",
+        "//yasl/link",
+    ],
+)
+
+yasl_cc_test(
+    name = "dpf_test",
+    srcs = ["dpf_test.cc"],
+    deps = [
+        ":dpf",
+    ],
+)
+
+proto_library(
+    name = "serializable_proto",
+    srcs = [
+        "serializable.proto",
+    ],
+    deps = [
+        "//yasl/utils:serializable_proto",
+    ],
+)
+
+cc_proto_library(
+    name = "serializable_cc_proto",
+    deps = [":serializable_proto"],
+)

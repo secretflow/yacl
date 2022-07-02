@@ -1,0 +1,383 @@
+load("//bazel:yasl.bzl", "yasl_cc_binary", "yasl_cc_library", "yasl_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+yasl_cc_library(
+    name = "symmetric_crypto",
+    srcs = [
+        "symmetric_crypto.cc",
+    ],
+    hdrs = [
+        "symmetric_crypto.h",
+    ],
+    # Openssl::libcrypto requires `dlopen`...
+    linkopts = ["-ldl"],
+    deps = [
+        "//yasl/base:byte_container_view",
+        "//yasl/base:exception",
+        "//yasl/base:int128",
+        "@com_github_openssl_openssl//:openssl",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+yasl_cc_test(
+    name = "symmetric_crypto_test",
+    srcs = ["symmetric_crypto_test.cc"],
+    deps = [
+        ":symmetric_crypto",
+    ],
+)
+
+yasl_cc_library(
+    name = "gcm_crypto",
+    srcs = ["gcm_crypto.cc"],
+    hdrs = ["gcm_crypto.h"],
+    # Openssl::libcrypto requires `dlopen`...
+    linkopts = ["-ldl"],
+    deps = [
+        "//yasl/base:byte_container_view",
+        "//yasl/base:exception",
+        "//yasl/base:int128",
+        "//yasl/utils:scope_guard",
+        "@com_github_openssl_openssl//:openssl",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+yasl_cc_test(
+    name = "gcm_crypto_test",
+    srcs = ["gcm_crypto_test.cc"],
+    deps = [
+        ":gcm_crypto",
+    ],
+)
+
+yasl_cc_library(
+    name = "pseudo_random_generator",
+    hdrs = ["pseudo_random_generator.h"],
+    deps = [
+        ":symmetric_crypto",
+        "//yasl/crypto/drbg:nist_aes_drbg",
+        "//yasl/crypto/drbg:sm4_drbg",
+    ],
+)
+
+yasl_cc_test(
+    name = "pseudo_random_generator_test",
+    srcs = ["pseudo_random_generator_test.cc"],
+    deps = [
+        ":pseudo_random_generator",
+    ],
+)
+
+yasl_cc_library(
+    name = "utils",
+    srcs = [
+        "utils.h",
+    ],
+    deps = [
+        "//yasl/crypto:pseudo_random_generator",
+    ],
+)
+
+yasl_cc_library(
+    name = "hash_interface",
+    srcs = ["hash_interface.h"],
+    deps = [
+        "//yasl/base:byte_container_view",
+    ],
+)
+
+yasl_cc_library(
+    name = "random_oracle",
+    hdrs = ["random_oracle.h"],
+    deps = [
+        ":symmetric_crypto",
+    ],
+)
+
+yasl_cc_test(
+    name = "random_oracle_test",
+    srcs = ["random_oracle_test.cc"],
+    deps = [
+        ":random_oracle",
+        "//yasl/utils:hamming",
+    ],
+)
+
+yasl_cc_library(
+    name = "asymmetric_util",
+    srcs = ["asymmetric_util.cc"],
+    hdrs = ["asymmetric_util.h"],
+    deps = [
+        "//yasl/base:byte_container_view",
+        "//yasl/base:exception",
+        "//yasl/utils:scope_guard",
+        "@com_github_openssl_openssl//:openssl",
+    ],
+)
+
+yasl_cc_library(
+    name = "ssl_hash",
+    srcs = ["ssl_hash.cc"],
+    hdrs = ["ssl_hash.h"],
+    # Openssl::libcrypto requires `dlopen`...
+    linkopts = ["-ldl"],
+    deps = [
+        ":hash_interface",
+        "//yasl/base:exception",
+        "//yasl/utils:scope_guard",
+        "@com_github_openssl_openssl//:openssl",
+    ],
+)
+
+yasl_cc_test(
+    name = "ssl_hash_all_test",
+    srcs = ["ssl_hash_all_test.cc"],
+    deps = [
+        ":ssl_hash",
+    ],
+)
+
+yasl_cc_library(
+    name = "blake3_hash",
+    srcs = ["blake3_hash.cc"],
+    hdrs = ["blake3_hash.h"],
+    deps = [
+        ":hash_interface",
+        "//yasl/base:exception",
+        "//yasl/base:int128",
+        "@com_github_blake3team_blake3//:blake3_c",
+    ],
+)
+
+yasl_cc_test(
+    name = "blake3_hash_test",
+    srcs = ["blake3_hash_test.cc"],
+    deps = [
+        ":blake3_hash",
+    ],
+)
+
+yasl_cc_library(
+    name = "asymmetric_crypto",
+    hdrs = ["asymmetric_crypto.h"],
+    deps = [
+        "//yasl/base:byte_container_view",
+    ],
+)
+
+yasl_cc_library(
+    name = "asymmetric_sm2_crypto",
+    srcs = ["asymmetric_sm2_crypto.cc"],
+    hdrs = ["asymmetric_sm2_crypto.h"],
+    # Openssl::libcrypto requires `dlopen`...
+    linkopts = ["-ldl"],
+    deps = [
+        ":asymmetric_crypto",
+        ":asymmetric_util",
+        "//yasl/base:exception",
+        "@com_github_openssl_openssl//:openssl",
+        "@com_google_absl//absl/memory",
+    ],
+)
+
+yasl_cc_test(
+    name = "asymmetric_sm2_crypto_test",
+    srcs = ["asymmetric_sm2_crypto_test.cc"],
+    deps = [
+        ":asymmetric_sm2_crypto",
+    ],
+)
+
+yasl_cc_library(
+    name = "asymmetric_rsa_crypto",
+    srcs = ["asymmetric_rsa_crypto.cc"],
+    hdrs = ["asymmetric_rsa_crypto.h"],
+    # Openssl::libcrypto requires `dlopen`...
+    linkopts = ["-ldl"],
+    deps = [
+        ":asymmetric_crypto",
+        ":asymmetric_util",
+        "//yasl/base:exception",
+        "@com_github_openssl_openssl//:openssl",
+        "@com_google_absl//absl/memory",
+    ],
+)
+
+yasl_cc_test(
+    name = "asymmetric_rsa_crypto_test",
+    srcs = ["asymmetric_rsa_crypto_test.cc"],
+    deps = [
+        ":asymmetric_rsa_crypto",
+    ],
+)
+
+yasl_cc_library(
+    name = "hash_util",
+    srcs = ["hash_util.cc"],
+    hdrs = ["hash_util.h"],
+    deps = [
+        ":ssl_hash",
+        "//yasl/base:int128",
+        "@com_github_blake3team_blake3//:blake3_c",
+    ],
+)
+
+yasl_cc_library(
+    name = "signing",
+    hdrs = ["signing.h"],
+    deps = [
+        "//yasl/base:byte_container_view",
+    ],
+)
+
+yasl_cc_library(
+    name = "sm2_signing",
+    srcs = ["sm2_signing.cc"],
+    hdrs = ["sm2_signing.h"],
+    # Openssl::libcrypto requires `dlopen`...
+    linkopts = ["-ldl"],
+    deps = [
+        ":asymmetric_util",
+        ":signing",
+        "//yasl/base:exception",
+        "@com_github_openssl_openssl//:openssl",
+        "@com_google_absl//absl/memory",
+    ],
+)
+
+yasl_cc_test(
+    name = "sm2_signing_test",
+    srcs = ["sm2_signing_test.cc"],
+    deps = [
+        ":sm2_signing",
+    ],
+)
+
+yasl_cc_library(
+    name = "rsa_signing",
+    srcs = ["rsa_signing.cc"],
+    hdrs = ["rsa_signing.h"],
+    # Openssl::libcrypto requires `dlopen`...
+    linkopts = ["-ldl"],
+    deps = [
+        ":signing",
+        "//yasl/base:exception",
+        "//yasl/utils:scope_guard",
+        "@com_github_openssl_openssl//:openssl",
+        "@com_google_absl//absl/memory",
+    ],
+)
+
+yasl_cc_test(
+    name = "rsa_signing_test",
+    srcs = ["rsa_signing_test.cc"],
+    deps = [
+        ":asymmetric_util",
+        ":rsa_signing",
+    ],
+)
+
+yasl_cc_library(
+    name = "hmac",
+    srcs = ["hmac.cc"],
+    hdrs = ["hmac.h"],
+    linkopts = ["-ldl"],
+    deps = [
+        ":hash_interface",
+        "//yasl/base:byte_container_view",
+        "//yasl/base:exception",
+        "//yasl/utils:scope_guard",
+        "@com_github_openssl_openssl//:openssl",
+    ],
+)
+
+yasl_cc_library(
+    name = "hmac_sm3",
+    srcs = ["hmac_sm3.h"],
+    deps = [
+        ":hmac",
+    ],
+)
+
+yasl_cc_library(
+    name = "hmac_sha256",
+    srcs = ["hmac_sha256.h"],
+    deps = [
+        ":hmac",
+    ],
+)
+
+yasl_cc_test(
+    name = "hmac_all_test",
+    srcs = ["hmac_all_test.cc"],
+    deps = [
+        ":hmac_sha256",
+        ":hmac_sm3",
+    ],
+)
+
+yasl_cc_library(
+    name = "digital_envelope",
+    srcs = ["digital_envelope.cc"],
+    hdrs = ["digital_envelope.h"],
+    deps = [
+        ":asymmetric_rsa_crypto",
+        ":asymmetric_sm2_crypto",
+        ":gcm_crypto",
+        ":hmac_sm3",
+        ":pseudo_random_generator",
+        ":sm4_mac",
+        ":ssl_hash",
+        ":symmetric_crypto",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+yasl_cc_test(
+    name = "digital_envelope_test",
+    srcs = ["digital_envelope_test.cc"],
+    deps = [
+        ":digital_envelope",
+    ],
+)
+
+yasl_cc_library(
+    name = "sm4_mac",
+    srcs = ["sm4_mac.cc"],
+    hdrs = ["sm4_mac.h"],
+    deps = [
+        ":hmac_sm3",
+        ":ssl_hash",
+        ":symmetric_crypto",
+    ],
+)
+
+yasl_cc_test(
+    name = "sm4_mac_test",
+    srcs = ["sm4_mac_test.cc"],
+    deps = [
+        ":sm4_mac",
+    ],
+)
+
+yasl_cc_binary(
+    name = "random_oracle_bench",
+    srcs = ["random_oracle_bench.cc"],
+    deps = [
+        "//yasl/crypto:random_oracle",
+        "@com_github_google_benchmark//:benchmark_main",
+    ],
+)
+
+yasl_cc_binary(
+    name = "blake3_hash_bench",
+    srcs = ["blake3_hash_bench.cc"],
+    deps = [
+        "//yasl/crypto:blake3_hash",
+        "@com_github_google_benchmark//:benchmark_main",
+    ],
+)

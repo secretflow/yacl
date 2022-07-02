@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package yasl.mpctools;
+
+import "yasl/utils/serializable.proto";
+
+message DpfCWProto {
+  Uint128Proto seed = 1;
+  uint32 t_store = 2;
+}
+
+message DpfKeyProto {
+  bool enable_evalall = 1;
+  repeated DpfCWProto cws_vec = 2;
+  repeated Uint128Proto last_cw_vec = 3;
+  bool rank = 4;
+  uint64 in_bitnum = 5;
+  uint64 ss_bitnum = 6;
+  uint32 sec_param = 7;
+  Uint128Proto mseed = 8;
+}

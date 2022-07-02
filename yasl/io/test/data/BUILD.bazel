@@ -1,0 +1,8 @@
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "perfect_logit",
+    srcs = [
+        "perfect_logit_a.csv",  # generated, perfect linear
+    ],
+)

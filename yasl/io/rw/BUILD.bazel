@@ -1,0 +1,91 @@
+load("//bazel:yasl.bzl", "yasl_cc_library", "yasl_cc_test")
+
+yasl_cc_library(
+    name = "rw",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":csv_reader",
+        ":csv_writer",
+    ],
+)
+
+yasl_cc_library(
+    name = "interface",
+    hdrs = [
+        "reader.h",
+        "schema.h",
+        "writer.h",
+    ],
+    visibility = ["//visibility:public"],
+    deps = ["//yasl/io/stream:interface"],
+)
+
+yasl_cc_library(
+    name = "float",
+    hdrs = ["float.h"],
+    visibility = ["//visibility:public"],
+    deps = ["@com_google_absl//absl/strings"],
+)
+
+yasl_cc_library(
+    name = "csv_reader",
+    srcs = ["csv_reader.cc"],
+    hdrs = ["csv_reader.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":float",
+        ":interface",
+        ":mmapped_file",
+        "//yasl/base:exception",
+        "//yasl/io/stream",
+        "@com_github_fmtlib_fmt//:fmtlib",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+yasl_cc_library(
+    name = "csv_writer",
+    srcs = ["csv_writer.cc"],
+    hdrs = ["csv_writer.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":float",
+        ":interface",
+        "//yasl/base:exception",
+        "//yasl/io/stream",
+        "@com_github_fmtlib_fmt//:fmtlib",
+    ],
+)
+
+yasl_cc_library(
+    name = "mmapped_file",
+    srcs = ["mmapped_file.cc"],
+    hdrs = ["mmapped_file.h"],
+    deps = [
+        "//yasl/base:exception",
+        "@com_google_absl//absl/base:malloc_internal",
+        "@com_google_absl//absl/cleanup",
+    ],
+)
+
+yasl_cc_test(
+    name = "csv_test",
+    srcs = ["csv_test.cc"],
+    deps = [
+        ":rw",
+    ],
+)
+
+yasl_cc_test(
+    name = "rw_test",
+    srcs = ["rw_test.cc"],
+    data = [
+        "//yasl/io/test/data:perfect_logit",
+    ],
+    deps = [
+        ":rw",
+        "//yasl/utils:elapsed_timer",
+        "@com_github_gflags_gflags//:gflags",
+        "@com_google_absl//absl/strings",
+    ],
+)
