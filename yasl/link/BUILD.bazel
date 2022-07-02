@@ -1,0 +1,85 @@
+load("//bazel:yasl.bzl", "yasl_cc_library", "yasl_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+config_setting(
+    name = "enable_tracelog",
+    values = {"define": "tracelog=on"},
+)
+
+yasl_cc_library(
+    name = "trace",
+    srcs = ["trace.cc"],
+    hdrs = ["trace.h"],
+    copts = select({
+        ":enable_tracelog": [
+            "-DENABLE_LINK_TRACE",
+        ],
+        "//conditions:default": [],
+    }),
+    deps = [
+        "//yasl/base:exception",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+yasl_cc_library(
+    name = "context",
+    srcs = ["context.cc"],
+    hdrs = ["context.h"],
+    deps = [
+        ":trace",
+        "//yasl/base:byte_container_view",
+        "//yasl/link/transport:channel",
+        "//yasl/utils:hash",
+    ],
+)
+
+yasl_cc_library(
+    name = "factory",
+    srcs = [
+        "factory_brpc.cc",
+        "factory_mem.cc",
+    ],
+    hdrs = ["factory.h"],
+    deps = [
+        ":context",
+        "//yasl/link/transport:channel_brpc",
+        "//yasl/link/transport:channel_mem",
+    ],
+)
+
+yasl_cc_test(
+    name = "context_test",
+    srcs = ["context_test.cc"],
+    deps = [
+        ":context",
+        ":factory",
+    ],
+)
+
+yasl_cc_library(
+    name = "link",
+    hdrs = ["link.h"],
+    deps = [
+        ":context",
+        ":factory",
+        ":test_util",
+        "//yasl/link/algorithm:allgather",
+        "//yasl/link/algorithm:barrier",
+        "//yasl/link/algorithm:broadcast",
+        "//yasl/link/algorithm:gather",
+        "//yasl/link/algorithm:scatter",
+    ],
+)
+
+yasl_cc_library(
+    name = "test_util",
+    hdrs = ["test_util.h"],
+    deps = [
+        "//yasl/base:buffer",
+        "//yasl/link:context",
+        "//yasl/link:factory",
+        "@com_github_fmtlib_fmt//:fmtlib",
+    ],
+)

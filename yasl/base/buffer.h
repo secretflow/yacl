@@ -1,0 +1,143 @@
+#pragma once
+
+#include <algorithm>
+#include <cstddef>
+#include <functional>
+#include <string_view>
+#include <utility>
+
+#include "yasl/base/exception.h"
+
+namespace yasl {
+
+// A buffer is an RAII object which represent an in memory buffer.
+class Buffer final {
+  std::byte* ptr_{nullptr};
+  int64_t size_{0};
+  std::function<void(void*)> deleter_;
+
+ public:
+  // Type traits
+  using value_type = std::byte;
+
+  // default constructor, create an empty buffer.
+  Buffer() = default;
+  explicit Buffer(int64_t size) : size_(size) {
+    YASL_ENFORCE(size >= 0);
+    // C++17 ensures alignment of allocated memory is >=
+    // __STDCPP_DEFAULT_NEW_ALIGNMENT__ Which should be 16
+    ptr_ = new std::byte[size];
+  }
+
+  template <typename ByteContainer,
+            std::enable_if_t<sizeof(typename ByteContainer::value_type) == 1,
+                             bool> = true>
+  /*implicit*/ Buffer(const ByteContainer& u) : Buffer(u.data(), u.size()) {}
+
+  // Allocate a new buffer and copy the contents of ptr
+  Buffer(const void* ptr, size_t size) {
+    resize(static_cast<int64_t>(size));
+    if (size > 0) {
+      std::memcpy(ptr_, ptr, size);
+    }
+  }
+
+  // Constructs Buffer object from a block of already allocated memory
+  // Buffer will take the ownership of ptr
+  Buffer(void* ptr, size_t size, const std::function<void(void*)>& deleter) {
+    YASL_ENFORCE(reinterpret_cast<uintptr_t>(ptr) % 16 == 0,
+                 "The input buffer is not aligned");
+
+    size_ = size;
+    ptr_ = static_cast<std::byte*>(ptr);
+    deleter_ = deleter;
+  }
+
+  ~Buffer() { reset(); }
+
+  Buffer(const Buffer& other) { *this = other; }
+  Buffer& operator=(const Buffer& other) {
+    if (&other != this) {
+      resize(other.size_);
+      std::copy(other.ptr_, other.ptr_ + other.size_, ptr_);
+    }
+    return *this;
+  }
+
+  Buffer(Buffer&& other) noexcept { *this = std::move(other); };
+  Buffer& operator=(Buffer&& other) noexcept {
+    if (this != &other) {
+      std::swap(size_, other.size_);
+      std::swap(ptr_, other.ptr_);
+      std::swap(deleter_, other.deleter_);
+    }
+    return *this;
+  }
+
+  template <typename T = void>
+  T* data() {
+    return reinterpret_cast<T*>(ptr_);
+  }
+  template <typename T = void>
+  T const* data() const {
+    return reinterpret_cast<T const*>(ptr_);
+  }
+
+  // return size of the buffer, in bytes.
+  int64_t size() const { return size_; }
+
+  bool operator==(const Buffer& other) const {
+    if (size_ != other.size_) {
+      return false;
+    }
+
+    return (std::memcmp(ptr_, other.ptr_, size_) == 0);
+  }
+
+  operator std::string_view() const {
+    return size_ == 0 ? std::string_view()
+                      : std::string_view(reinterpret_cast<char*>(ptr_), size_);
+  }
+
+  void resize(int64_t new_size) {
+    if (new_size == size_) {
+      return;
+    }
+
+    std::byte* new_ptr = nullptr;
+    if (new_size != 0) {
+      new_ptr = new std::byte[new_size];
+      if (ptr_ != nullptr) {
+        std::copy(ptr_, ptr_ + std::min(new_size, size_), new_ptr);
+      }
+    }
+
+    reset();
+
+    ptr_ = new_ptr;
+    size_ = new_size;
+    YASL_ENFORCE(size_ == 0 || ptr_ != nullptr, "new size = {}", new_size);
+  }
+
+  void* release() {
+    void* tmp = ptr_;
+    ptr_ = nullptr;
+    size_ = 0;
+    return tmp;
+  }
+
+  void reset() {
+    if (deleter_ != nullptr) {
+      deleter_(reinterpret_cast<void*>(ptr_));
+    } else {
+      delete[] ptr_;
+    }
+    deleter_ = nullptr;
+    ptr_ = nullptr;
+    size_ = 0;
+  }
+};
+
+std::ostream& operator<<(std::ostream& out, const Buffer& v);
+
+}  // namespace yasl

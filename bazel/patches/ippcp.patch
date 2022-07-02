@@ -1,0 +1,150 @@
+diff --git a/sources/cmake/linux/GNU8.2.0.cmake b/sources/cmake/linux/GNU8.2.0.cmake
+index 24d7e0f..15dd433 100644
+--- a/sources/cmake/linux/GNU8.2.0.cmake
++++ b/sources/cmake/linux/GNU8.2.0.cmake
+@@ -32,7 +32,7 @@ set(LINK_FLAG_DYNAMIC_LINUX "${LINK_FLAG_SECURITY} -nostdlib")
+ # Dynamically link lib c (libdl is for old apps)
+ set(LINK_FLAG_DYNAMIC_LINUX "${LINK_FLAG_DYNAMIC_LINUX} -Wl,-call_shared,-lc")
+ # Create a shared library
+-set(LINK_FLAG_DYNAMIC_LINUX "-Wl,-shared")
++set(LINK_FLAG_DYNAMIC_LINUX "-Wl,-shared,-fuse-ld=bfd")
+ if(${ARCH} MATCHES "ia32")
+   # Tells the compiler to generate code for a specific architecture (32)
+   set(LINK_FLAG_DYNAMIC_LINUX "${LINK_FLAG_DYNAMIC_LINUX} -m32")
+@@ -74,7 +74,7 @@ if ((${ARCH} MATCHES "ia32") OR (NOT NONPIC_LIB))
+ endif()
+ 
+ # Security flag that adds compile-time and run-time checks
+-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_FORTIFY_SOURCE=2")
++set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2")
+ 
+ if(NOT NONPIC_LIB)
+   # Position Independent Execution (PIE)
+@@ -95,6 +95,8 @@ if(${ARCH} MATCHES "ia32")
+   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m32")
+ endif(${ARCH} MATCHES "ia32")
+ 
++set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-function -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unknown-pragmas -Wno-missing-braces -Wno-comment -Wno-strict-aliasing -Wno-parentheses -Wno-array-parameter")
++
+ # Optimization level = 3, no-debug definition (turns off asserts), warnings=errors
+ set (CMAKE_C_FLAGS_RELEASE " -O3 -DNDEBUG -Werror")
+ 
+diff --git a/sources/cmake/macosx/AppleClang11.0.0.cmake b/sources/cmake/macosx/AppleClang11.0.0.cmake
+index 5b92877..ccb963e 100644
+--- a/sources/cmake/macosx/AppleClang11.0.0.cmake
++++ b/sources/cmake/macosx/AppleClang11.0.0.cmake
+@@ -20,12 +20,6 @@
+ 
+ # Security Linker flags
+ set(LINK_FLAG_SECURITY "")
+-# Disallows undefined symbols in object files. Undefined symbols in shared libraries are still allowed
+-set(LINK_FLAG_SECURITY "${LINK_FLAG_SECURITY} -Wl,-z,defs")
+-# Stack execution protection
+-set(LINK_FLAG_SECURITY "${LINK_FLAG_SECURITY} -Wl,-z,noexecstack")
+-# Data relocation and protection (RELRO)
+-set(LINK_FLAG_SECURITY "${LINK_FLAG_SECURITY} -Wl,-z,relro -Wl,-z,now")
+ # Prevents the compiler from using standard libraries and startup files when linking.
+ set(LINK_FLAG_DYNAMIC_MACOSX "${LINK_FLAG_SECURITY} -nostdlib")
+ # Dynamically link lib c (libdl is for old apps)
+@@ -79,7 +73,7 @@ if ((${ARCH} MATCHES "ia32") OR (NOT NONPIC_LIB))
+ endif()
+ 
+ # Security flag that adds compile-time and run-time checks
+-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_FORTIFY_SOURCE=2")
++set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2")
+ 
+ if(NOT NONPIC_LIB)
+   # Position Independent Execution (PIE)
+@@ -98,6 +92,8 @@ if(${ARCH} MATCHES "ia32")
+   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -m32")
+ endif(${ARCH} MATCHES "ia32")
+ 
++set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-function -Wno-unused-variable -Wno-unknown-pragmas -Wno-missing-braces -Wno-unused-command-line-argument -Wno-unused-but-set-variable -Wno-unknown-warning-option")
++
+ # Optimization level = 3, no-debug definition (turns off asserts), warnings=errors
+ set (CMAKE_C_FLAGS_RELEASE " -O3 -DNDEBUG -Werror")
+ 
+@@ -115,3 +111,5 @@ set(l9_opt "${l9_opt} -march=haswell -mavx2 -maes -mpclmul -msha -mrdrnd -mrdsee
+ set(n0_opt "${n0_opt} -march=knl -mavx2 -maes -mavx512f -mavx512cd -mavx512pf -mavx512er -mpclmul -msha -mrdrnd -mrdseed")
+ set(k0_opt "${k0_opt} -march=skylake-avx512")
+ set(k0_opt "${k0_opt} -maes -mavx512f -mavx512cd -mavx512vl -mavx512bw -mavx512dq -mavx512ifma -mpclmul -msha -mrdrnd -mrdseed -madx -mgfni -mvaes -mvpclmulqdq -mavx512vbmi -mavx512vbmi2")
++set(k1_opt "${k1_opt} -march=skylake-avx512")
++set(k1_opt "${k1_opt} -maes -mavx512f -mavx512cd -mavx512vl -mavx512bw -mavx512dq -mavx512ifma -mpclmul -msha -mrdrnd -mrdseed -madx -mgfni -mvaes -mvpclmulqdq -mavx512vbmi -mavx512vbmi2")
+diff --git a/sources/cmake/macosx/common.cmake b/sources/cmake/macosx/common.cmake
+index 85ec3ad..67bb9f9 100644
+--- a/sources/cmake/macosx/common.cmake
++++ b/sources/cmake/macosx/common.cmake
+@@ -18,7 +18,7 @@
+ # Intel® Integrated Performance Primitives Cryptography (Intel® IPP Cryptography)
+ #
+ 
+-set(OS_DEFAULT_COMPILER Intel19.0.0)
++set(OS_DEFAULT_COMPILER AppleClang11.0.0)
+ 
+ set(LIBRARY_DEFINES "${LIBRARY_DEFINES} -DIPP_PIC -DOSXEM64T -DLINUX32E -D_ARCH_EM64T")
+ #set(LIBRARY_DEFINES "${LIBRARY_DEFINES} -DBN_OPENSSL_DISABLE")
+\ No newline at end of file
+diff --git a/sources/ippcp/crypto_mb/src/cmake/linux/GNU.cmake b/sources/ippcp/crypto_mb/src/cmake/linux/GNU.cmake
+index a2abeeb..67aca8b 100644
+--- a/sources/ippcp/crypto_mb/src/cmake/linux/GNU.cmake
++++ b/sources/ippcp/crypto_mb/src/cmake/linux/GNU.cmake
+@@ -31,7 +31,7 @@ set(CMAKE_C_FLAGS_SECURITY "${CMAKE_C_FLAGS_SECURITY} -Wformat -Wformat-security
+ if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
+     if(NOT DEFINED NO_FORTIFY_SOURCE)
+         # Security flag that adds compile-time and run-time checks. 
+-        set(CMAKE_C_FLAGS_SECURITY "${CMAKE_C_FLAGS_SECURITY} -D_FORTIFY_SOURCE=2")
++        set(CMAKE_C_FLAGS_SECURITY "${CMAKE_C_FLAGS_SECURITY} -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2")
+     endif()
+ endif()
+ 
+@@ -51,7 +51,7 @@ set(CMAKE_C_FLAGS_SECURITY "${CMAKE_C_FLAGS_SECURITY} -Werror")
+ # Linker flags
+ 
+ # Create shared library
+-set(LINK_FLAGS_DYNAMIC " -Wl,-shared")
++set(LINK_FLAGS_DYNAMIC " -Wl,-shared,-fuse-ld=bfd")
+ # Add export files
+ set(LINK_FLAGS_DYNAMIC "${LINK_FLAGS_DYNAMIC} ${CRYPTO_MB_SOURCES_DIR}/cmake/dll_export/crypto_mb.linux.lib-export")
+ 
+@@ -69,6 +69,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
+ 
+ # Suppress warnings from casts from a pointer to an integer type of a different size
+ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-pointer-to-int-cast")
++set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-function -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unknown-pragmas -Wno-missing-braces -Wno-comment -Wno-strict-aliasing -Wno-parentheses")
+ 
+ # Optimization level = 3, no-debug definition (turns off asserts)
+ set(CMAKE_C_FLAGS_RELEASE " -O3 -DNDEBUG")
+diff --git a/sources/ippcp/crypto_mb/src/cmake/macosx/AppleClang.cmake b/sources/ippcp/crypto_mb/src/cmake/macosx/AppleClang.cmake
+index ea1641d..f98fc2d 100644
+--- a/sources/ippcp/crypto_mb/src/cmake/macosx/AppleClang.cmake
++++ b/sources/ippcp/crypto_mb/src/cmake/macosx/AppleClang.cmake
+@@ -17,10 +17,6 @@
+ # Security Linker flags
+ 
+ set(LINK_FLAG_SECURITY "") 
+-# Data relocation and protection (RELRO)
+-set(LINK_FLAG_SECURITY "${LINK_FLAG_SECURITY} -Wl,-z,relro -Wl,-z,now")
+-# Stack execution protection
+-set(LINK_FLAG_SECURITY "${LINK_FLAG_SECURITY} -Wl,-z,noexecstack")
+ 
+ # Security Compiler flags
+ 
+@@ -30,7 +26,7 @@ set(CMAKE_C_FLAGS_SECURITY "${CMAKE_C_FLAGS_SECURITY} -Wformat -Wformat-security
+ 
+ if(${CMAKE_BUILD_TYPE} STREQUAL "Release")
+     # Security flag that adds compile-time and run-time checks. 
+-    set(CMAKE_C_FLAGS_SECURITY "${CMAKE_C_FLAGS_SECURITY} -D_FORTIFY_SOURCE=2")
++    set(CMAKE_C_FLAGS_SECURITY "${CMAKE_C_FLAGS_SECURITY} -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2")
+ endif()
+ 
+ # Stack-based Buffer Overrun Detection
+@@ -65,6 +61,8 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
+ # Suppress warnings from casts from a pointer to an integer type of a different size
+ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-pointer-to-int-cast")
+ 
++set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-function -Wno-unused-variable -Wno-unknown-pragmas -Wno-missing-braces -Wno-unknown-warning-option")
++
+ # Optimization level = 3, no-debug definition (turns off asserts)
+ set(CMAKE_C_FLAGS_RELEASE " -O3 -DNDEBUG")
+ set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
+ 

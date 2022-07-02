@@ -1,0 +1,124 @@
+diff --git a/BUILD.bazel b/BUILD.bazel
+index 11db84d0..79133df8 100644
+--- a/BUILD.bazel
++++ b/BUILD.bazel
+@@ -54,6 +54,11 @@ config_setting(
+     visibility = ["//visibility:public"],
+ )
+ 
++config_setting(
++    name = "enable_gperf",
++    define_values = {"gperf": "on"},
++)
++
+ COPTS = [
+     "-DBTHREAD_USE_FAST_PTHREAD_MUTEX",
+     "-D__const__=",
+@@ -64,6 +69,9 @@ COPTS = [
+     "-D__STDC_LIMIT_MACROS",
+     "-D__STDC_CONSTANT_MACROS",
+     "-DGFLAGS_NS=google",
++    "-Wno-invalid-offsetof",
++    "-Wno-unused-parameter",
++    "-Wno-deprecated-declarations",
+ ] + select({
+     ":with_glog": ["-DBRPC_WITH_GLOG=1"],
+     "//conditions:default": ["-DBRPC_WITH_GLOG=0"],
+@@ -73,7 +81,10 @@ COPTS = [
+ }) + select({
+     ":with_thrift": ["-DENABLE_THRIFT_FRAMED_PROTOCOL=1"],
+     "//conditions:default": [""],
+-})
++}) + select({
++    "enable_gperf": ["-DBRPC_ENABLE_CPU_PROFILER"],
++    "//conditions:default": [],
++ })
+ 
+ LINKOPTS = [
+     "-lpthread",
+@@ -337,6 +348,7 @@ cc_library(
+     deps = [
+         "@com_google_protobuf//:protobuf",
+         "@com_github_gflags_gflags//:gflags",
++        "@com_github_openssl_openssl//:openssl",
+         "@zlib//:zlib",
+     ] + select({
+         ":with_glog": ["@com_github_google_glog//:glog"],
+@@ -344,9 +356,6 @@ cc_library(
+     }) + select({
+         ":darwin": [":macos_lib"],
+         "//conditions:default": [],
+-    }) + select({
+-        ":darwin": ["//external:ssl_macos"],
+-        "//conditions:default": ["//external:ssl"],
+     }),
+     includes = [
+         "src/",
+diff --git a/src/brpc/policy/http_rpc_protocol.cpp b/src/brpc/policy/http_rpc_protocol.cpp
+index 7bd06ec5..68b1a58d 100644
+--- a/src/brpc/policy/http_rpc_protocol.cpp
++++ b/src/brpc/policy/http_rpc_protocol.cpp
+@@ -617,12 +617,12 @@ void SerializeHttpRequest(butil::IOBuf* /*not used*/,
+ 
+     Span* span = accessor.span();
+     if (span) {
+-        hreq.SetHeader("x-bd-trace-id", butil::string_printf(
+-                           "%llu", (unsigned long long)span->trace_id()));
+-        hreq.SetHeader("x-bd-span-id", butil::string_printf(
+-                           "%llu", (unsigned long long)span->span_id()));
+-        hreq.SetHeader("x-bd-parent-span-id", butil::string_printf(
+-                           "%llu", (unsigned long long)span->parent_span_id()));
++        hreq.SetHeader("x-b3-traceid", butil::string_printf(
++                           "%016llx", (unsigned long long)span->trace_id()));
++        hreq.SetHeader("x-b3-spanid", butil::string_printf(
++                           "%016llx", (unsigned long long)span->span_id()));
++        hreq.SetHeader("x-b3-parentspanid", butil::string_printf(
++                           "%016llx", (unsigned long long)span->parent_span_id()));
+     }
+ }
+ 
+@@ -1282,22 +1282,22 @@ void ProcessHttpRequest(InputMessageBase *msg) {
+ 
+     Span* span = NULL;
+     const std::string& path = req_header.uri().path();
+-    const std::string* trace_id_str = req_header.GetHeader("x-bd-trace-id");
++    const std::string* trace_id_str = req_header.GetHeader("x-b3-traceid");
+     if (IsTraceable(trace_id_str)) {
+         uint64_t trace_id = 0;
+         if (trace_id_str) {
+-            trace_id = strtoull(trace_id_str->c_str(), NULL, 10);
++            trace_id = strtoull(trace_id_str->c_str(), NULL, 16);
+         }
+         uint64_t span_id = 0;
+-        const std::string* span_id_str = req_header.GetHeader("x-bd-span-id");
++        const std::string* span_id_str = req_header.GetHeader("x-b3-spanid");
+         if (span_id_str) {
+-            span_id = strtoull(span_id_str->c_str(), NULL, 10);
++            span_id = strtoull(span_id_str->c_str(), NULL, 16);
+         }
+         uint64_t parent_span_id = 0;
+         const std::string* parent_span_id_str =
+-            req_header.GetHeader("x-bd-parent-span-id");
++            req_header.GetHeader("x-b3-parentspanid");
+         if (parent_span_id_str) {
+-            parent_span_id = strtoull(parent_span_id_str->c_str(), NULL, 10);
++            parent_span_id = strtoull(parent_span_id_str->c_str(), NULL, 16);
+         }
+         span = Span::CreateServerSpan(
+             path, trace_id, span_id, parent_span_id, msg->base_real_us());
+diff --git a/src/bvar/default_variables.cpp b/src/bvar/default_variables.cpp
+index be02c50a..172dcbe4 100644
+--- a/src/bvar/default_variables.cpp
++++ b/src/bvar/default_variables.cpp
+@@ -110,8 +110,9 @@ static bool read_proc_status(ProcStat &stat) {
+         return -1;
+     }
+     const std::string& result = oss.str();
++    // macOS flags is actually a hex, ref https://github.com/apache/incubator-brpc/issues/1106
+     if (sscanf(result.c_str(), "%d %d %d %d"
+-                              "%d %u %ld %ld",
++                              "%d %x %ld %ld",
+                &stat.pid, &stat.ppid, &stat.pgrp, &stat.session,
+                &stat.tpgid, &stat.flags, &stat.priority, &stat.nice) != 8) {
+         PLOG(WARNING) << "Fail to sscanf";
+
