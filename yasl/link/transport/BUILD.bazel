@@ -1,0 +1,54 @@
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("//bazel:yasl.bzl", "yasl_cc_library", "yasl_cc_test")
+load("@rules_cc//cc:defs.bzl", "cc_proto_library")
+
+package(default_visibility = ["//visibility:public"])
+
+yasl_cc_library(
+    name = "channel",
+    srcs = ["channel.cc"],
+    hdrs = ["channel.h"],
+    deps = [
+        "//yasl/base:buffer",
+        "//yasl/base:byte_container_view",
+        "//yasl/base:exception",
+    ],
+)
+
+yasl_cc_library(
+    name = "channel_mem",
+    srcs = ["channel_mem.cc"],
+    hdrs = ["channel_mem.h"],
+    deps = [
+        ":channel",
+    ],
+)
+
+cc_proto_library(
+    name = "channel_brpc_cc_proto",
+    deps = [":channel_brpc_proto"],
+)
+
+proto_library(
+    name = "channel_brpc_proto",
+    srcs = ["channel_brpc.proto"],
+)
+
+yasl_cc_library(
+    name = "channel_brpc",
+    srcs = ["channel_brpc.cc"],
+    hdrs = ["channel_brpc.h"],
+    deps = [
+        ":channel",
+        ":channel_brpc_cc_proto",
+        "@com_github_brpc_brpc//:brpc",
+    ],
+)
+
+yasl_cc_test(
+    name = "channel_brpc_test",
+    srcs = ["channel_brpc_test.cc"],
+    deps = [
+        ":channel_brpc",
+    ],
+)

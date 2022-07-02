@@ -1,0 +1,24 @@
+load("//bazel:yasl.bzl", "yasl_cc_binary", "yasl_cc_library", "yasl_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+yasl_cc_binary(
+    name = "alg_data_test",
+    srcs = [
+        "alg_data_test.cc",
+    ],
+    defines = ["CURVE25519_DONNA"] + select({
+        "@bazel_tools//src/conditions:darwin": ["USE_LIBDISPATCH"],
+        "//conditions:default": [],
+    }),
+    deps = [
+        "//yasl/base:int128",
+        "//yasl/crypto:pseudo_random_generator",
+        "//yasl/crypto:ssl_hash",
+        "//yasl/crypto:symmetric_crypto",
+        "@com_github_floodyberry_curve25519_donna//:curve25519_donna",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
+        "@com_google_googletest//:gtest",
+    ],
+)

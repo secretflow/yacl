@@ -1,0 +1,235 @@
+load("//bazel:yasl.bzl", "yasl_cc_binary", "yasl_cc_library", "yasl_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+yasl_cc_library(
+    name = "punctured_rand_ot",
+    srcs = [
+        "punctured_rand_ot.cc",
+    ],
+    hdrs = [
+        "punctured_rand_ot.h",
+    ],
+    deps = [
+        ":options",
+        "//yasl/crypto:pseudo_random_generator",
+        "//yasl/link",
+    ],
+)
+
+yasl_cc_test(
+    name = "punctured_rand_ot_test",
+    srcs = ["punctured_rand_ot_test.cc"],
+    deps = [
+        ":punctured_rand_ot",
+        "//yasl/crypto:utils",
+        "//yasl/link:test_util",
+    ],
+)
+
+yasl_cc_library(
+    name = "base_ot_interface",
+    srcs = [],
+    hdrs = ["base_ot_interface.h"],
+)
+
+yasl_cc_library(
+    name = "portable_ot_interface",
+    srcs = ["portable_ot_interface.cc"],
+    hdrs = ["portable_ot_interface.h"],
+    deps = [
+        ":base_ot_interface",
+        "//yasl/base:exception",
+        "//yasl/crypto:random_oracle",
+        "//yasl/link",
+        "@simplest_ot//:simplest_ot_portable",
+    ],
+)
+
+yasl_cc_library(
+    name = "x86_asm_ot_interface",
+    srcs = ["x86_asm_ot_interface.cc"],
+    hdrs = ["x86_asm_ot_interface.h"],
+    target_compatible_with = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:linux",
+    ],
+    deps = [
+        ":base_ot_interface",
+        "//yasl/base:exception",
+        "//yasl/crypto:random_oracle",
+        "//yasl/link",
+        "@simplest_ot//:simplest_ot_x86_asm",
+    ],
+)
+
+yasl_cc_library(
+    name = "base_ot",
+    srcs = ["base_ot.cc"],
+    hdrs = ["base_ot.h"],
+    deps = [
+        "//yasl/base:exception",
+        "//yasl/link",
+        "@com_google_absl//absl/types:span",
+        ":portable_ot_interface",
+    ] + select({
+        "@bazel_tools//src/conditions:linux_x86_64": [
+            ":x86_asm_ot_interface",
+            "@com_github_google_cpu_features//:cpu_features",
+        ],
+        "//conditions:default": [],
+    }),
+)
+
+yasl_cc_test(
+    name = "base_ot_test",
+    srcs = ["base_ot_test.cc"],
+    deps = [
+        ":base_ot",
+        "//yasl/crypto:utils",
+        "//yasl/link:test_util",
+    ],
+)
+
+yasl_cc_library(
+    name = "options",
+    hdrs = ["options.h"],
+    deps = [
+        "//yasl/base:int128",
+    ],
+)
+
+yasl_cc_library(
+    name = "utils",
+    srcs = ["utils.cc"],
+    hdrs = [
+        "block.h",
+        "utils.h",
+    ],
+    deps = [
+        "//yasl/base:byte_container_view",
+        "//yasl/base:int128",
+        "@com_github_google_cpu_features//:cpu_features",
+        "@com_google_absl//absl/types:span",
+    ] + select({
+        "@bazel_tools//src/conditions:darwin_arm64": [
+            "@com_github_dltcollab_sse2neon//:sse2neon",
+        ],
+        "@bazel_tools//src/conditions:linux_aarch64": [
+            "@com_github_dltcollab_sse2neon//:sse2neon",
+        ],
+        "//conditions:default": [],
+    }),
+)
+
+yasl_cc_test(
+    name = "transpose_test",
+    srcs = ["transpose_test.cc"],
+    deps = [
+        ":utils",
+    ],
+)
+
+yasl_cc_library(
+    name = "iknp_ot_extension",
+    srcs = ["iknp_ot_extension.cc"],
+    hdrs = ["iknp_ot_extension.h"],
+    deps = [
+        ":options",
+        ":utils",
+        "//yasl/base:exception",
+        "//yasl/base:int128",
+        "//yasl/crypto:pseudo_random_generator",
+        "//yasl/crypto:random_oracle",
+        "//yasl/crypto:utils",
+        "//yasl/link",
+    ],
+)
+
+yasl_cc_test(
+    name = "iknp_ot_extension_test",
+    srcs = ["iknp_ot_extension_test.cc"],
+    deps = [
+        ":iknp_ot_extension",
+        "//yasl/link:test_util",
+    ],
+)
+
+yasl_cc_library(
+    name = "kkrt_ot_extension",
+    srcs = ["kkrt_ot_extension.cc"],
+    hdrs = ["kkrt_ot_extension.h"],
+    copts = [
+        "-march=native",
+    ],
+    deps = [
+        ":options",
+        ":utils",
+        "//yasl/base:exception",
+        "//yasl/base:int128",
+        "//yasl/crypto:hash_util",
+        "//yasl/crypto:pseudo_random_generator",
+        "//yasl/crypto:random_oracle",
+        "//yasl/link",
+        "@com_github_emptoolkit_emp_tool//:emp-tool",
+    ],
+)
+
+yasl_cc_test(
+    name = "kkrt_ot_extension_test",
+    srcs = ["kkrt_ot_extension_test.cc"],
+    deps = [
+        ":kkrt_ot_extension",
+        "//yasl/crypto:utils",
+        "//yasl/link:test_util",
+    ],
+)
+
+yasl_cc_binary(
+    name = "block_bench",
+    srcs = ["block_bench.cc"],
+    deps = [
+        ":utils",
+        "//yasl/crypto:pseudo_random_generator",
+        "@com_github_google_benchmark//:benchmark_main",
+    ],
+)
+
+yasl_cc_binary(
+    name = "matrix_transpose_bench",
+    srcs = ["matrix_transpose_bench.cc"],
+    deps = [
+        ":utils",
+        "//yasl/crypto:pseudo_random_generator",
+        "@com_github_google_benchmark//:benchmark_main",
+    ],
+)
+
+yasl_cc_binary(
+    name = "matrix_uint128_bench",
+    srcs = ["matrix_uint128_bench.cc"],
+    deps = [
+        ":utils",
+        "//yasl/crypto:pseudo_random_generator",
+        "@com_github_google_benchmark//:benchmark_main",
+    ],
+)
+
+yasl_cc_binary(
+    name = "aes_bench",
+    srcs = ["aes_bench.cc"],
+    copts = [
+        "-march=native",
+    ],
+    deps = [
+        ":utils",
+        "//yasl/crypto:pseudo_random_generator",
+        "@com_github_emptoolkit_emp_tool//:emp-tool",
+        "@com_github_google_benchmark//:benchmark_main",
+    ] + select({
+        "@platforms//cpu:x86_64": [
+            "@com_github_intel_ipp//:ipp",
+        ],
+        "//conditions:default": [],
+    }),
+)
