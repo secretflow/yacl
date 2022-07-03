@@ -40,13 +40,16 @@ def _com_github_brpc_brpc():
     maybe(
         http_archive,
         name = "com_github_brpc_brpc",
-        sha256 = "b45f5052f21097fffc69715fcd18fda13a8412bef042b6ad6e218c065366eb67",
-        strip_prefix = "incubator-brpc-1.1.0",
+        sha256 = "e378156db5e4fd641b35633904355c925fc6653ac6060148ec45c3c8e02d557c",
+        strip_prefix = "incubator-brpc-e8c22c9f2099015f52a3adbf917efb5ec3ce9cb4",
         type = "tar.gz",
         patch_args = ["-p1"],
-        patches = ["@yasl//bazel:patches/brpc.patch"],
+        patches = [
+            "@yasl//bazel:patches/brpc.patch",
+            "@yasl//bazel:patches/brpc-config.patch",
+        ],
         urls = [
-            "https://github.com/apache/incubator-brpc/archive/refs/tags/1.1.0.tar.gz",
+            "https://github.com/apache/incubator-brpc/archive/e8c22c9f2099015f52a3adbf917efb5ec3ce9cb4.tar.gz",
         ],
     )
 
@@ -282,6 +285,8 @@ def _com_github_google_cpu_features():
         type = "tar.gz",
         sha256 = "df80d9439abf741c7d2fdcdfd2d26528b136e6c52976be8bd0cd5e45a27262c0",
         build_file = "@yasl//bazel:cpu_features.BUILD",
+        patch_args = ["-p1"],
+        patches = ["@yasl//bazel:patches/cpu_features.patch"],
         urls = [
             "https://github.com/google/cpu_features/archive/refs/tags/v0.7.0.tar.gz",
         ],
