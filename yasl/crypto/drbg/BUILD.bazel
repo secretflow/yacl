@@ -65,14 +65,10 @@ yasl_cc_library(
     ],
     deps = [
         ":entropy_source",
-        "@com_google_absl//absl/strings",
+        "@com_github_google_cpu_features//:cpu_features",
         "@com_github_intel_ipp//:ipp",
-    ] + select({
-        "@bazel_tools//src/conditions:linux_x86_64": [
-            "@com_github_google_cpu_features//:cpu_features",
-        ],
-        "//conditions:default": [],
-    }),
+        "@com_google_absl//absl/strings",
+    ],
 )
 
 yasl_cc_library(
