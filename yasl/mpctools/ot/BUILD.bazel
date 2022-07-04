@@ -2,6 +2,11 @@ load("//bazel:yasl.bzl", "yasl_cc_binary", "yasl_cc_library", "yasl_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
+EMP_COPT_FLAGS = select({
+     "@platforms//cpu:aarch64": ["-O3"],
+     "//conditions:default": ["-march=native"],
+ })
+
 yasl_cc_library(
     name = "punctured_rand_ot",
     srcs = [
@@ -156,7 +161,7 @@ yasl_cc_library(
     name = "kkrt_ot_extension",
     srcs = ["kkrt_ot_extension.cc"],
     hdrs = ["kkrt_ot_extension.h"],
-    copts = ["-O3"],
+    copts = EMP_COPT_FLAGS,
     deps = [
         ":options",
         ":utils",
@@ -213,7 +218,7 @@ yasl_cc_binary(
 yasl_cc_binary(
     name = "aes_bench",
     srcs = ["aes_bench.cc"],
-    copts = ["-O3"],
+    copts = EMP_COPT_FLAGS,
     deps = [
         ":utils",
         "//yasl/crypto:pseudo_random_generator",
