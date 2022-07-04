@@ -156,14 +156,7 @@ yasl_cc_library(
     name = "kkrt_ot_extension",
     srcs = ["kkrt_ot_extension.cc"],
     hdrs = ["kkrt_ot_extension.h"],
-    copts = select({
-        "@bazel_tools//src/conditions:darwin_arm64": [
-            "-mcpu=apple-m1",
-        ],
-        "//conditions:default": [
-            "-march=native",
-        ],
-    }),
+    copts = ["-O3"],
     deps = [
         ":options",
         ":utils",
@@ -220,14 +213,7 @@ yasl_cc_binary(
 yasl_cc_binary(
     name = "aes_bench",
     srcs = ["aes_bench.cc"],
-    copts = select({
-        "@bazel_tools//src/conditions:darwin_arm64": [
-            "-mcpu=apple-m1",
-        ],
-        "//conditions:default": [
-            "-march=native",
-        ],
-    }),
+    copts = ["-O3"],
     deps = [
         ":utils",
         "//yasl/crypto:pseudo_random_generator",
