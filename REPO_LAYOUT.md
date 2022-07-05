@@ -1,6 +1,6 @@
 # Repository layout
 
-YASL is a fundamental library used in the secretflow stack. The major components are listed here:
+YASL is a fundamental library used in the SecretFlow stack. The major components are listed here:
 
 - [base/](yasl/base/): Basic types and utils in yasl.
 - [crypto/](yasl/crypto/): Crypto related utilities, say symmetric and asymmetric crypto, PRNG, hashing etc.
