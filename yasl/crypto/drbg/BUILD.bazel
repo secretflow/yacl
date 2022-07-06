@@ -112,10 +112,7 @@ yasl_cc_library(
     deps = [
         ":entropy_source",
     ] + select({
-        "@bazel_tools//src/conditions:darwin_arm64": [
-            ":std_entropy_source",
-        ],
-        "@bazel_tools//src/conditions:linux_aarch64": [
+        "@platforms//cpu:aarch64": [
             ":std_entropy_source",
         ],
         "//conditions:default": [

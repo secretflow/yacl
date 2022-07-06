@@ -1,0 +1,24 @@
+diff --git a/BUILD.bazel b/BUILD.bazel
+index 11db84d0..93c43e9d 100644
+--- a/BUILD.bazel
++++ b/BUILD.bazel
+@@ -44,13 +44,17 @@ config_setting(
+ 
+ config_setting(
+     name = "darwin",
+-    values = {"cpu": "darwin"},
++    constraint_values = [
++        "@platforms//os:macos",
++    ],
+     visibility = ["//visibility:public"],
+ )
+ 
+ config_setting(
+     name = "linux",
+-    values = {"cpu": "linux"},
++    constraint_values = [
++        "@platforms//os:linux",
++    ],
+     visibility = ["//visibility:public"],
+ )
+ 

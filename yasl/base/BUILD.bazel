@@ -69,11 +69,15 @@ yasl_cc_binary(
     srcs = ["int128_bench.cc"],
     # By default we benchmark the BMI2 `mulx`. Comment `copts & defines` to test `mulq` instead.
     # NOTE BMI2 is enabled from Intel Haswell series, which also provides AVX2.
-    copts = ["-march=native"],
-    defines = select({
-        "@bazel_tools//src/conditions:darwin_arm64": [
+    copts = select({
+        "@platforms//cpu:aarch64": [
         ],
-        "@bazel_tools//src/conditions:linux_aarch64": [
+        "//conditions:default": [
+            "-march=native",
+        ],
+    }),
+    defines = select({
+        "@platforms//cpu:aarch64": [
         ],
         "//conditions:default": [
             "YASL_ENABLE_BMI2",
