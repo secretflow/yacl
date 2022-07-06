@@ -19,6 +19,11 @@ DEBUG_FLAGS = ["-O0", "-g"]
 RELEASE_FLAGS = ["-O2"]
 FAST_FLAGS = ["-O1"]
 
+EMP_COPT_FLAGS = select({
+     "@platforms//cpu:aarch64": ["-O3"],
+     "//conditions:default": ["-march=native"],
+ })
+
 def _yasl_copts():
     return select({
         "@yasl//bazel:yasl_build_as_release": RELEASE_FLAGS,
