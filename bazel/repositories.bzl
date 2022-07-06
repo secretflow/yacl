@@ -12,6 +12,7 @@ def yasl_deps():
     _com_google_absl()
     _com_github_google_leveldb()
     _com_github_brpc_brpc()
+    _com_github_brpc_brpc_arm64()
     _com_github_fmtlib_fmt()
     _com_github_gabime_spdlog()
     _com_github_google_benchmark()
@@ -37,9 +38,23 @@ def yasl_deps():
     )
 
 def _com_github_brpc_brpc():
+     maybe(
+         http_archive,
+         name = "com_github_brpc_brpc",
+         sha256 = "b45f5052f21097fffc69715fcd18fda13a8412bef042b6ad6e218c065366eb67",
+         strip_prefix = "incubator-brpc-1.1.0",
+         type = "tar.gz",
+         patch_args = ["-p1"],
+         patches = ["@yasl//bazel:patches/brpc.patch"],
+         urls = [
+             "https://github.com/apache/incubator-brpc/archive/refs/tags/1.1.0.tar.gz",
+         ],
+     )
+
+def _com_github_brpc_brpc_arm64():
     maybe(
         http_archive,
-        name = "com_github_brpc_brpc",
+        name = "com_github_brpc_brpc_arm64",
         sha256 = "e378156db5e4fd641b35633904355c925fc6653ac6060148ec45c3c8e02d557c",
         strip_prefix = "incubator-brpc-e8c22c9f2099015f52a3adbf917efb5ec3ce9cb4",
         type = "tar.gz",

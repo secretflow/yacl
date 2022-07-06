@@ -7,10 +7,7 @@ cc_library(
         "c/blake3_dispatch.c",
         "c/blake3_portable.c",
     ] + select({
-        "@bazel_tools//src/conditions:darwin_arm64": [
-            "c/blake3_neon.c",
-        ],
-        "@bazel_tools//src/conditions:linux_aarch64": [
+        "@platforms//cpu:aarch64": [
             "c/blake3_neon.c",
         ],
         "//conditions:default": [
