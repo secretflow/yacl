@@ -1,6 +1,6 @@
 # YASL: Yet Another Simple library
 
-YASL (Yet Another Simple library) is a C++ library that contains modules and utilities which other SecretFlow code depends on.
+This is an unofficial copy of [secretflow/yasl](https://github.com/secretflow/yasl), with support for experimental primitives.
 
 ## Build
 
