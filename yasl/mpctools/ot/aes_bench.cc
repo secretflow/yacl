@@ -107,7 +107,7 @@ static void BM_EmpToolMultiAes(benchmark::State& state) {
     size_t n = state.range(0);
     state.ResumeTiming();
     for (size_t i = 0; i < n; i++) {
-      emp::ParaEnc<kKeyWidth, kKeyWidth>(plain_block, aes_key);
+      emp::ParaEnc<kKeyWidth, 1>(plain_block, aes_key);
     }
   }
 }
