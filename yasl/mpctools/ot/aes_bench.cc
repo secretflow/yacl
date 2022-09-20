@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include <future>
 #include <iostream>
 #include <random>
@@ -144,7 +143,7 @@ static void BM_IppcpAes(benchmark::State& state) {
     }
   }
 
-  delete[](Ipp8u*) aes_ctx_ptr;
+  delete[] (Ipp8u*)aes_ctx_ptr;
 }
 
 static void BM_IppcpSm4(benchmark::State& state) {
@@ -178,7 +177,7 @@ static void BM_IppcpSm4(benchmark::State& state) {
     }
   }
 
-  delete[](Ipp8u*) sm4_ctx_ptr;
+  delete[] (Ipp8u*)sm4_ctx_ptr;
 }
 #endif
 

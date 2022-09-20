@@ -55,14 +55,8 @@ yasl_cc_library(
     deps = [
         ":channel",
         ":channel_brpc_cc_proto",
-    ] + select({
-        "@bazel_tools//src/conditions:darwin_arm64": [
-            "@com_github_brpc_brpc_arm64//:brpc",
-        ],
-        "//conditions:default": [
-            "@com_github_brpc_brpc//:brpc",
-        ],
-    }),
+        "@com_github_brpc_brpc//:brpc",
+    ],
 )
 
 yasl_cc_test(

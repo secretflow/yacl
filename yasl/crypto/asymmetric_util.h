@@ -20,10 +20,13 @@
 
 #include "openssl/bio.h"
 #include "openssl/evp.h"
+#include "openssl/rsa.h"
 
 #include "yasl/base/byte_container_view.h"
 
 namespace yasl::crypto {
+
+using UniqueRsa = std::unique_ptr<RSA, decltype(&RSA_free)>;
 
 namespace internal {
 
@@ -38,6 +41,9 @@ UniquePkey CreatePubPkeyFromSm2Pem(ByteContainerView pem);
 std::tuple<std::string, std::string> CreateSm2KeyPair();
 
 std::tuple<std::string, std::string> CreateRsaKeyPair();
+
+UniqueRsa CreateRsaFromX509(ByteContainerView x509_public_key);
+std::string GetPublicKeyFromRsa(const UniqueRsa& rsa);
 
 std::tuple<std::string, std::string> CreateRsaCertificateAndPrivateKey(
     const std::unordered_map<std::string, std::string>& subject_map,

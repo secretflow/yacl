@@ -48,7 +48,7 @@ TEST_P(GatherTest, Works) {
       if (ctx->Rank() == root) {
         EXPECT_EQ(output.size(), world_size);
         for (size_t cc = 0; cc < world_size; cc++) {
-          EXPECT_EQ(output[cc], MakeRoundData(cc, round));
+          EXPECT_EQ(output[cc], yasl::Buffer(MakeRoundData(cc, round)));
         }
       } else {
         EXPECT_TRUE(output.empty());

@@ -21,7 +21,6 @@
 
 namespace yasl::crypto {
 
-
 std::string StdEntropySource::GetEntropy(size_t entropy_bytes) {
   std::string entropy_buf;
 

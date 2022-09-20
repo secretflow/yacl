@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include "yasl/utils/elapsed_timer.h"
 
 namespace yasl {

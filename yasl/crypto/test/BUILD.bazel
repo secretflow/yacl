@@ -1,4 +1,3 @@
-
 # Copyright 2022 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,8 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-load("//bazel:yasl.bzl", "yasl_cc_binary", "yasl_cc_library", "yasl_cc_test")
+load("//bazel:yasl.bzl", "yasl_cc_binary")
 
 package(default_visibility = ["//visibility:public"])
 

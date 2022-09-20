@@ -70,11 +70,11 @@ TEST_P(ParallelTest, ParallelReduceTest) {
   std::iota(data.begin(), data.end(), 0);
   int expect_sum = std::accumulate(data.begin(), data.end(), 0);
 
-  int total_sum = parallel_reduce(
-      0, data.size(), param.grain_size, 0,
-      [&data](int64_t beg, int64_t end, int ident) {
-        int partial_sum = ident;
-        for (int64_t i = beg; i < end; ++i) {
+  int total_sum = parallel_reduce<int>(
+      0, data.size(), param.grain_size,
+      [&data](int64_t beg, int64_t end) {
+        int partial_sum = data[beg];
+        for (int64_t i = beg + 1; i < end; ++i) {
           partial_sum += data[i];
         }
         return partial_sum;

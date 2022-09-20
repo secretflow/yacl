@@ -45,7 +45,7 @@ Buffer Scatter(const std::shared_ptr<Context>& ctx,
       ctx->SendAsyncInternal(idx, event, inputs[idx]);
     }
 
-    return {inputs[root]};
+    return yasl::Buffer(inputs[root]);
   }
   return ctx->RecvInternal(root, event);
 }

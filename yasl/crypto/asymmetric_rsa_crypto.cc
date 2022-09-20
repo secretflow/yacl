@@ -33,21 +33,8 @@ constexpr int kRsaPadding = RSA_PKCS1_OAEP_PADDING;
 
 std::unique_ptr<RsaEncryptor> RsaEncryptor::CreateFromX509(
     ByteContainerView x509_public_key) {
-  UniqueBio pem_bio(
-      BIO_new_mem_buf(x509_public_key.data(), x509_public_key.size()),
-      BIO_free);
-  X509* cert = PEM_read_bio_X509(pem_bio.get(), nullptr, nullptr, nullptr);
-  YASL_ENFORCE(cert, "No X509 from cert.");
-  UniqueX509 unique_cert(cert, ::X509_free);
-  EVP_PKEY* pubkey = X509_get_pubkey(unique_cert.get());
-  YASL_ENFORCE(pubkey, "No pubkey in x509.");
-  UniqueEVP unique_pkey(pubkey, ::EVP_PKEY_free);
-  RSA* rsa = EVP_PKEY_get1_RSA(unique_pkey.get());
-  YASL_ENFORCE(rsa, "No Rsa from pem string.");
-  // Using `new` to access a non-public constructor.
-  // ref https://abseil.io/tips/134
   return std::unique_ptr<RsaEncryptor>(
-      new RsaEncryptor(UniqueRsa(rsa, ::RSA_free)));
+      new RsaEncryptor(CreateRsaFromX509(x509_public_key)));
 }
 
 std::unique_ptr<RsaEncryptor> RsaEncryptor::CreateFromPem(

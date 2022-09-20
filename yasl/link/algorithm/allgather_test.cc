@@ -41,7 +41,7 @@ TEST_P(AllGatherTest, Works) {
 
       EXPECT_EQ(result.size(), world_size);
       for (size_t rank = 0; rank < world_size; rank++) {
-        EXPECT_EQ(result[rank], MakeRoundData(rank, round));
+        EXPECT_EQ(result[rank], yasl::Buffer(MakeRoundData(rank, round)));
       }
     }
   };

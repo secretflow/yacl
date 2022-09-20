@@ -75,6 +75,11 @@ struct ContextDesc {
   // a single http request timetout.
   uint32_t http_timeout_ms = 20 * 1000;  // 20 seconds.
 
+  // throttle window size for channel. if there are more than limited size
+  // messages are flying, `SendAsync` will block until messages are processed or
+  // throw exception after wait for `recv_timeout_ms`
+  uint32_t throttle_window_size = 10;
+
   // BRPC client channel protocol.
   std::string brpc_channel_protocol = "baidu_std";
 
@@ -95,10 +100,11 @@ struct ContextDescHasher {
       utils::hash_combine(seed, p.id, p.host);
     }
 
-    utils::hash_combine(
-        seed, desc.connect_retry_times, desc.connect_retry_interval_ms,
-        desc.recv_timeout_ms, desc.http_max_payload_size, desc.http_timeout_ms,
-        desc.brpc_channel_protocol, desc.brpc_channel_connection_type);
+    utils::hash_combine(seed, desc.connect_retry_times,
+                        desc.connect_retry_interval_ms, desc.recv_timeout_ms,
+                        desc.http_max_payload_size, desc.http_timeout_ms,
+                        desc.throttle_window_size, desc.brpc_channel_protocol,
+                        desc.brpc_channel_connection_type);
 
     return seed;
   }
@@ -121,7 +127,7 @@ struct Statistics {
 // Threading: link context could only be used in one thread, since
 // communication rounds are identified by (incremental) counters.
 //
-// Spawn it if you need to used use in a different thread, the
+// Spawn it if you need to use it in a different thread, the
 // channels/event_loop will be shared between parent/child contexts.
 class Context {
  public:

@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include "yasl/crypto/drbg/entropy_source_selector.h"
+
 #include <memory>
 
 #ifdef __x86_64
@@ -26,9 +26,9 @@ namespace yasl::crypto {
 
 std::shared_ptr<IEntropySource> makeEntropySource() {
 #ifdef __x86_64
-    return std::make_shared<IntelEntropySource>();
+  return std::make_shared<IntelEntropySource>();
 #else
-    return std::make_shared<StdEntropySource>();
+  return std::make_shared<StdEntropySource>();
 #endif
 }
 

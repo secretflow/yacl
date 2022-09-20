@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #pragma once
 
 #include <algorithm>
@@ -47,7 +46,7 @@ class Buffer final {
   template <typename ByteContainer,
             std::enable_if_t<sizeof(typename ByteContainer::value_type) == 1,
                              bool> = true>
-  /*implicit*/ Buffer(const ByteContainer& u) : Buffer(u.data(), u.size()) {}
+  explicit Buffer(const ByteContainer& u) : Buffer(u.data(), u.size()) {}
 
   // Allocate a new buffer and copy the contents of ptr
   Buffer(const void* ptr, size_t size) {
@@ -115,7 +114,8 @@ class Buffer final {
   }
 
   void resize(int64_t new_size) {
-    if (new_size == size_) {
+    if (new_size <= size_) {
+      size_ = new_size;
       return;
     }
 

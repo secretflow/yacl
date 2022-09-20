@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yasl/crypto/drbg/entropy_source_selector.h"
-
 #include <future>
 #include <random>
 #include <string>
@@ -21,6 +19,8 @@
 
 #include "absl/strings/escaping.h"
 #include "gtest/gtest.h"
+
+#include "yasl/crypto/drbg/entropy_source_selector.h"
 
 namespace yasl::crypto {
 

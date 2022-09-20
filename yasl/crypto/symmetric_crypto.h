@@ -114,20 +114,38 @@ template <typename T,
 inline uint64_t FillPseudoRandom(SymmetricCrypto::CryptoType crypto_type,
                                  uint128_t seed, uint128_t iv, uint64_t count,
                                  absl::Span<T> out) {
+  constexpr size_t block_size = SymmetricCrypto::BlockSize();
   const size_t nbytes = out.size() * sizeof(T);
-  const size_t nblock = (nbytes + sizeof(uint128_t) - 1) / sizeof(uint128_t);
-  if (nbytes % sizeof(uint128_t) == 0) {
+  const size_t nblock = (nbytes + block_size - 1) / block_size;
+  const size_t padding_bytes = nbytes % block_size;
+
+  SymmetricCrypto crypto(crypto_type, seed, iv);
+
+  if (padding_bytes == 0) {
     // No padding, fast path
-    SymmetricCrypto(crypto_type, seed, iv)
-        .Encrypt(
-            internal::EcbMakeContentBlocks(count, nblock),
-            absl::MakeSpan(reinterpret_cast<uint128_t*>(out.data()), nblock));
+    crypto.Encrypt(
+        internal::EcbMakeContentBlocks(count, nblock),
+        absl::MakeSpan(reinterpret_cast<uint128_t*>(out.data()), nblock));
   } else {
-    std::vector<uint128_t> cipher(nblock);
-    SymmetricCrypto(crypto_type, seed, iv)
-        .Encrypt(internal::EcbMakeContentBlocks(count, nblock),
-                 absl::MakeSpan(cipher));
-    std::memcpy(out.data(), cipher.data(), nbytes);
+    if (crypto_type == SymmetricCrypto::CryptoType::AES128_ECB ||
+        crypto_type == SymmetricCrypto::CryptoType::SM4_ECB) {
+      if (nblock > 1) {
+        // first n-1 block
+        crypto.Encrypt(internal::EcbMakeContentBlocks(count, nblock - 1),
+                       absl::MakeSpan(reinterpret_cast<uint128_t*>(out.data()),
+                                      nblock - 1));
+      }
+      // last padding block
+      uint128_t padding = count + nblock - 1;
+      padding = crypto.Encrypt(padding);
+      std::memcpy(reinterpret_cast<uint128_t*>(out.data()) + (nblock - 1),
+                  &padding, padding_bytes);
+    } else {
+      std::vector<uint128_t> cipher(nblock);
+      crypto.Encrypt(internal::EcbMakeContentBlocks(count, nblock),
+                     absl::MakeSpan(cipher));
+      std::memcpy(out.data(), cipher.data(), nbytes);
+    }
   }
   return count + nblock;
 }
@@ -141,6 +159,17 @@ inline uint64_t FillAesRandom(uint128_t seed, uint128_t iv, uint64_t count,
   // SGX-Beaver has transferred to AES_ECB, we should use AES_ECB instead.
   return FillPseudoRandom<T>(SymmetricCrypto::CryptoType::AES128_CBC, seed, iv,
                              count, out);
+}
+
+// in some asymmetric scene
+// may exist parties only need update count by buffer size.
+template <typename T,
+          std::enable_if_t<std::is_standard_layout<T>::value, int> = 0>
+inline uint64_t DummyUpdateRandomCount(uint64_t count, absl::Span<T> out) {
+  constexpr size_t block_size = SymmetricCrypto::BlockSize();
+  const size_t nbytes = out.size() * sizeof(T);
+  const size_t nblock = (nbytes + block_size - 1) / block_size;
+  return count + nblock;
 }
 
 template <typename T,

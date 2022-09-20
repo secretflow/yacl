@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include "yasl/utils/elapsed_timer.h"
 
 #include <chrono>
@@ -40,7 +39,8 @@ TEST(ElapsedTimerTest, zero) {
 TEST(ElapsedTimerTest, plus) {
   ElapsedTimer timer;
   int expect_cost_time_ms = 100;
-  int relaxed_expect_cost_time_ms = computeExpectedTimeInMs(expect_cost_time_ms);
+  int relaxed_expect_cost_time_ms =
+      computeExpectedTimeInMs(expect_cost_time_ms);
   std::this_thread::sleep_for(std::chrono::milliseconds(expect_cost_time_ms));
   double cost_time_ms = timer.CountMs();
   double cost_time_sec = timer.CountSec();

@@ -12,16 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include "yasl/mpctools/ot/x86_asm_ot_interface.h"
+
+#include <memory>
 
 #include "simplest_ot_x86_asm/ot_receiver.h"
 #include "simplest_ot_x86_asm/ot_sender.h"
 
 #include "yasl/base/exception.h"
 #include "yasl/crypto/random_oracle.h"
-
-#include <memory>
 
 namespace yasl {
 
@@ -33,7 +32,8 @@ void X86AsmOtInterface::Recv(const std::shared_ptr<link::Context> &ctx,
 
   // Wait for sender S_pack.
   auto buffer = ctx->Recv(ctx->NextRank(), "BASE_OT:S_PACK");
-  YASL_ENFORCE_EQ(buffer.size(), static_cast<int64_t>(sizeof(receiver->S_pack)));
+  YASL_ENFORCE_EQ(buffer.size(),
+                  static_cast<int64_t>(sizeof(receiver->S_pack)));
   std::memcpy(receiver->S_pack, buffer.data(), buffer.size());
 
   if (!receiver_procS_check(receiver.get())) {

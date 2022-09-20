@@ -51,7 +51,7 @@ class IChannel {
 
   // called by an async dispatcher.
   virtual void OnChunkedMessage(const std::string& key, ByteContainerView value,
-                                size_t chunk_idx, size_t num_chunks) = 0;
+                                size_t offset, size_t total_length) = 0;
   // set receive timeout ms
   virtual void SetRecvTimeout(uint32_t timeout_ms) = 0;
 
@@ -89,7 +89,7 @@ class ChannelBase : public IChannel {
   void OnMessage(const std::string& key, ByteContainerView value) override;
 
   void OnChunkedMessage(const std::string& key, ByteContainerView value,
-                        size_t chunk_idx, size_t num_chunks) override;
+                        size_t offset, size_t total_length) override;
 
   void SetRecvTimeout(uint32_t recv_timeout_ms) override;
 

@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include "yasl/io/stream/file_io.h"
 
 #include <cerrno>
@@ -68,7 +67,7 @@ InputStream& FileInputStream::GetLine(std::string* ret, char delim) {
 
 InputStream& FileInputStream::Read(void* buf, size_t length) {
   try {
-    in_.readsome(static_cast<char*>(buf), length);
+    in_.read(static_cast<char*>(buf), length);
   } catch (const std::ifstream::failure& e) {
     FILE_IO_THROW("Read");
   }
@@ -121,7 +120,7 @@ std::unique_ptr<InputStream> FileInputStream::Spawn() {
   return ret;
 }
 
-FileOutputStream::FileOutputStream(std::string file_name,
+FileOutputStream::FileOutputStream(std::string file_name, bool trunc,
                                    bool exit_fail_in_destructor)
     : file_name_(std::move(file_name)),
       exit_fail_in_destructor_(exit_fail_in_destructor) {
@@ -133,7 +132,8 @@ FileOutputStream::FileOutputStream(std::string file_name,
   }
   out_.exceptions(std::ofstream::badbit | std::ofstream::failbit);
   try {
-    out_.open(file_name_, std::ios::binary | std::ios::trunc);
+    out_.open(file_name_,
+              std::ios::binary | (trunc ? std::ios::trunc : std::ios::app));
   } catch (const std::ofstream::failure& e) {
     FILE_IO_THROW("Open for write");
   }
@@ -148,7 +148,7 @@ FileOutputStream::~FileOutputStream() {
     if (exit_fail_in_destructor_) {
       _exit(-1);
     }
-  } catch(const std::exception& e) {
+  } catch (const std::exception& e) {
     SPDLOG_ERROR("IO error in destructor: < {} >", e.what());
     if (exit_fail_in_destructor_) {
       _exit(-1);

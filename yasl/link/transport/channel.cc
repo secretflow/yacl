@@ -14,8 +14,11 @@
 
 #include "yasl/link/transport/channel.h"
 
+#include <set>
+
 #include "spdlog/spdlog.h"
 
+#include "yasl/base/buffer.h"
 #include "yasl/base/byte_container_view.h"
 #include "yasl/base/exception.h"
 
@@ -28,41 +31,33 @@ static const std::string kFinKey{'F', 'I', 'N', '\x01', '\x00'};
 
 class ChunkedMessage {
  public:
-  explicit ChunkedMessage(size_t num_chunks)
-      : num_chunks_(num_chunks), message_size_(0) {}
+  explicit ChunkedMessage(int64_t message_length) : message_(message_length) {}
 
-  void AddChunk(size_t index, ByteContainerView data) {
+  void AddChunk(int64_t offset, ByteContainerView data) {
     std::unique_lock lock(mutex_);
-    chunks_.emplace(index, data);
-    message_size_ += data.size();
+    if (received_.emplace(offset).second) {
+      std::memcpy(message_.data<std::byte>() + offset, data.data(),
+                  data.size());
+      bytes_written_ += data.size();
+    }
   }
 
-  size_t NumChunks() const { return num_chunks_; }
+  bool IsFullyFilled() {
+    std::unique_lock lock(mutex_);
+    return bytes_written_ == message_.size();
+  }
 
-  size_t NumFilled() const { return chunks_.size(); }
-
-  bool IsFullyFilled() const { return chunks_.size() == num_chunks_; }
-
-  Buffer Reassemble() {
-    Buffer out(message_size_);
-    size_t bytes_written = 0;
-    for (auto& itr : chunks_) {
-      std::memcpy(out.data<char>() + bytes_written, itr.second.data(),
-                  itr.second.size());
-      bytes_written += itr.second.size();
-    }
-    message_size_ = 0;
-    chunks_.clear();
-    return out;
+  Buffer&& Reassemble() {
+    std::unique_lock lock(mutex_);
+    return std::move(message_);
   }
 
  protected:
-  const size_t num_chunks_;
-
   std::mutex mutex_;
+  std::set<int64_t> received_;
   // chunk index to value.
-  std::map<size_t, Buffer> chunks_;
-  size_t message_size_;
+  int64_t bytes_written_{0};
+  Buffer message_;
 };
 
 Buffer ChannelBase::Recv(const std::string& key) {
@@ -124,51 +119,42 @@ void ChannelBase::OnMessage(const std::string& key, ByteContainerView value) {
 }
 
 void ChannelBase::OnChunkedMessage(const std::string& key,
-                                   ByteContainerView value, size_t chunk_idx,
-                                   size_t num_chunks) {
+                                   ByteContainerView value, size_t offset,
+                                   size_t total_length) {
   YASL_ENFORCE(key != kAckKey && key != kFinKey,
                "For developer: pls use another key for normal message.");
-  if (chunk_idx >= num_chunks) {
-    YASL_THROW_LOGIC_ERROR("invalid chunk info, index={}, size={}", chunk_idx,
-                           num_chunks);
+  if (offset + value.size() > total_length) {
+    YASL_THROW_LOGIC_ERROR(
+        "invalid chunk info, offset={}, chun size = {}, total_length={}",
+        offset, value.size(), total_length);
   }
 
+  bool should_reassemble = false;
   std::shared_ptr<ChunkedMessage> data;
   {
     std::unique_lock lock(chunked_values_mutex_);
     auto itr = chunked_values_.find(key);
     if (itr == chunked_values_.end()) {
       itr = chunked_values_
-                .emplace(key, std::make_shared<ChunkedMessage>(num_chunks))
+                .emplace(key, std::make_shared<ChunkedMessage>(total_length))
                 .first;
     }
+
     data = itr->second;
-  }
+    data->AddChunk(offset, value);
 
-  data->AddChunk(chunk_idx, value);
-  {
-    bool should_reassemble = false;
     if (data->IsFullyFilled()) {
-      // two threads may arrive here at same time.
-      std::unique_lock lock(chunked_values_mutex_);
-      auto const& itr = chunked_values_.find(key);
-      if (itr == chunked_values_.end()) {
-        // this data block is handled by another chunk, just return.
-        return;
-      }
-
-      chunked_values_.erase(key);
+      chunked_values_.erase(itr);
 
       // only one thread do the reassemble
       should_reassemble = true;
     }
+  }
 
-    if (should_reassemble) {
-      // notify new value arrived.
-      auto reassembled_data = data->Reassemble();
-      std::unique_lock lock(msg_mutex_);
-      OnNormalMessage(key, std::move(reassembled_data));
-    }
+  if (should_reassemble) {
+    // notify new value arrived.
+    std::unique_lock lock(msg_mutex_);
+    OnNormalMessage(key, data->Reassemble());
   }
 }
 

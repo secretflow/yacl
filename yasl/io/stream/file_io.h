@@ -66,7 +66,7 @@ class FileOutputStream : public OutputStream {
    * open {file_name} for write.
    * raise exception if any error happend.
    */
-  explicit FileOutputStream(std::string file_name,
+  explicit FileOutputStream(std::string file_name, bool trunc = true,
                             bool exit_fail_in_destructor = true);
 
   ~FileOutputStream() override;

@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include "yasl/utils/serialize.h"
 
 #include "yasl/utils/serializable.pb.h"

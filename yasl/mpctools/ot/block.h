@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 // block code from
 // https://github.com/ladnir/cryptoTools/blob/master/cryptoTools/Common/block.h
 //
