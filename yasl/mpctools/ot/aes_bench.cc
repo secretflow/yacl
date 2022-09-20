@@ -106,7 +106,7 @@ static void BM_EmpToolMultiAes(benchmark::State& state) {
     size_t n = state.range(0);
     state.ResumeTiming();
     for (size_t i = 0; i < n; i++) {
-      emp::ParaEnc<kKeyWidth, kKeyWidth>(plain_block, aes_key);
+      emp::ParaEnc<kKeyWidth, 1>(plain_block, aes_key);
     }
   }
 }
@@ -143,7 +143,7 @@ static void BM_IppcpAes(benchmark::State& state) {
     }
   }
 
-  delete[](Ipp8u*) aes_ctx_ptr;
+  delete[] (Ipp8u*)aes_ctx_ptr;
 }
 
 static void BM_IppcpSm4(benchmark::State& state) {
@@ -177,7 +177,7 @@ static void BM_IppcpSm4(benchmark::State& state) {
     }
   }
 
-  delete[](Ipp8u*) sm4_ctx_ptr;
+  delete[] (Ipp8u*)sm4_ctx_ptr;
 }
 #endif
 
