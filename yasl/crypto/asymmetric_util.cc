@@ -16,6 +16,7 @@
 
 #include <random>
 
+#include "openssl/bio.h"
 #include "openssl/bn.h"
 #include "openssl/pem.h"
 #include "openssl/rsa.h"
@@ -127,14 +128,23 @@ std::tuple<std::string, std::string> CreateSm2KeyPair() {
   return std::make_tuple(public_key, private_key);
 }
 
-std::tuple<std::string, std::string> CreateRsaKeyPair() {
-  std::unique_ptr<BIGNUM, decltype(&BN_free)> exp(BN_new(), BN_free);
-  YASL_ENFORCE_EQ(BN_set_word(exp.get(), RSA_F4), 1, "BN_set_word failed.");
-  UniqueRsa rsa(RSA_new(), RSA_free);
-  YASL_ENFORCE(
-      RSA_generate_key_ex(rsa.get(), kRsaKeyBitSize, exp.get(), nullptr),
-      "Generate rsa key pair failed.");
+UniqueRsa CreateRsaFromX509(ByteContainerView x509_public_key) {
+  UniqueBio pem_bio(
+      BIO_new_mem_buf(x509_public_key.data(), x509_public_key.size()),
+      BIO_free);
+  X509* cert = PEM_read_bio_X509(pem_bio.get(), nullptr, nullptr, nullptr);
+  YASL_ENFORCE(cert, "No X509 from cert.");
+  UniqueX509 unique_cert(cert, ::X509_free);
+  EVP_PKEY* pubkey = X509_get_pubkey(unique_cert.get());
+  YASL_ENFORCE(pubkey, "No pubkey in x509.");
+  UniqueEVP unique_pkey(pubkey, ::EVP_PKEY_free);
+  RSA* rsa = EVP_PKEY_get1_RSA(unique_pkey.get());
+  YASL_ENFORCE(rsa, "No Rsa from pem string.");
 
+  return UniqueRsa(rsa, ::RSA_free);
+}
+
+std::string GetPublicKeyFromRsa(const UniqueRsa& rsa) {
   std::string public_key;
   {
     UniqueBio bio(BIO_new(BIO_s_mem()), BIO_free);
@@ -147,6 +157,18 @@ std::tuple<std::string, std::string> CreateRsaKeyPair() {
     YASL_ENFORCE_GT(BIO_read(bio.get(), public_key.data(), size), 0,
                     "Cannot read bio.");
   }
+  return public_key;
+}
+
+std::tuple<std::string, std::string> CreateRsaKeyPair() {
+  std::unique_ptr<BIGNUM, decltype(&BN_free)> exp(BN_new(), BN_free);
+  YASL_ENFORCE_EQ(BN_set_word(exp.get(), RSA_F4), 1, "BN_set_word failed.");
+  UniqueRsa rsa(RSA_new(), RSA_free);
+  YASL_ENFORCE(
+      RSA_generate_key_ex(rsa.get(), kRsaKeyBitSize, exp.get(), nullptr),
+      "Generate rsa key pair failed.");
+
+  std::string public_key = GetPublicKeyFromRsa(rsa);
 
   std::string private_key;
   {

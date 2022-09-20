@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #ifdef YASL_ENABLE_BMI2
 #include <immintrin.h>
 #endif

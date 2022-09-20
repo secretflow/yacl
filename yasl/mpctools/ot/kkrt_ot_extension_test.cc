@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include "yasl/mpctools/ot/kkrt_ot_extension.h"
 
 #include <fmt/format.h>

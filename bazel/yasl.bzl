@@ -20,9 +20,13 @@ RELEASE_FLAGS = ["-O2"]
 FAST_FLAGS = ["-O1"]
 
 EMP_COPT_FLAGS = select({
-     "@platforms//cpu:aarch64": ["-O3"],
-     "//conditions:default": ["-march=native"],
- })
+    "@platforms//cpu:aarch64": ["-O3"],
+    "//conditions:default": [
+        "-march=haswell",
+        "-mavx2",
+        "-maes",
+    ],
+})
 
 def _yasl_copts():
     return select({

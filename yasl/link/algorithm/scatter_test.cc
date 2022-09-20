@@ -48,7 +48,7 @@ TEST_P(ScatterTest, Works) {
           Scatter(ctx, {inputs.begin(), inputs.end()}, root, "test_tag");
 
       // verify
-      EXPECT_EQ(data, MakeRoundData(ctx->Rank(), round));
+      EXPECT_EQ(data, yasl::Buffer(MakeRoundData(ctx->Rank(), round)));
     }
   };
 

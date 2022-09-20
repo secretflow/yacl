@@ -62,14 +62,8 @@ end: index at which to stop applying reduction
 grain_size: number of elements per chunk. impacts number of elements in
 intermediate results tensor and degree of parallelization.
 
-ident: identity for binary combination function sf. sf(ident, x) needs to return
-x.
-
-f: function for reduction over a chunk. f needs to be of signature scalar_t
-f(int64_t partial_begin, int64_t partial_end, scalar_t identifiy)
-
-sf: function to combine two partial results. sf needs to be of signature
-scalar_t sf(scalar_t x, scalar_t y)
+reduce_f: function for reduction over a chunk.
+combine_f: function to combine two partial results.
 
 For example, you might have a tensor of 10000 entires and want to sum together
 all the elements. Parallel_reduce with a grain_size of 2500 will then allocate
@@ -90,9 +84,11 @@ body of your function, only data pointers.
 
 [1] https://software.intel.com/en-us/node/506154
 */
-template <class scalar_t, class F, class SF>
-inline scalar_t parallel_reduce(int64_t begin, int64_t end, int64_t grain_size,
-                                scalar_t ident, const F& f, const SF& sf);
+template <class RES_T>
+inline RES_T parallel_reduce(
+    int64_t begin, int64_t end, int64_t grain_size,
+    const std::function<RES_T(int64_t, int64_t)>& reduce_f,
+    const std::function<RES_T(const RES_T&, const RES_T&)>& combine_f);
 
 // Returns number of intra-op threads used by default
 int intraop_default_num_threads();

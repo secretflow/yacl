@@ -36,8 +36,8 @@ enum ErrorCode {
 }
 
 message ChunkInfo {
-  uint32 num_chunks = 1;
-  uint32 chunk_index = 2;
+  uint64 message_length = 1;
+  uint64 chunk_offset = 2;
 }
 
 message PushRequest {

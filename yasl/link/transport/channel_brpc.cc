@@ -46,7 +46,7 @@ class ReceiverServiceImpl : public pb::ReceiverService {
       } else if (trans_type == pb::TransType::CHUNKED) {
         const auto& chunk = request->chunk_info();
         OnRpcCall(sender_rank, request->key(), request->value(),
-                  chunk.chunk_index(), chunk.num_chunks());
+                  chunk.chunk_offset(), chunk.message_length());
       } else {
         response->set_error_code(pb::ErrorCode::INVALID_REQUEST);
         response->set_error_msg(
@@ -78,8 +78,7 @@ class ReceiverServiceImpl : public pb::ReceiverService {
   }
 
   void OnRpcCall(size_t src_rank, const std::string& key,
-                 const std::string& value, size_t chunk_idx,
-                 size_t num_chunks) {
+                 const std::string& value, size_t offset, size_t total_length) {
     auto itr = listeners_.find(src_rank);
     if (itr == listeners_.end()) {
       YASL_THROW_LOGIC_ERROR("dispatch error, listener rank={} not found",
@@ -87,7 +86,7 @@ class ReceiverServiceImpl : public pb::ReceiverService {
     }
     auto comm_brpc = std::dynamic_pointer_cast<ChannelBrpc>(itr->second);
     // TODO: maybe need std::string_view interface to avoid memcpy
-    comm_brpc->OnChunkedMessage(key, value, chunk_idx, num_chunks);
+    comm_brpc->OnChunkedMessage(key, value, offset, total_length);
   }
 };
 
@@ -370,8 +369,8 @@ void ChannelBrpc::SendChunked(const std::string& key, ByteContainerView value) {
             value.data() + chunk_offset,
             std::min(bytes_per_chunk, value.size() - chunk_offset));
         request.set_trans_type(pb::TransType::CHUNKED);
-        request.mutable_chunk_info()->set_num_chunks(num_chunks);
-        request.mutable_chunk_info()->set_chunk_index(chunk_idx);
+        request.mutable_chunk_info()->set_chunk_offset(chunk_offset);
+        request.mutable_chunk_info()->set_message_length(num_bytes);
       }
 
       auto& cntl = cntls[idx];

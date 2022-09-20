@@ -43,7 +43,7 @@ Buffer Broadcast(const std::shared_ptr<Context>& ctx, ByteContainerView input,
   // |-A-|-C-|-B-|-C-|-A-|-C-| level 3, 0=>1, 2=>3, 4=>5
 
   const auto event = fmt::format("{}:{}", ctx->NextId(), kType);
-  Buffer output = input;
+  Buffer output = yasl::Buffer(input);
 
   TraceLogger::LinkTrace(event, tag, input);
 

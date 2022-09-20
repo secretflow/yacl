@@ -41,6 +41,7 @@ std::shared_ptr<Context> FactoryBrpc::CreateContext(const ContextDesc& desc,
     auto channel = std::make_shared<ChannelBrpc>(self_rank, rank,
                                                  desc.recv_timeout_ms, opts);
     channel->SetPeerHost(desc.parties[rank].host);
+    channel->SetThrottleWindowSize(desc.throttle_window_size);
 
     msg_loop->AddListener(rank, channel);
     channels[rank] = std::move(channel);

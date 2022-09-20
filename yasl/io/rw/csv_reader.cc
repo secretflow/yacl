@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include "yasl/io/rw/csv_reader.h"
 
 #include <unistd.h>
@@ -135,16 +134,16 @@ void CsvReader::ParseHeader() {
     if (striped_h.empty()) {
       YASL_THROW_INVALID_FORMAT(
           "Input CSV file format error: "
-          "found empty field name in line '{}' from file '{}'",
-          current_line_, in_->GetName());
+          "found empty field name in headers from file '{}'",
+          in_->GetName());
     }
 
     auto it = std::find(headers_.begin(), headers_.end(), striped_h);
     if (it != headers_.end()) {
       YASL_THROW_INVALID_FORMAT(
           "Input CSV file format error: "
-          "Repeated fields found in line '{}' from file '{}'",
-          current_line_, in_->GetName());
+          "Repeated fields found in header from file '{}'",
+          in_->GetName());
     }
 
     headers_.push_back(striped_h);
@@ -179,8 +178,8 @@ void CsvReader::BuildMmapFiles() {
     if (fields.size() != headers_.size()) {
       YASL_THROW_INVALID_FORMAT(
           "Input CSV file format error: "
-          "Line#{} '{}' fields size '{}' != header's size '{}'",
-          row_count, current_line_, fields.size(), headers_.size());
+          "Line#{} fields size '{}' != header's size '{}'",
+          row_count, fields.size(), headers_.size());
     }
 
     row_count++;
@@ -209,9 +208,9 @@ void CsvReader::BuildMmapFiles() {
           if (!FloatFromString(field, &value)) {
             YASL_THROW_INVALID_FORMAT(
                 "Input CSV file format error: Cannot convert '{}' to "
-                "float, column '{}', {} line '{}', file '{}'",
+                "float, column '{}', {}, file '{}'",
                 std::string(field), headers_[index], current_index_,
-                current_line_, in_->GetName());
+                in_->GetName());
           }
           oss[i]->Write(reinterpret_cast<char*>(&value), sizeof(float));
           break;
@@ -223,9 +222,9 @@ void CsvReader::BuildMmapFiles() {
           if (!FloatFromString(field, &value)) {
             YASL_THROW_INVALID_FORMAT(
                 "Input CSV file format error: Cannot convert '{}' to "
-                "double, column '{}', {} line '{}', file '{}'",
+                "double, column '{}', {}, file '{}'",
                 std::string(field), headers_[index], current_index_,
-                current_line_, in_->GetName());
+                in_->GetName());
           }
 
           oss[i]->Write(reinterpret_cast<char*>(&value), sizeof(double));
@@ -398,8 +397,8 @@ bool CsvReader::NextRow(ColumnVectorBatch* data, size_t batch_size) {
     if (fields.size() != headers_.size()) {
       YASL_THROW_INVALID_FORMAT(
           "Input CSV file format error: "
-          "Line#{} '{}' fields size '{}' != header's size '{}'",
-          current_index_, current_line_, fields.size(), headers_.size());
+          "Line#{} fields size '{}' != header's size '{}'",
+          current_index_, fields.size(), headers_.size());
     }
 
     count++;
@@ -420,9 +419,9 @@ bool CsvReader::NextRow(ColumnVectorBatch* data, size_t batch_size) {
           if (!FloatFromString(field, &value)) {
             YASL_THROW_INVALID_FORMAT(
                 "Input CSV file format error: Cannot convert '{}' to "
-                "float, column '{}', {} line '{}', file '{}'",
+                "float, column '{}', {}, file '{}'",
                 std::string(field), headers_[index], current_index_,
-                current_line_, in_->GetName());
+                in_->GetName());
           }
 
           auto& col = std::get<FloatColumnVector>(cols.at(i));
@@ -434,9 +433,9 @@ bool CsvReader::NextRow(ColumnVectorBatch* data, size_t batch_size) {
           if (!FloatFromString(field, &value)) {
             YASL_THROW_INVALID_FORMAT(
                 "Input CSV file format error: Cannot convert '{}' to "
-                "double, column '{}', {} line '{}', file '{}'",
+                "double, column '{}', {}, file '{}'",
                 std::string(field), headers_[index], current_index_,
-                current_line_, in_->GetName());
+                in_->GetName());
           }
 
           auto& col = std::get<DoubleColumnVector>(cols.at(i));

@@ -12,12 +12,10 @@ def yasl_deps():
     _com_google_absl()
     _com_github_google_leveldb()
     _com_github_brpc_brpc()
-    _com_github_brpc_brpc_arm64()
     _com_github_fmtlib_fmt()
     _com_github_gabime_spdlog()
     _com_github_google_benchmark()
     _com_github_gperftools_gperftools()
-    _com_bazelbuild_bazel_rules_docker()
     _com_github_google_cpu_features()
     _com_github_dltcollab_sse2neon()
 
@@ -32,31 +30,17 @@ def yasl_deps():
     maybe(
         git_repository,
         name = "simplest_ot",
-        commit = "bc121d885d7eb7ed81e2c110337224d2d004185b",
+        commit = "f40a33a37e3ff8cd81655c35237c177e358dc5b1",
         recursive_init_submodules = True,
         remote = "https://github.com/secretflow/simplest-ot.git",
     )
 
 def _com_github_brpc_brpc():
-     maybe(
-         http_archive,
-         name = "com_github_brpc_brpc",
-         sha256 = "b45f5052f21097fffc69715fcd18fda13a8412bef042b6ad6e218c065366eb67",
-         strip_prefix = "incubator-brpc-1.1.0",
-         type = "tar.gz",
-         patch_args = ["-p1"],
-         patches = ["@yasl//bazel:patches/brpc.patch"],
-         urls = [
-             "https://github.com/apache/incubator-brpc/archive/refs/tags/1.1.0.tar.gz",
-         ],
-     )
-
-def _com_github_brpc_brpc_arm64():
     maybe(
         http_archive,
-        name = "com_github_brpc_brpc_arm64",
-        sha256 = "e378156db5e4fd641b35633904355c925fc6653ac6060148ec45c3c8e02d557c",
-        strip_prefix = "incubator-brpc-e8c22c9f2099015f52a3adbf917efb5ec3ce9cb4",
+        name = "com_github_brpc_brpc",
+        sha256 = "2e98d3dca37ceb2c6f415b98771c1fe07b151404f5a31d4b3cabb05fecebd3ab",
+        strip_prefix = "incubator-brpc-1.2.0",
         type = "tar.gz",
         patch_args = ["-p1"],
         patches = [
@@ -64,7 +48,7 @@ def _com_github_brpc_brpc_arm64():
             "@yasl//bazel:patches/brpc-config.patch",
         ],
         urls = [
-            "https://github.com/apache/incubator-brpc/archive/e8c22c9f2099015f52a3adbf917efb5ec3ce9cb4.tar.gz",
+            "https://github.com/apache/incubator-brpc/archive/refs/tags/1.2.0.tar.gz",
         ],
     )
 
@@ -100,11 +84,11 @@ def _com_github_madler_zlib():
         http_archive,
         name = "zlib",
         build_file = "@yasl//bazel:zlib.BUILD",
-        strip_prefix = "zlib-1.2.11",
-        sha256 = "629380c90a77b964d896ed37163f5c3a34f6e6d897311f1df2a7016355c45eff",
+        strip_prefix = "zlib-1.2.12",
+        sha256 = "d8688496ea40fb61787500e863cc63c9afcbc524468cedeb478068924eb54932",
         type = ".tar.gz",
         urls = [
-            "https://github.com/madler/zlib/archive/refs/tags/v1.2.11.tar.gz",
+            "https://github.com/madler/zlib/archive/refs/tags/v1.2.12.tar.gz",
         ],
     )
 
@@ -124,11 +108,11 @@ def _com_google_absl():
     maybe(
         http_archive,
         name = "com_google_absl",
-        sha256 = "dcf71b9cba8dc0ca9940c4b316a0c796be8fab42b070bb6b7cab62b48f0e66c4",
+        sha256 = "4208129b49006089ba1d6710845a45e31c59b0ab6bff9e5788a87f55c5abd602",
         type = "tar.gz",
-        strip_prefix = "abseil-cpp-20211102.0",
+        strip_prefix = "abseil-cpp-20220623.0",
         urls = [
-            "https://github.com/abseil/abseil-cpp/archive/refs/tags/20211102.0.tar.gz",
+            "https://github.com/abseil/abseil-cpp/archive/refs/tags/20220623.0.tar.gz",
         ],
     )
 
@@ -136,11 +120,11 @@ def _com_github_openssl_openssl():
     maybe(
         http_archive,
         name = "com_github_openssl_openssl",
-        sha256 = "dac036669576e83e8523afdb3971582f8b5d33993a2d6a5af87daa035f529b4f",
+        sha256 = "0686897afd3a08223760db73d8034550401b53ffc545798d7ca476564f80315e",
         type = "tar.gz",
-        strip_prefix = "openssl-OpenSSL_1_1_1l",
+        strip_prefix = "openssl-OpenSSL_1_1_1q",
         urls = [
-            "https://github.com/openssl/openssl/archive/refs/tags/OpenSSL_1_1_1l.tar.gz",
+            "https://github.com/openssl/openssl/archive/refs/tags/OpenSSL_1_1_1q.tar.gz",
         ],
         build_file = "@yasl//bazel:openssl.BUILD",
     )
@@ -161,12 +145,12 @@ def _com_github_gabime_spdlog():
     maybe(
         http_archive,
         name = "com_github_gabime_spdlog",
-        strip_prefix = "spdlog-1.9.2",
+        strip_prefix = "spdlog-1.10.0",
         type = "tar.gz",
-        sha256 = "6fff9215f5cb81760be4cc16d033526d1080427d236e86d70bb02994f85e3d38",
+        sha256 = "697f91700237dbae2326b90469be32b876b2b44888302afbc7aceb68bcfe8224",
         build_file = "@yasl//bazel:spdlog.BUILD",
         urls = [
-            "https://github.com/gabime/spdlog/archive/refs/tags/v1.9.2.tar.gz",
+            "https://github.com/gabime/spdlog/archive/refs/tags/v1.10.0.tar.gz",
         ],
     )
 
@@ -174,11 +158,11 @@ def _com_google_googletest():
     maybe(
         http_archive,
         name = "com_google_googletest",
-        sha256 = "b4870bf121ff7795ba20d20bcdd8627b8e088f2d1dab299a031c1034eddc93d5",
+        sha256 = "81964fe578e9bd7c94dfdb09c8e4d6e6759e19967e397dbea48d1c10e45d0df2",
         type = "tar.gz",
-        strip_prefix = "googletest-release-1.11.0",
+        strip_prefix = "googletest-release-1.12.1",
         urls = [
-            "https://github.com/google/googletest/archive/refs/tags/release-1.11.0.tar.gz",
+            "https://github.com/google/googletest/archive/refs/tags/release-1.12.1.tar.gz",
         ],
     )
 
@@ -187,10 +171,10 @@ def _com_github_google_benchmark():
         http_archive,
         name = "com_github_google_benchmark",
         type = "tar.gz",
-        strip_prefix = "benchmark-1.6.1",
-        sha256 = "6132883bc8c9b0df5375b16ab520fac1a85dc9e4cf5be59480448ece74b278d4",
+        strip_prefix = "benchmark-1.7.0",
+        sha256 = "3aff99169fa8bdee356eaa1f691e835a6e57b1efeadb8a0f9f228531158246ac",
         urls = [
-            "https://github.com/google/benchmark/archive/refs/tags/v1.6.1.tar.gz",
+            "https://github.com/google/benchmark/archive/refs/tags/v1.7.0.tar.gz",
         ],
     )
 
@@ -199,10 +183,10 @@ def _com_github_gperftools_gperftools():
         http_archive,
         name = "com_github_gperftools_gperftools",
         type = "tar.gz",
-        strip_prefix = "gperftools-2.9.1",
-        sha256 = "ea566e528605befb830671e359118c2da718f721c27225cbbc93858c7520fee3",
+        strip_prefix = "gperftools-2.10",
+        sha256 = "83e3bfdd28b8bcf53222c3798d4d395d52dadbbae59e8730c4a6d31a9c3732d8",
         urls = [
-            "https://github.com/gperftools/gperftools/releases/download/gperftools-2.9.1/gperftools-2.9.1.tar.gz",
+            "https://github.com/gperftools/gperftools/releases/download/gperftools-2.10/gperftools-2.10.tar.gz",
         ],
         build_file = "@yasl//bazel:gperftools.BUILD",
     )
@@ -223,10 +207,10 @@ def _rule_python():
     maybe(
         http_archive,
         name = "rules_python",
-        sha256 = "a30abdfc7126d497a7698c29c46ea9901c6392d6ed315171a6df5ce433aa4502",
-        strip_prefix = "rules_python-0.6.0",
+        sha256 = "c03246c11efd49266e8e41e12931090b613e12a59e6f55ba2efd29a7cb8b4258",
+        strip_prefix = "rules_python-0.11.0",
         urls = [
-            "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.6.0.tar.gz",
+            "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.11.0.tar.gz",
         ],
     )
 
@@ -234,21 +218,10 @@ def _rules_foreign_cc():
     maybe(
         http_archive,
         name = "rules_foreign_cc",
-        sha256 = "bcd0c5f46a49b85b384906daae41d277b3dc0ff27c7c752cc51e43048a58ec83",
-        strip_prefix = "rules_foreign_cc-0.7.1",
+        sha256 = "2a4d07cd64b0719b39a7c12218a3e507672b82a97b98c6a89d38565894cf7c51",
+        strip_prefix = "rules_foreign_cc-0.9.0",
         urls = [
-            "https://github.com/bazelbuild/rules_foreign_cc/archive/0.7.1.tar.gz",
-        ],
-    )
-
-def _com_bazelbuild_bazel_rules_docker():
-    maybe(
-        http_archive,
-        name = "io_bazel_rules_docker",
-        sha256 = "92779d3445e7bdc79b961030b996cb0c91820ade7ffa7edca69273f404b085d5",
-        strip_prefix = "rules_docker-0.20.0",
-        urls = [
-            "https://github.com/bazelbuild/rules_docker/releases/download/v0.20.0/rules_docker-v0.20.0.tar.gz",
+            "https://github.com/bazelbuild/rules_foreign_cc/archive/refs/tags/0.9.0.tar.gz",
         ],
     )
 

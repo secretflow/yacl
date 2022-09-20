@@ -39,7 +39,7 @@ class MockChannel : public IChannel {
                void(const std::string &key, ByteContainerView value));
   MOCK_METHOD4(OnChunkedMessage,
                void(const std::string &key, ByteContainerView value,
-                    size_t chunk_idx, size_t num_chunks));
+                    size_t offset, size_t total_length));
   void SetRecvTimeout(uint32_t timeout_ms) override { timeout_ = timeout_ms; }
   uint32_t GetRecvTimeout() const override { return timeout_; }
   void WaitLinkTaskFinish() override {}
@@ -200,7 +200,8 @@ TEST_F(ContextTest, SendRecvShouldOk) {
     receive_buffer[sender][receiver] = ctxs_[receiver]->Recv(sender, "tag");
   };
   auto send_fn = [&](size_t sender, size_t receiver, const Buffer &value) {
-    ctxs_[sender]->SendAsync(receiver, ByteContainerView(send_buffer_[sender][receiver]), "tag");
+    ctxs_[sender]->SendAsync(
+        receiver, ByteContainerView(send_buffer_[sender][receiver]), "tag");
   };
   for (size_t sender = 0; sender < world_size_; ++sender) {
     for (size_t receiver = 0; receiver < world_size_; ++receiver) {
@@ -215,8 +216,8 @@ TEST_F(ContextTest, SendRecvShouldOk) {
       if (sender == receiver) {
         continue;
       }
-      auto _ =
-          std::async(send_fn, sender, receiver, send_buffer_[sender][receiver]);
+      auto _ = std::async(send_fn, sender, receiver,
+                          yasl::Buffer(send_buffer_[sender][receiver]));
     }
   }
   join_all();

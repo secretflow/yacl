@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include "yasl/crypto/hmac.h"
 
 #include "openssl/evp.h"
@@ -79,7 +78,8 @@ Hmac& Hmac::Reset() {
 }
 
 Hmac& Hmac::Update(ByteContainerView data) {
-  YASL_ENFORCE(HMAC_Update(context_, data.data(), data.size()) == 1, "HMAC_Update failed");
+  YASL_ENFORCE(HMAC_Update(context_, data.data(), data.size()) == 1,
+               "HMAC_Update failed");
   return *this;
 }
 

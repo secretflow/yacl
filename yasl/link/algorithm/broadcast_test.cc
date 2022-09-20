@@ -36,11 +36,13 @@ TEST_P(BroadcastTest, Works) {
     for (size_t round = 0; round < world_size; round++) {
       // each round take a different party as root.
       auto root = round;
-      auto input = ctx->Rank() == root ? MakeRoundData(root, round) : Buffer();
+      auto input = ctx->Rank() == root
+                       ? yasl::Buffer(MakeRoundData(root, round))
+                       : Buffer();
 
       auto output = Broadcast(ctx, input, root, "test");
 
-      EXPECT_EQ(output, MakeRoundData(root, round));
+      EXPECT_EQ(output, yasl::Buffer(MakeRoundData(root, round)));
     }
   };
 

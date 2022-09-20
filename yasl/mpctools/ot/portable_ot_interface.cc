@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include "yasl/mpctools/ot/portable_ot_interface.h"
 
 #include "simplest_ot_portable/ot_receiver.h"

@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include "yasl/mpctools/ot/base_ot.h"
 
-#if defined (__linux__) && defined (__x86_64)
+#if defined(__linux__) && defined(__x86_64)
 #include "cpu_features/cpuinfo_x86.h"
 
 #include "yasl/mpctools/ot/x86_asm_ot_interface.h"
@@ -28,7 +27,7 @@ namespace yasl {
 namespace {
 
 std::unique_ptr<BaseOTInterface> GetOtInterface() {
-#if defined (__linux__) && defined (__x86_64)
+#if defined(__linux__) && defined(__x86_64)
   // x86 asm ot does not support macOS
   static const auto features = cpu_features::GetX86Info().features;
   if (features.avx) {
