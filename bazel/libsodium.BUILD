@@ -27,6 +27,7 @@ cc_library(
         include = ["src/**/*.c"],
     ) + [":version_h"],
     hdrs = glob(["src/**/*.h"] + [":version_h"]),
+    copts = ["-DCONFIGURED"],
     includes = [
         "src/libsodium/crypto_core/curve25519/ref10",
         "src/libsodium/crypto_generichash/blake2b/ref",
@@ -52,6 +53,5 @@ cc_library(
         "src/libsodium/include/sodium",
         "src/libsodium/include/sodium/private",
     ],
-    copts = ["-DCONFIGURED"],
     visibility = ["//visibility:public"],
 )

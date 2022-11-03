@@ -1,59 +1,3 @@
-diff --git a/BUILD.bazel b/BUILD.bazel
-index 11db84d0..79133df8 100644
---- a/BUILD.bazel
-+++ b/BUILD.bazel
-@@ -54,6 +54,11 @@ config_setting(
-     visibility = ["//visibility:public"],
- )
- 
-+config_setting(
-+    name = "enable_gperf",
-+    define_values = {"gperf": "on"},
-+)
-+
- COPTS = [
-     "-DBTHREAD_USE_FAST_PTHREAD_MUTEX",
-     "-D__const__=",
-@@ -64,6 +69,9 @@ COPTS = [
-     "-D__STDC_LIMIT_MACROS",
-     "-D__STDC_CONSTANT_MACROS",
-     "-DGFLAGS_NS=google",
-+    "-Wno-invalid-offsetof",
-+    "-Wno-unused-parameter",
-+    "-Wno-deprecated-declarations",
- ] + select({
-     ":with_glog": ["-DBRPC_WITH_GLOG=1"],
-     "//conditions:default": ["-DBRPC_WITH_GLOG=0"],
-@@ -73,7 +81,10 @@ COPTS = [
- }) + select({
-     ":with_thrift": ["-DENABLE_THRIFT_FRAMED_PROTOCOL=1"],
-     "//conditions:default": [""],
--})
-+}) + select({
-+    "enable_gperf": ["-DBRPC_ENABLE_CPU_PROFILER"],
-+    "//conditions:default": [],
-+ })
- 
- LINKOPTS = [
-     "-lpthread",
-@@ -337,6 +348,7 @@ cc_library(
-     deps = [
-         "@com_google_protobuf//:protobuf",
-         "@com_github_gflags_gflags//:gflags",
-+        "@com_github_openssl_openssl//:openssl",
-         "@zlib//:zlib",
-     ] + select({
-         ":with_glog": ["@com_github_google_glog//:glog"],
-@@ -344,9 +356,6 @@ cc_library(
-     }) + select({
-         ":darwin": [":macos_lib"],
-         "//conditions:default": [],
--    }) + select({
--        ":darwin": ["//external:ssl_macos"],
--        "//conditions:default": ["//external:ssl"],
-     }),
-     includes = [
-         "src/",
 diff --git a/src/brpc/policy/http_rpc_protocol.cpp b/src/brpc/policy/http_rpc_protocol.cpp
 index 7bd06ec5..68b1a58d 100644
 --- a/src/brpc/policy/http_rpc_protocol.cpp
@@ -121,4 +65,72 @@ index be02c50a..172dcbe4 100644
                 &stat.pid, &stat.ppid, &stat.pgrp, &stat.session,
                 &stat.tpgid, &stat.flags, &stat.priority, &stat.nice) != 8) {
          PLOG(WARNING) << "Fail to sscanf";
+diff --git a/BUILD.bazel b/BUILD.bazel
+index 5e59bd1c..9df99bfc 100644
+--- a/BUILD.bazel
++++ b/BUILD.bazel
+@@ -48,7 +48,7 @@ LINKOPTS = [
+     "-pthread",
+     "-ldl",
+ ] + select({
+-    "@bazel_tools//tools/osx:darwin": [
++    "@bazel_tools//src/conditions:darwin": [
+         "-framework CoreFoundation",
+         "-framework CoreGraphics",
+         "-framework CoreData",
+@@ -206,7 +206,7 @@ BUTIL_SRCS = [
+     "src/butil/recordio.cc",
+     "src/butil/popen.cpp",
+ ] + select({
+-    "@bazel_tools//tools/osx:darwin": [
++    "@bazel_tools//src/conditions:darwin": [
+         "src/butil/time/time_mac.cc",
+         "src/butil/mac/scoped_mach_port.cc",
+     ],
+@@ -314,15 +314,14 @@ cc_library(
+     visibility = ["//visibility:public"],
+     deps = [
+         "@com_github_gflags_gflags//:gflags",
+-        "@com_github_madler_zlib//:zlib",
++        "@zlib//:zlib",
+         "@com_google_protobuf//:protobuf",
+-        "@openssl//:crypto",
+-        "@openssl//:ssl",
++        "@com_github_openssl_openssl//:openssl",
+     ] + select({
+         "//bazel/config:brpc_with_glog": ["@com_github_google_glog//:glog"],
+         "//conditions:default": [],
+     }) + select({
+-        "@bazel_tools//tools/osx:darwin": [":macos_lib"],
++        "@bazel_tools//src/conditions:darwin": [":macos_lib"],
+         "//conditions:default": [],
+     }),
+ )
+diff --git a/bazel/config/BUILD.bazel b/bazel/config/BUILD.bazel
+index 4471bad1..d9cc6bd6 100644
+--- a/bazel/config/BUILD.bazel
++++ b/bazel/config/BUILD.bazel
+@@ -94,6 +94,8 @@ config_setting(
+ 
+ config_setting(
+     name = "darwin",
+-    values = {"cpu": "darwin"},
++    constraint_values = [
++        "@platforms//os:macos",
++    ],
+     visibility = ["//:__subpkgs__"],
+ )
+diff --git a/test/BUILD.bazel b/test/BUILD.bazel
+index a2eea9cf..d5c7372f 100644
+--- a/test/BUILD.bazel
++++ b/test/BUILD.bazel
+@@ -140,7 +140,7 @@ TEST_BUTIL_SOURCES = [
+     "bounded_queue_unittest.cc",
+     "butil_unittest_main.cpp",
+ ] + select({
+-    "@bazel_tools//tools/osx:darwin": [],
++    "@bazel_tools//src/conditions:darwin": [],
+     "//conditions:default": [
+         "test_file_util_linux.cc",
+         "proc_maps_linux_unittest.cc",
 
