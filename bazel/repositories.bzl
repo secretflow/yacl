@@ -2,7 +2,6 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
-
 def yasl_deps():
     _rule_python()
     _rules_foreign_cc()
@@ -31,7 +30,7 @@ def yasl_deps():
     maybe(
         git_repository,
         name = "simplest_ot",
-        commit = "11e5022e68fc48500e2eba2616eebb7d604399fb",
+        commit = "f40a33a37e3ff8cd81655c35237c177e358dc5b1",
         recursive_init_submodules = True,
         remote = "https://github.com/secretflow/simplest-ot.git",
     )
