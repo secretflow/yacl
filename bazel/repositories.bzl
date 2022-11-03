@@ -39,16 +39,15 @@ def _com_github_brpc_brpc():
     maybe(
         http_archive,
         name = "com_github_brpc_brpc",
-        sha256 = "2e98d3dca37ceb2c6f415b98771c1fe07b151404f5a31d4b3cabb05fecebd3ab",
-        strip_prefix = "incubator-brpc-1.2.0",
+        sha256 = "f803406a81a82a7d2fef6e0003100682bd98d7b991f16f2e1875dfefc322c90b",
+        strip_prefix = "incubator-brpc-1.3.0",
         type = "tar.gz",
         patch_args = ["-p1"],
         patches = [
             "@yasl//bazel:patches/brpc.patch",
-            "@yasl//bazel:patches/brpc-config.patch",
         ],
         urls = [
-            "https://github.com/apache/incubator-brpc/archive/refs/tags/1.2.0.tar.gz",
+            "https://github.com/apache/incubator-brpc/archive/refs/tags/1.3.0.tar.gz",
         ],
     )
 

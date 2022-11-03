@@ -330,8 +330,7 @@ void ChannelBrpc::SendImpl(const std::string& key, ByteContainerView value) {
   }
 
   if (response.error_code() != pb::ErrorCode::SUCCESS) {
-    YASL_THROW_NETWORK_ERROR("send, peer failed message={}",
-                             response.error_msg());
+    YASL_THROW("send, peer failed message={}", response.error_msg());
   }
 }
 
@@ -392,7 +391,7 @@ void ChannelBrpc::SendChunked(const std::string& key, ByteContainerView value) {
             "send key={} (chunked {} out of {}) rpc failed: {}, message={}",
             key, chunk_idx + 1, num_chunks, cntl.ErrorCode(), cntl.ErrorText());
       } else if (response.error_code() != pb::ErrorCode::SUCCESS) {
-        YASL_THROW_NETWORK_ERROR(
+        YASL_THROW(
             "send key={} (chunked {} out of {}) response failed, message={}",
             key, chunk_idx + 1, num_chunks, response.error_msg());
       }
