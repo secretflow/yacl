@@ -18,13 +18,12 @@
 #include "openssl/crypto.h"
 #include "openssl/err.h"
 #include "openssl/evp.h"
+#include "spdlog/spdlog.h"
 
 #include "yasl/base/exception.h"
 
 namespace yasl {
 namespace {
-
-constexpr size_t kBatchSize = 1024;
 
 const EVP_CIPHER* CreateEvpCipher(SymmetricCrypto::CryptoType type) {
   switch (type) {
@@ -124,21 +123,18 @@ void SymmetricCrypto::Decrypt(absl::Span<const uint8_t> ciphertext,
     EVP_CIPHER_CTX_copy(ctx, dec_ctx_);
   }
 
-  size_t left = plaintext.size();
-  size_t i = 0;
+  EVP_CIPHER_CTX_set_padding(ctx, plaintext.size() % BlockSize());
 
-  while (left > 0) {
-    int n = std::min<size_t>(left, kBatchSize);
-    int out_length;
-    int rc =
-        EVP_CipherUpdate(ctx, plaintext.data() + i * kBatchSize, &out_length,
-                         ciphertext.data() + i * kBatchSize, n);
-    YASL_ENFORCE(rc, "Fail to decrypt, rc={}", rc);
-    i++;
-    left -= n;
-  }
+  int out_length;
+  int rc = EVP_CipherUpdate(ctx, plaintext.data(), &out_length,
+                            ciphertext.data(), ciphertext.size());
+  YASL_ENFORCE(rc, "Fail to decrypt, rc={}", rc);
 
   // Does not require `Finalize` for aligned inputs.
+  if (plaintext.size() % BlockSize() != 0) {
+    rc = EVP_CipherFinal(ctx, plaintext.data() + out_length, &out_length);
+    YASL_ENFORCE(rc, "Fail to finalize decrypt, rc={}", rc);
+  }
 
   if ((type_ != SymmetricCrypto::CryptoType::AES128_ECB) &&
       (type_ != SymmetricCrypto::CryptoType::SM4_ECB)) {
@@ -166,20 +162,18 @@ void SymmetricCrypto::Encrypt(absl::Span<const uint8_t> plaintext,
     EVP_CIPHER_CTX_copy(ctx, enc_ctx_);
   }
 
-  size_t left = plaintext.size();
-  size_t i = 0;
+  EVP_CIPHER_CTX_set_padding(ctx, ciphertext.size() % BlockSize());
 
-  while (left > 0) {
-    int n = std::min<size_t>(left, kBatchSize);
-    int outlen;
-    int rc = EVP_CipherUpdate(ctx, ciphertext.data() + i * kBatchSize, &outlen,
-                              plaintext.data() + i * kBatchSize, n);
-    YASL_ENFORCE(rc, "Fail to encrypt, rc={}", rc);
-    i++;
-    left -= n;
-  }
+  int outlen;
+  int rc = EVP_CipherUpdate(ctx, ciphertext.data(), &outlen, plaintext.data(),
+                            plaintext.size());
+  YASL_ENFORCE(rc, "Fail to encrypt, rc={}", rc);
 
   // Does not require `Finalize` for aligned inputs.
+  if (ciphertext.size() % BlockSize() != 0) {
+    rc = EVP_CipherFinal(ctx, ciphertext.data() + outlen, &outlen);
+    YASL_ENFORCE(rc, "Fail to finalize encrypt, rc={}", rc);
+  }
 
   if ((type_ != SymmetricCrypto::CryptoType::AES128_ECB) &&
       (type_ != SymmetricCrypto::CryptoType::SM4_ECB)) {

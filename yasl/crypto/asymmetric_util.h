@@ -40,10 +40,11 @@ UniquePkey CreatePubPkeyFromSm2Pem(ByteContainerView pem);
 
 std::tuple<std::string, std::string> CreateSm2KeyPair();
 
-std::tuple<std::string, std::string> CreateRsaKeyPair();
+std::tuple<std::string, std::string> CreateRsaKeyPair(bool x509_pkey = false);
 
 UniqueRsa CreateRsaFromX509(ByteContainerView x509_public_key);
-std::string GetPublicKeyFromRsa(const UniqueRsa& rsa);
+
+std::string GetPublicKeyFromRsa(const UniqueRsa& rsa, bool x509_pkey = false);
 
 std::tuple<std::string, std::string> CreateRsaCertificateAndPrivateKey(
     const std::unordered_map<std::string, std::string>& subject_map,
