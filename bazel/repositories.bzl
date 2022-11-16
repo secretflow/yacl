@@ -31,7 +31,7 @@ def yasl_deps():
     maybe(
         git_repository,
         name = "simplest_ot",
-        commit = "11e5022e68fc48500e2eba2616eebb7d604399fb",
+        commit = "f40a33a37e3ff8cd81655c35237c177e358dc5b1",
         recursive_init_submodules = True,
         remote = "https://github.com/secretflow/simplest-ot.git",
     )
