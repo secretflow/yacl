@@ -211,21 +211,32 @@ TEST(SymmetricCrypto, WrongKey) {
 
 TEST(SymmetricCrypto, PartialBlock) {
   for (auto type : kTestTypes) {
-    if ((type == SymmetricCrypto::CryptoType::AES128_CTR) ||
-        (type == SymmetricCrypto::CryptoType::SM4_CTR))
-      continue;
+    bool isCTR = ((type == SymmetricCrypto::CryptoType::AES128_CTR) ||
+                  (type == SymmetricCrypto::CryptoType::SM4_CTR));
     SymmetricCrypto crypto(type, kKey1, kIv1);
     auto plaintext = MakeVector(SymmetricCrypto::BlockSize() - 1);
     std::vector<uint8_t> encrypted(plaintext.size());
-    ASSERT_THROW(crypto.Encrypt(plaintext, absl::MakeSpan(encrypted)),
-                 Exception);
+    if (!isCTR) {
+      ASSERT_THROW(crypto.Encrypt(plaintext, absl::MakeSpan(encrypted)),
+                   Exception);
+    } else {
+      crypto.Encrypt(plaintext, absl::MakeSpan(encrypted));
+    }
 
     SymmetricCrypto crypto2(type, kKey1, kIv1);
     std::vector<uint8_t> decrypted(encrypted.size());
-    ASSERT_THROW(crypto2.Decrypt(absl::MakeConstSpan(encrypted),
-                                 absl::MakeSpan(decrypted)),
-                 Exception);
-    EXPECT_NE(decrypted, plaintext);
+    if (!isCTR) {
+      ASSERT_THROW(crypto2.Decrypt(absl::MakeConstSpan(encrypted),
+                                   absl::MakeSpan(decrypted)),
+                   Exception);
+    } else {
+      crypto2.Decrypt(absl::MakeConstSpan(encrypted),
+                      absl::MakeSpan(decrypted));
+    }
+    if (isCTR) {
+      // Partial block should work under CRT mode
+      EXPECT_EQ(decrypted, plaintext);
+    }
   }
 }
 

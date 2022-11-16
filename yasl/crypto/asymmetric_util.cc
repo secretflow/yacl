@@ -144,13 +144,21 @@ UniqueRsa CreateRsaFromX509(ByteContainerView x509_public_key) {
   return UniqueRsa(rsa, ::RSA_free);
 }
 
-std::string GetPublicKeyFromRsa(const UniqueRsa& rsa) {
+std::string GetPublicKeyFromRsa(const UniqueRsa& rsa, bool x509_pkey) {
   std::string public_key;
   {
     UniqueBio bio(BIO_new(BIO_s_mem()), BIO_free);
     YASL_ENFORCE(bio, "New bio failed.");
-    YASL_ENFORCE(PEM_write_bio_RSAPublicKey(bio.get(), rsa.get()),
-                 "Write public key failed.");
+    if (x509_pkey) {
+      UniqueEVP unique_pkey(EVP_PKEY_new(), ::EVP_PKEY_free);
+      YASL_ENFORCE(EVP_PKEY_set1_RSA(unique_pkey.get(), rsa.get()),
+                   "Convert rsa to pubkey failed.");
+      YASL_ENFORCE(PEM_write_bio_PUBKEY(bio.get(), unique_pkey.get()),
+                   "Write public key failed.");
+    } else {
+      YASL_ENFORCE(PEM_write_bio_RSAPublicKey(bio.get(), rsa.get()),
+                   "Write public key failed.");
+    }
     int size = BIO_pending(bio.get());
     YASL_ENFORCE_GT(size, 0, "Bad key size.");
     public_key.resize(size);
@@ -160,7 +168,7 @@ std::string GetPublicKeyFromRsa(const UniqueRsa& rsa) {
   return public_key;
 }
 
-std::tuple<std::string, std::string> CreateRsaKeyPair() {
+std::tuple<std::string, std::string> CreateRsaKeyPair(bool x509_pkey) {
   std::unique_ptr<BIGNUM, decltype(&BN_free)> exp(BN_new(), BN_free);
   YASL_ENFORCE_EQ(BN_set_word(exp.get(), RSA_F4), 1, "BN_set_word failed.");
   UniqueRsa rsa(RSA_new(), RSA_free);
@@ -168,7 +176,7 @@ std::tuple<std::string, std::string> CreateRsaKeyPair() {
       RSA_generate_key_ex(rsa.get(), kRsaKeyBitSize, exp.get(), nullptr),
       "Generate rsa key pair failed.");
 
-  std::string public_key = GetPublicKeyFromRsa(rsa);
+  std::string public_key = GetPublicKeyFromRsa(rsa, x509_pkey);
 
   std::string private_key;
   {
@@ -211,7 +219,7 @@ std::tuple<std::string, std::string> CreateRsaCertificateAndPrivateKey(
   // - random serial number
   std::random_device rd;
   YASL_ENFORCE(ASN1_INTEGER_set(X509_get_serialNumber(x509.get()), rd()) == 1,
-               "ASN1_INTEGER_set failed");
+               "ASN1_INTEGER_set failed.");
   // 3.2 valid range
   X509_gmtime_adj(X509_get_notBefore(x509.get()), 0);
   X509_gmtime_adj(X509_get_notAfter(x509.get()), days * kSecondsInDay);
@@ -232,7 +240,7 @@ std::tuple<std::string, std::string> CreateRsaCertificateAndPrivateKey(
 
   // 3.5 self-signed: issuer name == name.
   YASL_ENFORCE(X509_set_issuer_name(x509.get(), name) == 1,
-               "X509_set_issuer_name failed");
+               "X509_set_issuer_name failed.");
   AddX509Extension(x509.get(), NID_basic_constraints, (char*)"CA:TRUE");
   AddX509Extension(x509.get(), NID_subject_key_identifier, (char*)"hash");
   // 3.6 Do self signing with sha256-rsa.
