@@ -1,0 +1,119 @@
+# Copyright 2022 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:yacl.bzl", "yacl_cc_binary", "yacl_cc_library", "yacl_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+yacl_cc_library(
+    name = "exception",
+    srcs = [],
+    hdrs = ["exception.h"],
+    deps = [
+        "@com_github_fmtlib_fmt//:fmtlib",
+        "@com_google_absl//absl/debugging:stacktrace",
+        "@com_google_absl//absl/debugging:symbolize",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+yacl_cc_test(
+    name = "exception_test",
+    srcs = ["exception_test.cc"],
+    deps = [
+        ":exception",
+    ],
+)
+
+yacl_cc_library(
+    name = "int128",
+    srcs = ["int128.cc"],
+    hdrs = ["int128.h"],
+    deps = [
+        "@com_google_absl//absl/numeric:int128",
+    ],
+)
+
+yacl_cc_test(
+    name = "int128_test",
+    srcs = ["int128_test.cc"],
+    deps = [
+        ":int128",
+    ],
+)
+
+yacl_cc_library(
+    name = "byte_container_view",
+    hdrs = ["byte_container_view.h"],
+    deps = [
+        ":buffer",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+yacl_cc_binary(
+    name = "int128_bench",
+    srcs = ["int128_bench.cc"],
+    # By default we benchmark the BMI2 `mulx`. Comment `copts & defines` to test `mulq` instead.
+    # NOTE BMI2 is enabled from Intel Haswell series, which also provides AVX2.
+    copts = select({
+        "@platforms//cpu:aarch64": [
+        ],
+        "//conditions:default": [
+            "-march=haswell",
+            "-mavx2",
+        ],
+    }),
+    defines = select({
+        "@platforms//cpu:aarch64": [
+        ],
+        "//conditions:default": [
+            "YACL_ENABLE_BMI2",
+        ],
+    }),
+    linkopts = ["-lm"],
+    deps = [
+        ":int128",
+        "@com_github_google_benchmark//:benchmark_main",
+    ],
+)
+
+yacl_cc_library(
+    name = "buffer",
+    srcs = ["buffer.cc"],
+    hdrs = ["buffer.h"],
+    deps = [
+        ":exception",
+    ],
+)
+
+yacl_cc_library(
+    name = "block",
+    hdrs = ["block.h"],
+    deps = [
+        "//yacl/base:int128",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+yacl_cc_binary(
+    name = "block_bench",
+    srcs = ["block_bench.cc"],
+    deps = [
+        ":block",
+        "//yacl/crypto/tools:prg",
+        "//yacl/utils:matrix_utils",
+        "@com_github_google_benchmark//:benchmark_main",
+    ],
+)
