@@ -1,6 +1,6 @@
-# YASL: Yet Another Simple library
+# YACL: Yet Another Crypto library
 
-YASL (Yet Another Simple library) is a C++ library that contains modules and utilities which other SecretFlow code depends on.
+YACL (Yet Another Crypto library) is a C++ library that contains modules and utilities which other SecretFlow code depends on.
 
 ## Build
 

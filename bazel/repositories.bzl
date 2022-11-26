@@ -2,8 +2,12 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
+SECRETFLOW_GIT = "https://github.com/secretflow"
 
-def yasl_deps():
+IC_COMMIT_ID  = "db83ca75c321420eb8cf2235d407e4e032b8e8cc"
+
+
+def yacl_deps():
     _rule_python()
     _rules_foreign_cc()
     _com_github_madler_zlib()
@@ -31,9 +35,16 @@ def yasl_deps():
     maybe(
         git_repository,
         name = "simplest_ot",
-        commit = "f40a33a37e3ff8cd81655c35237c177e358dc5b1",
+        commit = "11e5022e68fc48500e2eba2616eebb7d604399fb",
         recursive_init_submodules = True,
-        remote = "https://github.com/secretflow/simplest-ot.git",
+        remote = "{}/simplest-ot.git".format(SECRETFLOW_GIT),
+    )
+
+    maybe(
+        git_repository,
+        name = "org_interconnection",
+        commit = IC_COMMIT_ID,
+        remote = "{}/interconnection.git".format(SECRETFLOW_GIT),
     )
 
 def _com_github_brpc_brpc():
@@ -45,7 +56,7 @@ def _com_github_brpc_brpc():
         type = "tar.gz",
         patch_args = ["-p1"],
         patches = [
-            "@yasl//bazel:patches/brpc.patch",
+            "@yacl//bazel:patches/brpc.patch",
         ],
         urls = [
             "https://github.com/apache/incubator-brpc/archive/refs/tags/1.3.0.tar.gz",
@@ -71,9 +82,9 @@ def _com_github_google_leveldb():
         strip_prefix = "leveldb-1.23",
         sha256 = "9a37f8a6174f09bd622bc723b55881dc541cd50747cbd08831c2a82d620f6d76",
         type = "tar.gz",
-        build_file = "@yasl//bazel:leveldb.BUILD",
+        build_file = "@yacl//bazel:leveldb.BUILD",
         patch_args = ["-p1"],
-        patches = ["@yasl//bazel:patches/leveldb.patch"],
+        patches = ["@yacl//bazel:patches/leveldb.patch"],
         urls = [
             "https://github.com/google/leveldb/archive/refs/tags/1.23.tar.gz",
         ],
@@ -83,7 +94,7 @@ def _com_github_madler_zlib():
     maybe(
         http_archive,
         name = "zlib",
-        build_file = "@yasl//bazel:zlib.BUILD",
+        build_file = "@yacl//bazel:zlib.BUILD",
         strip_prefix = "zlib-1.2.12",
         sha256 = "d8688496ea40fb61787500e863cc63c9afcbc524468cedeb478068924eb54932",
         type = ".tar.gz",
@@ -126,7 +137,7 @@ def _com_github_openssl_openssl():
         urls = [
             "https://github.com/openssl/openssl/archive/refs/tags/OpenSSL_1_1_1q.tar.gz",
         ],
-        build_file = "@yasl//bazel:openssl.BUILD",
+        build_file = "@yacl//bazel:openssl.BUILD",
     )
 
 def _com_github_fmtlib_fmt():
@@ -135,7 +146,7 @@ def _com_github_fmtlib_fmt():
         name = "com_github_fmtlib_fmt",
         strip_prefix = "fmt-8.1.1",
         sha256 = "3d794d3cf67633b34b2771eb9f073bde87e846e0d395d254df7b211ef1ec7346",
-        build_file = "@yasl//bazel:fmtlib.BUILD",
+        build_file = "@yacl//bazel:fmtlib.BUILD",
         urls = [
             "https://github.com/fmtlib/fmt/archive/refs/tags/8.1.1.tar.gz",
         ],
@@ -148,7 +159,7 @@ def _com_github_gabime_spdlog():
         strip_prefix = "spdlog-1.10.0",
         type = "tar.gz",
         sha256 = "697f91700237dbae2326b90469be32b876b2b44888302afbc7aceb68bcfe8224",
-        build_file = "@yasl//bazel:spdlog.BUILD",
+        build_file = "@yacl//bazel:spdlog.BUILD",
         urls = [
             "https://github.com/gabime/spdlog/archive/refs/tags/v1.10.0.tar.gz",
         ],
@@ -188,7 +199,7 @@ def _com_github_gperftools_gperftools():
         urls = [
             "https://github.com/gperftools/gperftools/releases/download/gperftools-2.10/gperftools-2.10.tar.gz",
         ],
-        build_file = "@yasl//bazel:gperftools.BUILD",
+        build_file = "@yacl//bazel:gperftools.BUILD",
     )
 
 def _com_github_blake3team_blake3():
@@ -197,7 +208,7 @@ def _com_github_blake3team_blake3():
         name = "com_github_blake3team_blake3",
         strip_prefix = "BLAKE3-1.3.0",
         sha256 = "a559309c2dad8cc8314ea779664ec5093c79de2e9be14edbf76ae2ce380222c0",
-        build_file = "@yasl//bazel:blake3.BUILD",
+        build_file = "@yacl//bazel:blake3.BUILD",
         urls = [
             "https://github.com/BLAKE3-team/BLAKE3/archive/refs/tags/1.3.0.tar.gz",
         ],
@@ -232,7 +243,7 @@ def _com_github_floodyberry_curve25519_donna():
         strip_prefix = "curve25519-donna-2fe66b65ea1acb788024f40a3373b8b3e6f4bbb2",
         sha256 = "ba57d538c241ad30ff85f49102ab2c8dd996148456ed238a8c319f263b7b149a",
         type = "tar.gz",
-        build_file = "@yasl//bazel:curve25519-donna.BUILD",
+        build_file = "@yacl//bazel:curve25519-donna.BUILD",
         urls = [
             "https://github.com/floodyberry/curve25519-donna/archive/2fe66b65ea1acb788024f40a3373b8b3e6f4bbb2.tar.gz",
         ],
@@ -244,9 +255,9 @@ def _com_github_intel_ipp():
         name = "com_github_intel_ipp",
         sha256 = "23e250dcf281aa00d186be8dc4e34fa8fc5c95a0895694cd00b33f18af5d60c7",
         strip_prefix = "ipp-crypto-ippcp_2021.4",
-        build_file = "@yasl//bazel:ipp.BUILD",
+        build_file = "@yacl//bazel:ipp.BUILD",
         patch_args = ["-p1"],
-        patches = ["@yasl//bazel:patches/ippcp.patch"],
+        patches = ["@yacl//bazel:patches/ippcp.patch"],
         urls = [
             "https://github.com/intel/ipp-crypto/archive/refs/tags/ippcp_2021.4.tar.gz",
         ],
@@ -259,7 +270,7 @@ def _com_github_libsodium():
         type = "tar.gz",
         strip_prefix = "libsodium-1.0.18",
         sha256 = "6f504490b342a4f8a4c4a02fc9b866cbef8622d5df4e5452b46be121e46636c1",
-        build_file = "@yasl//bazel:libsodium.BUILD",
+        build_file = "@yacl//bazel:libsodium.BUILD",
         urls = [
             "https://download.libsodium.org/libsodium/releases/libsodium-1.0.18.tar.gz",
         ],
@@ -272,9 +283,9 @@ def _com_github_google_cpu_features():
         strip_prefix = "cpu_features-0.7.0",
         type = "tar.gz",
         sha256 = "df80d9439abf741c7d2fdcdfd2d26528b136e6c52976be8bd0cd5e45a27262c0",
-        build_file = "@yasl//bazel:cpu_features.BUILD",
+        build_file = "@yacl//bazel:cpu_features.BUILD",
         patch_args = ["-p1"],
-        patches = ["@yasl//bazel:patches/cpu_features.patch"],
+        patches = ["@yacl//bazel:patches/cpu_features.patch"],
         urls = [
             "https://github.com/google/cpu_features/archive/refs/tags/v0.7.0.tar.gz",
         ],
@@ -288,11 +299,11 @@ def _com_github_emptoolkit_emp_tool():
         strip_prefix = "emp-tool-0.2.3",
         type = "tar.gz",
         patch_args = ["-p1"],
-        patches = ["@yasl//bazel:patches/emp-tool.patch"],
+        patches = ["@yacl//bazel:patches/emp-tool.patch"],
         urls = [
             "https://github.com/emp-toolkit/emp-tool/archive/refs/tags/0.2.3.tar.gz",
         ],
-        build_file = "@yasl//bazel:emp-tool.BUILD",
+        build_file = "@yacl//bazel:emp-tool.BUILD",
     )
 
 def _com_github_dltcollab_sse2neon():
@@ -305,5 +316,5 @@ def _com_github_dltcollab_sse2neon():
         urls = [
             "https://github.com/DLTcollab/sse2neon/archive/refs/tags/v1.5.1.tar.gz",
         ],
-        build_file = "@yasl//bazel:sse2neon.BUILD",
+        build_file = "@yacl//bazel:sse2neon.BUILD",
     )

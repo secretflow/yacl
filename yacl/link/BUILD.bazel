@@ -1,0 +1,99 @@
+# Copyright 2022 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+config_setting(
+    name = "enable_tracelog",
+    values = {"define": "tracelog=on"},
+)
+
+yacl_cc_library(
+    name = "trace",
+    srcs = ["trace.cc"],
+    hdrs = ["trace.h"],
+    copts = select({
+        ":enable_tracelog": [
+            "-DENABLE_LINK_TRACE",
+        ],
+        "//conditions:default": [],
+    }),
+    deps = [
+        "//yacl/base:exception",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+yacl_cc_library(
+    name = "context",
+    srcs = ["context.cc"],
+    hdrs = ["context.h"],
+    deps = [
+        ":trace",
+        "//yacl/base:byte_container_view",
+        "//yacl/link/transport:channel",
+        "//yacl/utils:hash",
+    ],
+)
+
+yacl_cc_library(
+    name = "factory",
+    srcs = [
+        "factory_brpc.cc",
+        "factory_mem.cc",
+    ],
+    hdrs = ["factory.h"],
+    deps = [
+        ":context",
+        "//yacl/link/transport:channel_brpc",
+        "//yacl/link/transport:channel_mem",
+    ],
+)
+
+yacl_cc_test(
+    name = "context_test",
+    srcs = ["context_test.cc"],
+    deps = [
+        ":context",
+        ":factory",
+    ],
+)
+
+yacl_cc_library(
+    name = "link",
+    hdrs = ["link.h"],
+    deps = [
+        ":context",
+        ":factory",
+        ":test_util",
+        "//yacl/link/algorithm:allgather",
+        "//yacl/link/algorithm:barrier",
+        "//yacl/link/algorithm:broadcast",
+        "//yacl/link/algorithm:gather",
+        "//yacl/link/algorithm:scatter",
+    ],
+)
+
+yacl_cc_library(
+    name = "test_util",
+    hdrs = ["test_util.h"],
+    deps = [
+        "//yacl/base:buffer",
+        "//yacl/link:context",
+        "//yacl/link:factory",
+        "@com_github_fmtlib_fmt//:fmtlib",
+    ],
+)
