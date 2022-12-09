@@ -37,6 +37,8 @@ void PortableOtInterface::Recv(const std::shared_ptr<link::Context> &ctx,
     YACL_THROW("simplest-ot receiver_procS failed");
   }
 
+  const auto &RO = RandomOracle::GetDefault();
+
   for (int i = 0; i < kNumOt; i++) {
     const int batch_size = std::min(1, kNumOt - i);
 
@@ -60,9 +62,8 @@ void PortableOtInterface::Recv(const std::shared_ptr<link::Context> &ctx,
       // even though there's already a hash in sender_keygen_check, we need to
       // hash again with the index i to ensure security
       // ref: https://eprint.iacr.org/2021/682
-
-      recv_blocks[i + j] = RandomOracle::GetDefault().Gen(
-          recv_blocks[i + j] ^ (i + j));  // output size = 128 bit
+      Buffer buf(&messages[j][0], sizeof(uint128_t));
+      recv_blocks[i + j] = RO.Gen<uint128_t>(buf, i + j);
     }
   }
 }
@@ -76,6 +77,8 @@ void PortableOtInterface::Send(const std::shared_ptr<link::Context> &ctx,
   unsigned char S_pack[PACKBYTES];
   portable_sender_genS(&sender, S_pack);
   ctx->Send(ctx->NextRank(), S_pack, "BASE_OT:S_PACK");
+
+  const auto &RO = RandomOracle::GetDefault();
 
   for (int i = 0; i < kNumOt; i++) {
     const int batch_size = std::min(1, kNumOt - i);
@@ -102,11 +105,11 @@ void PortableOtInterface::Send(const std::shared_ptr<link::Context> &ctx,
       // even though there's already a hash in sender_keygen_check, we need to
       // hash again with the index i to ensure security
       // ref: https://eprint.iacr.org/2021/682
+      Buffer buf0(&messages[0][j][0], sizeof(uint128_t));
+      Buffer buf1(&messages[1][j][0], sizeof(uint128_t));
 
-      send_blocks[i + j][0] = RandomOracle::GetDefault().Gen(
-          send_blocks[i + j][0] ^ (i + j));  // output size = 128 bit
-      send_blocks[i + j][1] = RandomOracle::GetDefault().Gen(
-          send_blocks[i + j][1] ^ (i + j));  // output size = 128 bit
+      send_blocks[i + j][0] = RO.Gen<uint128_t>(buf0, i + j);
+      send_blocks[i + j][1] = RO.Gen<uint128_t>(buf1, i + j);
     }
   }
 }

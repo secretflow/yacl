@@ -70,7 +70,9 @@ struct ContextDesc {
 
   // http max payload size, if a single http request size is greater than this
   // limit, it will be unpacked into small chunks then reassembled.
-  uint32_t http_max_payload_size = 32 * 1024;  // 32k byte
+  //
+  // This field does affect performance. Please choose wisely.
+  uint32_t http_max_payload_size = 1024 * 1024;  //  1M Bytes
 
   // a single http request timetout.
   uint32_t http_timeout_ms = 20 * 1000;  // 20 seconds.

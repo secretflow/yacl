@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/primitives/ot/punctured_rand_ot.h"
+#include "yacl/crypto/primitives/ot/sgrr_ote.h"
 
 #include <future>
 #include <thread>
@@ -21,8 +21,8 @@
 #include "gtest/gtest.h"
 
 #include "yacl/base/exception.h"
-#include "yacl/crypto/base/utils.h"
-#include "yacl/crypto/primitives/ot/options.h"
+#include "yacl/crypto/primitives/ot/common.h"
+#include "yacl/crypto/utils/rand.h"
 #include "yacl/link/test_util.h"
 
 namespace yacl::crypto {
@@ -34,10 +34,10 @@ uint32_t GetRandValue(size_t n) {
 }
 
 // mock a lot of 1-2 OT instances ...
-std::pair<OTSendOptions, OTRecvOptions> MakeOTOptions(size_t num) {
-  BaseSendOptions send_opts;
-  BaseRecvOptions recv_opts;
-  recv_opts.choices = CreateRandomChoices(num);
+std::pair<BaseOtSendStore, BaseOtRecvStore> MakeOTOptions(size_t num) {
+  BaseOtSendStore send_opts;
+  BaseOtRecvStore recv_opts;
+  recv_opts.choices = RandBits(num);
   std::random_device rd;
   Prg<uint64_t> gen(rd());
   for (size_t i = 0; i < num; ++i) {
@@ -59,21 +59,21 @@ TEST_P(RotParamTest, Works) {
   uint32_t choice_value = GetRandValue(n);
 
   // mock many base OTs
-  BaseSendOptions send_opts;
-  BaseRecvOptions recv_opts;
+  BaseOtSendStore send_opts;
+  BaseOtRecvStore recv_opts;
   std::tie(send_opts, recv_opts) = MakeOTOptions(log2(n));
 
-  std::vector<PuncturedOTSeed> entire_seeds(n);
-  std::vector<PuncturedOTSeed> punctured_seeds(n - 1);
+  std::vector<uint128_t> entire_seeds(n);
+  std::vector<uint128_t> punctured_seeds(n - 1);
 
   auto contexts = link::test::SetupWorld(2);
   std::future<void> sender = std::async([&] {
-    PuncturedROTRecv(contexts[0], recv_opts, n, choice_value,
-                     absl::MakeSpan(punctured_seeds));
+    SgrrOtExtRecv(contexts[0], recv_opts, n, choice_value,
+                  absl::MakeSpan(punctured_seeds));
   });
   std::future<void> receiver = std::async([&] {
-    PuncturedROTSend(contexts[1], send_opts, n, master_seed,
-                     absl::MakeSpan(entire_seeds));
+    SgrrOtExtSend(contexts[1], send_opts, n, master_seed,
+                  absl::MakeSpan(entire_seeds));
   });
   sender.get();
   receiver.get();
@@ -103,21 +103,21 @@ TEST(RotFuncTest, Test) {
   uint32_t choice_value = GetRandValue(n);
 
   // mock many base OTs
-  BaseSendOptions send_opts;
-  BaseRecvOptions recv_opts;
+  BaseOtSendStore send_opts;
+  BaseOtRecvStore recv_opts;
   std::tie(send_opts, recv_opts) = MakeOTOptions(log2(n));
 
-  std::vector<PuncturedOTSeed> entire_seeds(n);
-  std::vector<PuncturedOTSeed> punctured_seeds(n - 1);
+  std::vector<uint128_t> entire_seeds(n);
+  std::vector<uint128_t> punctured_seeds(n - 1);
 
   auto contexts = link::test::SetupWorld(2);
   std::future<void> sender = std::async([&] {
-    PuncturedROTRecv(contexts[0], recv_opts, n, choice_value,
-                     absl::MakeSpan(punctured_seeds));
+    SgrrOtExtRecv(contexts[0], recv_opts, n, choice_value,
+                  absl::MakeSpan(punctured_seeds));
   });
   std::future<void> receiver = std::async([&] {
-    PuncturedROTSend(contexts[1], send_opts, n, master_seed,
-                     absl::MakeSpan(entire_seeds));
+    SgrrOtExtSend(contexts[1], send_opts, n, master_seed,
+                  absl::MakeSpan(entire_seeds));
   });
   sender.get();
   receiver.get();

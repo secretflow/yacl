@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/primitives/ot/punctured_rand_ot.h"
+#include "yacl/crypto/primitives/ot/sgrr_ote.h"
 
 #include <math.h>
 
@@ -20,16 +20,14 @@
 #include "yacl/base/exception.h"
 #include "yacl/crypto/tools/prg.h"
 
-// #include <bitset>
-
 namespace yacl {
 
 namespace {
 
 // use one seed to generate two seeds
-std::pair<PuncturedOTSeed, PuncturedOTSeed> SplitSeed(PuncturedOTSeed seed) {
+std::pair<uint128_t, uint128_t> SplitSeed(uint128_t seed) {
   // pre-fetch 2 128-bit randomness
-  Prg<PuncturedOTSeed, sizeof(PuncturedOTSeed) * 8> prg(seed);
+  Prg<uint128_t, sizeof(uint128_t) * 8> prg(seed);
   return {prg(), prg()};
 }
 
@@ -74,10 +72,9 @@ inline std::vector<bool> VectorBoolFromBuffer(const Buffer& str) {
 
 }  // namespace
 
-void PuncturedROTRecv(const std::shared_ptr<link::Context>& ctx,
-                      const OTRecvOptions& ot_options, uint32_t n,
-                      uint32_t index,
-                      absl::Span<PuncturedOTSeed> punctured_seeds) {
+void SgrrOtExtRecv(const std::shared_ptr<link::Context>& ctx,
+                   const BaseOtRecvStore& ot_options, uint32_t n,
+                   uint32_t index, absl::Span<uint128_t> punctured_seeds) {
   uint32_t ot_num = log2(n);
   YACL_ENFORCE_GT(n, (uint32_t)1);
   YACL_ENFORCE_GE(ot_options.choices.size(), ot_num);
@@ -99,28 +96,27 @@ void PuncturedROTRecv(const std::shared_ptr<link::Context>& ctx,
                    fmt::format("PUNC_ROT:SEND:{}", 0));
   }
 
-  std::vector<PuncturedOTSeed> temp_seed_vec;
+  std::vector<uint128_t> temp_seed_vec;
   for (uint32_t i = 0, empty_pos = 0; i < ot_num; i++) {
     bool ot_choice = !choices.at(i);
     uint32_t insert_pos = (empty_pos << 1);
     empty_pos = (empty_pos << 1) + choices.at(i);
 
     // unmask and get the seed for this level
-    PuncturedOTSeed current_seed;
+    uint128_t current_seed;
     {
       auto recv_string =
           ctx->Recv(ctx->NextRank(), fmt::format("PUNC_ROT:RECV:{}", i + 1));
-      std::memcpy(
-          &current_seed,
-          recv_string.data<char>() + ot_choice * sizeof(PuncturedOTSeed),
-          sizeof(PuncturedOTSeed));
+      std::memcpy(&current_seed,
+                  recv_string.data<char>() + ot_choice * sizeof(uint128_t),
+                  sizeof(uint128_t));
       current_seed ^= ot_options.blocks.at(i);
     }
 
     // generate all already knows seeds for this level
     uint32_t iter_num = pow(2, i) - 1;
     for (uint32_t j = 0; j < iter_num; j++) {
-      PuncturedOTSeed left, right;
+      uint128_t left, right;
       YACL_ENFORCE_EQ(temp_seed_vec.empty(), 0);
       std::tie(left, right) = SplitSeed(temp_seed_vec.at(j));
       temp_seed_vec.push_back(left);
@@ -141,19 +137,18 @@ void PuncturedROTRecv(const std::shared_ptr<link::Context>& ctx,
   }
 
   memcpy(punctured_seeds.data(), temp_seed_vec.data(),
-         temp_seed_vec.size() * sizeof(PuncturedOTSeed));
+         temp_seed_vec.size() * sizeof(uint128_t));
 }
 
-void PuncturedROTSend(const std::shared_ptr<link::Context>& ctx,
-                      const OTSendOptions& ot_options, uint32_t n,
-                      PuncturedOTSeed master_seed,
-                      absl::Span<PuncturedOTSeed> entire_seeds) {
+void SgrrOtExtSend(const std::shared_ptr<link::Context>& ctx,
+                   const BaseOtSendStore& ot_options, uint32_t n,
+                   uint128_t master_seed, absl::Span<uint128_t> entire_seeds) {
   uint32_t ot_num = log2(n);
   YACL_ENFORCE_GE(ot_options.blocks.size(), ot_num);
   YACL_ENFORCE_GT(n, (uint32_t)1);
 
-  std::vector<PuncturedOTSeed> temp_seed_vec;
-  std::vector<std::array<PuncturedOTSeed, 2>> ot_message_vec(ot_num);
+  std::vector<uint128_t> temp_seed_vec;
+  std::vector<std::array<uint128_t, 2>> ot_message_vec(ot_num);
   temp_seed_vec.push_back(master_seed);
 
   // generate the final level seeds based on master_seed
@@ -161,7 +156,7 @@ void PuncturedROTSend(const std::shared_ptr<link::Context>& ctx,
     //  for each seeds in level i
     uint32_t iter_num = pow(2, i);
     for (uint32_t j = 0; j < iter_num; j++) {
-      PuncturedOTSeed left, right;
+      uint128_t left, right;
       std::tie(left, right) = SplitSeed(temp_seed_vec.at(j));
       ot_message_vec.at(i).at(0) ^= left;
       ot_message_vec.at(i).at(1) ^= right;
@@ -179,7 +174,7 @@ void PuncturedROTSend(const std::shared_ptr<link::Context>& ctx,
 
   // mask the ROT messages and send back
   for (uint32_t i = 0; i < ot_num; i++) {
-    std::array<PuncturedOTSeed, 2> send_message;
+    std::array<uint128_t, 2> send_message;
     send_message.at(0) = ot_message_vec.at(i).at(0) ^
                          ot_options.blocks.at(i).at(masked_choices.at(i));
     send_message.at(1) = ot_message_vec.at(i).at(1) ^
@@ -187,13 +182,13 @@ void PuncturedROTSend(const std::shared_ptr<link::Context>& ctx,
     ctx->SendAsync(
         ctx->NextRank(),
         ByteContainerView{reinterpret_cast<const char*>(send_message.data()),
-                          send_message.size() * sizeof(PuncturedOTSeed)},
+                          send_message.size() * sizeof(uint128_t)},
         fmt::format("PUNC_ROT:SEND:{}", i + 1));
   }
 
   // output the result
   memcpy(entire_seeds.data(), temp_seed_vec.data(),
-         temp_seed_vec.size() * sizeof(PuncturedOTSeed));
+         temp_seed_vec.size() * sizeof(uint128_t));
 }
 
 }  // namespace yacl

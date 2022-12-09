@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/primitives/ot/kkrt_ot_extension.h"
+#include "yacl/crypto/primitives/ot/kkrt_ote.h"
 
 #include <fmt/format.h>
 #include <gtest/gtest.h>
@@ -22,8 +22,8 @@
 #include <thread>
 
 #include "yacl/base/exception.h"
-#include "yacl/crypto/base/utils.h"
 #include "yacl/crypto/tools/prg.h"
+#include "yacl/crypto/utils/rand.h"
 #include "yacl/link/test_util.h"
 
 namespace yacl {
@@ -34,10 +34,10 @@ struct TestParams {
 
 class KkrtOtExtTest : public ::testing::TestWithParam<TestParams> {};
 
-std::pair<BaseSendOptions, BaseRecvOptions> MakeBaseOptions(size_t num) {
-  BaseSendOptions send_opts;
-  BaseRecvOptions recv_opts;
-  recv_opts.choices = CreateRandomChoices(num);
+std::pair<BaseOtSendStore, BaseOtRecvStore> MakeBaseOptions(size_t num) {
+  BaseOtSendStore send_opts;
+  BaseOtRecvStore recv_opts;
+  recv_opts.choices = crypto::RandBits(num);
   std::random_device rd;
   Prg<uint128_t> gen(rd());
   for (size_t i = 0; i < num; ++i) {
@@ -53,8 +53,8 @@ TEST_P(KkrtOtExtTest, Works) {
   auto contexts = link::test::SetupWorld(kWorldSize);
 
   // KKRT requires 512 width.
-  BaseSendOptions send_opts;
-  BaseRecvOptions recv_opts;
+  BaseOtSendStore send_opts;
+  BaseOtRecvStore recv_opts;
   std::tie(send_opts, recv_opts) = MakeBaseOptions(512);
 
   const size_t num_ot = GetParam().num_ot;
@@ -103,8 +103,7 @@ TEST(KkrtOtExtEdgeTest, Test) {
   {
     // Mismatched receiver.
     std::vector<uint128_t> recv_out(kNumOt);
-    std::vector<uint128_t> choices =
-        CreateRandomChoiceBits<uint128_t>(kNumOt + 128);
+    std::vector<uint128_t> choices = crypto::RandVec<uint128_t>(kNumOt + 128);
     ASSERT_THROW(
         KkrtOtExtRecv(contexts[1], send_opts, absl::MakeConstSpan(choices),
                       absl::MakeSpan(recv_out)),

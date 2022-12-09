@@ -12,28 +12,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "benchmark/benchmark.h"
 
-#include <array>
-#include <vector>
-
-#include "yacl/base/int128.h"
+#include "yacl/crypto/tools/prg.h"
 
 namespace yacl {
 
-struct BaseRecvOptions {
-  // TODO(shuyan.ycf): Wrap a bit choice class.
-  // Receiver choices.
-  std::vector<bool> choices;
-  // Received blocks.
-  // Choose uint128_t as block so that it can be perfectly used as AES-PRG seed.
-  std::vector<uint128_t> blocks;
-};
+static void BM_Prg(benchmark::State& state) {
+  for (auto _ : state) {
+    state.PauseTiming();
+    Prg<int> prg(0, static_cast<PRG_MODE>(state.range(0)));
+    state.ResumeTiming();
+    prg();
+  }
+}
 
-struct BaseSendOptions {
-  // Sender received blocks.
-  // Choose uint128_t as block so that it can be perfectly used as AES-PRG seed.
-  std::vector<std::array<uint128_t, 2>> blocks;
-};
+BENCHMARK(BM_Prg)
+    ->Arg(0)   // ctools::PRG_MODE::kNistAesCtrDrbg
+    ->Arg(1)   // ctools::PRG_MODE::kGmSm4CtrDrbg
+    ->Arg(2)   // ctools::PRG_MODE::kAesCbc
+    ->Arg(3)   // ctools::PRG_MODE::kAesCtr
+    ->Arg(4)   // ctools::PRG_MODE::kAesEcb
+    ->Arg(5);  // ctools::PRG_MODE::KSm4Ecb
+
+BENCHMARK_MAIN();
 
 }  // namespace yacl

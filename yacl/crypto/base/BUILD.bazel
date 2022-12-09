@@ -44,16 +44,6 @@ yacl_cc_test(
 )
 
 yacl_cc_library(
-    name = "utils",
-    srcs = [
-        "utils.h",
-    ],
-    deps = [
-        "//yacl/crypto/tools:prg",
-    ],
-)
-
-yacl_cc_library(
     name = "asymmetric_util",
     srcs = ["asymmetric_util.cc"],
     hdrs = ["asymmetric_util.h"],

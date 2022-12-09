@@ -78,6 +78,9 @@ class SymmetricCrypto {
   void Decrypt(absl::Span<const uint128_t> ciphertext,
                absl::Span<uint128_t> plaintext) const;
 
+  // Getter
+  CryptoType GetType() const { return type_; }
+
  private:
   // Crypto type
   const CryptoType type_;

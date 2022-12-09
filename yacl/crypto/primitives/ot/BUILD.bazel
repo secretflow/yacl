@@ -17,33 +17,46 @@ load("//bazel:yacl.bzl", "EMP_COPT_FLAGS", "yacl_cc_library", "yacl_cc_test")
 package(default_visibility = ["//visibility:public"])
 
 yacl_cc_library(
-    name = "punctured_rand_ot",
-    srcs = [
-        "punctured_rand_ot.cc",
-    ],
-    hdrs = [
-        "punctured_rand_ot.h",
-    ],
+    name = "common",
+    hdrs = ["common.h"],
     deps = [
-        ":options",
+        "//yacl/base:int128",
+    ],
+)
+
+yacl_cc_library(
+    name = "test_utils",
+    hdrs = ["test_utils.h"],
+    deps = [
+        "//yacl/base:int128",
+        "//yacl/crypto/tools:prg",
+        "//yacl/crypto/utils:rand",
+    ],
+)
+
+yacl_cc_library(
+    name = "sgrr_ote",
+    srcs = ["sgrr_ote.cc"],
+    hdrs = ["sgrr_ote.h"],
+    deps = [
+        ":common",
         "//yacl/crypto/tools:prg",
         "//yacl/link",
     ],
 )
 
 yacl_cc_test(
-    name = "punctured_rand_ot_test",
-    srcs = ["punctured_rand_ot_test.cc"],
+    name = "sgrr_ote_test",
+    srcs = ["sgrr_ote_test.cc"],
     deps = [
-        ":punctured_rand_ot",
-        "//yacl/crypto/base:utils",
+        ":sgrr_ote",
+        "//yacl/crypto/utils:rand",
         "//yacl/link:test_util",
     ],
 )
 
 yacl_cc_library(
     name = "base_ot_interface",
-    srcs = [],
     hdrs = ["base_ot_interface.h"],
 )
 
@@ -100,56 +113,48 @@ yacl_cc_test(
     srcs = ["base_ot_test.cc"],
     deps = [
         ":base_ot",
-        "//yacl/crypto/base:utils",
+        "//yacl/crypto/utils:rand",
         "//yacl/link:test_util",
     ],
 )
 
 yacl_cc_library(
-    name = "options",
-    hdrs = ["options.h"],
+    name = "iknp_ote",
+    srcs = ["iknp_ote.cc"],
+    hdrs = ["iknp_ote.h"],
     deps = [
-        "//yacl/base:int128",
-    ],
-)
-
-yacl_cc_library(
-    name = "iknp_ot_extension",
-    srcs = ["iknp_ot_extension.cc"],
-    hdrs = ["iknp_ot_extension.h"],
-    deps = [
-        ":options",
+        ":common",
         "//yacl/base:exception",
         "//yacl/base:int128",
-        "//yacl/crypto/base:utils",
         "//yacl/crypto/tools:prg",
-        "//yacl/crypto/tools:random_oracle",
+        "//yacl/crypto/tools:random_permutation",
         "//yacl/link",
         "//yacl/utils:matrix_utils",
     ],
 )
 
 yacl_cc_test(
-    name = "iknp_ot_extension_test",
-    srcs = ["iknp_ot_extension_test.cc"],
+    name = "iknp_ote_test",
+    srcs = ["iknp_ote_test.cc"],
     deps = [
-        ":iknp_ot_extension",
+        ":iknp_ote",
+        "//yacl/crypto/utils:rand",
         "//yacl/link:test_util",
     ],
 )
 
 yacl_cc_library(
-    name = "kkrt_ot_extension",
-    srcs = ["kkrt_ot_extension.cc"],
-    hdrs = ["kkrt_ot_extension.h"],
+    name = "kkrt_ote",
+    srcs = ["kkrt_ote.cc"],
+    hdrs = ["kkrt_ote.h"],
     copts = EMP_COPT_FLAGS,
     deps = [
-        ":options",
+        ":common",
         "//yacl/base:exception",
         "//yacl/base:int128",
+        "//yacl/crypto/base/hash:hash_utils",
         "//yacl/crypto/tools:prg",
         "//yacl/crypto/tools:random_oracle",
-        "//yacl/crypto/utils:hash_util",
         "//yacl/link",
         "//yacl/utils:matrix_utils",
         "@com_github_emptoolkit_emp_tool//:emp-tool",
@@ -157,11 +162,11 @@ yacl_cc_library(
 )
 
 yacl_cc_test(
-    name = "kkrt_ot_extension_test",
-    srcs = ["kkrt_ot_extension_test.cc"],
+    name = "kkrt_ote_test",
+    srcs = ["kkrt_ote_test.cc"],
     deps = [
-        ":kkrt_ot_extension",
-        "//yacl/crypto/base:utils",
+        ":kkrt_ote",
+        "//yacl/crypto/utils:rand",
         "//yacl/link:test_util",
     ],
 )

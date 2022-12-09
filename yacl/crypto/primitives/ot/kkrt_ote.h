@@ -17,7 +17,7 @@
 #include "absl/types/span.h"
 #include "emp-tool/utils/aes_opt.h"
 
-#include "yacl/crypto/primitives/ot/options.h"
+#include "yacl/crypto/primitives/ot/common.h"
 #include "yacl/link/link.h"
 
 namespace yacl {
@@ -81,10 +81,10 @@ class IGroupPRF {
 //     by implicitly calling IKNP inside KKRT.
 std::unique_ptr<IGroupPRF> KkrtOtExtSend(
     const std::shared_ptr<link::Context>& ctx,
-    const BaseRecvOptions& base_options, size_t num_ot);
+    const BaseOtRecvStore& base_options, size_t num_ot);
 
 void KkrtOtExtRecv(const std::shared_ptr<link::Context>& ctx,
-                   const BaseSendOptions& base_options,
+                   const BaseOtSendStore& base_options,
                    absl::Span<const uint128_t> choices,
                    absl::Span<uint128_t> recv_blocks);
 
@@ -93,7 +93,7 @@ class KkrtOtExtSender {
   KkrtOtExtSender() = default;
 
   void Init(const std::shared_ptr<link::Context>& ctx,
-            const BaseRecvOptions& base_options, uint64_t num_ot);
+            const BaseOtRecvStore& base_options, uint64_t num_ot);
 
   void RecvCorrection(const std::shared_ptr<link::Context>& ctx,
                       uint64_t recv_count);
@@ -120,7 +120,7 @@ class KkrtOtExtReceiver {
   KkrtOtExtReceiver() = default;
 
   void Init(const std::shared_ptr<link::Context>& ctx,
-            const BaseSendOptions& base_options, uint64_t num_ot);
+            const BaseOtSendStore& base_options, uint64_t num_ot);
 
   void Encode(uint64_t ot_idx, absl::Span<const uint128_t> inputs,
               absl::Span<uint8_t> dest_encode);

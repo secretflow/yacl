@@ -14,11 +14,33 @@
 
 #include "yacl/crypto/utils/rand.h"
 
+#include <algorithm>
 #include <mutex>
 #include <thread>
 
-#include "yacl/crypto/tools/prg.h"
+namespace yacl::crypto {
 
+namespace {
+
+std::once_flag seed_flag;
+
+void OpensslSeedOnce() {
+  // NistAesCtrDrbg seed with intel rdseed
+  std::call_once(seed_flag, []() {
+    Prg<uint64_t> prg(0, PRG_MODE::kNistAesCtrDrbg);
+    std::array<uint8_t, 32> rand_bytes;
+    prg.Fill(absl::MakeSpan(rand_bytes));  // get 256 bits seed
+
+    RAND_seed(rand_bytes.data(), rand_bytes.size());  // reseed
+  });
+}
+}  // namespace
+
+// RAND_priv_bytes() and RAND_bytes() Generates num random bytes using a
+// cryptographically secure pseudo random generator (CSPRNG) and stores them
+// in out (with 256 security strength). For details, see:
+// https://www.openssl.org/docs/man1.1.1/man3/RAND_bytes.html
+//
 // By default, the OpenSSL CSPRNG supports a security level of 256 bits,
 // provided it was able to seed itself from a trusted entropy source.
 // On all major platforms supported by OpenSSL (including the Unix-like
@@ -36,34 +58,67 @@
 // https://www.openssl.org/docs/man3.0/man3/RAND_seed.html
 // https://www.openssl.org/docs/manmaster/man3/RAND_bytes.html
 
-namespace yacl {
-
-namespace {
-
-std::once_flag seed_flag;
-
-void OpensslSeedOnce() {
-  // NistAesCtrDrbg seed with intel rdseed
-  std::call_once(seed_flag, []() {
-    Prg<uint64_t> prg(0, PRG_MODE::kNistAesCtrDrbg);
-    std::array<uint8_t, 32> rand_bytes;
-    prg.Fill(absl::MakeSpan(rand_bytes));
-
-    RAND_seed(rand_bytes.data(), rand_bytes.size());
-  });
-}
-
-}  // namespace
-
-uint64_t DrbgRandSeed() {
-  OpensslSeedOnce();
-
+uint64_t RandU64(bool use_secure_rand) {
   uint64_t rand64;
+  if (use_secure_rand) {
+    OpensslSeedOnce();  // reseed openssl internal CSPRNG
+    // RAND_priv_bytes() has the same semantics as RAND_bytes(). It uses a
+    // separate "private" PRNG instance so that a compromise of the "public"
+    // PRNG instance will not affect the secrecy of these private values
+    //
+    // RAND_priv_bytes() is thread-safe with OpenSSL >= 1.1.0
+    YACL_ENFORCE(RAND_priv_bytes(reinterpret_cast<unsigned char*>(&rand64),
+                                 sizeof(rand64)) == 1);
 
-  // RAND_bytes() thread safety OpenSSL >= 1.1.0
-  YACL_ENFORCE(RAND_bytes(reinterpret_cast<unsigned char*>(&rand64),
-                          sizeof(rand64)) == 1);
+  } else {
+    YACL_ENFORCE(RAND_bytes(reinterpret_cast<unsigned char*>(&rand64),
+                            sizeof(uint64_t)) == 1);
+  }
   return rand64;
 }
 
-}  // namespace yacl
+uint128_t RandU128(bool use_secure_rand) {
+  uint64_t rand128;
+  if (use_secure_rand) {
+    OpensslSeedOnce();  // reseed openssl internal CSPRNG
+    // RAND_priv_bytes() has the same semantics as RAND_bytes(). It uses a
+    // separate "private" PRNG instance so that a compromise of the "public"
+    // PRNG instance will not affect the secrecy of these private values
+    //
+    // RAND_priv_bytes() is thread-safe with OpenSSL >= 1.1.0
+    YACL_ENFORCE(RAND_priv_bytes(reinterpret_cast<unsigned char*>(&rand128),
+                                 sizeof(rand128)) == 1);
+
+  } else {
+    YACL_ENFORCE(RAND_bytes(reinterpret_cast<unsigned char*>(&rand128),
+                            sizeof(rand128)) == 1);
+  }
+  return rand128;
+}
+
+std::vector<bool> RandBits(size_t len, bool use_secure_rand) {
+  std::vector<bool> ret(len, false);
+  const unsigned stride = sizeof(unsigned) * 8;
+  if (use_secure_rand) {  // drbg is more secure
+    Prg<unsigned> prg(RandU128(true), PRG_MODE::kNistAesCtrDrbg);
+    for (size_t i = 0; i < len; i += stride) {
+      unsigned rand = prg();
+      unsigned size = std::min(stride, static_cast<unsigned>(len - i));
+      for (unsigned j = 0; j < size; ++j) {
+        ret[i + j] = (rand & (1 << j)) != 0;
+      }
+    }
+  } else {  // fast path
+    Prg<unsigned> prg(RandU128(false), PRG_MODE::kAesEcb);
+    for (size_t i = 0; i < len; i += stride) {
+      unsigned rand = prg();
+      unsigned size = std::min(stride, static_cast<unsigned>(len - i));
+      for (unsigned j = 0; j < size; ++j) {
+        ret[i + j] = (rand & (1 << j)) != 0;
+      }
+    }
+  }
+  return ret;
+}
+
+}  // namespace yacl::crypto

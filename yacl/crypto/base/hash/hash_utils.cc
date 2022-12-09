@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/utils/hash_util.h"
+#include "yacl/crypto/base/hash/hash_utils.h"
 
+#include <cstring>
 #include <iostream>
 #include <vector>
 
@@ -23,39 +24,38 @@
 
 namespace yacl::crypto {
 
-std::vector<uint8_t> Sha256(ByteContainerView data) {
-  return SslHash(HashAlgorithm::SHA256).Update(data).CumulativeHash();
+std::array<uint8_t, 32> Sha256(ByteContainerView data) {
+  auto buf = SslHash(HashAlgorithm::SHA256).Update(data).CumulativeHash();
+  YACL_ENFORCE(buf.size() >= 32);
+  std::array<uint8_t, 32> out;
+  memcpy(out.data(), data.data(), 32);
+  return out;
 }
 
-std::vector<uint8_t> Sm3(ByteContainerView data) {
-  return SslHash(HashAlgorithm::SM3).Update(data).CumulativeHash();
+std::array<uint8_t, 32> Sm3(ByteContainerView data) {
+  auto buf = SslHash(HashAlgorithm::SM3).Update(data).CumulativeHash();
+  YACL_ENFORCE(buf.size() >= 32);
+  std::array<uint8_t, 32> out;
+  memcpy(out.data(), data.data(), 32);
+  return out;
 }
 
-std::vector<uint8_t> Blake2(ByteContainerView data) {
-  return SslHash(HashAlgorithm::BLAKE2B).Update(data).CumulativeHash();
+std::array<uint8_t, 64> Blake2(ByteContainerView data) {
+  auto buf = SslHash(HashAlgorithm::BLAKE2B).Update(data).CumulativeHash();
+  YACL_ENFORCE(buf.size() >= 64);
+  std::array<uint8_t, 64> out;
+  memcpy(out.data(), data.data(), 64);
+  return out;
 }
 
-std::vector<uint8_t> Blake3(ByteContainerView data) {
+std::array<uint8_t, 32> Blake3(ByteContainerView data) {
+  YACL_ENFORCE(BLAKE3_OUT_LEN == 32);
   blake3_hasher hasher;
-
   blake3_hasher_init(&hasher);
   blake3_hasher_update(&hasher, data.data(), data.size());
-
-  std::vector<uint8_t> digest(BLAKE3_OUT_LEN);
-
+  std::array<uint8_t, BLAKE3_OUT_LEN> digest;
   blake3_hasher_finalize(&hasher, digest.data(), BLAKE3_OUT_LEN);
-
   return digest;
-}
-
-uint128_t Blake3_128(ByteContainerView data) {
-  std::vector<uint8_t> hash_bytes = Blake3(data);
-  uint128_t ret;
-
-  YACL_ENFORCE(hash_bytes.size() >= sizeof(ret));
-
-  std::memcpy(reinterpret_cast<uint8_t*>(&ret), hash_bytes.data(), sizeof(ret));
-  return ret;
 }
 
 }  // namespace yacl::crypto
