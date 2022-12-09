@@ -45,13 +45,5 @@ BM_REGISTER_ALL_OT(BM_DefaultArguments);
 // BM_REGISTER_KKRT_OTE(BM_DefaultArguments);
 // BM_REGISTER_SGRR_OTE(BM_DefaultArguments);
 
-// -------------------------------------------------------------------
-// Benchmark                         Time             CPU   Iterations
-// -------------------------------------------------------------------
-// OtBench/SimplestOT/128         16.0 ms        0.096 ms         1000
-// OtBench/IknpOTe/128           0.611 ms        0.097 ms         7379
-// OtBench/KkrtOTe/128            4.03 ms        0.113 ms         1000
-// OtBench/SgrrOTe/128      0.099 ms        0.053 ms        11821
-
 BENCHMARK_MAIN();
 }  // namespace yacl::crypto_primitives
