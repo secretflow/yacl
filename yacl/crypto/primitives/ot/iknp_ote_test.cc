@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/primitives/ot/iknp_ot_extension.h"
+#include "yacl/crypto/primitives/ot/iknp_ote.h"
 
 #include <fmt/format.h>
 #include <gtest/gtest.h>
@@ -22,8 +22,8 @@
 #include <thread>
 
 #include "yacl/base/exception.h"
-#include "yacl/crypto/base/utils.h"
 #include "yacl/crypto/tools/prg.h"
+#include "yacl/crypto/utils/rand.h"
 #include "yacl/link/test_util.h"
 
 namespace yacl {
@@ -39,10 +39,10 @@ int GetBit(const std::vector<uint128_t>& choices, size_t idx) {
 
 class IknpOtExtTest : public ::testing::TestWithParam<TestParams> {};
 
-std::pair<BaseSendOptions, BaseRecvOptions> MakeBaseOptions(size_t num) {
-  BaseSendOptions send_opts;
-  BaseRecvOptions recv_opts;
-  recv_opts.choices = CreateRandomChoices(num);
+std::pair<BaseOtSendStore, BaseOtRecvStore> MakeBaseOptions(size_t num) {
+  BaseOtSendStore send_opts;
+  BaseOtRecvStore recv_opts;
+  recv_opts.choices = crypto::RandBits(num);
   std::random_device rd;
   Prg<uint128_t> gen(rd());
   for (size_t i = 0; i < num; ++i) {
@@ -58,14 +58,16 @@ TEST_P(IknpOtExtTest, Works) {
   auto contexts = link::test::SetupWorld(kWorldSize);
 
   // IKNP requires kappa == 128.
-  BaseSendOptions send_opts;
-  BaseRecvOptions recv_opts;
+  BaseOtSendStore send_opts;
+  BaseOtRecvStore recv_opts;
   std::tie(send_opts, recv_opts) = MakeBaseOptions(128);
 
   const size_t num_ot = GetParam().num_ot;
   std::vector<std::array<uint128_t, 2>> send_out(num_ot);
   std::vector<uint128_t> recv_out(num_ot);
-  std::vector<uint128_t> choices = CreateRandomChoiceBits<uint128_t>(num_ot);
+  constexpr int kNumBits = sizeof(uint128_t) * 8;
+  size_t block_num = (num_ot + kNumBits - 1) / kNumBits;
+  std::vector<uint128_t> choices = crypto::RandVec<uint128_t>(block_num);
 
   // WHEN
   std::future<void> sender = std::async(
@@ -98,8 +100,8 @@ TEST(IknpOtExtEdgeTest, Test) {
   const int kWorldSize = 2;
   auto contexts = link::test::SetupWorld(kWorldSize);
 
-  BaseSendOptions send_opts;
-  BaseRecvOptions recv_opts;
+  BaseOtSendStore send_opts;
+  BaseOtRecvStore recv_opts;
   std::tie(send_opts, recv_opts) = MakeBaseOptions(128);
 
   size_t kNumOt = 16;
@@ -107,8 +109,7 @@ TEST(IknpOtExtEdgeTest, Test) {
   {
     // Mismatched receiver.
     std::vector<uint128_t> recv_out(kNumOt);
-    std::vector<uint128_t> choices =
-        CreateRandomChoiceBits<uint128_t>(kNumOt + 128);
+    std::vector<uint128_t> choices = crypto::RandVec<uint128_t>(kNumOt + 128);
     ASSERT_THROW(
         IknpOtExtRecv(contexts[1], send_opts, absl::MakeConstSpan(choices),
                       absl::MakeSpan(recv_out)),

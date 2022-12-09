@@ -12,18 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/primitives/ot/kkrt_ot_extension.h"
+#include "yacl/crypto/primitives/ot/kkrt_ote.h"
 
 #include "c/blake3.h"
 #include "emp-tool/utils/aes_opt.h"
 #include "emp-tool/utils/block.h"
 
 #include "yacl/base/byte_container_view.h"
+#include "yacl/crypto/base/hash/hash_utils.h"
 #include "yacl/crypto/tools/prg.h"
 #include "yacl/crypto/tools/random_oracle.h"
-#include "yacl/crypto/utils/hash_util.h"
 #include "yacl/utils/matrix_utils.h"
-
 namespace yacl {
 namespace {
 
@@ -182,7 +181,7 @@ class KkrtGroupPRF : public IGroupPRF {
 
 std::unique_ptr<IGroupPRF> KkrtOtExtSend(
     const std::shared_ptr<link::Context>& ctx,
-    const BaseRecvOptions& base_options, size_t num_ot) {
+    const BaseOtRecvStore& base_options, size_t num_ot) {
   YACL_ENFORCE_EQ(base_options.blocks.size(), base_options.choices.size());
   YACL_ENFORCE(kIknpWidth == base_options.choices.size());
   YACL_ENFORCE(num_ot > 0);
@@ -245,7 +244,7 @@ std::unique_ptr<IGroupPRF> KkrtOtExtSend(
 }
 
 void KkrtOtExtRecv(const std::shared_ptr<link::Context>& ctx,
-                   const BaseSendOptions& base_options,
+                   const BaseOtSendStore& base_options,
                    absl::Span<const uint128_t> inputs,
                    absl::Span<uint128_t> recv_blocks) {
   YACL_ENFORCE(base_options.blocks.size() == kIknpWidth);
@@ -318,7 +317,7 @@ void KkrtOtExtRecv(const std::shared_ptr<link::Context>& ctx,
 }
 
 void KkrtOtExtSender::Init(const std::shared_ptr<link::Context>& ctx,
-                           const BaseRecvOptions& base_options,
+                           const BaseOtRecvStore& base_options,
                            uint64_t num_ot) {
   YACL_ENFORCE_EQ(base_options.blocks.size(), base_options.choices.size());
   YACL_ENFORCE(kIknpWidth == base_options.choices.size());
@@ -418,7 +417,7 @@ void KkrtOtExtSender::Encode(uint64_t ot_idx, const uint128_t input, void* dest,
 }
 
 void KkrtOtExtReceiver::Init(const std::shared_ptr<link::Context>& ctx,
-                             const BaseSendOptions& base_options,
+                             const BaseOtSendStore& base_options,
                              uint64_t num_ot) {
   const size_t num_batch = (num_ot + kBatchSize1024 - 1) / kBatchSize1024;
 

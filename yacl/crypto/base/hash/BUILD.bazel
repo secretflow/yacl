@@ -74,3 +74,14 @@ yacl_cc_library(
         "//yacl/base:byte_container_view",
     ],
 )
+
+yacl_cc_library(
+    name = "hash_utils",
+    srcs = ["hash_utils.cc"],
+    hdrs = ["hash_utils.h"],
+    deps = [
+        ":ssl_hash",
+        "//yacl/base:int128",
+        "@com_github_blake3team_blake3//:blake3_c",
+    ],
+)

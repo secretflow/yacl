@@ -12,20 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/primitives/ot/iknp_ot_extension.h"
+#include "yacl/crypto/primitives/ot/iknp_ote.h"
 
 #include <sys/types.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cstddef>
+#include <memory>
 #include <random>
+#include <vector>
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
-#include "yacl/crypto/base/utils.h"
 #include "yacl/crypto/tools/prg.h"
-#include "yacl/crypto/tools/random_oracle.h"
+#include "yacl/crypto/tools/random_permutation.h"
 #include "yacl/utils/matrix_utils.h"
 
 namespace yacl {
@@ -38,7 +40,7 @@ constexpr uint128_t kAllOneMask = uint128_t(-1);
 }  // namespace
 
 void IknpOtExtSend(const std::shared_ptr<link::Context>& ctx,
-                   const BaseRecvOptions& base_options,
+                   const BaseOtRecvStore& base_options,
                    absl::Span<std::array<uint128_t, 2>> send_blocks) {
   YACL_ENFORCE(ctx->WorldSize() == 2);
   YACL_ENFORCE(base_options.choices.size() == base_options.blocks.size());
@@ -78,20 +80,27 @@ void IknpOtExtSend(const std::shared_ptr<link::Context>& ctx,
     }
     // Transpose.
     NaiveTranspose(&batch);
+
+    std::vector<uint128_t> batch_other(batch.size());
+    for (size_t i = 0; i < batch.size(); i++) {
+      batch_other[i] = batch[i] ^ choice_mask;
+    }
+
+    auto tmp0 = ParaCrHash_128(absl::MakeSpan(batch));
+    auto tmp1 = ParaCrHash_128(absl::MakeSpan(batch_other));
+
     // Build Q & Q^S
     // Break correlation.
     size_t limit = std::min(kBatchSize, send_blocks.size() - i * kBatchSize);
-    for (size_t offset = 0; offset < limit; ++offset) {
-      send_blocks[i * kBatchSize + offset][0] =
-          RandomOracle::GetDefault().Gen(batch[offset]);
-      send_blocks[i * kBatchSize + offset][1] =
-          RandomOracle::GetDefault().Gen(batch[offset] ^ choice_mask);
+    for (size_t j = 0; j < limit; ++j) {
+      send_blocks[i * kBatchSize + j][0] = tmp0[j];
+      send_blocks[i * kBatchSize + j][1] = tmp1[j];
     }
   }
 }
 
 void IknpOtExtRecv(const std::shared_ptr<link::Context>& ctx,
-                   const BaseSendOptions& base_options,
+                   const BaseOtSendStore& base_options,
                    absl::Span<const uint128_t> choices,
                    absl::Span<uint128_t> recv_blocks) {
   YACL_ENFORCE(ctx->WorldSize() == 2);
@@ -134,9 +143,9 @@ void IknpOtExtRecv(const std::shared_ptr<link::Context>& ctx,
     // Break correlation.
     // Output t0 as recv_block.
     size_t limit = std::min(kBatchSize, recv_blocks.size() - i * kBatchSize);
-    for (size_t offset = 0; offset < limit; ++offset) {
-      recv_blocks[i * kBatchSize + offset] =
-          RandomOracle::GetDefault().Gen(t[offset]);
+    auto tmp = ParaCrHash_128(absl::MakeSpan(t));
+    for (size_t j = 0; j < limit; ++j) {
+      recv_blocks[i * kBatchSize + j] = tmp[j];
     }
   }
 }

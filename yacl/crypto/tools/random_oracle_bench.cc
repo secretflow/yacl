@@ -12,40 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <iostream>
-#include <random>
+#include <algorithm>
 
 #include "benchmark/benchmark.h"
 
 #include "yacl/crypto/tools/random_oracle.h"
 
-static void BM_RoAesEcb(benchmark::State& state) {
-  yacl::RandomOracle ro(yacl::SymmetricCrypto::CryptoType::AES128_ECB, 9527);
+namespace yacl {
+
+static void BM_RO(benchmark::State& state) {
   for (auto _ : state) {
     state.PauseTiming();
     size_t n = state.range(0);
-
+    std::vector<uint8_t> input(n);
+    std::fill(input.begin(), input.end(), 0);
     state.ResumeTiming();
-    for (size_t i = 0; i < n; i++) {
-      ro.Gen(1234);
-    }
+    const auto& RO = RandomOracle::GetDefault();
+    RO.Gen(Buffer(input.data(), n));
   }
 }
 
-static void BM_RoAesCbc(benchmark::State& state) {
-  yacl::RandomOracle ro(yacl::SymmetricCrypto::CryptoType::AES128_CBC, 9527);
-  for (auto _ : state) {
-    state.PauseTiming();
-    size_t n = state.range(0);
-
-    state.ResumeTiming();
-    for (size_t i = 0; i < n; i++) {
-      ro.Gen(1234);
-    }
-  }
-}
-
-BENCHMARK(BM_RoAesEcb)
+// Register the function as a benchmark
+BENCHMARK(BM_RO)
     ->Unit(benchmark::kMillisecond)
     ->Arg(1024)
     ->Arg(5120)
@@ -53,16 +41,8 @@ BENCHMARK(BM_RoAesEcb)
     ->Arg(20480)
     ->Arg(40960)
     ->Arg(81920)
-    ->Arg(1 << 21);
+    ->Arg(1 << 24);
 
-BENCHMARK(BM_RoAesCbc)
-    ->Unit(benchmark::kMillisecond)
-    ->Arg(1024)
-    ->Arg(5120)
-    ->Arg(10240)
-    ->Arg(20480)
-    ->Arg(40960)
-    ->Arg(81920)
-    ->Arg(1 << 21);
-
+// Run the benchmark
 BENCHMARK_MAIN();
+}  // namespace yacl

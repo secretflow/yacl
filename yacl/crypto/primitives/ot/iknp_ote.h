@@ -18,7 +18,7 @@
 
 #include "absl/types/span.h"
 
-#include "yacl/crypto/primitives/ot/options.h"
+#include "yacl/crypto/primitives/ot/common.h"
 #include "yacl/link/link.h"
 
 namespace yacl {
@@ -47,12 +47,12 @@ namespace yacl {
 //
 // NOTE |choices| need to be round up to 128.
 void IknpOtExtSend(const std::shared_ptr<link::Context>& ctx,
-                   const BaseRecvOptions& base_options,
+                   const BaseOtRecvStore& base_options,
                    absl::Span<std::array<uint128_t, 2>> send_blocks);
 
 // TODO(shuyan.ycf): replaces `choices` with strong-typed bit vector.
 void IknpOtExtRecv(const std::shared_ptr<link::Context>& ctx,
-                   const BaseSendOptions& base_options,
+                   const BaseOtSendStore& base_options,
                    absl::Span<const uint128_t> choices,
                    absl::Span<uint128_t> recv_blocks);
 

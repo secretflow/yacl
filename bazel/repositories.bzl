@@ -6,6 +6,8 @@ SECRETFLOW_GIT = "https://github.com/secretflow"
 
 IC_COMMIT_ID  = "db83ca75c321420eb8cf2235d407e4e032b8e8cc"
 
+SIMPLEST_OT_COMMIT_ID  = "f40a33a37e3ff8cd81655c35237c177e358dc5b1"
+
 
 def yacl_deps():
     _rule_python()
@@ -35,7 +37,7 @@ def yacl_deps():
     maybe(
         git_repository,
         name = "simplest_ot",
-        commit = "f40a33a37e3ff8cd81655c35237c177e358dc5b1",
+        commit = SIMPLEST_OT_COMMIT_ID,
         recursive_init_submodules = True,
         remote = "{}/simplest-ot.git".format(SECRETFLOW_GIT),
     )

@@ -1,4 +1,4 @@
-# Copyright 2022 Ant Group Co., Ltd.
+# Copyright 2021 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,6 +26,15 @@ yacl_cc_library(
     ],
 )
 
+yacl_cc_binary(
+    name = "prg_bench",
+    srcs = ["prg_bench.cc"],
+    deps = [
+        ":prg",
+        "@com_github_google_benchmark//:benchmark_main",
+    ],
+)
+
 yacl_cc_test(
     name = "prg_test",
     srcs = ["prg_test.cc"],
@@ -38,7 +47,7 @@ yacl_cc_library(
     name = "random_oracle",
     hdrs = ["random_oracle.h"],
     deps = [
-        "//yacl/crypto/base:symmetric_crypto",
+        "//yacl/crypto/base/hash:hash_utils",
     ],
 )
 
@@ -47,7 +56,7 @@ yacl_cc_test(
     srcs = ["random_oracle_test.cc"],
     deps = [
         ":random_oracle",
-        "//yacl/utils:hamming",
+        "//yacl/crypto/utils:rand",
     ],
 )
 
@@ -55,7 +64,33 @@ yacl_cc_binary(
     name = "random_oracle_bench",
     srcs = ["random_oracle_bench.cc"],
     deps = [
-        "//yacl/crypto/tools:random_oracle",
+        ":random_oracle",
+        "@com_github_google_benchmark//:benchmark_main",
+    ],
+)
+
+yacl_cc_library(
+    name = "random_permutation",
+    hdrs = ["random_permutation.h"],
+    deps = [
+        "//yacl/crypto/base:symmetric_crypto",
+    ],
+)
+
+yacl_cc_test(
+    name = "random_permutation_test",
+    srcs = ["random_permutation_test.cc"],
+    deps = [
+        ":prg",
+        ":random_permutation",
+    ],
+)
+
+yacl_cc_binary(
+    name = "random_permutation_bench",
+    srcs = ["random_permutation_bench.cc"],
+    deps = [
+        ":random_permutation",
         "@com_github_google_benchmark//:benchmark_main",
     ],
 )

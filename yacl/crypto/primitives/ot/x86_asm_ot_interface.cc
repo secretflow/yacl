@@ -14,7 +14,9 @@
 
 #include "yacl/crypto/primitives/ot/x86_asm_ot_interface.h"
 
+#include <algorithm>
 #include <memory>
+#include <vector>
 
 #include "simplest_ot_x86_asm/ot_receiver.h"
 #include "simplest_ot_x86_asm/ot_sender.h"
@@ -42,6 +44,8 @@ void X86AsmOtInterface::Recv(const std::shared_ptr<link::Context> &ctx,
 
   receiver_maketable(receiver.get());
 
+  const auto &RO = RandomOracle::GetDefault();
+
   for (int i = 0; i < kNumOt; i += 4) {
     const int batch_size = std::min(4, kNumOt - i);
 
@@ -65,9 +69,8 @@ void X86AsmOtInterface::Recv(const std::shared_ptr<link::Context> &ctx,
       // even though there's already a hash in sender_keygen_check, we need to
       // hash again with the index i to ensure security
       // ref: https://eprint.iacr.org/2021/682
-
-      recv_blocks[i + j] = RandomOracle::GetDefault().Gen(
-          recv_blocks[i + j] ^ (i + j));  // output size = 128 bit
+      Buffer buf(&messages[j][0], sizeof(uint128_t));
+      recv_blocks[i + j] = RO.Gen<uint128_t>(buf, i + j);
     }
   }
 }
@@ -95,23 +98,20 @@ void X86AsmOtInterface::Send(const std::shared_ptr<link::Context> &ctx,
       YACL_THROW("simplest-ot: sender_keygen failed");
     }
 
+    const auto &RO = RandomOracle::GetDefault();
+
     for (int j = 0; j < batch_size; ++j) {
       static_assert(sizeof(send_blocks[0][0]) <= HASHBYTES,
                     "Illegal Block size.");
 
-      std::memcpy(&send_blocks[i + j][0], &messages[0][j][0],
-                  sizeof(send_blocks[i + j][0]));
-      std::memcpy(&send_blocks[i + j][1], &messages[1][j][0],
-                  sizeof(send_blocks[i + j][1]));
-
       // even though there's already a hash in sender_keygen_check, we need to
       // hash again with the index i to ensure security
       // ref: https://eprint.iacr.org/2021/682
+      Buffer buf0(&messages[0][j][0], sizeof(uint128_t));
+      Buffer buf1(&messages[1][j][0], sizeof(uint128_t));
 
-      send_blocks[i + j][0] = RandomOracle::GetDefault().Gen(
-          send_blocks[i + j][0] ^ (i + j));  // output size = 128 bit
-      send_blocks[i + j][1] = RandomOracle::GetDefault().Gen(
-          send_blocks[i + j][1] ^ (i + j));  // output size = 128 bit
+      send_blocks[i + j][0] = RO.Gen<uint128_t>(buf0, i + j);
+      send_blocks[i + j][1] = RO.Gen<uint128_t>(buf1, i + j);
     }
   }
 }

@@ -21,7 +21,7 @@
 #include "gtest/gtest.h"
 
 #include "yacl/base/exception.h"
-#include "yacl/crypto/base/utils.h"
+#include "yacl/crypto/utils/rand.h"
 #include "yacl/link/test_util.h"
 
 namespace yacl {
@@ -45,7 +45,7 @@ TEST_P(BaseOtTest, Works) {
   recv_blocks.resize(params.num_ot);
 
   // WHEN
-  std::vector<bool> choices = CreateRandomChoices(params.num_ot);
+  std::vector<bool> choices = crypto::RandBits(params.num_ot);
   std::future<void> sender =
       std::async([&] { BaseOtSend(contexts[0], absl::MakeSpan(send_blocks)); });
   std::future<void> receiver = std::async(
