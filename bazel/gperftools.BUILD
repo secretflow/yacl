@@ -29,6 +29,7 @@ configure_make(
         "--enable-frame-pointers",
         "--disable-libunwind",
         "--disable-dependency-tracking",
+        "--with-pic",
     ],
     env = {
         "AR": "",

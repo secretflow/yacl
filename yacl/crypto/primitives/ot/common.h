@@ -19,7 +19,7 @@
 
 #include "yacl/base/int128.h"
 
-namespace yacl {
+namespace yacl::crypto {
 
 struct BaseOtRecvStore {
   // TODO(shuyan.ycf): Wrap a bit choice class.
@@ -41,4 +41,4 @@ struct BaseOtStore {
   BaseOtRecvStore recv;
 };
 
-}  // namespace yacl
+}  // namespace yacl::crypto

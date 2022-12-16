@@ -22,7 +22,7 @@
 #include "yacl/base/exception.h"
 #include "yacl/link/test_util.h"
 
-namespace yacl::crypto_primitives {
+namespace yacl::crypto {
 
 void BM_DefaultArguments(benchmark::internal::Benchmark* b) {
   b->Arg(128)->Unit(benchmark::kMillisecond);
@@ -46,4 +46,4 @@ BM_REGISTER_ALL_OT(BM_DefaultArguments);
 // BM_REGISTER_SGRR_OTE(BM_DefaultArguments);
 
 BENCHMARK_MAIN();
-}  // namespace yacl::crypto_primitives
+}  // namespace yacl::crypto

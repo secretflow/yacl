@@ -21,7 +21,7 @@
 #include "yacl/base/exception.h"
 #include "yacl/crypto/base/symmetric_crypto.h"
 
-namespace yacl {
+namespace yacl::crypto {
 
 namespace {
 
@@ -371,4 +371,4 @@ TEST(SymmetricCrypto, FillSM4Random) {
   EXPECT_EQ(0, std::memcmp(no_padding.data(), need_padding.data(),
                            SymmetricCrypto::BlockSize() * 15 + 2));
 }
-}  // namespace yacl
+}  // namespace yacl::crypto

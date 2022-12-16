@@ -26,7 +26,7 @@
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/int128.h"
 
-namespace yacl {
+namespace yacl::crypto {
 namespace internal {
 
 inline void EcbMakeContentBlocks(uint128_t count, absl::Span<uint128_t> buf) {
@@ -194,4 +194,4 @@ inline uint64_t FillSm4Random(uint128_t seed, uint64_t count,
                              out);
 }
 
-}  // namespace yacl
+}  // namespace yacl::crypto

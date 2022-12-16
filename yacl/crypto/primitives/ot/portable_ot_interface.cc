@@ -20,7 +20,7 @@
 #include "yacl/base/exception.h"
 #include "yacl/crypto/tools/random_oracle.h"
 
-namespace yacl {
+namespace yacl::crypto {
 
 void PortableOtInterface::Recv(const std::shared_ptr<link::Context> &ctx,
                                const std::vector<bool> &choices,
@@ -114,4 +114,4 @@ void PortableOtInterface::Send(const std::shared_ptr<link::Context> &ctx,
   }
 }
 
-}  // namespace yacl
+}  // namespace yacl::crypto

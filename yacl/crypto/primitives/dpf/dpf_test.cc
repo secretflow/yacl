@@ -19,8 +19,7 @@
 
 #include "gtest/gtest.h"
 
-namespace yacl {
-namespace mpctools {
+namespace yacl::crypto {
 
 struct TestParams {
   DpfInStore alpha;
@@ -168,5 +167,4 @@ INSTANTIATE_TEST_SUITE_P(Works_Instances, FssDpfEvalAllTest,
                                          TestParams{1, 2, 16, 32},  //
                                          TestParams{1, 2, 18, 64}));
 
-}  // namespace mpctools
-}  // namespace yacl
+}  // namespace yacl::crypto

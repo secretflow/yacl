@@ -20,7 +20,7 @@
 #include "yacl/crypto/primitives/ot/common.h"
 #include "yacl/link/link.h"
 
-namespace yacl {
+namespace yacl::crypto {
 
 // KKRT width
 inline constexpr int kKkrtWidth = 4;
@@ -145,4 +145,4 @@ class KkrtOtExtReceiver {
   emp::AES_KEY aes_key_[kKkrtWidth];
 };
 
-}  // namespace yacl
+}  // namespace yacl::crypto

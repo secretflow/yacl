@@ -28,7 +28,7 @@
 #include "yacl/link/test_util.h"
 #include "yacl/utils/matrix_utils.h"
 
-namespace yacl {
+namespace yacl::crypto {
 
 class OtBench : public benchmark::Fixture {
  public:
@@ -79,7 +79,7 @@ BENCHMARK_DEFINE_F(OtBench, IknpOTe)(benchmark::State& state) {
     constexpr int kNumBits = sizeof(uint128_t) * 8;
     size_t block_num = (num_ot + kNumBits - 1) / kNumBits;
     auto choices = crypto::RandVec<uint128_t>(block_num);
-    auto base_ot = test::MakeBaseOt(128);
+    auto base_ot = MakeBaseOt(128);
 
     state.ResumeTiming();
 
@@ -105,7 +105,7 @@ BENCHMARK_DEFINE_F(OtBench, KkrtOTe)(benchmark::State& state) {
     // preprare inputs
     std::vector<uint128_t> inputs(num_ot);
     std::vector<uint128_t> recv_out(num_ot);
-    auto base_ot = test::MakeBaseOt(512);
+    auto base_ot = MakeBaseOt(512);
 
     state.ResumeTiming();
 
@@ -128,9 +128,9 @@ BENCHMARK_DEFINE_F(OtBench, SgrrOTe)(benchmark::State& state) {
     const auto n = log2(num_ot);
 
     // preprare inputs
-    uint32_t choice_value = test::CreateRandomRangeNum(n);
+    uint32_t choice_value = CreateRandomRangeNum(n);
     uint128_t master_seed = crypto::RandSeed();
-    auto base_ot = test::MakeBaseOt(512);
+    auto base_ot = MakeBaseOt(512);
     std::vector<uint128_t> entire_seeds(n);
     std::vector<uint128_t> punctured_seeds(n - 1);
 
@@ -167,4 +167,4 @@ BENCHMARK_DEFINE_F(OtBench, SgrrOTe)(benchmark::State& state) {
   BM_REGISTER_IKNP_OTE(Arguments)     \
   BM_REGISTER_KKRT_OTE(Arguments)     \
   BM_REGISTER_PUNCTURED_OTE(Arguments)
-}  // namespace yacl
+}  // namespace yacl::crypto

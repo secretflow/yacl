@@ -116,7 +116,7 @@ SecurityStrengthFlags GetTestDataByStrengthFlag(int bits) {
   }
 }
 
-class NistFixEntropySource : public yacl::crypto::IEntropySource {
+class NistFixEntropySource : public IEntropySource {
  public:
   NistFixEntropySource(int strength_bit) {
     SecurityStrengthFlags strength_flag =

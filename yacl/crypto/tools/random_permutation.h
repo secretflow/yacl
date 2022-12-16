@@ -22,9 +22,9 @@
 #include "yacl/base/int128.h"
 #include "yacl/crypto/base/symmetric_crypto.h"
 
-namespace yacl {
+namespace yacl::crypto {
 
-// This is a implementation of the **theoretical tool**: Random Permutation.
+// This is an implementation of the **theoretical tool**: Random Permutation.
 //
 // Theoretically, Random Permutation is used to model ideal block ciphers, in
 // reality, we use "pseudo-random permutations", for more detailed definition
@@ -44,8 +44,7 @@ class RandomPerm {
       : sym_alg_(ctype, key, iv) {}
 
   // Multi-block input, multi-block output
-  void Gen(absl::Span<const uint128_t> x,
-                  absl::Span<uint128_t> out) const {
+  void Gen(absl::Span<const uint128_t> x, absl::Span<uint128_t> out) const {
     YACL_ENFORCE(x.size() == out.size());
     sym_alg_.Encrypt(x, out);
   }
@@ -110,7 +109,7 @@ inline uint128_t CcrHash_128(uint128_t x) {
 
 // Evaluate many CrHash in Parallel (Single Block input)
 inline void Para_CcrHash_128(absl::Span<const uint128_t> x,
-                            absl::Span<uint128_t> out) {
+                             absl::Span<uint128_t> out) {
   std::vector<uint128_t> tmp(x.size());
   for (size_t i = 0; i < x.size(); i++) {
     tmp[i] = x[i] ^ (x[i] >> 64 & 0xffffffffffffffff);
@@ -127,4 +126,4 @@ inline std::vector<uint128_t> ParaCcrHash_128(absl::Span<const uint128_t> x) {
 // TODO(@shanzhu) Tweakable Correlation Robust Hash function (Multiple Blocks)
 // See https://eprint.iacr.org/2019/074.pdf Sec 7.4
 
-}  // namespace yacl
+}  // namespace yacl::crypto

@@ -16,7 +16,7 @@
 
 #include "yacl/crypto/primitives/ot/base_ot_interface.h"
 
-namespace yacl {
+namespace yacl::crypto {
 
 class PortableOtInterface : public BaseOTInterface {
  public:
@@ -30,4 +30,4 @@ class PortableOtInterface : public BaseOTInterface {
             absl::Span<Block> recv_blocks) override;
 };
 
-}  // namespace yacl
+}  // namespace yacl::crypto

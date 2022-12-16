@@ -24,9 +24,9 @@
 #include "yacl/base/exception.h"
 #include "yacl/crypto/base/hash/hash_utils.h"
 
-namespace yacl {
+namespace yacl::crypto {
 
-// This is a implementation of the **theoretical tool**: Random oracle.
+// This is an implementation of the **theoretical tool**: Random oracle.
 //
 // [Random-oracle methodology]: For “natural” applications of hash functions,
 // the concrete security proven in the random-oracle model is the right bound
@@ -83,9 +83,7 @@ class RandomOracle {
     }
   }
 
-  Buffer Gen(ByteContainerView x) const {
-    return operator()(x, outlen_);
-  }
+  Buffer Gen(ByteContainerView x) const { return operator()(x, outlen_); }
 
   template <typename T, std::enable_if_t<std::is_standard_layout_v<T>, int> = 0>
   T Gen(ByteContainerView x) const {
@@ -151,4 +149,4 @@ inline uint128_t RO_SM3_128(ByteContainerView in) {
   return RandomOracle::GetSm3().Gen<uint128_t>(in);
 };
 
-}  // namespace yacl
+}  // namespace yacl::crypto

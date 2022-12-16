@@ -28,19 +28,20 @@ extern "C" {
 #include "curve25519.h"
 }
 
-namespace {
+namespace yacl::crypto {
+
 constexpr int kCurve25519ElemSize = 32;
 constexpr int kDataNum = 10;
 std::vector<int> aes_data_len = {16, 16, 16, 32, 32, 32, 48, 48, 48, 64};
 std::vector<int> sha256_data_len = {3, 6, 9, 12, 15, 16, 16, 16, 32, 32};
 
 void AesTestData(std::string &file_name,
-                 yacl::SymmetricCrypto::CryptoType crypto_mode) {
+                 SymmetricCrypto::CryptoType crypto_mode) {
   uint128_t aes_key;
   std::ofstream out_file;
   out_file.open(file_name, std::ios::out /*| std::ios::app*/);
 
-  yacl::Prg<uint128_t> prg(0, yacl::PRG_MODE::kNistAesCtrDrbg);
+  Prg<uint128_t> prg(0, PRG_MODE::kNistAesCtrDrbg);
 
   for (int i = 0; i < kDataNum; ++i) {
     std::string aes_plain;
@@ -54,7 +55,7 @@ void AesTestData(std::string &file_name,
     aes_decrypt.resize(aes_data_len[i]);
     prg.Fill(absl::MakeSpan(aes_plain.data(), aes_plain.size()));
 
-    yacl::SymmetricCrypto crypto(crypto_mode, aes_key, 0);
+    SymmetricCrypto crypto(crypto_mode, aes_key, 0);
 
     crypto.Encrypt(
         absl::MakeConstSpan((const uint8_t *)aes_plain.data(),
@@ -86,10 +87,10 @@ void Sha256TestData(std::string &file_name) {
   out_file.open(file_name, std::ios::out /*| std::ios::app*/);
 
   // prg
-  yacl::Prg<uint64_t> prg(0, yacl::PRG_MODE::kNistAesCtrDrbg);
+  Prg<uint64_t> prg(0, PRG_MODE::kNistAesCtrDrbg);
 
   for (size_t i = 0; i < sha256_data_len.size(); ++i) {
-    yacl::crypto::Sha256Hash sha256;
+    Sha256Hash sha256;
     std::string hash_data(sha256_data_len[i], '\0');
     prg.Fill(absl::MakeSpan(hash_data.data(), hash_data.size()));
 
@@ -110,7 +111,7 @@ void Curve25519TestData(std::string &file_name) {
   out_file.open(file_name, std::ios::out /*| std::ios::app*/);
 
   // prg
-  yacl::Prg<uint64_t> prg(0, yacl::PRG_MODE::kNistAesCtrDrbg);
+  Prg<uint64_t> prg(0, PRG_MODE::kNistAesCtrDrbg);
 
   for (size_t i = 0; i < sha256_data_len.size(); ++i) {
     std::array<uint8_t, kCurve25519ElemSize> private_x;
@@ -155,7 +156,7 @@ void Curve25519TestData(std::string &file_name) {
   }
 }
 
-}  // namespace
+}  // namespace yacl::crypto
 
 int main(int argc, char **argv) {
   std::string aes_ecb_file_name = "aes_ecb_data.txt";
@@ -163,10 +164,12 @@ int main(int argc, char **argv) {
   std::string sha256_file_name = "sha256_data.txt";
   std::string curve25519_file_name = "curve25519_data.txt";
 
-  AesTestData(aes_ecb_file_name, yacl::SymmetricCrypto::CryptoType::AES128_ECB);
-  AesTestData(aes_ctr_file_name, yacl::SymmetricCrypto::CryptoType::AES128_CTR);
-  Sha256TestData(sha256_file_name);
-  Curve25519TestData(curve25519_file_name);
+  AesTestData(aes_ecb_file_name,
+              yacl::crypto::SymmetricCrypto::CryptoType::AES128_ECB);
+  AesTestData(aes_ctr_file_name,
+              yacl::crypto::SymmetricCrypto::CryptoType::AES128_CTR);
+  yacl::crypto::Sha256TestData(sha256_file_name);
+  yacl::crypto::Curve25519TestData(curve25519_file_name);
 
   return 0;
 }

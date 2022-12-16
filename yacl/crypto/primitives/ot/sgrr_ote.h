@@ -40,7 +40,7 @@
 // https://crypto.stackexchange.com/questions/38039
 // https://stackoverflow.com/questions/50402168
 
-namespace yacl {
+namespace yacl::crypto {
 
 /**
  * @param ctx context
@@ -66,4 +66,4 @@ void SgrrOtExtSend(const std::shared_ptr<link::Context>& ctx,
                    const BaseOtSendStore& ot_options, uint32_t n,
                    uint128_t master_seed, absl::Span<uint128_t> entire_seeds);
 
-}  // namespace yacl
+}  // namespace yacl::crypto

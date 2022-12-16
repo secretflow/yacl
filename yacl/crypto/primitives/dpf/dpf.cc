@@ -24,7 +24,7 @@
 
 #include "yacl/crypto/primitives/dpf/serializable.pb.h"
 
-namespace yacl::mpctools {
+namespace yacl::crypto {
 
 namespace {
 
@@ -350,4 +350,4 @@ void DpfKey::Deserialize(const std::string& s) {
   SPDLOG_DEBUG("Got seed {}", GetSeed());
 }
 
-}  // namespace yacl::mpctools
+}  // namespace yacl::crypto

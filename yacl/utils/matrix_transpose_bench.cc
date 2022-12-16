@@ -24,7 +24,7 @@
 namespace {
 void GenerateRandomMatrix(std::array<uint128_t, 128>* matrix) {
   std::random_device rd;
-  yacl::Prg<uint128_t> prg;
+  yacl::crypto::Prg<uint128_t> prg;
   prg.SetSeed(rd());
   for (size_t i = 0; i < 128; i++) {
     (*matrix)[i] = prg();
@@ -34,7 +34,7 @@ void GenerateRandomMatrix(std::array<uint128_t, 128>* matrix) {
 void GenerateRandomMatrix1024(
     std::array<std::array<uint128_t, 8>, 128>* matrix) {
   std::random_device rd;
-  yacl::Prg<uint128_t> prg;
+  yacl::crypto::Prg<uint128_t> prg;
   prg.SetSeed(rd());
   for (size_t i = 0; i < 128; i++) {
     (*matrix)[i][0] = prg();

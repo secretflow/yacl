@@ -25,7 +25,7 @@
 #include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
 
-namespace yacl::mpctools {
+namespace yacl::crypto {
 
 // Implementation of Distributed Point Function (DPF)
 // title : Function Secret Sharing: Improvements and Extensions
@@ -186,4 +186,4 @@ class DpfContext {
   size_t ss_bitnum_ = 64;
   uint32_t sec_param_ = 128;  // we assume 128 bit security (fixed)
 };
-}  // namespace yacl::mpctools
+}  // namespace yacl::crypto

@@ -25,7 +25,7 @@
 #include "yacl/crypto/base/drbg/sm4_drbg.h"
 #include "yacl/crypto/base/symmetric_crypto.h"
 
-namespace yacl {
+namespace yacl::crypto {
 
 // define PRG mode
 enum class PRG_MODE {
@@ -67,9 +67,9 @@ class Prg {
     SetSeed(seed);
 
     if (prg_mode_ == PRG_MODE::kNistAesCtrDrbg) {
-      ctr_drbg_ = std::make_unique<yacl::crypto::NistAesDrbg>(seed);
+      ctr_drbg_ = std::make_unique<NistAesDrbg>(seed);
     } else if (prg_mode_ == PRG_MODE::kGmSm4CtrDrbg) {
-      ctr_drbg_ = std::make_unique<yacl::crypto::Sm4Drbg>(seed);
+      ctr_drbg_ = std::make_unique<Sm4Drbg>(seed);
     }
   }
 
@@ -154,7 +154,7 @@ class Prg {
 
   PRG_MODE prg_mode_;
   // for nist aes ctr drbg
-  std::unique_ptr<yacl::crypto::IDrbg> ctr_drbg_;
+  std::unique_ptr<IDrbg> ctr_drbg_;
 };
 
-}  // namespace yacl
+}  // namespace yacl::crypto
