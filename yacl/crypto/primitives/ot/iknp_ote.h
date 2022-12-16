@@ -21,7 +21,7 @@
 #include "yacl/crypto/primitives/ot/common.h"
 #include "yacl/link/link.h"
 
-namespace yacl {
+namespace yacl::crypto {
 
 // IknpOtExtSend IknpOtExtRecv
 //
@@ -56,4 +56,4 @@ void IknpOtExtRecv(const std::shared_ptr<link::Context>& ctx,
                    absl::Span<const uint128_t> choices,
                    absl::Span<uint128_t> recv_blocks);
 
-}  // namespace yacl
+}  // namespace yacl::crypto

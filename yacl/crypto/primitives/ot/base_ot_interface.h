@@ -19,7 +19,7 @@
 #include "yacl/base/int128.h"
 #include "yacl/link/link.h"
 
-namespace yacl {
+namespace yacl::crypto {
 
 using Block = uint128_t;
 
@@ -33,4 +33,4 @@ class BaseOTInterface {
                     absl::Span<Block> recv_blocks) = 0;
 };
 
-}  // namespace yacl
+}  // namespace yacl::crypto

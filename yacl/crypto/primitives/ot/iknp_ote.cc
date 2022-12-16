@@ -30,7 +30,7 @@
 #include "yacl/crypto/tools/random_permutation.h"
 #include "yacl/utils/matrix_utils.h"
 
-namespace yacl {
+namespace yacl::crypto {
 namespace {
 
 constexpr size_t kBatchSize = 128;
@@ -150,4 +150,4 @@ void IknpOtExtRecv(const std::shared_ptr<link::Context>& ctx,
   }
 }
 
-}  // namespace yacl
+}  // namespace yacl::crypto

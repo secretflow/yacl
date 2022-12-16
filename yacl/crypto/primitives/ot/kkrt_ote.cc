@@ -23,7 +23,7 @@
 #include "yacl/crypto/tools/prg.h"
 #include "yacl/crypto/tools/random_oracle.h"
 #include "yacl/utils/matrix_utils.h"
-namespace yacl {
+namespace yacl::crypto {
 namespace {
 
 // Security Parameter
@@ -531,4 +531,4 @@ yacl::Buffer KkrtOtExtReceiver::ShiftCorrection(uint64_t send_count) {
   return buf;
 }
 
-}  // namespace yacl
+}  // namespace yacl::crypto

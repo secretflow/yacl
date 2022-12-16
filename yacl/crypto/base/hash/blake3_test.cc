@@ -108,7 +108,7 @@ TEST(Blake3HashTest, MultipleUpdates) {
 TEST(Blake3HashTest, CustomOutLength) {
   for (size_t i = 0; i <= (BLAKE3_OUT_LEN + 1); i++) {
     if ((i == 0) || (i > BLAKE3_OUT_LEN)) {
-      EXPECT_THROW(Blake3Hash blake3(i), ::yacl::EnforceNotMet);
+      EXPECT_THROW(Blake3Hash blake3(i), yacl::EnforceNotMet);
       continue;
     }
     Blake3Hash blake3(i);

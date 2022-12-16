@@ -16,7 +16,7 @@
 
 #include "yacl/crypto/tools/prg.h"
 
-namespace yacl {
+namespace yacl::crypto {
 
 static void BM_Prg(benchmark::State& state) {
   for (auto _ : state) {
@@ -37,4 +37,4 @@ BENCHMARK(BM_Prg)
 
 BENCHMARK_MAIN();
 
-}  // namespace yacl
+}  // namespace yacl::crypto

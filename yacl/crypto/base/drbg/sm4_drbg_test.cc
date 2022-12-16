@@ -26,10 +26,10 @@
 
 #include "yacl/crypto/base/drbg/entropy_source_selector.h"
 
-namespace yacl {
-namespace crypto {
+namespace yacl::crypto {
+
 TEST(GmSm4DrbgTest, TestGenerate) {
-  yacl::crypto::Sm4Drbg drbg;
+  Sm4Drbg drbg;
 
   std::vector<uint8_t> add_input(8);
   drbg.Instantiate(add_input);
@@ -40,7 +40,7 @@ TEST(GmSm4DrbgTest, TestGenerate) {
 }
 
 TEST(GmSm4DrbgTest, TestFillRandom) {
-  yacl::crypto::Sm4Drbg drbg;
+  Sm4Drbg drbg;
 
   std::vector<uint8_t> add_input(8);
   drbg.Instantiate(add_input);
@@ -55,7 +55,7 @@ TEST(GmSm4DrbgTest, TestFillRandom) {
 TEST(GmSm4DrbgTest, TestEntropySource) {
   auto entropy_source = makeEntropySource();
 
-  yacl::crypto::Sm4Drbg drbg(std::move(entropy_source));
+  Sm4Drbg drbg(std::move(entropy_source));
 
   std::vector<uint8_t> add_input(8);
   drbg.Instantiate(add_input);
@@ -67,5 +67,4 @@ TEST(GmSm4DrbgTest, TestEntropySource) {
   EXPECT_NE(random_buf1, random_buf2);
 }
 
-}  // namespace crypto
-}  // namespace yacl
+}  // namespace yacl::crypto

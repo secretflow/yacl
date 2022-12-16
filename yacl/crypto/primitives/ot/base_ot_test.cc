@@ -24,7 +24,7 @@
 #include "yacl/crypto/utils/rand.h"
 #include "yacl/link/test_util.h"
 
-namespace yacl {
+namespace yacl::crypto {
 
 struct TestParams {
   unsigned num_ot;
@@ -82,4 +82,4 @@ TEST(BaseOtEdgeTest, Test) {
                ::yacl::Exception);
 }
 
-}  // namespace yacl
+}  // namespace yacl::crypto

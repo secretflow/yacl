@@ -90,7 +90,7 @@ void SseTranspose128Uint128(std::array<uint128_t, 128>* inout) {
 
 void GenerateRandomMatrix(std::array<uint128_t, 128>* matrix) {
   std::random_device rd;
-  yacl::Prg<uint128_t> prg;
+  yacl::crypto::Prg<uint128_t> prg;
   prg.SetSeed(rd());
   for (size_t i = 0; i < 128; i++) {
     (*matrix)[i] = prg();

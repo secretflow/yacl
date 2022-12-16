@@ -26,7 +26,7 @@
 #include "yacl/crypto/utils/rand.h"
 #include "yacl/link/test_util.h"
 
-namespace yacl {
+namespace yacl::crypto {
 
 struct TestParams {
   unsigned num_ot;
@@ -107,7 +107,7 @@ TEST(KkrtOtExtEdgeTest, Test) {
     ASSERT_THROW(
         KkrtOtExtRecv(contexts[1], send_opts, absl::MakeConstSpan(choices),
                       absl::MakeSpan(recv_out)),
-        ::yacl::Exception);
+        yacl::Exception);
   }
   {
     // Empty choice.
@@ -116,11 +116,11 @@ TEST(KkrtOtExtEdgeTest, Test) {
     ASSERT_THROW(
         KkrtOtExtRecv(contexts[1], send_opts, absl::MakeConstSpan(choices),
                       absl::MakeSpan(recv_out)),
-        ::yacl::Exception);
+        yacl::Exception);
   }
   {
     // Empty send output.
-    ASSERT_THROW(KkrtOtExtSend(contexts[1], recv_opts, 0), ::yacl::Exception);
+    ASSERT_THROW(KkrtOtExtSend(contexts[1], recv_opts, 0), yacl::Exception);
   }
 }
 
@@ -209,4 +209,4 @@ INSTANTIATE_TEST_SUITE_P(Works_Instances2, KkrtOtExtTest2,
                                          TestParams{65536}  //
                                          ));
 
-}  // namespace yacl
+}  // namespace yacl::crypto

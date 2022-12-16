@@ -22,7 +22,7 @@
 #include "yacl/base/exception.h"
 #include "yacl/crypto/tools/prg.h"
 
-namespace yacl {
+namespace yacl::crypto {
 
 namespace {
 inline auto RandomBlocks(size_t length) {
@@ -55,4 +55,4 @@ TEST(RandomPermTest, BlocksWorks) {
   EXPECT_EQ(RP.Gen(absl::MakeSpan(input)), RP.Gen(absl::MakeSpan(input)));
 }
 
-}  // namespace yacl
+}  // namespace yacl::crypto

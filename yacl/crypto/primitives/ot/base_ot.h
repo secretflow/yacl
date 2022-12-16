@@ -19,7 +19,7 @@
 #include "yacl/base/int128.h"
 #include "yacl/link/link.h"
 
-namespace yacl {
+namespace yacl::crypto {
 
 using Block = uint128_t;
 
@@ -44,4 +44,4 @@ inline std::vector<std::array<Block, 2>> BaseOtSend(
   return blocks;
 }
 
-}  // namespace yacl
+}  // namespace yacl::crypto

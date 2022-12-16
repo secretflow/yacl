@@ -22,13 +22,13 @@
 #include "yacl/crypto/tools/prg.h"
 #include "yacl/crypto/utils/rand.h"
 
-namespace yacl::test {
+namespace yacl::crypto {
 
 inline BaseOtStore MakeBaseOt(size_t num) {
   BaseOtStore ot_store;
   ot_store.recv.choices = crypto::RandBits(num);
   std::random_device rd;
-  yacl::Prg<uint128_t> gen(rd());
+  Prg<uint128_t> gen(rd());
   for (size_t i = 0; i < num; ++i) {
     ot_store.send.blocks.push_back({gen(), gen()});
     ot_store.recv.blocks.push_back(
@@ -39,8 +39,8 @@ inline BaseOtStore MakeBaseOt(size_t num) {
 
 inline uint32_t CreateRandomRangeNum(size_t n) {
   std::random_device rd;
-  yacl::Prg<uint32_t> gen(rd());
+  Prg<uint32_t> gen(rd());
   return gen() % n;
 }
 
-}  // namespace yacl::test
+}  // namespace yacl::crypto

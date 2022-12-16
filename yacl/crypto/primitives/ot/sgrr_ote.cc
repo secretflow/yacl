@@ -20,7 +20,7 @@
 #include "yacl/base/exception.h"
 #include "yacl/crypto/tools/prg.h"
 
-namespace yacl {
+namespace yacl::crypto {
 
 namespace {
 
@@ -191,4 +191,4 @@ void SgrrOtExtSend(const std::shared_ptr<link::Context>& ctx,
          temp_seed_vec.size() * sizeof(uint128_t));
 }
 
-}  // namespace yacl
+}  // namespace yacl::crypto

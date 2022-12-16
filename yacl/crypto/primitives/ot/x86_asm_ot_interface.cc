@@ -24,7 +24,7 @@
 #include "yacl/base/exception.h"
 #include "yacl/crypto/tools/random_oracle.h"
 
-namespace yacl {
+namespace yacl::crypto {
 
 void X86AsmOtInterface::Recv(const std::shared_ptr<link::Context> &ctx,
                              const std::vector<bool> &choices,
@@ -116,4 +116,4 @@ void X86AsmOtInterface::Send(const std::shared_ptr<link::Context> &ctx,
   }
 }
 
-}  // namespace yacl
+}  // namespace yacl::crypto

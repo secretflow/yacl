@@ -22,7 +22,7 @@
 
 #include "yacl/base/exception.h"
 
-namespace yacl {
+namespace yacl::crypto {
 namespace {
 
 const EVP_CIPHER* CreateEvpCipher(SymmetricCrypto::CryptoType type) {
@@ -217,4 +217,4 @@ void SymmetricCrypto::Decrypt(absl::Span<const uint128_t> ciphertext,
   Decrypt(in, out);
 }
 
-}  // namespace yacl
+}  // namespace yacl::crypto

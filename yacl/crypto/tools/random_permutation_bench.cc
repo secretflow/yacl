@@ -18,7 +18,7 @@
 
 #include "yacl/crypto/tools/random_permutation.h"
 
-namespace yacl {
+namespace yacl::crypto {
 
 static void BM_RP(benchmark::State& state) {
   for (auto _ : state) {
@@ -88,4 +88,4 @@ BENCHMARK(BM_CcrHash)
 
 // Run the benchmark
 BENCHMARK_MAIN();
-}  // namespace yacl
+}  // namespace yacl::crypto

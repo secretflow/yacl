@@ -18,7 +18,7 @@
 
 #include "yacl/crypto/tools/random_oracle.h"
 
-namespace yacl {
+namespace yacl::crypto {
 
 static void BM_RO(benchmark::State& state) {
   for (auto _ : state) {
@@ -45,4 +45,4 @@ BENCHMARK(BM_RO)
 
 // Run the benchmark
 BENCHMARK_MAIN();
-}  // namespace yacl
+}  // namespace yacl::crypto

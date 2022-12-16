@@ -19,7 +19,7 @@
 
 #include "gtest/gtest.h"
 
-namespace yacl {
+namespace yacl::crypto {
 namespace {
 
 constexpr uint128_t kKey1 = 1234;
@@ -349,4 +349,4 @@ TEST(PseudoRandomSm4Drbg, DeterministicWithDifferentSeed) {
   }
 }
 
-}  // namespace yacl
+}  // namespace yacl::crypto

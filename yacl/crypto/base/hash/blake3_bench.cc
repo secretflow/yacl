@@ -20,6 +20,8 @@
 #include "yacl/base/exception.h"
 #include "yacl/crypto/base/hash/blake3.h"
 
+namespace yacl::crypto {
+
 static void BM_Blake3(benchmark::State& state) {
   for (auto _ : state) {
     state.PauseTiming();
@@ -28,7 +30,7 @@ static void BM_Blake3(benchmark::State& state) {
     state.ResumeTiming();
 
     for (size_t i = 0; i < n; ++i) {
-      yacl::crypto::Blake3Hash blake3;
+      Blake3Hash blake3;
       std::vector<uint8_t> hash_result;
       blake3.Update(std::to_string(i));
       hash_result = blake3.CumulativeHash();
@@ -45,5 +47,7 @@ BENCHMARK(BM_Blake3)
     ->Arg(40960)
     ->Arg(81920)
     ->Arg(1 << 21);
+
+}  // namespace yacl::crypto
 
 BENCHMARK_MAIN();

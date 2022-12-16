@@ -26,6 +26,8 @@
 
 #include "yacl/crypto/tools/prg.h"
 
+namespace yacl::crypto {
+
 constexpr uint128_t kIv1 = 1;
 
 static void BM_OpensslAes(benchmark::State& state) {
@@ -33,13 +35,13 @@ static void BM_OpensslAes(benchmark::State& state) {
   uint128_t key_u128;
 
   std::random_device rd;
-  yacl::Prg<uint128_t> prg(rd());
+  Prg<uint128_t> prg(rd());
 
   key_u128 = prg();
   plain_u128[0] = prg();
 
-  auto type = yacl::SymmetricCrypto::CryptoType::AES128_ECB;
-  yacl::SymmetricCrypto crypto(type, key_u128, kIv1);
+  auto type = SymmetricCrypto::CryptoType::AES128_ECB;
+  SymmetricCrypto crypto(type, key_u128, kIv1);
   std::array<uint128_t, 1> encrypted_u128;
 
   for (auto _ : state) {
@@ -62,7 +64,7 @@ static void BM_EmpToolAes(benchmark::State& state) {
   emp_block key_block, plain_block;
 
   std::random_device rd;
-  yacl::Prg<emp_block> prg(rd());
+  Prg<emp_block> prg(rd());
 
   key_block = prg();
   plain_block = prg();
@@ -87,7 +89,7 @@ static void BM_EmpToolMultiAes(benchmark::State& state) {
   emp::block plain_block[kKeyWidth];
 
   std::random_device rd;
-  yacl::Prg<emp_block> prg(rd());
+  Prg<emp_block> prg(rd());
 
   emp_block eb;
   for (uint64_t i = 0; i < kKeyWidth; ++i) {
@@ -116,7 +118,7 @@ static void BM_IppcpAes(benchmark::State& state) {
   uint128_t key_u128, plain_u128;
 
   std::random_device rd;
-  yacl::Prg<uint128_t> prg(rd());
+  Prg<uint128_t> prg(rd());
 
   key_u128 = prg();
 
@@ -150,7 +152,7 @@ static void BM_IppcpSm4(benchmark::State& state) {
   uint128_t key_u128, plain_u128;
 
   std::random_device rd;
-  yacl::Prg<uint128_t> prg(rd());
+  Prg<uint128_t> prg(rd());
 
   key_u128 = prg();
 
@@ -232,5 +234,7 @@ BENCHMARK(BM_EmpToolMultiAes)
     ->Arg(10240)
     ->Arg(20480)
     ->Arg(1 << 22);
+
+}  // namespace yacl::crypto
 
 BENCHMARK_MAIN();
