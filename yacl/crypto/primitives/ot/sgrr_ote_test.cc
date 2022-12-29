@@ -27,6 +27,9 @@
 
 namespace yacl::crypto {
 
+#define LOG2(X) \
+  ((unsigned)(8 * sizeof(unsigned long long) - __builtin_clzll((X)) - 1))
+
 uint32_t GetRandValue(size_t n) {
   std::random_device rd;
   Prg<uint32_t> gen(rd());
@@ -37,10 +40,11 @@ uint32_t GetRandValue(size_t n) {
 std::pair<BaseOtSendStore, BaseOtRecvStore> MakeOTOptions(size_t num) {
   BaseOtSendStore send_opts;
   BaseOtRecvStore recv_opts;
-  recv_opts.choices = RandBits(num);
+  recv_opts.choices.resize(num);
   std::random_device rd;
-  Prg<uint64_t> gen(rd());
+  Prg<uint128_t> gen(0);
   for (size_t i = 0; i < num; ++i) {
+    recv_opts.choices[i] = (gen() % 2 == 0);
     send_opts.blocks.push_back({gen(), gen()});
     recv_opts.blocks.push_back(send_opts.blocks[i][recv_opts.choices[i]]);
   }
@@ -100,12 +104,12 @@ INSTANTIATE_TEST_SUITE_P(Works_Instances, RotParamTest,
 TEST(RotFuncTest, Test) {
   uint32_t n = 4;
   uint64_t master_seed = 0;
-  uint32_t choice_value = GetRandValue(n);
+  uint32_t choice_value = 3;
 
   // mock many base OTs
   BaseOtSendStore send_opts;
   BaseOtRecvStore recv_opts;
-  std::tie(send_opts, recv_opts) = MakeOTOptions(log2(n));
+  std::tie(send_opts, recv_opts) = MakeOTOptions(LOG2(n));
 
   std::vector<uint128_t> entire_seeds(n);
   std::vector<uint128_t> punctured_seeds(n - 1);
@@ -127,11 +131,14 @@ TEST(RotFuncTest, Test) {
 
   bool triger = false;
   for (uint32_t i = 0; i < n - 1; i++) {
-    if (i == choice_value) triger = true;
-    if (triger == false)
-      EXPECT_EQ(entire_seeds.at(i), punctured_seeds.at(i)) << i;
-    else
-      EXPECT_EQ(entire_seeds.at(i + 1), punctured_seeds.at(i)) << i;
+    if (i == choice_value) {
+      triger = true;
+    }
+    if (!triger) {
+      EXPECT_EQ(entire_seeds.at(i), punctured_seeds.at(i));
+    } else {
+      EXPECT_EQ(entire_seeds.at(i + 1), punctured_seeds.at(i));
+    }
   }
 }
 

@@ -251,12 +251,12 @@ struct SendChunckedBrpcTask {
 }  // namespace
 
 void ChannelBrpc::AddAsyncCount() {
-  std::unique_lock<std::mutex> lock(wait_async_mutex_);
+  std::unique_lock<bthread::Mutex> lock(wait_async_mutex_);
   running_async_count_++;
 }
 
 void ChannelBrpc::SubAsyncCount() {
-  std::unique_lock<std::mutex> lock(wait_async_mutex_);
+  std::unique_lock<bthread::Mutex> lock(wait_async_mutex_);
   YACL_ENFORCE(running_async_count_ > 0);
   running_async_count_--;
   if (running_async_count_ == 0) {
@@ -265,8 +265,10 @@ void ChannelBrpc::SubAsyncCount() {
 }
 
 void ChannelBrpc::WaitAsyncSendToFinish() {
-  std::unique_lock<std::mutex> lock(wait_async_mutex_);
-  wait_async_cv_.wait(lock, [&] { return running_async_count_ == 0; });
+  std::unique_lock<bthread::Mutex> lock(wait_async_mutex_);
+  while (running_async_count_ > 0) {
+    wait_async_cv_.wait(lock);
+  }
 }
 
 template <class ValueType>

@@ -157,14 +157,12 @@ INSTANTIATE_TEST_SUITE_P(Works_Instances, FssDpfEvalTest,
                                          TestParams{1, 2, 8, 64}));
 
 INSTANTIATE_TEST_SUITE_P(Works_Instances, FssDpfEvalAllTest,
-                         testing::Values(TestParams{1, 1, 2, 1},    //
-                                         TestParams{1, 1, 4, 1},    //
-                                         TestParams{1, 1, 6, 1},    //
-                                         TestParams{1, 1, 8, 1},    //
-                                         TestParams{1, 2, 10, 4},   //
-                                         TestParams{1, 2, 12, 8},   //
-                                         TestParams{3, 5, 14, 16},  //
-                                         TestParams{1, 2, 16, 32},  //
-                                         TestParams{1, 2, 18, 64}));
+                         testing::Values(TestParams{1, 1, 2, 1},   //
+                                         TestParams{1, 1, 4, 1},   //
+                                         TestParams{1, 1, 6, 1},   //
+                                         TestParams{1, 1, 8, 1},   //
+                                         TestParams{1, 2, 10, 4},  //
+                                         TestParams{1, 2, 12, 8},  //
+                                         TestParams{3, 5, 14, 16}));
 
 }  // namespace yacl::crypto

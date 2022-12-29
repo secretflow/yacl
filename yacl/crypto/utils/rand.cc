@@ -97,7 +97,7 @@ uint128_t RandU128(bool use_secure_rand) {
 }
 
 std::vector<bool> RandBits(size_t len, bool use_secure_rand) {
-  std::vector<bool> ret(len, false);
+  std::vector<bool> out(len, false);
   const unsigned stride = sizeof(unsigned) * 8;
   if (use_secure_rand) {  // drbg is more secure
     Prg<unsigned> prg(RandU128(true), PRG_MODE::kNistAesCtrDrbg);
@@ -105,7 +105,7 @@ std::vector<bool> RandBits(size_t len, bool use_secure_rand) {
       unsigned rand = prg();
       unsigned size = std::min(stride, static_cast<unsigned>(len - i));
       for (unsigned j = 0; j < size; ++j) {
-        ret[i + j] = (rand & (1 << j)) != 0;
+        out[i + j] = (rand & (1 << j)) != 0;
       }
     }
   } else {  // fast path
@@ -114,11 +114,11 @@ std::vector<bool> RandBits(size_t len, bool use_secure_rand) {
       unsigned rand = prg();
       unsigned size = std::min(stride, static_cast<unsigned>(len - i));
       for (unsigned j = 0; j < size; ++j) {
-        ret[i + j] = (rand & (1 << j)) != 0;
+        out[i + j] = (rand & (1 << j)) != 0;
       }
     }
   }
-  return ret;
+  return out;
 }
 
 }  // namespace yacl::crypto
