@@ -117,3 +117,22 @@ yacl_cc_binary(
         "@com_github_google_benchmark//:benchmark_main",
     ],
 )
+
+yacl_cc_library(
+    name = "dynamic_bitset",
+    srcs = ["dynamic_bitset.h"],
+    deps = [
+        ":exception",
+        ":int128",
+    ],
+)
+
+yacl_cc_test(
+    name = "dynamic_bitset_test",
+    srcs = ["dynamic_bitset_test.cc"],
+    deps = [
+        ":dynamic_bitset",
+        "//yacl/crypto/tools:prg",
+        "//yacl/crypto/utils:rand",
+    ],
+)

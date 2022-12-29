@@ -21,6 +21,9 @@
 #include <mutex>
 #include <string>
 
+#include "bthread/bthread.h"
+#include "bthread/condition_variable.h"
+
 #include "yacl/base/buffer.h"
 #include "yacl/base/byte_container_view.h"
 
@@ -131,8 +134,8 @@ class ChannelBase : public IChannel {
   uint32_t recv_timeout_ms_ = 3 * 60 * 1000;  // 3 minites
 
   // message database related.
-  std::mutex msg_mutex_;
-  std::condition_variable msg_db_cond_;
+  bthread::Mutex msg_mutex_;
+  bthread::ConditionVariable msg_db_cond_;
   std::map<std::string, Buffer> msg_db_;
 
   // if WaitLinkTaskFinish is called.
@@ -151,10 +154,10 @@ class ChannelBase : public IChannel {
   // and how many normal msg sent by peer.
   size_t peer_sent_msg_count_ = 0;
   // cond for ack/fin wait.
-  std::condition_variable ack_fin_cond_;
+  bthread::ConditionVariable ack_fin_cond_;
 
   // chunking related.
-  std::mutex chunked_values_mutex_;
+  bthread::Mutex chunked_values_mutex_;
   std::map<std::string, std::shared_ptr<ChunkedMessage>> chunked_values_;
 };
 

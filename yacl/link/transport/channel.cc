@@ -34,7 +34,7 @@ class ChunkedMessage {
   explicit ChunkedMessage(int64_t message_length) : message_(message_length) {}
 
   void AddChunk(int64_t offset, ByteContainerView data) {
-    std::unique_lock lock(mutex_);
+    std::unique_lock<bthread::Mutex> lock(mutex_);
     if (received_.emplace(offset).second) {
       std::memcpy(message_.data<std::byte>() + offset, data.data(),
                   data.size());
@@ -43,17 +43,17 @@ class ChunkedMessage {
   }
 
   bool IsFullyFilled() {
-    std::unique_lock lock(mutex_);
+    std::unique_lock<bthread::Mutex> lock(mutex_);
     return bytes_written_ == message_.size();
   }
 
   Buffer&& Reassemble() {
-    std::unique_lock lock(mutex_);
+    std::unique_lock<bthread::Mutex> lock(mutex_);
     return std::move(message_);
   }
 
  protected:
-  std::mutex mutex_;
+  bthread::Mutex mutex_;
   std::set<int64_t> received_;
   // chunk index to value.
   int64_t bytes_written_{0};
@@ -66,19 +66,22 @@ Buffer ChannelBase::Recv(const std::string& key) {
 
   Buffer value;
   {
-    std::unique_lock lock(msg_mutex_);
-    const auto& duration = std::chrono::milliseconds(recv_timeout_ms_);
-    if (!msg_db_cond_.wait_for(lock, duration, [&] {
-          auto itr = this->msg_db_.find(key);
-          if (itr == this->msg_db_.end()) {
-            return false;
-          } else {
-            value = std::move(itr->second);
-            this->msg_db_.erase(itr);
-            return true;
-          }
-        })) {
-      YACL_THROW_IO_ERROR("Get data timeout, key={}", key);
+    std::unique_lock<bthread::Mutex> lock(msg_mutex_);
+    auto stop_waiting = [&] {
+      auto itr = this->msg_db_.find(key);
+      if (itr == this->msg_db_.end()) {
+        return false;
+      } else {
+        value = std::move(itr->second);
+        this->msg_db_.erase(itr);
+        return true;
+      }
+    };
+    while (!stop_waiting()) {
+      //                              timeout_us
+      if (msg_db_cond_.wait_for(lock, recv_timeout_ms_ * 1000) == ETIMEDOUT) {
+        YACL_THROW_IO_ERROR("Get data timeout, key={}", key);
+      }
     }
   }
   SendAsyncImpl(kAckKey, ByteContainerView{});
@@ -102,7 +105,7 @@ void ChannelBase::OnNormalMessage(const std::string& key, T&& v) {
 }
 
 void ChannelBase::OnMessage(const std::string& key, ByteContainerView value) {
-  std::unique_lock lock(msg_mutex_);
+  std::unique_lock<bthread::Mutex> lock(msg_mutex_);
   if (key == kAckKey) {
     ack_msg_count_++;
     ack_fin_cond_.notify_all();
@@ -132,7 +135,7 @@ void ChannelBase::OnChunkedMessage(const std::string& key,
   bool should_reassemble = false;
   std::shared_ptr<ChunkedMessage> data;
   {
-    std::unique_lock lock(chunked_values_mutex_);
+    std::unique_lock<bthread::Mutex> lock(chunked_values_mutex_);
     auto itr = chunked_values_.find(key);
     if (itr == chunked_values_.end()) {
       itr = chunked_values_
@@ -153,7 +156,7 @@ void ChannelBase::OnChunkedMessage(const std::string& key,
 
   if (should_reassemble) {
     // notify new value arrived.
-    std::unique_lock lock(msg_mutex_);
+    std::unique_lock<bthread::Mutex> lock(msg_mutex_);
     OnNormalMessage(key, data->Reassemble());
   }
 }
@@ -190,13 +193,13 @@ void ChannelBase::ThrottleWindowWait(size_t wait_count) {
   if (throttle_window_size_ == 0) {
     return;
   }
-  std::unique_lock<std::mutex> lock(msg_mutex_);
-  const auto& duration = std::chrono::milliseconds(recv_timeout_ms_);
-  if (!ack_fin_cond_.wait_for(lock, duration, [&] {
-        return (throttle_window_size_ == 0) ||
-               (ack_msg_count_ + throttle_window_size_ > wait_count);
-      })) {
-    YACL_THROW_IO_ERROR("Throttle window wait timeout");
+  std::unique_lock<bthread::Mutex> lock(msg_mutex_);
+  while (!((throttle_window_size_ == 0) ||
+           (ack_msg_count_ + throttle_window_size_ > wait_count))) {
+    //                               timeout_us
+    if (ack_fin_cond_.wait_for(lock, recv_timeout_ms_ * 1000) == ETIMEDOUT) {
+      YACL_THROW_IO_ERROR("Throttle window wait timeout");
+    }
   }
 }
 
@@ -206,13 +209,16 @@ void ChannelBase::WaitForFinAndFlyingMsg() {
       kFinKey, ByteContainerView{reinterpret_cast<const char*>(&sent_msg_count),
                                  sizeof(size_t)});
   {
-    std::unique_lock<std::mutex> lock(msg_mutex_);
-    ack_fin_cond_.wait(lock, [&] { return received_fin_; });
+    std::unique_lock<bthread::Mutex> lock(msg_mutex_);
+    while (!received_fin_) {
+      ack_fin_cond_.wait(lock);
+    }
   }
   {
-    std::unique_lock<std::mutex> lock(msg_mutex_);
-    msg_db_cond_.wait(
-        lock, [&] { return received_msg_count_ >= peer_sent_msg_count_; });
+    std::unique_lock<bthread::Mutex> lock(msg_mutex_);
+    while (received_msg_count_ < peer_sent_msg_count_) {
+      msg_db_cond_.wait(lock);
+    }
     if (received_msg_count_ > peer_sent_msg_count_) {
       // brpc will reply msg if connection is break (not timeout!), may cause
       // duplicate msg. e.g. alice's gateway pod is migrated before revice bob's
@@ -224,7 +230,7 @@ void ChannelBase::WaitForFinAndFlyingMsg() {
 }
 
 void ChannelBase::StopReceivingAndAckUnreadMsgs() {
-  std::unique_lock<std::mutex> lock(msg_mutex_);
+  std::unique_lock<bthread::Mutex> lock(msg_mutex_);
   waiting_finish_ = true;
   for (auto& msg : msg_db_) {
     SPDLOG_WARN("Asymmetric logic exist, clear unread key {}", msg.first);
@@ -234,8 +240,11 @@ void ChannelBase::StopReceivingAndAckUnreadMsgs() {
 }
 
 void ChannelBase::WaitForFlyingAck() {
-  std::unique_lock<std::mutex> lock(msg_mutex_);
-  ack_fin_cond_.wait(lock, [&] { return ack_msg_count_ >= sent_msg_count_; });
+  std::unique_lock<bthread::Mutex> lock(msg_mutex_);
+  while (ack_msg_count_ < sent_msg_count_) {
+    ack_fin_cond_.wait(lock);
+  }
+
   if (ack_msg_count_ > sent_msg_count_) {
     // brpc will reply msg if connection is break (not timeout!), may cause
     // duplicate msg. e.g. alice's gateway pod is migrated before revice bob's

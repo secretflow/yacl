@@ -37,7 +37,9 @@ namespace yacl::io {
 
 FileInputStream::FileInputStream(std::string file_name)
     : file_name_(std::move(file_name)), file_len_(0) {
+#ifndef __arm64__
   in_.exceptions(std::ifstream::badbit | std::ifstream::failbit);
+#endif
   try {
     in_.open(file_name_, std::ios::binary | std::ios::ate);
   } catch (const std::ifstream::failure& e) {

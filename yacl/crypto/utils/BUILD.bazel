@@ -23,6 +23,7 @@ yacl_cc_library(
     # Openssl::libcrypto requires `dlopen`...
     linkopts = ["-ldl"],
     deps = [
+        "//yacl/base:dynamic_bitset",
         "//yacl/base:exception",
         "//yacl/base:int128",
         "//yacl/crypto/tools:prg",

@@ -21,6 +21,8 @@
 
 #include "brpc/channel.h"
 #include "brpc/server.h"
+#include "bthread/bthread.h"
+#include "bthread/condition_variable.h"
 
 #include "yacl/link/transport/channel.h"
 
@@ -107,8 +109,8 @@ class ChannelBrpc final : public ChannelBase,
   std::shared_ptr<brpc::Channel> channel_;
 
   // WaitAsyncSendToFinish
-  std::condition_variable wait_async_cv_;
-  std::mutex wait_async_mutex_;
+  bthread::ConditionVariable wait_async_cv_;
+  bthread::Mutex wait_async_mutex_;
   int64_t running_async_count_ = 0;
 };
 

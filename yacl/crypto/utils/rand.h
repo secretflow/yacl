@@ -21,6 +21,7 @@
 
 #include "absl/types/span.h"
 
+#include "yacl/base/dynamic_bitset.h"
 #include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
 #include "yacl/crypto/base/symmetric_crypto.h"
@@ -58,6 +59,27 @@ inline uint128_t RandSeed(bool use_secure_rand = true) {
 // TODO(shanzhu): check the efficiency between drbg-prg and RAND_bytes
 std::vector<bool> RandBits(size_t len, bool use_secure_rand = false);
 
+// Generate dynamic_bitset<uint128_t> random bits
+// secure mode: prg.gen (with drbg mode kNistAesCtrDrbg)
+// insecure mode: prg.gen (with drbg mode kAesEcb)
+// TODO(shanzhu): check the efficiency between drbg-prg and RAND_bytes
+template <typename T>
+dynamic_bitset<T> RandDynamicBits(size_t len, bool use_secure_rand = false) {
+  dynamic_bitset<T> out;
+  if (use_secure_rand) {  // drbg is more secure
+    Prg<bool> prg(RandU128(true), PRG_MODE::kNistAesCtrDrbg);
+    for (size_t i = 0; i < len; i++) {
+      out.push_back(prg());
+    }
+  } else {  // fast path
+    Prg<bool> prg(RandU128(false), PRG_MODE::kAesEcb);
+    for (size_t i = 0; i < len; i++) {
+      out.push_back(prg());
+    }
+  }
+  return out;
+}
+
 // Fill random type-T
 // secure mode: RAND_priv_bytes (from openssl)
 // insecure mode: RAND_bytes (from openssl)
@@ -76,7 +98,7 @@ inline void FillRand(absl::Span<T> out, bool use_secure_rand = false) {
 
 // Generate random T-type vectors
 // Note: The output is `sizeof(T)` bytes aligned.
-template <typename T, std::enable_if_t<std::is_scalar<T>::value, int> = 0>
+template <typename T, std::enable_if_t<std::is_standard_layout_v<T>, int> = 0>
 inline std::vector<T> RandVec(size_t len, bool use_secure_rand = false) {
   std::vector<T> out(len);
   FillRand(absl::MakeSpan(out), use_secure_rand);
