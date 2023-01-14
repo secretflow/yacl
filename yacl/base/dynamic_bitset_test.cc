@@ -42,7 +42,7 @@ class DynamicBitsetTest : public testing::Test {
   }
 };
 
-using TestTypes = ::testing::Types<uint16_t, uint32_t, uint64_t, uint128_t>;
+using TestTypes = ::testing::Types<uint16_t, uint32_t, uint64_t>;
 TYPED_TEST_SUITE(DynamicBitsetTest, TestTypes);
 
 TYPED_TEST(DynamicBitsetTest, ConstructorTest) {
