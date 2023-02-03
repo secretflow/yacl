@@ -18,6 +18,7 @@
 
 #include "benchmark/benchmark.h"
 
+#include "yacl/base/dynamic_bitset.h"
 #include "yacl/crypto/utils/rand.h"
 
 namespace yacl::crypto {
@@ -89,7 +90,7 @@ static void BM_RandBitsInSecure(benchmark::State& state) {
     state.PauseTiming();
     size_t n = state.range(0);
     state.ResumeTiming();
-    RandBits(n, false);
+    RandBits<dynamic_bitset<uint128_t>>(n, false);
   }
 }
 
@@ -98,7 +99,7 @@ static void BM_RandBitsSecure(benchmark::State& state) {
     state.PauseTiming();
     size_t n = state.range(0);
     state.ResumeTiming();
-    RandBits(n, true);
+    RandBits<std::vector<bool>>(n, true);
   }
 }
 
@@ -111,5 +112,4 @@ BENCHMARK(BM_RandBytesSecure)->Unit(benchmark::kMillisecond)->Arg(1 << 15);
 BENCHMARK(BM_RandBitsInSecure)->Unit(benchmark::kMillisecond)->Arg(1 << 15);
 BENCHMARK(BM_RandBitsSecure)->Unit(benchmark::kMillisecond)->Arg(1 << 15);
 
-BENCHMARK_MAIN();
 }  // namespace yacl::crypto

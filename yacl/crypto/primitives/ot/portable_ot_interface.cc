@@ -23,7 +23,7 @@
 namespace yacl::crypto {
 
 void PortableOtInterface::Recv(const std::shared_ptr<link::Context> &ctx,
-                               const std::vector<bool> &choices,
+                               const dynamic_bitset<uint128_t> &choices,
                                absl::Span<Block> recv_blocks) {
   const int kNumOt = choices.size();
   SIMPLEOT_RECEIVER receiver;

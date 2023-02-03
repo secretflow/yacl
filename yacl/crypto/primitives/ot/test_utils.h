@@ -24,9 +24,10 @@
 
 namespace yacl::crypto {
 
-inline BaseOtStore MakeBaseOt(size_t num) {
+inline BaseOtStore MakeBaseOts(size_t num) {
   BaseOtStore ot_store;
-  ot_store.recv.choices = crypto::RandBits(num);
+  ot_store.recv.choices = RandBits<dynamic_bitset<uint128_t>>(num);
+
   std::random_device rd;
   Prg<uint128_t> gen(rd());
   for (size_t i = 0; i < num; ++i) {

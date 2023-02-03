@@ -14,10 +14,15 @@
 
 #pragma once
 
+#include <memory>
+
 #include "absl/types/span.h"
 
 #include "yacl/crypto/primitives/ot/common.h"
+#include "yacl/crypto/utils/rand.h"
 #include "yacl/link/link.h"
+
+namespace yacl::crypto {
 
 // Implementation of (n-1)-out-of-n Random OT (also called oblivious punctured
 // vector), paper: https://eprint.iacr.org/2019/1084.
@@ -40,30 +45,13 @@
 // https://crypto.stackexchange.com/questions/38039
 // https://stackoverflow.com/questions/50402168
 
-namespace yacl::crypto {
-
-/**
- * @param ctx context
- * @param ot_options pre-generated 1-2 Random OTs
- * @param n XD this is (n-1)-out-of-n ROT
- * @param index uint32_t type
- * @param punctured_seeds n-1 random seeds (type: uint64_t)
- * @brief (n-1)-out-of-n Random OT Receiver
- */
 void SgrrOtExtRecv(const std::shared_ptr<link::Context>& ctx,
-                   const BaseOtRecvStore& ot_options, uint32_t n,
-                   uint32_t index, absl::Span<uint128_t> punctured_seeds);
+                   const OtRecvStore& base_ot, size_t n, size_t index,
+                   absl::Span<uint128_t> punctured_msgs);
 
-/**
- * @param ctx context
- * @param ot_options pre-generated 1-2 Random OTs
- * @param n XD this is (n-1)-out-of-n ROT
- * @param master_seed
- * @param entire_seeds n random seeds (type: uint64_t)
- * @brief (n-1)-out-of-n Random OT Sender
- */
 void SgrrOtExtSend(const std::shared_ptr<link::Context>& ctx,
-                   const BaseOtSendStore& ot_options, uint32_t n,
-                   uint128_t master_seed, absl::Span<uint128_t> entire_seeds);
+                   const OtSendStore& base_ot, size_t n,
+                   absl::Span<uint128_t> all_msgs,
+                   uint128_t seed = RandSeed(true));
 
 }  // namespace yacl::crypto

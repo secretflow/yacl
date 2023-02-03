@@ -168,11 +168,31 @@ namespace yacl {
  *
  * @since      1.0.0
  */
+
+template <typename T>
+struct template_parameter;
+
+template <template <typename...> class C, typename T>
+struct template_parameter<C<T>> {
+  using type = T;
+};
+
+template <typename T>
+using template_parameter_t = typename template_parameter<T>::type;
+
+template <typename T>
+struct is_dynamic_bitset_block_type
+    : public std::disjunction<std::is_unsigned<T>, std::is_same<T, uint128_t>> {
+};
+
+template <typename T>
+struct is_dynamic_bitset_type
+    : public is_dynamic_bitset_block_type<template_parameter_t<T>> {};
+
 template <typename Block = uint128_t,
           typename Allocator = std::allocator<Block>>
 class dynamic_bitset {
-  static_assert(std::is_unsigned<Block>::value ||
-                    std::is_same<Block, uint128_t>::value,
+  static_assert(is_dynamic_bitset_block_type<Block>::value,
                 "Block is not an unsigned integral type");
 
  public:
@@ -3453,9 +3473,9 @@ constexpr bool dynamic_bitset<Block, Allocator>::check_consistency()
   return check_unused_bits() && check_size();
 }
 
-//=================================================================================================
+//==============================================================================
 // dynamic_bitset external functions implementations
-//=================================================================================================
+//==============================================================================
 
 template <typename Block, typename Allocator>
 constexpr bool operator!=(const dynamic_bitset<Block, Allocator>& lhs,

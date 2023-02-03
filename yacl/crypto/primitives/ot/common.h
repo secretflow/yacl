@@ -17,28 +17,34 @@
 #include <array>
 #include <vector>
 
+#include "yacl/base/dynamic_bitset.h"
 #include "yacl/base/int128.h"
 
 namespace yacl::crypto {
 
-struct BaseOtRecvStore {
-  // TODO(shuyan.ycf): Wrap a bit choice class.
+constexpr size_t log2_floor(size_t x) {
+  return (8 * sizeof(uint64_t) - absl::countl_zero(x)) - 1;
+}
+
+constexpr size_t log2_ceil(size_t x) { return log2_floor(x - 1) + 1; }
+
+struct OtRecvStore {
   // Receiver choices.
-  std::vector<bool> choices;
+  dynamic_bitset<uint128_t> choices;
   // Received blocks.
   // Choose uint128_t as block so that it can be perfectly used as AES-PRG seed.
   std::vector<uint128_t> blocks;
 };
 
-struct BaseOtSendStore {
+struct OtSendStore {
   // Sender received blocks.
   // Choose uint128_t as block so that it can be perfectly used as AES-PRG seed.
   std::vector<std::array<uint128_t, 2>> blocks;
 };
 
 struct BaseOtStore {
-  BaseOtSendStore send;
-  BaseOtRecvStore recv;
+  OtSendStore send;
+  OtRecvStore recv;
 };
 
 }  // namespace yacl::crypto

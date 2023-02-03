@@ -31,5 +31,6 @@ yacl_cc_binary(
         "//yacl/crypto/utils:rand",
         "//yacl/link:test_util",
         "@com_github_google_benchmark//:benchmark_main",
+        "@com_google_absl//absl/numeric:bits",
     ],
 )

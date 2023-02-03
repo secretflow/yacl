@@ -15,6 +15,7 @@
 #include "yacl/crypto/tools/random_oracle.h"
 
 #include <random>
+#include <string>
 
 #include "gtest/gtest.h"
 
@@ -32,30 +33,40 @@ INSTANTIATE_TEST_SUITE_P(VarInputLen, RandomOracleTest,
 TEST_P(RandomOracleTest, Default) {
   const auto& param = GetParam();
   const auto& RO = RandomOracle::GetDefault();
-  auto input = crypto::RandBytes(param);
+  auto input = RandBytes(param);
   EXPECT_EQ(RO.Gen(input), RO.Gen(input));
 }
 
 TEST_P(RandomOracleTest, OutLen8) {
   const auto& param = GetParam();
-  auto RO = RandomOracle(crypto::HashAlgorithm::BLAKE3, 8);
-  auto input = crypto::RandBytes(param);
+  auto RO = RandomOracle(HashAlgorithm::BLAKE3, 8);
+  auto input = RandBytes(param);
   EXPECT_EQ(RO.Gen(input), RO.Gen(input));
 }
 
+TEST(RandomOracleTest, MultiInTest) {
+  auto bytes1 = RandBytes(10);
+  auto bytes2 = RandBytes(10);
+  auto bytes3 = RandBytes(10);
+  auto RO = RandomOracle(HashAlgorithm::BLAKE3, 8);
+  RO.Gen<uint128_t>({bytes1, bytes2, bytes3});
+
+  auto bytes4 = RandBytes(10);
+  auto bytes5 = RandBytes(11);
+  auto bytes6 = RandBytes(12);
+  RO.Gen<std::array<uint8_t, 32>>({bytes4, bytes5, bytes6});
+}
+
 TEST(RandomOracleTest, EdgeTest1) {
-  EXPECT_THROW(RandomOracle(crypto::HashAlgorithm::BLAKE3, 0),
-               yacl::EnforceNotMet);
+  EXPECT_THROW(RandomOracle(HashAlgorithm::BLAKE3, 0), yacl::EnforceNotMet);
 }
 
 TEST(RandomOracleTest, EdgeTest2) {
-  EXPECT_THROW(RandomOracle(crypto::HashAlgorithm::BLAKE3, 33);
-               , yacl::EnforceNotMet);
+  EXPECT_THROW(RandomOracle(HashAlgorithm::BLAKE3, 33);, yacl::EnforceNotMet);
 }
 
 TEST(RandomOracleTest, EdgeTest3) {
-  EXPECT_THROW(RandomOracle(crypto::HashAlgorithm::BLAKE2B, 65);
-               , yacl::EnforceNotMet);
+  EXPECT_THROW(RandomOracle(HashAlgorithm::BLAKE2B, 65);, yacl::EnforceNotMet);
 }
 
 template <typename T>
@@ -66,7 +77,7 @@ void inline CheckType(const RandomOracle& ro, ByteContainerView input) {
 TEST_P(RandomOracleTest, GetTypeTest) {
   const auto& param = GetParam();
   const auto& RO = RandomOracle::GetDefault();
-  auto input = crypto::RandBytes(param);
+  auto input = RandBytes(param);
   CheckType<uint128_t>(RO, input);
   CheckType<int128_t>(RO, input);
   CheckType<uint64_t>(RO, input);
@@ -81,8 +92,8 @@ TEST_P(RandomOracleTest, GetTypeTest) {
 TEST_P(RandomOracleTest, TwoParamTest) {
   const auto& param = GetParam();
   const auto& RO = RandomOracle::GetDefault();
-  auto input_bytes = crypto::RandBytes(param);
-  auto input_u64 = crypto::RandU64();
+  auto input_bytes = RandBytes(param);
+  auto input_u64 = RandU64();
 
   EXPECT_EQ(RO.Gen<uint128_t>(input_bytes, input_u64),
             RO.Gen<uint128_t>(input_bytes, input_u64));

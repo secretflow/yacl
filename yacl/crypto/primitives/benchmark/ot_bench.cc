@@ -45,5 +45,4 @@ BM_REGISTER_ALL_OT(BM_DefaultArguments);
 // BM_REGISTER_KKRT_OTE(BM_DefaultArguments);
 // BM_REGISTER_SGRR_OTE(BM_DefaultArguments);
 
-BENCHMARK_MAIN();
 }  // namespace yacl::crypto

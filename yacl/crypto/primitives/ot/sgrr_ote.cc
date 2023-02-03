@@ -14,196 +14,159 @@
 
 #include "yacl/crypto/primitives/ot/sgrr_ote.h"
 
-#include <math.h>
+#include <cmath>
+#include <cstring>
+#include <string>
+#include <vector>
 
+#include "yacl/base/buffer.h"
 #include "yacl/base/byte_container_view.h"
+#include "yacl/base/dynamic_bitset.h"
 #include "yacl/base/exception.h"
+#include "yacl/base/int128.h"
 #include "yacl/crypto/tools/prg.h"
+#include "yacl/crypto/tools/random_permutation.h"
 
 namespace yacl::crypto {
 
 namespace {
 
-#define LOG2(X) \
-  ((unsigned)(8 * sizeof(unsigned long long) - __builtin_clzll((X)) - 1))
+const auto kDefaltRp =
+    RandomPerm(SymmetricCrypto::CryptoType::AES128_ECB, 0x12345678);
 
 // use one seed to generate two seeds
-std::pair<uint128_t, uint128_t> SplitSeed(uint128_t seed) {
-  Prg<uint128_t> prg(seed);
-  return {prg(), prg()};
-}
-
-// 1st 4 bytes: the length of vector<bool>
-// other bytes: contents of vector<bool> (padding with 0s)
-inline std::vector<uint8_t> BufferFromVectorBool(
-    const std::vector<bool>& vector) {
-  YACL_ENFORCE_GT(sizeof(uint32_t) * 16, vector.size());
-  YACL_ENFORCE_GT(vector.size(), (uint32_t)1);
-
-  uint32_t size = vector.size();
-  std::vector<uint8_t> buf(((size - 1) / 8) + 5);
-  memcpy(buf.data(), &size, sizeof(uint32_t));
-
-  auto* out = buf.data() + 4;
-  int shift = 0;
-  for (bool bit : vector) {
-    *out |= bit << shift;
-    if (++shift == 8) {
-      ++out;
-      shift = 0;
-    }
-  }
-  return buf;
-}
-
-// convert a string to std::vector<bool>
-inline std::vector<bool> VectorBoolFromBuffer(const Buffer& str) {
-  uint32_t ret_size = 0;
-  memcpy(&ret_size, str.data<char>(), sizeof(uint32_t));
-  std::vector<bool> ret(ret_size, false);
-  uint32_t str_counter = 0;
-  for (uint32_t i = 4; i < str.size(); i++) {
-    uint8_t temp = str.data<char>()[i];
-    for (uint32_t j = 0; j < 8 && str_counter < ret_size; j++) {
-      ret[str_counter] = temp & 1;
-      temp >>= 1;
-      str_counter++;
-    }
-  }
-  return ret;
+// we use crhash to instantiate this, see https://eprint.iacr.org/2019/074,
+// section 6.2.
+std::array<uint128_t, 2> SplitSeed(uint128_t seed) {
+  std::array<uint128_t, 2> out;
+  kDefaltRp.Gen({seed ^ 1, seed ^ 2}, absl::MakeSpan(out));
+  return out;
 }
 
 }  // namespace
 
 void SgrrOtExtRecv(const std::shared_ptr<link::Context>& ctx,
-                   const BaseOtRecvStore& ot_options, uint32_t n,
-                   uint32_t index, absl::Span<uint128_t> punctured_seeds) {
-  uint32_t ot_num = LOG2(n);
-  YACL_ENFORCE_GT(n, (uint32_t)1);
-  YACL_ENFORCE_GE(ot_options.choices.size(), ot_num);
-  YACL_ENFORCE_GE(ot_options.blocks.size(), ot_num);
-
-  std::vector<bool> choices(ot_num);  // most significant bit first
-  for (uint32_t i = 0; i < ot_num; i++) {
-    choices[ot_num - i - 1] = (index >> i & 1);
-  }
+                   const OtRecvStore& base_ot, size_t n, size_t index,
+                   absl::Span<uint128_t> punctured_msgs) {
+  uint32_t ot_num = log2_ceil(n);
+  YACL_ENFORCE_GE(n, (uint32_t)1);                         // range should > 1
+  YACL_ENFORCE_GE((uint32_t)128, base_ot.choices.size());  // base ot num < 128
+  YACL_ENFORCE_GE(base_ot.choices.size(), ot_num);  // base ot sanity check
+  YACL_ENFORCE_GE(base_ot.blocks.size(), ot_num);   // base ot sanity check
 
   // we need log(n) 1-2 OTs from log(n) ROTs
-  {
-    std::vector<bool> masked_choices(ot_num);
-    for (uint32_t i = 0; i < ot_num; i++) {
-      masked_choices[i] = (!choices[i]) ^ ot_options.choices[i];
-    }
-    // send masked_choices to sender
-    ctx->SendAsync(ctx->NextRank(), BufferFromVectorBool(masked_choices),
-                   fmt::format("PUNC_ROT:SEND:{}", 0));
+  dynamic_bitset<uint128_t> choice;  // most significant bit first
+  for (size_t i = 0; i < ot_num; i++) {
+    choice.push_back((index >> (ot_num - i - 1)) & 1);
   }
+  auto masked_choice = (~choice) ^ base_ot.choices;
 
-  std::vector<uint128_t> temp_seed_vec;
+  // send masked_choices to sender
+  ctx->SendAsync(ctx->NextRank(), masked_choice.to_string(),
+                 "SGRR_OTE:SEND-CHOICE");  // not ideal communication
+
+  // for each level
+  std::vector<uint128_t> working_seeds;
+  std::vector<uint128_t> recv_msgs(2 * ot_num);
+  auto recv_buf = ctx->Recv(ctx->NextRank(), "SGRR_OTE:RECV-CORR");
+  std::memcpy(recv_msgs.data(), recv_buf.data(), recv_buf.size());
+
   for (uint32_t i = 0, empty_pos = 0; i < ot_num; i++) {
-    bool ot_choice = !choices.at(i);
+    bool ot_choice = !choice[i];
     uint32_t insert_pos = (empty_pos << 1);
-    empty_pos = (empty_pos << 1) + choices[i];
+    empty_pos = (empty_pos << 1) + static_cast<unsigned int>(choice[i]);
 
     // unmask and get the seed for this level
     uint128_t current_seed = 0;
-    {
-      auto recv_string =
-          ctx->Recv(ctx->NextRank(), fmt::format("PUNC_ROT:RECV:{}", i + 1));
-      if (ot_choice) {
-        std::memcpy(&current_seed, recv_string.data<char>() + sizeof(uint128_t),
-                    sizeof(uint128_t));
-      } else {
-        std::memcpy(&current_seed, recv_string.data<char>(), sizeof(uint128_t));
-      }
-      current_seed ^= ot_options.blocks[i];
+    if (ot_choice) {
+      current_seed = recv_msgs[i * 2 + 1];
+    } else {
+      current_seed = recv_msgs[i * 2];
     }
+    current_seed ^= base_ot.blocks[i];
 
     // generate all already knows seeds for this level
     uint32_t iter_num = (1 << i) - 1;
     for (uint32_t j = 0; j < iter_num; j++) {
-      uint128_t left = 0;
-      uint128_t right = 0;
-      YACL_ENFORCE(!temp_seed_vec.empty());
-      std::tie(left, right) = SplitSeed(temp_seed_vec.at(j));
-      temp_seed_vec.push_back(left);
-      temp_seed_vec.push_back(right);
+      auto split = SplitSeed(working_seeds.at(j));
+      working_seeds.push_back(split[0]);
+      working_seeds.push_back(split[1]);
       if (ot_choice) {
-        current_seed ^= right;
+        current_seed ^= split[1];
       } else {
-        current_seed ^= left;
+        current_seed ^= split[0];
       }
     }
 
     // delete seeds for previous level
-    if (!temp_seed_vec.empty()) {
-      temp_seed_vec.erase(temp_seed_vec.begin(),
-                          temp_seed_vec.begin() + iter_num);
+    if (!working_seeds.empty()) {
+      working_seeds.erase(working_seeds.begin(),
+                          working_seeds.begin() + iter_num);
     }
 
     // insert the unmasked seed to the correct position
-    if (insert_pos == temp_seed_vec.size()) {
-      temp_seed_vec.push_back(current_seed);
+    if (insert_pos == working_seeds.size()) {
+      working_seeds.push_back(current_seed);
     } else {
-      temp_seed_vec.insert(temp_seed_vec.begin() + insert_pos, current_seed);
+      working_seeds.insert(working_seeds.begin() + insert_pos, current_seed);
     }
   }
 
-  memcpy(punctured_seeds.data(), temp_seed_vec.data(),
-         temp_seed_vec.size() * sizeof(uint128_t));
+  // insert the known punctured index
+  working_seeds.insert(working_seeds.begin() + static_cast<int64_t>(index), 0);
+  working_seeds.resize(n);
+
+  memcpy(punctured_msgs.data(), working_seeds.data(),
+         working_seeds.size() * sizeof(uint128_t));
 }
 
 void SgrrOtExtSend(const std::shared_ptr<link::Context>& ctx,
-                   const BaseOtSendStore& ot_options, uint32_t n,
-                   uint128_t master_seed, absl::Span<uint128_t> entire_seeds) {
-  uint32_t ot_num = LOG2(n);
-  YACL_ENFORCE_GE(ot_options.blocks.size(), ot_num);
-  YACL_ENFORCE_GT(n, (uint32_t)1);
+                   const OtSendStore& base_ot, size_t n,
+                   absl::Span<uint128_t> all_msgs, uint128_t seed) {
+  uint32_t ot_num = log2_ceil(n);
+  YACL_ENFORCE_GE(base_ot.blocks.size(), ot_num);
+  YACL_ENFORCE_GE(n, (uint32_t)1);
 
-  std::vector<uint128_t> temp_seed_vec;
-  std::vector<std::array<uint128_t, 2>> ot_message_vec(ot_num);
-  temp_seed_vec.push_back(master_seed);
+  std::vector<uint128_t> working_seeds;
+  std::vector<std::array<uint128_t, 2>> ot_msgs(ot_num);
+  working_seeds.push_back(seed);
 
   // generate the final level seeds based on master_seed
   for (uint32_t i = 0; i < ot_num; i++) {
     //  for each seeds in level i
     uint32_t iter_num = 1 << i;
     for (uint32_t j = 0; j < iter_num; j++) {
-      uint128_t left = 0;
-      uint128_t right = 0;
-      std::tie(left, right) = SplitSeed(temp_seed_vec.at(j));
-      ot_message_vec[i][0] ^= left;
-      ot_message_vec[i][1] ^= right;
-      temp_seed_vec.push_back(left);
-      temp_seed_vec.push_back(right);
+      auto split = SplitSeed(working_seeds.at(j));
+      ot_msgs[i][0] ^= split[0];
+      ot_msgs[i][1] ^= split[1];
+      working_seeds.push_back(split[0]);
+      working_seeds.push_back(split[1]);
     }
-    temp_seed_vec.erase(temp_seed_vec.begin(),
-                        temp_seed_vec.begin() + iter_num);
+    working_seeds.erase(working_seeds.begin(),
+                        working_seeds.begin() + iter_num);
   }
 
   // receive the masked choices from receiver
-  auto recv_string =
-      ctx->Recv(ctx->NextRank(), fmt::format("PUNC_ROT:RECV:{}", 0));
-  std::vector<bool> masked_choices = VectorBoolFromBuffer(recv_string);
+  auto recv_buf = ctx->Recv(ctx->NextRank(), "SGRR_OTE:RECV-CHOICE");
+  std::string str(static_cast<char*>(recv_buf.data()), recv_buf.size());
+  dynamic_bitset<uint128_t> masked_choice(str);
 
   // mask the ROT messages and send back
+  std::vector<uint128_t> send_msgs(2 * ot_num);
   for (uint32_t i = 0; i < ot_num; i++) {
-    std::array<uint128_t, 2> send_message;
-    send_message[0] =
-        ot_message_vec[i][0] ^ ot_options.blocks[i][masked_choices[i]];
-    send_message[1] =
-        ot_message_vec[i][1] ^ ot_options.blocks[i][1 - masked_choices[i]];
-
-    auto buf =
-        ByteContainerView{reinterpret_cast<const char*>(send_message.data()),
-                          send_message.size() * sizeof(uint128_t)};
-    ctx->SendAsync(ctx->NextRank(), buf,
-                   fmt::format("PUNC_ROT:SEND:{}", i + 1));
+    send_msgs[i * 2 + 0] = ot_msgs[i][0] ^ base_ot.blocks[i][masked_choice[i]];
+    send_msgs[i * 2 + 1] = ot_msgs[i][1] ^ base_ot.blocks[i][!masked_choice[i]];
   }
 
+  ctx->SendAsync(ctx->NextRank(),
+                 Buffer(reinterpret_cast<const char*>(send_msgs.data()),
+                        send_msgs.size() * sizeof(uint128_t)),
+                 "SGRR_OTE:SEND-CORR");
+  working_seeds.resize(n);
+
   // output the result
-  memcpy(entire_seeds.data(), temp_seed_vec.data(),
-         temp_seed_vec.size() * sizeof(uint128_t));
+  memcpy(all_msgs.data(), working_seeds.data(),
+         working_seeds.size() * sizeof(uint128_t));
 }
 
 }  // namespace yacl::crypto

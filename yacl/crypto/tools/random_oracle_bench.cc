@@ -43,6 +43,4 @@ BENCHMARK(BM_RO)
     ->Arg(81920)
     ->Arg(1 << 24);
 
-// Run the benchmark
-BENCHMARK_MAIN();
 }  // namespace yacl::crypto

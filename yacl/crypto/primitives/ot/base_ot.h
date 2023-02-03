@@ -16,6 +16,7 @@
 
 #include "absl/types/span.h"
 
+#include "yacl/base/dynamic_bitset.h"
 #include "yacl/base/int128.h"
 #include "yacl/link/link.h"
 
@@ -24,14 +25,14 @@ namespace yacl::crypto {
 using Block = uint128_t;
 
 void BaseOtRecv(const std::shared_ptr<link::Context>& ctx,
-                const std::vector<bool>& choices,
+                const dynamic_bitset<uint128_t>& choices,
                 absl::Span<Block> recv_blocks);
 
 void BaseOtSend(const std::shared_ptr<link::Context>& ctx,
                 absl::Span<std::array<Block, 2>> send_blocks);
 
 inline std::vector<Block> BaseOtRecv(const std::shared_ptr<link::Context>& ctx,
-                                     const std::vector<bool>& choices) {
+                                     const dynamic_bitset<uint128_t>& choices) {
   std::vector<Block> blocks(choices.size());
   BaseOtRecv(ctx, choices, absl::MakeSpan(blocks));
   return blocks;

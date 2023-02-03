@@ -130,6 +130,7 @@ yacl_cc_library(
 yacl_cc_test(
     name = "dynamic_bitset_test",
     srcs = ["dynamic_bitset_test.cc"],
+    copts = ["-fno-rtti"],  # for testing uint128_t
     deps = [
         ":dynamic_bitset",
         "//yacl/crypto/tools:prg",

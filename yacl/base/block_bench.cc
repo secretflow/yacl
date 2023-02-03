@@ -497,5 +497,3 @@ BENCHMARK(BM_Uint128LShift)
     ->Arg(4096000)
     ->Arg(8192000)
     ->Arg(16384000);
-
-BENCHMARK_MAIN();

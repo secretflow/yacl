@@ -45,7 +45,7 @@ TEST_P(BaseOtTest, Works) {
   recv_blocks.resize(params.num_ot);
 
   // WHEN
-  std::vector<bool> choices = crypto::RandBits(params.num_ot);
+  auto choices = RandBits<dynamic_bitset<uint128_t>>(params.num_ot);
   std::future<void> sender =
       std::async([&] { BaseOtSend(contexts[0], absl::MakeSpan(send_blocks)); });
   std::future<void> receiver = std::async(
@@ -71,7 +71,7 @@ TEST(BaseOtEdgeTest, Test) {
   // GIVEN
   std::vector<std::array<Block, 2>> send_blocks;
   std::vector<Block> recv_blocks;
-  std::vector<bool> choices;
+  dynamic_bitset<uint128_t> choices;
 
   auto contexts = link::test::SetupWorld(2);
 

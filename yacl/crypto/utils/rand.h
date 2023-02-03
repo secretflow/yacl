@@ -16,7 +16,9 @@
 
 #include <openssl/rand.h>
 
+#include <cstdint>
 #include <random>
+#include <type_traits>
 #include <vector>
 
 #include "absl/types/span.h"
@@ -40,44 +42,43 @@ namespace yacl::crypto {
 
 // Generate uint64_t random value
 // secure mode: reseed (with drbg mode kNistAesCtrDrbg), and gen (with openssl)
-// insecure mode: gen (with random_device)
+// insecure mode: gen (with openssl rand_bytes)
 uint64_t RandU64(bool use_secure_rand = false);
+
+inline uint64_t SecureRandU64() { return RandU64(true); }
 
 // Generate uint128_t random value
 // secure mode: reseed (with drbg mode kNistAesCtrDrbg), and gen (with openssl)
-// insecure mode: gen (with random_device)
+// insecure mode: gen (with openssl rand_bytes)
 uint128_t RandU128(bool use_secure_rand = false);
 
+inline uint64_t SecureRandU128() { return RandU128(true); }
+
 // Generate uint128_t random seed (internally calls RandU128())
-inline uint128_t RandSeed(bool use_secure_rand = true) {
+inline uint128_t RandSeed(bool use_secure_rand = false) {
   return RandU128(use_secure_rand);
 }
 
-// Generate std::vector<bool> random bits
-// secure mode: prg.gen (with drbg mode kNistAesCtrDrbg)
-// insecure mode: prg.gen (with drbg mode kAesEcb)
-// TODO(shanzhu): check the efficiency between drbg-prg and RAND_bytes
-std::vector<bool> RandBits(size_t len, bool use_secure_rand = false);
+inline uint64_t SecureRandSeed() { return RandSeed(true); }
 
-// Generate dynamic_bitset<uint128_t> random bits
+// Generate rand bits for
+//  - vector<bool>
+//  - dynamic_bitset<T>, where T = {uint128_t, uint64_t, uint32_t, uint16_t}
 // secure mode: prg.gen (with drbg mode kNistAesCtrDrbg)
 // insecure mode: prg.gen (with drbg mode kAesEcb)
-// TODO(shanzhu): check the efficiency between drbg-prg and RAND_bytes
 template <typename T>
-dynamic_bitset<T> RandDynamicBits(size_t len, bool use_secure_rand = false) {
-  dynamic_bitset<T> out;
-  if (use_secure_rand) {  // drbg is more secure
-    Prg<bool> prg(RandU128(true), PRG_MODE::kNistAesCtrDrbg);
-    for (size_t i = 0; i < len; i++) {
-      out.push_back(prg());
-    }
-  } else {  // fast path
-    Prg<bool> prg(RandU128(false), PRG_MODE::kAesEcb);
-    for (size_t i = 0; i < len; i++) {
-      out.push_back(prg());
-    }
-  }
-  return out;
+struct is_supported_bit_vector_type
+    : public std::disjunction<std::is_same<std::vector<bool>, T>,
+                              is_dynamic_bitset_type<T>> {};
+
+template <typename T = dynamic_bitset<uint128_t>,
+          std::enable_if_t<is_supported_bit_vector_type<T>::value, bool> = true>
+T RandBits(size_t len, bool use_secure_rand = false);
+
+template <typename T = dynamic_bitset<uint128_t>,
+          std::enable_if_t<is_supported_bit_vector_type<T>::value, bool> = true>
+inline T SecureRandBits(size_t len) {
+  return RandBits(len, true);
 }
 
 // Fill random type-T
@@ -108,9 +109,11 @@ inline std::vector<T> RandVec(size_t len, bool use_secure_rand = false) {
 // Generate random number of bytes
 inline std::vector<uint8_t> RandBytes(size_t len,
                                       bool use_secure_rand = false) {
-  std::vector<uint8_t> out(len);
-  FillRand<uint8_t>(absl::MakeSpan(out), use_secure_rand);
-  return out;
+  return RandVec<uint8_t>(len, use_secure_rand);
+}
+
+inline std::vector<uint8_t> SecureRandBytes(size_t len) {
+  return RandBytes(len, true);
 }
 
 // TODO(shanzhu) RFC: add more generic random interface, e.g.

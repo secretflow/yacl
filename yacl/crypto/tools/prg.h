@@ -157,4 +157,21 @@ class Prg {
   std::unique_ptr<IDrbg> ctr_drbg_;
 };
 
+// Since Prg is over-complex for simple tasks, here we provide a simple, yet
+// useful way of using Prg.
+template <typename T,
+          std::enable_if_t<std::is_standard_layout<T>::value, int> = 0>
+inline void PrgAesCtr(const uint128_t seed, absl::Span<T> out) {
+  FillPseudoRandom(SymmetricCrypto::CryptoType::AES128_CTR, seed, 0, 0, out);
+}
+
+template <typename T,
+          std::enable_if_t<std::is_standard_layout<T>::value, int> = 0>
+inline std::vector<T> PrgAesCtr(const uint128_t seed, const size_t num) {
+  std::vector<T> res(num);
+  FillPseudoRandom(SymmetricCrypto::CryptoType::AES128_CTR, seed, 0, 0,
+                   absl::MakeSpan(res));
+  return res;
+}
+
 }  // namespace yacl::crypto
