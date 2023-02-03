@@ -52,8 +52,8 @@ def _com_github_brpc_brpc():
     maybe(
         http_archive,
         name = "com_github_brpc_brpc",
-        sha256 = "f803406a81a82a7d2fef6e0003100682bd98d7b991f16f2e1875dfefc322c90b",
-        strip_prefix = "incubator-brpc-1.3.0",
+        sha256 = "b9d638b76725552ed11178c650d7fc95e30f252db7972a93dc309a0698c7d2b8",
+        strip_prefix = "brpc-1.3.0",
         type = "tar.gz",
         patch_args = ["-p1"],
         patches = [
