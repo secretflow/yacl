@@ -20,6 +20,7 @@ yacl_cc_library(
     name = "common",
     hdrs = ["common.h"],
     deps = [
+        "//yacl/base:dynamic_bitset",
         "//yacl/base:int128",
     ],
 )
@@ -35,29 +36,9 @@ yacl_cc_library(
 )
 
 yacl_cc_library(
-    name = "sgrr_ote",
-    srcs = ["sgrr_ote.cc"],
-    hdrs = ["sgrr_ote.h"],
-    deps = [
-        ":common",
-        "//yacl/crypto/tools:prg",
-        "//yacl/link",
-    ],
-)
-
-yacl_cc_test(
-    name = "sgrr_ote_test",
-    srcs = ["sgrr_ote_test.cc"],
-    deps = [
-        ":sgrr_ote",
-        "//yacl/crypto/utils:rand",
-        "//yacl/link:test_util",
-    ],
-)
-
-yacl_cc_library(
     name = "base_ot_interface",
     hdrs = ["base_ot_interface.h"],
+    deps = ["//yacl/base:dynamic_bitset"],
 )
 
 yacl_cc_library(
@@ -138,6 +119,7 @@ yacl_cc_test(
     srcs = ["iknp_ote_test.cc"],
     deps = [
         ":iknp_ote",
+        ":test_utils",
         "//yacl/crypto/utils:rand",
         "//yacl/link:test_util",
     ],
@@ -166,6 +148,32 @@ yacl_cc_test(
     srcs = ["kkrt_ote_test.cc"],
     deps = [
         ":kkrt_ote",
+        ":test_utils",
+        "//yacl/crypto/utils:rand",
+        "//yacl/link:test_util",
+    ],
+)
+
+yacl_cc_library(
+    name = "sgrr_ote",
+    srcs = ["sgrr_ote.cc"],
+    hdrs = ["sgrr_ote.h"],
+    deps = [
+        ":common",
+        "//yacl/crypto/tools:prg",
+        "//yacl/crypto/tools:random_permutation",
+        "//yacl/crypto/utils:rand",
+        "//yacl/link",
+        "@com_google_absl//absl/numeric:bits",
+    ],
+)
+
+yacl_cc_test(
+    name = "sgrr_ote_test",
+    srcs = ["sgrr_ote_test.cc"],
+    deps = [
+        ":sgrr_ote",
+        ":test_utils",
         "//yacl/crypto/utils:rand",
         "//yacl/link:test_util",
     ],

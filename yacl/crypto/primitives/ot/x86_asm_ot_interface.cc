@@ -27,7 +27,7 @@
 namespace yacl::crypto {
 
 void X86AsmOtInterface::Recv(const std::shared_ptr<link::Context> &ctx,
-                             const std::vector<bool> &choices,
+                             const dynamic_bitset<uint128_t> &choices,
                              absl::Span<Block> recv_blocks) {
   const int kNumOt = choices.size();
   auto receiver = std::make_unique<SIMPLEOT_RECEIVER>();

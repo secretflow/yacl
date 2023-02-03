@@ -145,5 +145,3 @@ BENCHMARK(BM_SseTransBlock)
     ->Arg(40960)
     ->Arg(81920)
     ->Arg(1 << 20);
-
-BENCHMARK_MAIN();

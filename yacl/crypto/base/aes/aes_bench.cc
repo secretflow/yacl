@@ -236,5 +236,3 @@ BENCHMARK(BM_EmpToolMultiAes)
     ->Arg(1 << 22);
 
 }  // namespace yacl::crypto
-
-BENCHMARK_MAIN();

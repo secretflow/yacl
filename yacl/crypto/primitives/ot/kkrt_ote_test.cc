@@ -22,6 +22,7 @@
 #include <thread>
 
 #include "yacl/base/exception.h"
+#include "yacl/crypto/primitives/ot/test_utils.h"
 #include "yacl/crypto/tools/prg.h"
 #include "yacl/crypto/utils/rand.h"
 #include "yacl/link/test_util.h"
@@ -34,28 +35,13 @@ struct TestParams {
 
 class KkrtOtExtTest : public ::testing::TestWithParam<TestParams> {};
 
-std::pair<BaseOtSendStore, BaseOtRecvStore> MakeBaseOptions(size_t num) {
-  BaseOtSendStore send_opts;
-  BaseOtRecvStore recv_opts;
-  recv_opts.choices = crypto::RandBits(num);
-  std::random_device rd;
-  Prg<uint128_t> gen(rd());
-  for (size_t i = 0; i < num; ++i) {
-    send_opts.blocks.push_back({gen(), gen()});
-    recv_opts.blocks.push_back(send_opts.blocks[i][recv_opts.choices[i]]);
-  }
-  return {std::move(send_opts), std::move(recv_opts)};
-}
-
 TEST_P(KkrtOtExtTest, Works) {
   // GIVEN
   const int kWorldSize = 2;
   auto contexts = link::test::SetupWorld(kWorldSize);
 
   // KKRT requires 512 width.
-  BaseOtSendStore send_opts;
-  BaseOtRecvStore recv_opts;
-  std::tie(send_opts, recv_opts) = MakeBaseOptions(512);
+  auto base_ot = MakeBaseOts(512);
 
   const size_t num_ot = GetParam().num_ot;
   std::vector<uint128_t> recv_out(num_ot);
@@ -65,10 +51,10 @@ TEST_P(KkrtOtExtTest, Works) {
                 [&]() -> uint128_t { return prg(); });
 
   // WHEN
-  std::future<std::unique_ptr<IGroupPRF>> sender =
-      std::async([&] { return KkrtOtExtSend(contexts[0], recv_opts, num_ot); });
+  std::future<std::unique_ptr<IGroupPRF>> sender = std::async(
+      [&] { return KkrtOtExtSend(contexts[0], base_ot.recv, num_ot); });
   std::future<void> receiver = std::async([&] {
-    KkrtOtExtRecv(contexts[1], send_opts, inputs, absl::MakeSpan(recv_out));
+    KkrtOtExtRecv(contexts[1], base_ot.send, inputs, absl::MakeSpan(recv_out));
   });
   receiver.get();
   auto encoder = sender.get();
@@ -95,17 +81,16 @@ TEST(KkrtOtExtEdgeTest, Test) {
   // GIVEN
   const int kWorldSize = 2;
   auto contexts = link::test::SetupWorld(kWorldSize);
-
-  auto [send_opts, recv_opts] = MakeBaseOptions(512);
+  auto base_ot = MakeBaseOts(512);
 
   size_t kNumOt = 16;
   // WHEN THEN
   {
     // Mismatched receiver.
     std::vector<uint128_t> recv_out(kNumOt);
-    std::vector<uint128_t> choices = crypto::RandVec<uint128_t>(kNumOt + 128);
+    auto choices = RandBits<dynamic_bitset<uint128_t>>(kNumOt + 128);
     ASSERT_THROW(
-        KkrtOtExtRecv(contexts[1], send_opts, absl::MakeConstSpan(choices),
+        KkrtOtExtRecv(contexts[1], base_ot.send, absl::MakeConstSpan(choices),
                       absl::MakeSpan(recv_out)),
         yacl::Exception);
   }
@@ -114,13 +99,13 @@ TEST(KkrtOtExtEdgeTest, Test) {
     std::vector<uint128_t> recv_out(kNumOt);
     std::vector<uint128_t> choices;
     ASSERT_THROW(
-        KkrtOtExtRecv(contexts[1], send_opts, absl::MakeConstSpan(choices),
+        KkrtOtExtRecv(contexts[1], base_ot.send, absl::MakeConstSpan(choices),
                       absl::MakeSpan(recv_out)),
         yacl::Exception);
   }
   {
     // Empty send output.
-    ASSERT_THROW(KkrtOtExtSend(contexts[1], recv_opts, 0), yacl::Exception);
+    ASSERT_THROW(KkrtOtExtSend(contexts[1], base_ot.recv, 0), yacl::Exception);
   }
 }
 
@@ -131,7 +116,7 @@ TEST_P(KkrtOtExtTest2, Works) {
   auto contexts = link::test::SetupWorld(kWorldSize);
 
   // KKRT requires 512 width.
-  auto [send_opts, recv_opts] = MakeBaseOptions(512);
+  auto base_ot = MakeBaseOts(512);
 
   const size_t num_ot = GetParam().num_ot;
   std::vector<uint128_t> recv_out(num_ot);
@@ -147,8 +132,8 @@ TEST_P(KkrtOtExtTest2, Works) {
   KkrtOtExtSender kkrtSender;
   KkrtOtExtReceiver kkrtReceiver;
 
-  kkrtSender.Init(contexts[0], recv_opts, num_ot);
-  kkrtReceiver.Init(contexts[1], send_opts, num_ot);
+  kkrtSender.Init(contexts[0], base_ot.recv, num_ot);
+  kkrtReceiver.Init(contexts[1], base_ot.send, num_ot);
 
   // kkrtSender.setBatchSize(kBatchSize);
   // kkrtReceiver.setBatchSize(kBatchSize);

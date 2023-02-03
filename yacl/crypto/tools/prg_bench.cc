@@ -35,6 +35,4 @@ BENCHMARK(BM_Prg)
     ->Arg(4)   // ctools::PRG_MODE::kAesEcb
     ->Arg(5);  // ctools::PRG_MODE::KSm4Ecb
 
-BENCHMARK_MAIN();
-
 }  // namespace yacl::crypto

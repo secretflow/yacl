@@ -160,5 +160,3 @@ BENCHMARK(BM_SseTrans1024)
     ->Arg(5120)
     ->Arg(10240)
     ->Arg(1 << 21);
-
-BENCHMARK_MAIN();

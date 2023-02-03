@@ -14,15 +14,14 @@
 
 #include "yacl/crypto/primitives/ot/iknp_ote.h"
 
-#include <fmt/format.h>
 #include <gtest/gtest.h>
-#include <spdlog/spdlog.h>
 
 #include <future>
 #include <thread>
+#include <vector>
 
 #include "yacl/base/exception.h"
-#include "yacl/crypto/tools/prg.h"
+#include "yacl/crypto/primitives/ot/test_utils.h"
 #include "yacl/crypto/utils/rand.h"
 #include "yacl/link/test_util.h"
 
@@ -32,57 +31,59 @@ struct TestParams {
   unsigned num_ot;
 };
 
-int GetBit(const std::vector<uint128_t>& choices, size_t idx) {
-  uint128_t mask = uint128_t(1) << (idx & 127);
-  return (choices[idx / 128] & mask) ? 1 : 0;
-}
-
 class IknpOtExtTest : public ::testing::TestWithParam<TestParams> {};
-
-std::pair<BaseOtSendStore, BaseOtRecvStore> MakeBaseOptions(size_t num) {
-  BaseOtSendStore send_opts;
-  BaseOtRecvStore recv_opts;
-  recv_opts.choices = crypto::RandBits(num);
-  std::random_device rd;
-  Prg<uint128_t> gen(rd());
-  for (size_t i = 0; i < num; ++i) {
-    send_opts.blocks.push_back({gen(), gen()});
-    recv_opts.blocks.push_back(send_opts.blocks[i][recv_opts.choices[i]]);
-  }
-  return {std::move(send_opts), std::move(recv_opts)};
-}
+class IknpCotExtTest : public ::testing::TestWithParam<TestParams> {};
 
 TEST_P(IknpOtExtTest, Works) {
   // GIVEN
   const int kWorldSize = 2;
-  auto contexts = link::test::SetupWorld(kWorldSize);
-
-  // IKNP requires kappa == 128.
-  BaseOtSendStore send_opts;
-  BaseOtRecvStore recv_opts;
-  std::tie(send_opts, recv_opts) = MakeBaseOptions(128);
-
   const size_t num_ot = GetParam().num_ot;
-  std::vector<std::array<uint128_t, 2>> send_out(num_ot);
-  std::vector<uint128_t> recv_out(num_ot);
-  constexpr int kNumBits = sizeof(uint128_t) * 8;
-  size_t block_num = (num_ot + kNumBits - 1) / kNumBits;
-  std::vector<uint128_t> choices = crypto::RandVec<uint128_t>(block_num);
+  auto lctxs = link::test::SetupWorld(kWorldSize);             // setup network
+  auto base_ot = MakeBaseOts(128);                             // mock base ot
+  auto choices = RandBits<dynamic_bitset<uint128_t>>(num_ot);  // get input
 
   // WHEN
+  std::vector<std::array<uint128_t, 2>> send_out(num_ot);
+  std::vector<uint128_t> recv_out(num_ot);
   std::future<void> sender = std::async(
-      [&] { IknpOtExtSend(contexts[0], recv_opts, absl::MakeSpan(send_out)); });
+      [&] { IknpOtExtSend(lctxs[0], base_ot.recv, absl::MakeSpan(send_out)); });
   std::future<void> receiver = std::async([&] {
-    IknpOtExtRecv(contexts[1], send_opts, absl::MakeConstSpan(choices),
-                  absl::MakeSpan(recv_out));
+    IknpOtExtRecv(lctxs[1], base_ot.send, choices, absl::MakeSpan(recv_out));
   });
   receiver.get();
   sender.get();
 
   // THEN
   for (size_t i = 0; i < num_ot; ++i) {
-    int choice = GetBit(choices, i);
-    EXPECT_EQ(send_out[i][choice], recv_out[i]);
+    EXPECT_EQ(send_out[i][choices[i]], recv_out[i]);
+  }
+}
+
+TEST_P(IknpCotExtTest, Works) {
+  // GIVEN
+  const int kWorldSize = 2;
+  const size_t num_ot = GetParam().num_ot;
+  auto lctxs = link::test::SetupWorld(kWorldSize);             // setup network
+  auto base_ot = MakeBaseOts(128);                             // mock base ot
+  auto choices = RandBits<dynamic_bitset<uint128_t>>(num_ot);  // get input
+
+  // WHEN
+  std::vector<std::array<uint128_t, 2>> send_out(num_ot);
+  std::vector<uint128_t> recv_out(num_ot);
+  std::future<void> sender = std::async(
+      [&] { IknpOtExtSend(lctxs[0], base_ot.recv, absl::MakeSpan(send_out)); });
+  std::future<void> receiver = std::async([&] {
+    IknpOtExtRecv(lctxs[1], base_ot.send, choices, absl::MakeSpan(recv_out));
+  });
+  receiver.get();
+  sender.get();
+
+  // THEN
+  // cot correlation = base ot choice
+  uint128_t check = base_ot.recv.choices.data()[0];
+  for (size_t i = 0; i < num_ot; ++i) {
+    EXPECT_EQ(send_out[i][choices[i]], recv_out[i]);
+    EXPECT_EQ(check, send_out[i][0] ^ send_out[i][1]);
   }
 }
 
@@ -92,43 +93,46 @@ INSTANTIATE_TEST_SUITE_P(Works_Instances, IknpOtExtTest,
                                          TestParams{129},   //
                                          TestParams{4095},  //
                                          TestParams{4096},  //
-                                         TestParams{65536}  //
-                                         ));
+                                         TestParams{65536}));
+
+INSTANTIATE_TEST_SUITE_P(Works_Instances, IknpCotExtTest,
+                         testing::Values(TestParams{8},     //
+                                         TestParams{128},   //
+                                         TestParams{129},   //
+                                         TestParams{4095},  //
+                                         TestParams{4096},  //
+                                         TestParams{65536}));
 
 TEST(IknpOtExtEdgeTest, Test) {
   // GIVEN
   const int kWorldSize = 2;
-  auto contexts = link::test::SetupWorld(kWorldSize);
+  const size_t kNumOt = 16;
+  auto lctxs = link::test::SetupWorld(kWorldSize);             // setup network
+  auto base_ot = MakeBaseOts(128);                             // mock base ot
+  auto choices = RandBits<dynamic_bitset<uint128_t>>(kNumOt);  // get input
 
-  BaseOtSendStore send_opts;
-  BaseOtRecvStore recv_opts;
-  std::tie(send_opts, recv_opts) = MakeBaseOptions(128);
-
-  size_t kNumOt = 16;
-  // WHEN THEN
+  // WHEN
   {
     // Mismatched receiver.
     std::vector<uint128_t> recv_out(kNumOt);
-    std::vector<uint128_t> choices = crypto::RandVec<uint128_t>(kNumOt + 128);
-    ASSERT_THROW(
-        IknpOtExtRecv(contexts[1], send_opts, absl::MakeConstSpan(choices),
-                      absl::MakeSpan(recv_out)),
-        ::yacl::Exception);
+    auto choices = RandBits<dynamic_bitset<uint128_t>>(kNumOt + 128);
+    ASSERT_THROW(IknpOtExtRecv(lctxs[1], base_ot.send, choices,
+                               absl::MakeSpan(recv_out)),
+                 ::yacl::Exception);
   }
   {
     // Empty choice.
     std::vector<uint128_t> recv_out(kNumOt);
-    std::vector<uint128_t> choices;
-    ASSERT_THROW(
-        IknpOtExtRecv(contexts[1], send_opts, absl::MakeConstSpan(choices),
-                      absl::MakeSpan(recv_out)),
-        ::yacl::Exception);
+    dynamic_bitset<uint128_t> choices;
+    ASSERT_THROW(IknpOtExtRecv(lctxs[1], base_ot.send, choices,
+                               absl::MakeSpan(recv_out)),
+                 ::yacl::Exception);
   }
   {
     // Empty send output.
     std::vector<std::array<uint128_t, 2>> send_out;
     ASSERT_THROW(
-        IknpOtExtSend(contexts[1], recv_opts, absl::MakeSpan(send_out)),
+        IknpOtExtSend(lctxs[1], base_ot.recv, absl::MakeSpan(send_out)),
         ::yacl::Exception);
   }
 }

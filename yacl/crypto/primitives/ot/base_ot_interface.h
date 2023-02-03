@@ -16,6 +16,7 @@
 
 #include "absl/types/span.h"
 
+#include "yacl/base/dynamic_bitset.h"
 #include "yacl/base/int128.h"
 #include "yacl/link/link.h"
 
@@ -29,7 +30,7 @@ class BaseOTInterface {
   virtual void Send(const std::shared_ptr<link::Context>& ctx,
                     absl::Span<std::array<Block, 2>> send_blocks) = 0;
   virtual void Recv(const std::shared_ptr<link::Context>& ctx,
-                    const std::vector<bool>& choices,
+                    const dynamic_bitset<uint128_t>& choices,
                     absl::Span<Block> recv_blocks) = 0;
 };
 

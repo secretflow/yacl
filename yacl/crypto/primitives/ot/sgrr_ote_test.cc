@@ -22,124 +22,57 @@
 
 #include "yacl/base/exception.h"
 #include "yacl/crypto/primitives/ot/common.h"
+#include "yacl/crypto/primitives/ot/test_utils.h"
 #include "yacl/crypto/utils/rand.h"
 #include "yacl/link/test_util.h"
 
 namespace yacl::crypto {
 
-#define LOG2(X) \
-  ((unsigned)(8 * sizeof(unsigned long long) - __builtin_clzll((X)) - 1))
-
-uint32_t GetRandValue(size_t n) {
-  std::random_device rd;
-  Prg<uint32_t> gen(rd());
-  return gen() % n;
-}
-
-// mock a lot of 1-2 OT instances ...
-std::pair<BaseOtSendStore, BaseOtRecvStore> MakeOTOptions(size_t num) {
-  BaseOtSendStore send_opts;
-  BaseOtRecvStore recv_opts;
-  recv_opts.choices.resize(num);
-  std::random_device rd;
-  Prg<uint128_t> gen(0);
-  for (size_t i = 0; i < num; ++i) {
-    recv_opts.choices[i] = (gen() % 2 == 0);
-    send_opts.blocks.push_back({gen(), gen()});
-    recv_opts.blocks.push_back(send_opts.blocks[i][recv_opts.choices[i]]);
-  }
-  return {std::move(send_opts), std::move(recv_opts)};
-}
-
 struct TestParams {
   unsigned n;
 };
 
-class RotParamTest : public ::testing::TestWithParam<TestParams> {};
+class SgrrParamTest : public ::testing::TestWithParam<TestParams> {};
 
-TEST_P(RotParamTest, Works) {
-  uint32_t n = GetParam().n;
-  uint64_t master_seed = 0;
-  uint32_t choice_value = GetRandValue(n);
+TEST_P(SgrrParamTest, Works) {
+  size_t n = GetParam().n;
 
-  // mock many base OTs
-  BaseOtSendStore send_opts;
-  BaseOtRecvStore recv_opts;
-  std::tie(send_opts, recv_opts) = MakeOTOptions(log2(n));
+  auto index = CreateRandomRangeNum(n - 1);
+  auto lctxs = link::test::SetupWorld(2);
+  auto base_ot = MakeBaseOts(log2_ceil(n));  // mock many base OTs
 
-  std::vector<uint128_t> entire_seeds(n);
-  std::vector<uint128_t> punctured_seeds(n - 1);
+  std::vector<uint128_t> send_out(n);
+  std::vector<uint128_t> recv_out(n);
 
-  auto contexts = link::test::SetupWorld(2);
   std::future<void> sender = std::async([&] {
-    SgrrOtExtRecv(contexts[0], recv_opts, n, choice_value,
-                  absl::MakeSpan(punctured_seeds));
+    SgrrOtExtRecv(lctxs[0], base_ot.recv, n, index, absl::MakeSpan(recv_out));
   });
   std::future<void> receiver = std::async([&] {
-    SgrrOtExtSend(contexts[1], send_opts, n, master_seed,
-                  absl::MakeSpan(entire_seeds));
+    SgrrOtExtSend(lctxs[1], base_ot.send, n, absl::MakeSpan(send_out),
+                  RandSeed());
   });
   sender.get();
   receiver.get();
 
-  EXPECT_EQ(entire_seeds.size(), n);
-  EXPECT_EQ(punctured_seeds.size(), n - 1);
+  EXPECT_EQ(send_out.size(), n);
+  EXPECT_EQ(recv_out.size(), n);
 
-  bool triger = false;
-  for (uint32_t i = 0; i < n - 1; i++) {
-    if (i == choice_value) triger = true;
-    if (triger == false)
-      EXPECT_EQ(entire_seeds.at(i), punctured_seeds.at(i)) << i;
-    else
-      EXPECT_EQ(entire_seeds.at(i + 1), punctured_seeds.at(i)) << i;
+  for (size_t i = 0; i < n; ++i) {
+    if (index != i) {
+      EXPECT_EQ(send_out[i], recv_out[i]);
+    } else {
+      EXPECT_EQ(0, recv_out[i]);
+    }
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(Works_Instances, RotParamTest,
+INSTANTIATE_TEST_SUITE_P(Works_Instances, SgrrParamTest,
                          testing::Values(TestParams{4},        //
+                                         TestParams{5},        //
+                                         TestParams{7},        //
+                                         TestParams{1024},     //
                                          TestParams{1 << 10},  //
                                          TestParams{1 << 15}   //
                                          ));
-
-TEST(RotFuncTest, Test) {
-  uint32_t n = 4;
-  uint64_t master_seed = 0;
-  uint32_t choice_value = 3;
-
-  // mock many base OTs
-  BaseOtSendStore send_opts;
-  BaseOtRecvStore recv_opts;
-  std::tie(send_opts, recv_opts) = MakeOTOptions(LOG2(n));
-
-  std::vector<uint128_t> entire_seeds(n);
-  std::vector<uint128_t> punctured_seeds(n - 1);
-
-  auto contexts = link::test::SetupWorld(2);
-  std::future<void> sender = std::async([&] {
-    SgrrOtExtRecv(contexts[0], recv_opts, n, choice_value,
-                  absl::MakeSpan(punctured_seeds));
-  });
-  std::future<void> receiver = std::async([&] {
-    SgrrOtExtSend(contexts[1], send_opts, n, master_seed,
-                  absl::MakeSpan(entire_seeds));
-  });
-  sender.get();
-  receiver.get();
-
-  EXPECT_EQ(entire_seeds.size(), n);
-  EXPECT_EQ(punctured_seeds.size(), n - 1);
-
-  bool triger = false;
-  for (uint32_t i = 0; i < n - 1; i++) {
-    if (i == choice_value) {
-      triger = true;
-    }
-    if (!triger) {
-      EXPECT_EQ(entire_seeds.at(i), punctured_seeds.at(i));
-    } else {
-      EXPECT_EQ(entire_seeds.at(i + 1), punctured_seeds.at(i));
-    }
-  }
-}
 
 }  // namespace yacl::crypto

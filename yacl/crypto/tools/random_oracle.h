@@ -56,51 +56,9 @@ namespace yacl::crypto {
 
 class RandomOracle {
  public:
-  explicit RandomOracle(crypto::HashAlgorithm hash_type, size_t outlen = 16)
+  explicit RandomOracle(HashAlgorithm hash_type, size_t outlen = 16)
       : outlen_(outlen), hash_alg_(hash_type) {
     SanityCheck();
-  }
-
-  // Apply Random Oracle on a given buffer array
-  // fixed output size = 32 (256bits)
-  Buffer operator()(ByteContainerView x, size_t outlen) const {
-    switch (hash_alg_) {
-      case crypto::HashAlgorithm::SHA256:  // outlen = 32 (256bits)
-        YACL_ENFORCE(outlen <= 32);
-        return {crypto::Sha256(x).data(), outlen};
-      case crypto::HashAlgorithm::SM3:  // outlen = 32 (256bits)
-        YACL_ENFORCE(outlen <= 32);
-        return {crypto::Sm3(x).data(), outlen};
-      case crypto::HashAlgorithm::BLAKE2B:  // outlen = 64 (512bits)
-        YACL_ENFORCE(outlen <= 64);
-        return {crypto::Blake2(x).data(), outlen};
-      case crypto::HashAlgorithm::BLAKE3:
-        YACL_ENFORCE(outlen <= 32);  // outlen = 32 (256bits)
-        return {crypto::Blake3(x).data(), outlen};
-      default:
-        YACL_THROW("Unsupported hash algorithm: {}",
-                   static_cast<int>(hash_alg_));
-    }
-  }
-
-  Buffer Gen(ByteContainerView x) const { return operator()(x, outlen_); }
-
-  template <typename T, std::enable_if_t<std::is_standard_layout_v<T>, int> = 0>
-  T Gen(ByteContainerView x) const {
-    T res;                                // max bits of sizeof(T) = 16
-    auto buf = operator()(x, sizeof(T));  // min bits of sizeof(T) = 32
-    std::memcpy(&res, buf.data(), sizeof(T));
-    return res;
-  }
-
-  template <typename T, std::enable_if_t<std::is_standard_layout_v<T>, int> = 0>
-  T Gen(ByteContainerView x, uint64_t y) const {
-    auto buf_size = x.size() + sizeof(uint64_t);
-    Buffer buf(buf_size);
-    std::memcpy(static_cast<std::byte*>(buf.data()), x.data(), x.size());
-    std::memcpy(static_cast<std::byte*>(buf.data()) + x.size(), &y,
-                sizeof(uint64_t));
-    return Gen<T>(buf);
   }
 
   void SetOutlen(size_t out_len) {
@@ -110,13 +68,78 @@ class RandomOracle {
 
   size_t GetOutlen() const { return outlen_; }
 
+  // Apply Random Oracle on a buffer array
+  // fixed output size = 32 (256bits)
+  Buffer operator()(ByteContainerView x, size_t outlen) const {
+    switch (hash_alg_) {
+      case HashAlgorithm::SHA256:  // outlen = 32 (256bits)
+        YACL_ENFORCE(outlen <= 32);
+        return {Sha256(x).data(), outlen};
+      case HashAlgorithm::SM3:  // outlen = 32 (256bits)
+        YACL_ENFORCE(outlen <= 32);
+        return {Sm3(x).data(), outlen};
+      case HashAlgorithm::BLAKE2B:  // outlen = 64 (512bits)
+        YACL_ENFORCE(outlen <= 64);
+        return {Blake2(x).data(), outlen};
+      case HashAlgorithm::BLAKE3:
+        YACL_ENFORCE(outlen <= 32);  // outlen = 32 (256bits)
+        return {Blake3(x).data(), outlen};
+      default:
+        YACL_THROW("Unsupported hash algorithm: {}",
+                   static_cast<int>(hash_alg_));
+    }
+  }
+
+  // Apply Random Oracle on a buffer array
+  // Output: bytes
+  Buffer Gen(ByteContainerView x) const { return operator()(x, outlen_); }
+
+  // Apply Random Oracle on a buffer array
+  // Typed Output: T
+  template <typename T, std::enable_if_t<std::is_standard_layout_v<T>, int> = 0>
+  T Gen(ByteContainerView x) const {
+    T out;
+    auto buf = operator()(x, sizeof(T));
+    std::memcpy(&out, buf.data(), sizeof(T));
+    return out;
+  }
+
+  // Apply Random Oracle on a buffer array and an integer
+  // Typed Output: T
+  template <typename T, std::enable_if_t<std::is_standard_layout_v<T>, int> = 0>
+  T Gen(ByteContainerView x, uint64_t y) const {
+    size_t buf_size = x.size() + sizeof(uint64_t);  // in bytes
+    std::vector<uint8_t> buf(buf_size);
+    std::memcpy(buf.data(), x.data(), x.size());
+    std::memcpy(buf.data() + x.size(), &y, sizeof(uint64_t));
+    return Gen<T>(buf);
+  }
+
+  // Apply Random Oracle on many buffer arrays
+  // Typed Output: T
+  template <class T, std::enable_if_t<std::is_standard_layout_v<T>, int> = 0>
+  T Gen(std::initializer_list<ByteContainerView> inputs) {
+    size_t buf_size = 0;
+    for (const auto& x : inputs) {
+      buf_size += x.size();
+    }
+    std::vector<uint8_t> buf(buf_size);
+
+    size_t ctr = 0;
+    for (const auto& x : inputs) {
+      std::memcpy(buf.data() + ctr, x.data(), x.size());
+      ctr += x.size();
+    }
+    return Gen<T>(buf);
+  }
+
+  // Check if the parameters are valid
   void SanityCheck() {
     YACL_ENFORCE(outlen_ > 0);
-    if (hash_alg_ == crypto::HashAlgorithm::SHA256 ||
-        hash_alg_ == crypto::HashAlgorithm::SM3 ||
-        hash_alg_ == crypto::HashAlgorithm::BLAKE3) {
+    if (hash_alg_ == HashAlgorithm::SHA256 || hash_alg_ == HashAlgorithm::SM3 ||
+        hash_alg_ == HashAlgorithm::BLAKE3) {
       YACL_ENFORCE(outlen_ <= 32);
-    } else if (hash_alg_ == crypto::HashAlgorithm::BLAKE2B) {
+    } else if (hash_alg_ == HashAlgorithm::BLAKE2B) {
       YACL_ENFORCE(outlen_ <= 64);
     } else {
       YACL_THROW("Unsupported hash algorithm: {}", static_cast<int>(hash_alg_));
@@ -124,12 +147,12 @@ class RandomOracle {
   }
 
   static RandomOracle& GetBlake3() {
-    static RandomOracle ro(crypto::HashAlgorithm::BLAKE3, 16);
+    static RandomOracle ro(HashAlgorithm::BLAKE3, 16);
     return ro;
   }
 
   static RandomOracle& GetSm3() {
-    static RandomOracle ro(crypto::HashAlgorithm::SM3, 16);
+    static RandomOracle ro(HashAlgorithm::SM3, 16);
     return ro;
   }
 
@@ -138,15 +161,15 @@ class RandomOracle {
 
  private:
   size_t outlen_;
-  crypto::HashAlgorithm hash_alg_;
+  HashAlgorithm hash_alg_;
 };
 
 inline uint128_t RO_Blake3_128(ByteContainerView in) {
   return RandomOracle::GetBlake3().Gen<uint128_t>(in);
-};
+}
 
 inline uint128_t RO_SM3_128(ByteContainerView in) {
   return RandomOracle::GetSm3().Gen<uint128_t>(in);
-};
+}
 
 }  // namespace yacl::crypto

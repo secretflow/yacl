@@ -49,5 +49,3 @@ BENCHMARK(BM_Blake3)
     ->Arg(1 << 21);
 
 }  // namespace yacl::crypto
-
-BENCHMARK_MAIN();

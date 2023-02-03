@@ -180,8 +180,8 @@ class KkrtGroupPRF : public IGroupPRF {
 }  // namespace
 
 std::unique_ptr<IGroupPRF> KkrtOtExtSend(
-    const std::shared_ptr<link::Context>& ctx,
-    const BaseOtRecvStore& base_options, size_t num_ot) {
+    const std::shared_ptr<link::Context>& ctx, const OtRecvStore& base_options,
+    size_t num_ot) {
   YACL_ENFORCE_EQ(base_options.blocks.size(), base_options.choices.size());
   YACL_ENFORCE(kIknpWidth == base_options.choices.size());
   YACL_ENFORCE(num_ot > 0);
@@ -244,7 +244,7 @@ std::unique_ptr<IGroupPRF> KkrtOtExtSend(
 }
 
 void KkrtOtExtRecv(const std::shared_ptr<link::Context>& ctx,
-                   const BaseOtSendStore& base_options,
+                   const OtSendStore& base_options,
                    absl::Span<const uint128_t> inputs,
                    absl::Span<uint128_t> recv_blocks) {
   YACL_ENFORCE(base_options.blocks.size() == kIknpWidth);
@@ -317,8 +317,7 @@ void KkrtOtExtRecv(const std::shared_ptr<link::Context>& ctx,
 }
 
 void KkrtOtExtSender::Init(const std::shared_ptr<link::Context>& ctx,
-                           const BaseOtRecvStore& base_options,
-                           uint64_t num_ot) {
+                           const OtRecvStore& base_options, uint64_t num_ot) {
   YACL_ENFORCE_EQ(base_options.blocks.size(), base_options.choices.size());
   YACL_ENFORCE(kIknpWidth == base_options.choices.size());
   YACL_ENFORCE(num_ot > 0);
@@ -417,8 +416,7 @@ void KkrtOtExtSender::Encode(uint64_t ot_idx, const uint128_t input, void* dest,
 }
 
 void KkrtOtExtReceiver::Init(const std::shared_ptr<link::Context>& ctx,
-                             const BaseOtSendStore& base_options,
-                             uint64_t num_ot) {
+                             const OtSendStore& base_options, uint64_t num_ot) {
   const size_t num_batch = (num_ot + kBatchSize1024 - 1) / kBatchSize1024;
 
   AesInit(aes_key_);
