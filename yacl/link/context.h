@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "yacl/base/byte_container_view.h"
+#include "yacl/link/ssl_options.h"
 #include "yacl/link/transport/channel.h"
 #include "yacl/utils/hash.h"
 
@@ -87,6 +88,17 @@ struct ContextDesc {
 
   // BRPC client channel connection type.
   std::string brpc_channel_connection_type = "single";
+
+  // ssl options for link channel
+  bool enable_ssl = false;
+
+  // ssl options for link channel
+  // this option is ignored if enable_ssl == false;
+  SSLOptions client_ssl_opts;
+
+  // ssl options for link service
+  // this option is ignored if enable_ssl == false;
+  SSLOptions server_ssl_opts;
 
   bool operator==(const ContextDesc& other) const {
     return (id == other.id) && (parties == other.parties);

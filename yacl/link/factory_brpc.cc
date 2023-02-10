@@ -40,7 +40,8 @@ std::shared_ptr<Context> FactoryBrpc::CreateContext(const ContextDesc& desc,
     opts.channel_connection_type = desc.brpc_channel_connection_type;
     auto channel = std::make_shared<ChannelBrpc>(self_rank, rank,
                                                  desc.recv_timeout_ms, opts);
-    channel->SetPeerHost(desc.parties[rank].host);
+    channel->SetPeerHost(desc.parties[rank].host,
+                         desc.enable_ssl ? &desc.client_ssl_opts : nullptr);
     channel->SetThrottleWindowSize(desc.throttle_window_size);
 
     msg_loop->AddListener(rank, channel);
@@ -49,7 +50,7 @@ std::shared_ptr<Context> FactoryBrpc::CreateContext(const ContextDesc& desc,
 
   // start receiver loop.
   const auto self_host = desc.parties[self_rank].host;
-  msg_loop->Start(self_host);
+  msg_loop->Start(self_host, desc.enable_ssl ? &desc.server_ssl_opts : nullptr);
 
   return std::make_shared<Context>(desc, self_rank, std::move(channels),
                                    std::move(msg_loop));

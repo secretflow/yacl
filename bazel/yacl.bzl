@@ -15,7 +15,9 @@ WARNING_FLAGS = [
     "@bazel_tools//src/conditions:darwin": ["-Wunused-const-variable"],
     "//conditions:default": ["-Wunused-const-variable=1"],
 })
-DEBUG_FLAGS = ["-O0", "-g"]
+
+# set `SPDLOG_ACTIVE_LEVEL=1(SPDLOG_LEVEL_DEBUG)` to enable debug level log
+DEBUG_FLAGS = ["-DSPDLOG_ACTIVE_LEVEL=1", "-O0", "-g"]
 RELEASE_FLAGS = ["-O2"]
 FAST_FLAGS = ["-O1"]
 

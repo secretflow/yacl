@@ -38,10 +38,16 @@ yacl_cc_library(
 )
 
 yacl_cc_library(
+    name = "ssl_options",
+    hdrs = ["ssl_options.h"],
+)
+
+yacl_cc_library(
     name = "context",
     srcs = ["context.cc"],
     hdrs = ["context.h"],
     deps = [
+        ":ssl_options",
         ":trace",
         "//yacl/base:byte_container_view",
         "//yacl/link/transport:channel",
