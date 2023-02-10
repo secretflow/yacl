@@ -24,6 +24,7 @@
 #include "bthread/bthread.h"
 #include "bthread/condition_variable.h"
 
+#include "yacl/link/ssl_options.h"
 #include "yacl/link/transport/channel.h"
 
 namespace yacl::link {
@@ -38,11 +39,13 @@ class ReceiverLoopBrpc final : public ReceiverLoopBase {
   // message received from peers will be listened and dispatched by this loop.
   //
   // host: the desired listen addr:port pair.
+  // ssl_opts: ssl related options.
   // returns: the actual listening addr:port pair.
   //
   // Note: brpc support "ip:0" listen mode, in which brpc will try to find a
   // free port to listen.
-  std::string Start(const std::string& host);
+  std::string Start(const std::string& host,
+                    const SSLOptions* ssl_opts = nullptr);
 
  protected:
   brpc::Server server_;
@@ -77,7 +80,8 @@ class ChannelBrpc final : public ChannelBase,
       : ChannelBase(self_rank, peer_rank, recv_timeout_ms),
         options_(std::move(options)) {}
 
-  void SetPeerHost(const std::string& peer_host);
+  void SetPeerHost(const std::string& peer_host,
+                   const SSLOptions* ssl_opts = nullptr);
 
   void AddAsyncCount();
 

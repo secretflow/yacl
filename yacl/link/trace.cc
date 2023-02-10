@@ -65,7 +65,7 @@ DefaultLogger::DefaultLogger() {
 void DefaultLogger::LinkTraceImpl(std::string_view event, std::string_view tag,
                                   std::string_view content) {
   // trace this action anyway.
-  SPDLOG_TRACE("[LINK] key={},tag={}", event, tag);
+  SPDLOG_DEBUG("[LINK] key={},tag={}", event, tag);
 
   // write to link file trace if enabled.
   if (logger_) {

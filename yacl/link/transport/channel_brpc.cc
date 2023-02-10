@@ -107,7 +107,8 @@ ReceiverLoopBrpc::~ReceiverLoopBrpc() { StopImpl(); }
 
 void ReceiverLoopBrpc::Stop() { StopImpl(); }
 
-std::string ReceiverLoopBrpc::Start(const std::string& host) {
+std::string ReceiverLoopBrpc::Start(const std::string& host,
+                                    const SSLOptions* ssl_opts) {
   if (server_.IsRunning()) {
     YACL_THROW_LOGIC_ERROR("brpc server is already running");
   }
@@ -122,6 +123,16 @@ std::string ReceiverLoopBrpc::Start(const std::string& host) {
 
   // Start the server.
   brpc::ServerOptions options;
+  if (ssl_opts != nullptr) {
+    options.mutable_ssl_options()->default_cert.certificate =
+        ssl_opts->cert.certificate_path;
+    options.mutable_ssl_options()->default_cert.private_key =
+        ssl_opts->cert.private_key_path;
+    options.mutable_ssl_options()->verify.verify_depth =
+        ssl_opts->verify.verify_depth;
+    options.mutable_ssl_options()->verify.ca_file_path =
+        ssl_opts->verify.ca_file_path;
+  }
   if (server_.Start(host.data(), &options) != 0) {
     YACL_THROW_IO_ERROR("brpc server failed start");
   }
@@ -193,7 +204,8 @@ class OnPushDone : public google::protobuf::Closure {
 
 }  // namespace
 
-void ChannelBrpc::SetPeerHost(const std::string& peer_host) {
+void ChannelBrpc::SetPeerHost(const std::string& peer_host,
+                              const SSLOptions* ssl_opts) {
   auto brpc_channel = std::make_unique<brpc::Channel>();
   const auto load_balancer = "";
   brpc::ChannelOptions options;
@@ -204,6 +216,16 @@ void ChannelBrpc::SetPeerHost(const std::string& peer_host) {
     options.timeout_ms = options_.http_timeout_ms;
     options.max_retry = 3;
     // options.retry_policy = DefaultRpcRetryPolicy();
+    if (ssl_opts != nullptr) {
+      options.mutable_ssl_options()->client_cert.certificate =
+          ssl_opts->cert.certificate_path;
+      options.mutable_ssl_options()->client_cert.private_key =
+          ssl_opts->cert.private_key_path;
+      options.mutable_ssl_options()->verify.verify_depth =
+          ssl_opts->verify.verify_depth;
+      options.mutable_ssl_options()->verify.ca_file_path =
+          ssl_opts->verify.ca_file_path;
+    }
   }
   int res = brpc_channel->Init(peer_host.c_str(), load_balancer, &options);
   if (res != 0) {

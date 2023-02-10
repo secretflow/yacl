@@ -17,6 +17,7 @@
 #include <chrono>
 #include <cstdlib>
 #include <ctime>
+#include <filesystem>
 #include <future>
 #include <string>
 
@@ -285,5 +286,167 @@ INSTANTIATE_TEST_SUITE_P(
                                      std::get<1>(info.param));
       return name;
     });
+
+class ChannelBrpcSSLTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    // ca
+    YACL_ENFORCE(system("openssl genrsa -out ca.key 2048") == 0);
+    YACL_ENFORCE(system("openssl req -new -x509 -key ca.key -out ca.crt -subj "
+                        "\"/CN=sf\"") == 0);
+
+    YACL_ENFORCE(std::filesystem::create_directory("./test_0"));
+    YACL_ENFORCE(std::filesystem::create_directory("./test_1"));
+
+    // rank 0 server
+    GenerateCert("./test_0", "server", "./ca.crt", "./ca.key");
+    // rank 0 client
+    GenerateCert("./test_0", "client", "./ca.crt", "./ca.key");
+    // rank 1 server
+    GenerateCert("./test_1", "server", "./ca.crt", "./ca.key");
+    // rank 1 client
+    GenerateCert("./test_1", "client", "./ca.crt", "./ca.key");
+  }
+
+  void TearDown() override {
+    (void)!system("rm -rf ./test_0");
+    (void)!system("rm -rf ./test_1");
+  }
+
+  void GenerateCert(const std::string& dir, const std::string& name,
+                    const std::string& ca_crt_path,
+                    const std::string ca_key_path) {
+    std::string key_cmd =
+        fmt::format("openssl genrsa -out {}/{}.key 2048", dir, name);
+    std::string csr_cmd = fmt::format(
+        "openssl req -new -key {}/{}.key -out {}/{}.csr -subj "
+        "\"/CN=sf_test\"",
+        dir, name, dir, name);
+    std::string crt_cmd = fmt::format(
+        "openssl x509 -req -in {}/{}.csr -CA {} -CAkey {} "
+        "-CAcreateserial -out {}/{}.crt",
+        dir, name, ca_crt_path, ca_key_path, dir, name);
+
+    YACL_ENFORCE(system(key_cmd.c_str()) == 0);
+    YACL_ENFORCE(system(csr_cmd.c_str()) == 0);
+    YACL_ENFORCE(system(crt_cmd.c_str()) == 0);
+  }
+
+  void WaitChannelEnd(const std::shared_ptr<ChannelBrpc>& receiver,
+                      const std::shared_ptr<ChannelBrpc>& sender) {
+    auto wait = [](const std::shared_ptr<ChannelBrpc>& l) {
+      if (l) {
+        l->WaitLinkTaskFinish();
+      }
+    };
+    auto f_s = std::async(wait, sender);
+    auto f_r = std::async(wait, receiver);
+    f_s.get();
+    f_r.get();
+  }
+
+ protected:
+  ChannelBrpc::Options channel_options_;
+};
+
+TEST_F(ChannelBrpcSSLTest, OneWaySSL) {
+  std::srand(std::time(nullptr));
+  const size_t send_rank = 0;
+  const size_t recv_rank = 1;
+
+  ChannelBrpc::Options channel_options;
+  auto sender =
+      std::make_shared<ChannelBrpc>(send_rank, recv_rank, channel_options_);
+  auto receiver =
+      std::make_shared<ChannelBrpc>(recv_rank, send_rank, channel_options_);
+
+  // let sender rank as 0, receiver rank as 1.
+  // receiver listen messages from sender(rank 0).
+  auto receiver_loop = std::make_unique<ReceiverLoopBrpc>();
+  receiver_loop->AddListener(0, receiver);
+  SSLOptions receiver_ssl_opts;
+  receiver_ssl_opts.cert.certificate_path = "./test_1/server.crt";
+  receiver_ssl_opts.cert.private_key_path = "./test_1/server.key";
+  std::string receiver_host =
+      receiver_loop->Start("127.0.0.1:0", &receiver_ssl_opts);
+
+  auto sender_loop = std::make_unique<ReceiverLoopBrpc>();
+  sender_loop->AddListener(1, sender);
+  SSLOptions sender_ssl_opts;
+  sender_ssl_opts.cert.certificate_path = "./test_0/server.crt";
+  sender_ssl_opts.cert.private_key_path = "./test_0/server.key";
+  std::string sender_host = sender_loop->Start("127.0.0.1:0", &sender_ssl_opts);
+
+  // client ssl opts (no certificate, only verify)
+  SSLOptions client_ssl_opts;
+  client_ssl_opts.verify.verify_depth = 1;
+  client_ssl_opts.verify.ca_file_path = "./ca.crt";
+  sender->SetPeerHost(receiver_host, &client_ssl_opts);
+  receiver->SetPeerHost(sender_host, &client_ssl_opts);
+
+  const std::string key = "key";
+  const std::string sent = RandStr(100U);
+  sender->SendAsync(key, ByteContainerView{sent});
+  auto received = receiver->Recv(key);
+
+  EXPECT_EQ(sent, std::string_view(received));
+
+  WaitChannelEnd(receiver, sender);
+}
+
+TEST_F(ChannelBrpcSSLTest, TwoWaySSL) {
+  std::srand(std::time(nullptr));
+  const size_t send_rank = 0;
+  const size_t recv_rank = 1;
+
+  auto sender =
+      std::make_shared<ChannelBrpc>(send_rank, recv_rank, channel_options_);
+  auto receiver =
+      std::make_shared<ChannelBrpc>(recv_rank, send_rank, channel_options_);
+
+  // let sender rank as 0, receiver rank as 1.
+  // receiver listen messages from sender(rank 0).
+  auto receiver_loop = std::make_unique<ReceiverLoopBrpc>();
+  receiver_loop->AddListener(0, receiver);
+  SSLOptions receiver_ssl_opts;
+  receiver_ssl_opts.cert.certificate_path = "./test_1/server.crt";
+  receiver_ssl_opts.cert.private_key_path = "./test_1/server.key";
+  receiver_ssl_opts.verify.verify_depth = 1;
+  receiver_ssl_opts.verify.ca_file_path = "./ca.crt";
+  std::string receiver_host =
+      receiver_loop->Start("127.0.0.1:0", &receiver_ssl_opts);
+
+  auto sender_loop = std::make_unique<ReceiverLoopBrpc>();
+  sender_loop->AddListener(1, sender);
+  SSLOptions sender_ssl_opts;
+  sender_ssl_opts.cert.certificate_path = "./test_0/server.crt";
+  sender_ssl_opts.cert.private_key_path = "./test_0/server.key";
+  sender_ssl_opts.verify.verify_depth = 1;
+  sender_ssl_opts.verify.ca_file_path = "./ca.crt";
+  std::string sender_host = sender_loop->Start("127.0.0.1:0", &sender_ssl_opts);
+
+  SSLOptions s_client_ssl_opts;
+  s_client_ssl_opts.cert.certificate_path = "./test_0/client.crt";
+  s_client_ssl_opts.cert.private_key_path = "./test_0/client.key";
+  s_client_ssl_opts.verify.verify_depth = 1;
+  s_client_ssl_opts.verify.ca_file_path = "./ca.crt";
+  sender->SetPeerHost(receiver_host, &s_client_ssl_opts);
+
+  SSLOptions r_client_ssl_opts;
+  r_client_ssl_opts.cert.certificate_path = "./test_1/client.crt";
+  r_client_ssl_opts.cert.private_key_path = "./test_1/client.key";
+  r_client_ssl_opts.verify.verify_depth = 1;
+  r_client_ssl_opts.verify.ca_file_path = "./ca.crt";
+  receiver->SetPeerHost(sender_host, &r_client_ssl_opts);
+
+  const std::string key = "key";
+  const std::string sent = RandStr(100U);
+  sender->SendAsync(key, ByteContainerView{sent});
+  auto received = receiver->Recv(key);
+
+  EXPECT_EQ(sent, std::string_view(received));
+
+  WaitChannelEnd(receiver, sender);
+}
 
 }  // namespace yacl::link::test

@@ -181,3 +181,24 @@ yacl_cc_binary(
         "@com_github_google_benchmark//:benchmark_main",
     ],
 )
+
+yacl_cc_library(
+    name = "cuckoo_index",
+    srcs = ["cuckoo_index.cc"],
+    hdrs = ["cuckoo_index.h"],
+    linkopts = ["-lm"],
+    deps = [
+        "//yacl/base:exception",
+        "//yacl/base:int128",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+yacl_cc_test(
+    name = "cuckoo_index_test",
+    srcs = ["cuckoo_index_test.cc"],
+    deps = [
+        ":cuckoo_index",
+        "//yacl/crypto/utils:rand",
+    ],
+)

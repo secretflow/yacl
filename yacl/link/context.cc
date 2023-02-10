@@ -102,7 +102,7 @@ void Context::ConnectToMesh() {
   SPDLOG_DEBUG("connecting to mesh, id={}, self={}", Id(), Rank());
 
   auto try_connect = [&](size_t rank, const std::string& event,
-                         size_t /*attempt*/) {
+                         size_t attempt) {
     try {
       SendInternal(rank, event, {});
     } catch (const NetworkError& e) {

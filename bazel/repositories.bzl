@@ -60,7 +60,7 @@ def _com_github_brpc_brpc():
             "@yacl//bazel:patches/brpc.patch",
         ],
         urls = [
-            "https://github.com/apache/brpc/archive/refs/tags/1.3.0.tar.gz",
+            "https://github.com/apache/incubator-brpc/archive/refs/tags/1.3.0.tar.gz",
         ],
     )
 
