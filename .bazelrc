@@ -30,7 +30,6 @@ build:ubsan --copt -g
 build:ubsan --copt -fno-omit-frame-pointer
 build:ubsan --linkopt -fsanitize=undefined
 
-
 test --keep_going
 test --test_output=errors
 test --test_timeout=180

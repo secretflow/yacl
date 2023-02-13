@@ -1,0 +1,16 @@
+load("//bazel:yacl.bzl", "yacl_cc_library")
+
+package(default_visibility = ["//visibility:public"])
+
+yacl_cc_library(
+    name = "ssl_ecc",
+    srcs = ["ssl_ecc.cc"],
+    hdrs = ["ssl_ecc.h"],
+    deps = [
+        "//yacl/base:byte_container_view",
+        "//yacl/base:exception",
+        "//yacl/base:int128",
+        "//yacl/crypto/base:symmetric_crypto",
+        "@com_github_openssl_openssl//:openssl",
+    ],
+)

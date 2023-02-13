@@ -1,0 +1,204 @@
+# Copyright 2022 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:yacl.bzl", "yacl_cc_binary", "yacl_cc_library", "yacl_cc_test")
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@rules_cc//cc:defs.bzl", "cc_proto_library")
+
+package(default_visibility = ["//visibility:public"])
+
+yacl_cc_library(
+    name = "hamming",
+    hdrs = ["hamming.h"],
+    deps = [
+        "//yacl/base:exception",
+        "//yacl/base:int128",
+        "@com_google_absl//absl/numeric:bits",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+yacl_cc_test(
+    name = "hamming_test",
+    srcs = ["hamming_test.cc"],
+    deps = [
+        ":hamming",
+    ],
+)
+
+yacl_cc_library(
+    name = "scope_guard",
+    hdrs = ["scope_guard.h"],
+    deps = ["@com_google_absl//absl/cleanup"],
+)
+
+yacl_cc_test(
+    name = "scope_guard_test",
+    srcs = ["scope_guard_test.cc"],
+    deps = [
+        ":scope_guard",
+    ],
+)
+
+yacl_cc_library(
+    name = "thread_pool",
+    srcs = ["thread_pool.cc"],
+    hdrs = ["thread_pool.h"],
+    deps = [
+        "//yacl/base:exception",
+    ],
+)
+
+yacl_cc_test(
+    name = "thread_pool_test",
+    srcs = ["thread_pool_test.cc"],
+    deps = [
+        ":thread_pool",
+    ],
+)
+
+yacl_cc_library(
+    name = "parallel",
+    srcs = [
+        "parallel_common.cc",
+        "parallel_native.cc",
+    ],
+    hdrs = [
+        "parallel.h",
+        "parallel_native.h",
+    ],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":thread_pool",
+        "//yacl/base:exception",
+    ],
+)
+
+yacl_cc_test(
+    name = "parallel_test",
+    srcs = ["parallel_test.cc"],
+    deps = [
+        ":parallel",
+    ],
+)
+
+proto_library(
+    name = "serializable_proto",
+    srcs = ["serializable.proto"],
+)
+
+cc_proto_library(
+    name = "serializable_cc_proto",
+    deps = [":serializable_proto"],
+)
+
+yacl_cc_library(
+    name = "serialize",
+    srcs = ["serialize.cc"],
+    hdrs = ["serialize.h"],
+    deps = [
+        ":serializable_cc_proto",
+        "//yacl/base:buffer",
+        "//yacl/base:byte_container_view",
+        "//yacl/base:int128",
+    ],
+)
+
+yacl_cc_library(
+    name = "elapsed_timer",
+    srcs = ["elapsed_timer.cc"],
+    hdrs = ["elapsed_timer.h"],
+)
+
+yacl_cc_test(
+    name = "elapsed_timer_test",
+    srcs = ["elapsed_timer_test.cc"],
+    deps = [
+        ":elapsed_timer",
+    ],
+)
+
+yacl_cc_library(
+    name = "hash",
+    hdrs = ["hash.h"],
+)
+
+yacl_cc_library(
+    name = "matrix_utils",
+    srcs = ["matrix_utils.cc"],
+    hdrs = [
+        "matrix_utils.h",
+    ],
+    deps = [
+        "//yacl/base:byte_container_view",
+        "//yacl/base:int128",
+        "//yacl/base:block",
+        "@com_github_google_cpu_features//:cpu_features",
+        "@com_google_absl//absl/types:span",
+    ] + select({
+        "@platforms//cpu:aarch64": [
+            "@com_github_dltcollab_sse2neon//:sse2neon",
+        ],
+        "//conditions:default": [],
+    }),
+)
+
+yacl_cc_test(
+    name = "matrix_transpose_test",
+    srcs = ["matrix_transpose_test.cc"],
+    deps = [
+        ":matrix_utils",
+    ],
+)
+
+yacl_cc_binary(
+    name = "matrix_transpose_bench",
+    srcs = ["matrix_transpose_bench.cc"],
+    deps = [
+        ":matrix_utils",
+        "//yacl/crypto/tools:prg",
+        "@com_github_google_benchmark//:benchmark_main",
+    ],
+)
+
+yacl_cc_binary(
+    name = "matrix_uint128_bench",
+    srcs = ["matrix_uint128_bench.cc"],
+    deps = [
+        ":matrix_utils",
+        "//yacl/crypto/tools:prg",
+        "@com_github_google_benchmark//:benchmark_main",
+    ],
+)
+
+yacl_cc_library(
+    name = "cuckoo_index",
+    srcs = ["cuckoo_index.cc"],
+    hdrs = ["cuckoo_index.h"],
+    linkopts = ["-lm"],
+    deps = [
+        "//yacl/base:exception",
+        "//yacl/base:int128",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+yacl_cc_test(
+    name = "cuckoo_index_test",
+    srcs = ["cuckoo_index_test.cc"],
+    deps = [
+        ":cuckoo_index",
+        "//yacl/crypto/utils:rand",
+    ],
+)
