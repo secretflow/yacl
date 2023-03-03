@@ -228,8 +228,8 @@ void NistAesDrbgIntelRNGEntropy(uint128_t seed, int strength_bit) {
 
   EXPECT_NE(random_buf1, random_buf2);
 
-  ctr_drbg.FillRandom(absl::MakeSpan(random_buf1));
-  ctr_drbg.FillRandom(absl::MakeSpan(random_buf2));
+  ctr_drbg.FillPRand(absl::MakeSpan(random_buf1));
+  ctr_drbg.FillPRand(absl::MakeSpan(random_buf2));
   EXPECT_NE(random_buf1, random_buf2);
 
   for (size_t idx = 0; idx < 100; idx++) {
@@ -319,7 +319,7 @@ TEST(CtrDrngTest, TestHealthCheck) {
   std::vector<uint8_t> random_buf1 = ctr_drbg.Generate(random_size);
 
   std::vector<uint8_t> random_buf2(random_size);
-  ctr_drbg.FillRandomBytes(absl::MakeSpan(random_buf2));
+  ctr_drbg.FillPRandBytes(absl::MakeSpan(random_buf2));
 
   EXPECT_NE(random_buf1, random_buf2);
 

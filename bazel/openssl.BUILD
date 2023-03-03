@@ -40,6 +40,7 @@ configure_make(
         "//conditions:default": {},
     }),
     lib_source = ":all_srcs",
+    linkopts = ["-ldl"],
     out_static_libs = [
         "libssl.a",
         "libcrypto.a",

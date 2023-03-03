@@ -65,7 +65,7 @@ class NistAesDrbg : public IDrbg {
       size_t rand_len, PredictionResistanceFlags prediction_resistance =
                            PredictionResistanceFlags::kNo);
 
-  void FillRandomBytes(absl::Span<uint8_t> out) override {
+  void FillPRandBytes(absl::Span<uint8_t> out) override {
     const size_t nbytes = out.size();
 
     size_t out_len = 0;

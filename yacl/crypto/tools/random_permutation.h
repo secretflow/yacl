@@ -36,6 +36,9 @@ namespace yacl::crypto {
 // In practice, both AES and DES are Pseudorandom Permutations, we implement
 // Random Permutation using AES.
 //
+// [Security Assumption]: AES with a "fixed-and-public-known" key is a random
+// permutation
+//
 class RandomPerm {
  public:
   using Ctype = SymmetricCrypto::CryptoType;

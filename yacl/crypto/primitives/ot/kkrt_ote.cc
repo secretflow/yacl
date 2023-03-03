@@ -14,116 +14,98 @@
 
 #include "yacl/crypto/primitives/ot/kkrt_ote.h"
 
-#include "c/blake3.h"
-#include "emp-tool/utils/aes_opt.h"
-#include "emp-tool/utils/block.h"
+#include <algorithm>
+#include <array>
+#include <vector>
 
+#include "c/blake3.h"
+
+#include "yacl/base/block.h"
 #include "yacl/base/byte_container_view.h"
+#include "yacl/base/int128.h"
+#include "yacl/crypto/base/aes/aes_opt.h"
 #include "yacl/crypto/base/hash/hash_utils.h"
+#include "yacl/crypto/base/symmetric_crypto.h"
 #include "yacl/crypto/tools/prg.h"
 #include "yacl/crypto/tools/random_oracle.h"
+#include "yacl/crypto/utils/rand.h"
 #include "yacl/utils/matrix_utils.h"
+#include "yacl/utils/serialize.h"
 namespace yacl::crypto {
+
 namespace {
 
-// Security Parameter
-constexpr int kKappa = 128;
-// IKNP OT Extension Width
-constexpr int kIknpWidth = kKkrtWidth * kKappa;
-// TODO(shuyan.ycf): switch to 1024 when we have efficient 1024x128 transpose.
-constexpr int kBatchSize = 128;
-// How many blocks do we have.
+constexpr int kKappa = 128;                      // Security Parameter
+constexpr int kIknpWidth = kKkrtWidth * kKappa;  // IKNP OT Extension Width
+const auto& RO = RandomOracle::GetBlake3();
+
+// constants for batch size = 128
+constexpr int kBatchSize = 128;  // How many blocks do we have.
 constexpr int kNumBlockPerBatch = kBatchSize / kKappa;
+constexpr int kPrgBatchSize = kBatchSize * kNumBlockPerBatch;
 static_assert(kBatchSize % kKappa == 0);
 
+// constants for batch size = 1024
 constexpr int kBatchSize1024 = 1024;
 constexpr int kNumBlockPerBatch1024 = kBatchSize1024 / kKappa;
+constexpr int kPrgBatchSize1024 = kBatchSize * kNumBlockPerBatch1024;
 static_assert(kBatchSize1024 % kKappa == 0);
 
-uint128_t KkrtRandomOracle(const KkrtRow& row) {
-  // auto sha_bytes = crypto::Sha256(
-  auto sha_bytes = crypto::Blake3(
-      ByteContainerView(reinterpret_cast<const uint8_t*>(&row), sizeof(row)));
-  YACL_ENFORCE_GE(sha_bytes.size(), sizeof(uint128_t));
-  uint128_t ret;
-  std::memcpy(&ret, sha_bytes.data(), sizeof(ret));
-  return ret;
+// Pseudorandom coding initialization
+inline void PrcInit(const std::shared_ptr<link::Context>& ctx,
+                    AES_KEY* aes_key) {
+  uint128_t my_seed = SecureRandSeed();
+  ctx->SendAsync(ctx->NextRank(), SerializeUint128(my_seed), "SEED");
+  auto peer_seed = DeserializeUint128(ctx->Recv(ctx->NextRank(), "SEED"));
+  auto keys_block = PrgAesCtr<uint128_t>(my_seed ^ peer_seed, kKkrtWidth);
+  AES_opt_key_schedule<kKkrtWidth>(keys_block.data(), aes_key);
 }
 
-inline void KkrtRandomOracle(const KkrtRow& row, uint8_t* buf,
-                             uint64_t bufsize) {
-  blake3_hasher hasher;
-
-  blake3_hasher_init(&hasher);
-  blake3_hasher_update(&hasher, (const char*)(&row), sizeof(row));
-
-  blake3_hasher_finalize(&hasher, buf, bufsize);
-  return;
-}
-
-constexpr uint128_t kRandomOracleAesSeed =
-    MakeUint128(0x2B7E151628AED2A6, 0xABF7158809CF4F3C);
-
-inline void AesInit(emp::AES_KEY* aes_key) {
-  emp::block keys_block[kKkrtWidth];
-
-  Prg<uint64_t> prg(kRandomOracleAesSeed);
-
-  for (uint64_t i = 0; i < kKkrtWidth; ++i) {
-    keys_block[i] = emp::makeBlock(prg(), prg());
-  }
-
-  emp::AES_opt_key_schedule<kKkrtWidth>(keys_block, aes_key);
-}
-
-inline void AesEncrypt(emp::AES_KEY* aes_key, uint128_t input, KkrtRow* prc) {
-  emp::block input_block[kKkrtWidth];
-  emp::block enc_block[kKkrtWidth];
-  for (size_t i = 0; i < kKkrtWidth; i++) {
-    input_block[i] = emp::block(input);
-    enc_block[i] = emp::block(input);
-  }
-
-  emp::ParaEnc<kKkrtWidth, 1>(enc_block, aes_key);
+// Apply Pseudorandom coding on the input
+inline void Prc(AES_KEY* aes_key, uint128_t input, KkrtRow* prc) {
+  std::array<uint128_t, kKkrtWidth> aes_blocks;
+  std::fill(aes_blocks.begin(), aes_blocks.end(), input);
+  ParaEnc<kKkrtWidth, 1>(aes_blocks.data(), aes_key);
   for (size_t i = 0; i < kKkrtWidth; i++) {
     // aes(x) xor x, Correlation Roustness Hash
-    (*prc)[i] = (uint128_t)(input_block[i] ^ enc_block[i]);
+    (*prc)[i] = aes_blocks[i] ^ input;
   }
 }
+
+}  // namespace
 
 class KkrtGroupPRF : public IGroupPRF {
  public:
-  explicit KkrtGroupPRF(size_t n, const KkrtRow& s)
+  explicit KkrtGroupPRF(const std::shared_ptr<link::Context>& ctx, size_t n,
+                        const KkrtRow& s)
       : size_(n), q_(n, {0}), s_(s) {
-    AesInit(aes_key_);
+    PrcInit(ctx, aes_key_);
   }
 
   size_t Size() const override { return size_; }
 
+  // According to KKRT paper, the final PRF output should be: H(q ^ (c(r) & s))
   uint128_t Eval(size_t group_idx, uint128_t input) override {
-    // According to KKRT paper, the final PRF output should be:
-    //   H(q ^ (c(r) & s))
     YACL_ENFORCE_LT(group_idx, size_);
-    // KkrtRow prc = RandomOracle::GetDefault().Gen<kKkrtWidth>(input);
-    KkrtRow prc;
-    AesEncrypt(aes_key_, input, &prc);
+    KkrtRow prc_buf;
+    Prc(aes_key_, input, &prc_buf);
     const auto& q = q_[group_idx];
 
     for (size_t w = 0; w < kKkrtWidth; ++w) {
-      prc[w] &= s_[w];
-      prc[w] ^= q[w];
+      prc_buf[w] &= s_[w];
+      prc_buf[w] ^= q[w];
     }
-    return KkrtRandomOracle(prc);
+
+    return RO.Gen<uint128_t>(
+        ByteContainerView(prc_buf.data(), sizeof(prc_buf)));
   }
 
+  // According to KKRT paper, the final PRF output should be: H(q ^ (c(r) & s))
   void Eval(size_t group_idx, uint128_t input, uint8_t* outbuf,
             size_t bufsize) override {
-    // According to KKRT paper, the final PRF output should be:
-    //   H(q ^ (c(r) & s))
     YACL_ENFORCE_LT(group_idx, size_);
-    // KkrtRow prc = RandomOracle::GetDefault().Gen<kKkrtWidth>(input);
     KkrtRow prc;
-    AesEncrypt(aes_key_, input, &prc);
+    Prc(aes_key_, input, &prc);
     const auto& q = q_[group_idx];
 
     for (size_t w = 0; w < kKkrtWidth; ++w) {
@@ -131,7 +113,8 @@ class KkrtGroupPRF : public IGroupPRF {
       prc[w] ^= q[w];
     }
 
-    KkrtRandomOracle(prc, outbuf, bufsize);
+    auto tmp = RO(ByteContainerView(prc.data(), sizeof(prc)), bufsize);
+    std::memcpy(outbuf, tmp.data(), bufsize);
   }
 
   template <size_t N>
@@ -155,7 +138,8 @@ class KkrtGroupPRF : public IGroupPRF {
   }
 
   void CalcQ(const std::vector<KkrtRow>& u, size_t offset, size_t num_valid) {
-    YACL_ENFORCE(num_valid <= u.size() && offset + num_valid <= this->Size());
+    YACL_ENFORCE(num_valid <= u.size());
+    YACL_ENFORCE(offset + num_valid <= this->Size());
     std::vector<KkrtRow> t;
     t.resize(num_valid);
     for (size_t i = 0; i < num_valid; ++i) {
@@ -167,40 +151,35 @@ class KkrtGroupPRF : public IGroupPRF {
   }
 
  private:
-  // Group size.
-  const size_t size_;
-  // Q, received from receiver.
-  std::vector<KkrtRow> q_;
-  // Sender base ot choice bits: `s`
-  KkrtRow s_;
+  const size_t size_;       // Group size.
+  std::vector<KkrtRow> q_;  // Q, received from receiver.
+  KkrtRow s_;               // Sender base ot choice bits: `s`
 
-  emp::AES_KEY aes_key_[kKkrtWidth];
+  AES_KEY aes_key_[kKkrtWidth];
 };
-
-}  // namespace
 
 std::unique_ptr<IGroupPRF> KkrtOtExtSend(
     const std::shared_ptr<link::Context>& ctx, const OtRecvStore& base_options,
     size_t num_ot) {
   YACL_ENFORCE_EQ(base_options.blocks.size(), base_options.choices.size());
-  YACL_ENFORCE(kIknpWidth == base_options.choices.size());
+  YACL_ENFORCE_EQ(kIknpWidth, (int)base_options.choices.size());
   YACL_ENFORCE(num_ot > 0);
 
   // Build S for sender.
   KkrtRow S{0};
   for (size_t w = 0; w < kKkrtWidth; ++w) {
     for (size_t k = 0; k < kKappa; ++k) {
-      S[w] |= uint128_t(base_options.choices[w * kKappa + k] ? 1 : 0) << k;
+      S[w] |= uint128_t(base_options.choices[w * kKappa + k]) << k;
     }
   }
   // Build PRG from seed Ks.
-  std::vector<Prg<uint128_t>> prgs;
+  std::vector<Prg<uint128_t, kPrgBatchSize>> prgs;
   for (size_t k = 0; k < kIknpWidth; ++k) {
     prgs.emplace_back(base_options.blocks[k]);
   }
 
   // Build PRF.
-  auto prf = std::make_unique<KkrtGroupPRF>(num_ot, S);
+  auto prf = std::make_unique<KkrtGroupPRF>(ctx, num_ot, S);
 
   const size_t num_batch = (num_ot + kBatchSize - 1) / kBatchSize;
   for (size_t batch_idx = 0; batch_idx < num_batch; ++batch_idx) {
@@ -218,8 +197,7 @@ std::unique_ptr<IGroupPRF> KkrtOtExtSend(
       }
       MatrixTranspose128(&q);
       for (size_t i = 0; i < num_this_batch; ++i) {
-        // Q = G(ks)
-        Q[i][w] = q[i];
+        Q[i][w] = q[i];  // Q = G(ks)
       }
     }
 
@@ -253,16 +231,16 @@ void KkrtOtExtRecv(const std::shared_ptr<link::Context>& ctx,
   const size_t num_ot = inputs.size();
   const size_t num_batch = (num_ot + kBatchSize - 1) / kBatchSize;
 
-  std::vector<Prg<uint128_t>> prgs0;
-  std::vector<Prg<uint128_t>> prgs1;
+  std::vector<Prg<uint128_t, kPrgBatchSize>> prgs0;
+  std::vector<Prg<uint128_t, kPrgBatchSize>> prgs1;
   for (size_t k = 0; k < kIknpWidth; ++k) {
     // Build PRG from seed K0.
     prgs0.emplace_back(base_options.blocks[k][0]);
     // Build PRG from seed K1.
     prgs1.emplace_back(base_options.blocks[k][1]);
   }
-  emp::AES_KEY aes_key[kKkrtWidth];
-  AesInit(aes_key);
+  AES_KEY aes_key[kKkrtWidth];
+  PrcInit(ctx, aes_key);
 
   // Let us do it streaming way.
   for (size_t batch_idx = 0; batch_idx < num_batch; ++batch_idx) {
@@ -285,19 +263,15 @@ void KkrtOtExtRecv(const std::shared_ptr<link::Context>& ctx,
       MatrixTranspose128(&t);
       MatrixTranspose128(&u);
       for (size_t i = 0; i < num_this_batch; ++i) {
-        // T = G(k0)
-        T[i][w] = t[i];
-        // U = G(k1)
-        U[i][w] = u[i];
+        T[i][w] = t[i];  // T = G(k0)
+        U[i][w] = u[i];  // U = G(k1)
       }
     }
     // Construct U.
     // U = G(k1) ^ G(k0) ^ PRC(r)
     for (size_t i = 0; i < num_this_batch; ++i) {
-      // KkrtRow prc = RandomOracle::GetDefault().Gen<kKkrtWidth>(
-      //    inputs[batch_idx * kBatchSize + i]);
       KkrtRow prc;
-      AesEncrypt(aes_key, inputs[batch_idx * kBatchSize + i], &prc);
+      Prc(aes_key, inputs[batch_idx * kBatchSize + i], &prc);
       for (size_t w = 0; w < kKkrtWidth; ++w) {
         U[i][w] ^= T[i][w];
         U[i][w] ^= prc[w];
@@ -308,10 +282,8 @@ void KkrtOtExtRecv(const std::shared_ptr<link::Context>& ctx,
                        reinterpret_cast<const std::byte*>(U.data()), sizeof(U)},
                    fmt::format("KKRT:{}", batch_idx));
     for (size_t i = 0; i < num_this_batch; ++i) {
-      // TODO(shuyan.ycf): make correlation break RO plugable. BTW: libOTe use
-      // blake2 and takes 128 bits.
-      // It is enough to just take first 128 bits of sha256 results for PSI now.
-      recv_blocks[batch_idx * kBatchSize + i] = KkrtRandomOracle(T[i]);
+      recv_blocks[batch_idx * kBatchSize + i] =
+          RO.Gen<uint128_t>(ByteContainerView(T[i].data(), sizeof(T[i])));
     }
   }
 }
@@ -332,14 +304,14 @@ void KkrtOtExtSender::Init(const std::shared_ptr<link::Context>& ctx,
     }
   }
   // Build PRG from seed Ks.
-  std::vector<Prg<block>> prgs;
+  std::vector<Prg<uint128_t, kPrgBatchSize1024>> prgs;
 
   for (size_t k = 0; k < kIknpWidth; ++k) {
     prgs.emplace_back(base_options.blocks[k]);
   }
 
   // Build PRF.
-  auto kkrt_oprf = std::make_shared<KkrtGroupPRF>(num_ot, S);
+  auto kkrt_oprf = std::make_shared<KkrtGroupPRF>(ctx, num_ot, S);
   oprf_ = kkrt_oprf;
 
   const size_t num_batch = (num_ot + kBatchSize1024 - 1) / kBatchSize1024;
@@ -385,6 +357,7 @@ void KkrtOtExtSender::RecvCorrection(const std::shared_ptr<link::Context>& ctx,
   auto buf = ctx->Recv(ctx->NextRank(), fmt::format("KKRT:{}", recv_count));
 
   YACL_ENFORCE_EQ(buf.size(), static_cast<int64_t>(U.size() * sizeof(KkrtRow)));
+
   std::memcpy(U.data(), buf.data(), U.size() * sizeof(KkrtRow));
 
   std::shared_ptr<KkrtGroupPRF> kkrtOprf =
@@ -419,16 +392,14 @@ void KkrtOtExtReceiver::Init(const std::shared_ptr<link::Context>& ctx,
                              const OtSendStore& base_options, uint64_t num_ot) {
   const size_t num_batch = (num_ot + kBatchSize1024 - 1) / kBatchSize1024;
 
-  AesInit(aes_key_);
+  PrcInit(ctx, aes_key_);
 
-  std::vector<Prg<block>> prgs0;
-  std::vector<Prg<block>> prgs1;
+  std::vector<Prg<uint128_t, kPrgBatchSize1024>> prgs0;
+  std::vector<Prg<uint128_t, kPrgBatchSize1024>> prgs1;
 
   for (size_t k = 0; k < kIknpWidth; ++k) {
-    // Build PRG from seed K0.
-    prgs0.emplace_back(base_options.blocks[k][0]);
-    // Build PRG from seed K1.
-    prgs1.emplace_back(base_options.blocks[k][1]);
+    prgs0.emplace_back(base_options.blocks[k][0]);  // Build PRG from seed K0.
+    prgs1.emplace_back(base_options.blocks[k][1]);  // Build PRG from seed K1.
   }
 
   T_.resize(num_ot);
@@ -476,33 +447,37 @@ void KkrtOtExtReceiver::Encode(uint64_t ot_idx,
                                absl::Span<const uint128_t> inputs,
                                absl::Span<uint8_t> dest_encode) {
   YACL_ENFORCE(dest_encode.size() <= sizeof(uint128_t));
-  // KkrtRow prc = RandomOracle::GetDefault().Gen<kKkrtWidth>(inputs[ot_idx]);
+
   KkrtRow prc;
-  AesEncrypt(aes_key_, inputs[ot_idx], &prc);
+  Prc(aes_key_, inputs[ot_idx], &prc);
 
   for (size_t w = 0; w < kKkrtWidth; ++w) {
     U_[ot_idx][w] ^= T_[ot_idx][w];
     U_[ot_idx][w] ^= prc[w];
   }
 
-  KkrtRandomOracle(T_[ot_idx], dest_encode.data(),
-                   std::min(dest_encode.size(), sizeof(uint128_t)));
+  const size_t bufsize = std::min(dest_encode.size(), sizeof(uint128_t));
+  auto tmp =
+      RO(ByteContainerView(T_[ot_idx].data(), sizeof(T_[ot_idx])), bufsize);
+  std::memcpy(dest_encode.data(), tmp.data(), bufsize);
 }
 
 void KkrtOtExtReceiver::Encode(uint64_t ot_idx, const uint128_t input,
                                absl::Span<uint8_t> dest_encode) {
   YACL_ENFORCE(dest_encode.size() <= sizeof(uint128_t));
-  // KkrtRow prc = RandomOracle::GetDefault().Gen<kKkrtWidth>(input);
+
   KkrtRow prc;
-  AesEncrypt(aes_key_, input, &prc);
+  Prc(aes_key_, input, &prc);
 
   for (size_t w = 0; w < kKkrtWidth; ++w) {
     U_[ot_idx][w] ^= T_[ot_idx][w];
     U_[ot_idx][w] ^= prc[w];
   }
 
-  KkrtRandomOracle(T_[ot_idx], dest_encode.data(),
-                   std::min(dest_encode.size(), sizeof(uint128_t)));
+  const size_t bufsize = std::min(dest_encode.size(), sizeof(uint128_t));
+  auto tmp =
+      RO(ByteContainerView(T_[ot_idx].data(), sizeof(T_[ot_idx])), bufsize);
+  std::memcpy(dest_encode.data(), tmp.data(), bufsize);
 }
 
 void KkrtOtExtReceiver::ZeroEncode(uint64_t ot_idx) {

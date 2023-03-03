@@ -14,6 +14,8 @@
 
 #include "yacl/link/context.h"
 
+#include <spdlog/common.h>
+
 #include <chrono>
 #include <iostream>
 #include <thread>
@@ -25,6 +27,28 @@
 #include "yacl/link/trace.h"
 
 namespace yacl::link {
+
+#define SPDLOG_COND(LEVEL, ...)  \
+  switch (LEVEL) {               \
+    case spdlog::level::trace:   \
+      SPDLOG_TRACE(__VA_ARGS__); \
+      break;                     \
+    case spdlog::level::debug:   \
+      SPDLOG_DEBUG(__VA_ARGS__); \
+      break;                     \
+    case spdlog::level::info:    \
+      SPDLOG_INFO(__VA_ARGS__);  \
+      break;                     \
+    case spdlog::level::warn:    \
+      SPDLOG_WARN(__VA_ARGS__);  \
+      break;                     \
+    case spdlog::level::err:     \
+      SPDLOG_ERROR(__VA_ARGS__); \
+      break;                     \
+    default:                     \
+      SPDLOG_DEBUG(__VA_ARGS__); \
+      break;                     \
+  }
 
 std::ostream& operator<<(std::ostream& os, const Statistics& st) {
   os << "sent_bytes=" << st.sent_bytes       //
@@ -96,18 +120,19 @@ void Context::WaitLinkTaskFinish() {
   }
 }
 
-void Context::ConnectToMesh() {
+void Context::ConnectToMesh(spdlog::level::level_enum connect_log_level) {
   const std::string event = fmt::format("connect_{}", Rank());
 
-  SPDLOG_DEBUG("connecting to mesh, id={}, self={}", Id(), Rank());
+  SPDLOG_COND(connect_log_level, "connecting to mesh, id={}, self={}", Id(),
+              Rank());
 
   auto try_connect = [&](size_t rank, const std::string& event,
-                         size_t attempt) {
+                         uint32_t timeout) {
     try {
-      SendInternal(rank, event, {});
+      SPDLOG_COND(connect_log_level, "attempt to connect to rank={}", rank);
+      SendInternal(rank, event, {}, timeout);
     } catch (const NetworkError& e) {
-      SPDLOG_DEBUG("attempt={} to connect to rank={} error={}", attempt, rank,
-                   e.what());
+      SPDLOG_ERROR("connect to rank={} failed with error {}", rank, e.what());
       return false;
     }
     return true;
@@ -118,19 +143,22 @@ void Context::ConnectToMesh() {
     if (idx == Rank()) {
       continue;
     }
-
     bool succeed = false;
-    for (size_t attempt = 0; attempt < desc_.connect_retry_times + 1;
-         attempt++) {
+    const uint32_t send_attempt = 10u;
+    const uint32_t retry_time_add = 1000u;
+    for (uint32_t attempt = 0, send_timeout = retry_time_add;
+         attempt < send_attempt; attempt++, send_timeout += retry_time_add) {
       if (attempt != 0) {
         // sleep and retry.
-        SPDLOG_DEBUG(
+        SPDLOG_COND(
+            connect_log_level,
             "try_connect to rank {} not succeed, sleep_for {}ms and retry.",
             idx, desc_.connect_retry_interval_ms);
+
         std::this_thread::sleep_for(
             std::chrono::milliseconds(desc_.connect_retry_interval_ms));
       }
-      if (try_connect(idx, event, attempt)) {
+      if (try_connect(idx, event, send_timeout)) {
         succeed = true;
         break;
       }
@@ -141,7 +169,7 @@ void Context::ConnectToMesh() {
           "connect to mesh failed, failed to setup connection to rank={}", idx);
     }
   }
-  SPDLOG_DEBUG("connecting to mesh, all partners launched");
+  SPDLOG_COND(connect_log_level, "connecting to mesh, all partners launched");
 
   // gather all
   for (size_t idx = 0; idx < WorldSize(); idx++) {
@@ -152,7 +180,9 @@ void Context::ConnectToMesh() {
     std::string key = fmt::format("connect_{}", idx);
     (void)RecvInternal(idx, key);  // ignore the received value.
   }
-  SPDLOG_DEBUG("connected to mesh, id={}, self={}", Id(), Rank());
+
+  SPDLOG_COND(connect_log_level, "connected to mesh, id={}, self={}", Id(),
+              Rank());
 }
 
 // P2P algorithms
@@ -212,6 +242,17 @@ void Context::SendAsyncInternal(size_t dst_rank, const std::string& key,
 
   stats_->sent_actions++;
   stats_->sent_bytes += value_length;
+}
+
+void Context::SendInternal(size_t dst_rank, const std::string& key,
+                           ByteContainerView value, uint32_t timeout) {
+  YACL_ENFORCE(dst_rank < static_cast<size_t>(channels_.size()),
+               "rank={} out of range={}", dst_rank, channels_.size());
+
+  channels_[dst_rank]->Send(key, value, timeout);
+
+  stats_->sent_actions++;
+  stats_->sent_bytes += value.size();
 }
 
 void Context::SendInternal(size_t dst_rank, const std::string& key,
@@ -324,5 +365,7 @@ void Context::SetRecvTimeout(uint32_t recv_timeout_ms) {
 }
 
 uint32_t Context::GetRecvTimeout() const { return recv_timeout_ms_; }
+
+#undef SPDLOG_COND
 
 }  // namespace yacl::link

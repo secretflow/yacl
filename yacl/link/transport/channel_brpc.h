@@ -70,6 +70,8 @@ class ChannelBrpc final : public ChannelBase,
   void SendAsyncImpl(const std::string& key, Buffer&& value) override;
 
   void SendImpl(const std::string& key, ByteContainerView value) override;
+  void SendImpl(const std::string& key, ByteContainerView value,
+                uint32_t timeout) override;
 
  public:
   ChannelBrpc(size_t self_rank, size_t peer_rank, Options options)

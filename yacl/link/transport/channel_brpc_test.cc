@@ -20,6 +20,7 @@
 #include <filesystem>
 #include <future>
 #include <string>
+#include <thread>
 
 #include "fmt/format.h"
 #include "gmock/gmock.h"
@@ -27,6 +28,8 @@
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/exception.h"
+
+#include "interconnection/link/transport.pb.h"
 
 // disable detect leaks for brpc's "acceptable mem leak"
 // https://github.com/apache/incubator-brpc/blob/0.9.6/src/brpc/server.cpp#L1138
@@ -447,6 +450,100 @@ TEST_F(ChannelBrpcSSLTest, TwoWaySSL) {
   EXPECT_EQ(sent, std::string_view(received));
 
   WaitChannelEnd(receiver, sender);
+}
+
+using namespace yacl::link;
+namespace ic_pb = org::interconnection::link;
+namespace ic = org::interconnection;
+
+class DelayReceiverServiceImpl : public ic_pb::ReceiverService {
+ public:
+  DelayReceiverServiceImpl() = default;
+
+  void Push(::google::protobuf::RpcController* /*cntl_base*/,
+            const ic_pb::PushRequest* request, ic_pb::PushResponse* response,
+            ::google::protobuf::Closure* done) override {
+    brpc::ClosureGuard done_guard(done);
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+
+    response->mutable_header()->set_error_code(ic::ErrorCode::OK);
+    response->mutable_header()->set_error_msg("");
+  }
+};
+
+class DummyReceiverLoopBrpc final : public ReceiverLoopBase {
+ public:
+  ~DummyReceiverLoopBrpc() override { Stop(); }
+
+  void Stop() override {
+    server_.Stop(0);
+    server_.Join();
+  }
+
+  std::string Start(const std::string& host) {
+    if (server_.IsRunning()) {
+      YACL_THROW_LOGIC_ERROR("brpc server is already running");
+    }
+
+    auto svc = std::make_unique<DelayReceiverServiceImpl>();
+    if (server_.AddService(svc.get(), brpc::SERVER_OWNS_SERVICE) == 0) {
+      static_cast<void>(svc.release());
+    } else {
+      YACL_THROW_IO_ERROR("brpc server failed to add msg service");
+    }
+
+    brpc::ServerOptions options;
+    if (server_.Start(host.data(), &options) != 0) {
+      YACL_THROW_IO_ERROR("brpc server failed start");
+    }
+
+    return butil::endpoint2str(server_.listen_address()).c_str();
+  }
+
+ protected:
+  brpc::Server server_;
+};
+
+class ChannelBrpcSendTimeOutTest : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    const size_t send_rank = 0;
+    const size_t recv_rank = 1;
+    sender_ = std::make_shared<ChannelBrpc>(send_rank, recv_rank, options_);
+    receiver_ = std::make_shared<ChannelBrpc>(recv_rank, send_rank, options_);
+    receiver_loop_ = std::make_unique<DummyReceiverLoopBrpc>();
+    receiver_loop_->AddListener(0, receiver_);
+    receiver_host_ = receiver_loop_->Start("127.0.0.1:0");
+
+    sender_loop_ = std::make_unique<DummyReceiverLoopBrpc>();
+    sender_loop_->AddListener(1, sender_);
+    sender_host_ = sender_loop_->Start("127.0.0.1:0");
+
+    sender_->SetPeerHost(receiver_host_);
+    receiver_->SetPeerHost(sender_host_);
+  }
+
+  void TearDown() override {}
+
+  ChannelBrpc::Options options_;
+  std::shared_ptr<ChannelBrpc> sender_;
+  std::shared_ptr<ChannelBrpc> receiver_;
+  std::string receiver_host_;
+  std::unique_ptr<DummyReceiverLoopBrpc> receiver_loop_;
+  std::string sender_host_;
+  std::unique_ptr<DummyReceiverLoopBrpc> sender_loop_;
+};
+
+TEST_F(ChannelBrpcSendTimeOutTest, Send_Timeout) {
+  auto clock_start = std::chrono::steady_clock::now();
+  EXPECT_THROW(sender_->Send("key", {}, 1000U), NetworkError);
+  auto eclips = std::chrono::steady_clock::now() - clock_start;
+  EXPECT_GT(
+      std::chrono::duration_cast<std::chrono::milliseconds>(eclips).count(),
+      900U);
+  EXPECT_LT(
+      std::chrono::duration_cast<std::chrono::milliseconds>(eclips).count(),
+      1100U);
 }
 
 }  // namespace yacl::link::test

@@ -231,8 +231,8 @@ bool NistAesDrbg::HealthCheck() {
   std::array<uint64_t, kDefaultHealthCheckSize> random_buffer;
   std::array<uint64_t, kDefaultHealthCheckSize> entropy_buffer;
 
-  FillRandom(absl::MakeSpan(reinterpret_cast<uint8_t *>(random_buffer.data()),
-                            random_buffer.size() * sizeof(uint64_t)));
+  FillPRand(absl::MakeSpan(reinterpret_cast<uint8_t *>(random_buffer.data()),
+                           random_buffer.size() * sizeof(uint64_t)));
 
   for (size_t idx = 0; idx < kDefaultHealthCheckSize; idx++) {
     ctx->entropy_cnt++;

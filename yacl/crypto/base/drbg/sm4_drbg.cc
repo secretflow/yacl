@@ -276,8 +276,8 @@ std::vector<uint8_t> Sm4Drbg::Generate(
   return ret;
 }
 
-// override IDrbg FillRandomBytes
-void Sm4Drbg::FillRandomBytes(absl::Span<uint8_t> out) {
+// override IDrbg FillPRandBytes
+void Sm4Drbg::FillPRandBytes(absl::Span<uint8_t> out) {
   const size_t nbytes = out.size();
 
   if (nbytes > 0) {

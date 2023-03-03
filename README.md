@@ -25,7 +25,7 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 https://brew.sh/
 
 # Install dependencies
-brew install bazel cmake ninja nasm automake lbtool
+brew install bazel cmake ninja nasm automake libtool
 ```
 
 ### Build & UnitTest

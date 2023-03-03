@@ -27,9 +27,9 @@ namespace yacl::crypto {
 // IKNP OT Extension Implementation
 //
 // This implementation bases on IKNP OTE, for more theoretical details, see
-// https://eprint.iacr.org/2016/799.pdf, section 3, figure 1. Note that our
-// implementation is not exactly the same since original protocol uses ideal ot
-// functionality (not random ot).
+// https://www.iacr.org/archive/crypto2003/27290145/27290145.pdf, section 3,
+// figure 1. Note that our implementation is not exactly the same since original
+// protocol uses ideal ot functionality (not random ot).
 //
 //              +---------+    +---------+    +---------+
 //              |   ROT   | => |   COT   | => |   ROT   |

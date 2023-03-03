@@ -34,8 +34,6 @@ yacl_cc_library(
     hdrs = [
         "nist_aes_drbg.h",
     ],
-    # Openssl::libcrypto requires `dlopen`...
-    linkopts = ["-ldl"],
     deps = [
         ":drbg",
         ":entropy_source_selector",
@@ -135,8 +133,6 @@ yacl_cc_library(
     hdrs = [
         "sm4_drbg.h",
     ],
-    # Openssl::libcrypto requires `dlopen`...
-    linkopts = ["-ldl"],
     deps = [
         ":drbg",
         ":entropy_source",

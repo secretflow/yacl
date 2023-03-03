@@ -1,3 +1,17 @@
+# Copyright 2023 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
@@ -24,6 +38,7 @@ def yacl_deps():
     _com_github_gperftools_gperftools()
     _com_github_google_cpu_features()
     _com_github_dltcollab_sse2neon()
+    _com_github_msgpack_msgpack()
 
     # crypto related
     _com_github_openssl_openssl()
@@ -32,6 +47,7 @@ def yacl_deps():
     _com_github_intel_ipp()
     _com_github_libsodium()
     _com_github_emptoolkit_emp_tool()
+    _com_github_libtom_libtommath()
 
     maybe(
         git_repository,
@@ -60,7 +76,7 @@ def _com_github_brpc_brpc():
             "@yacl//bazel:patches/brpc.patch",
         ],
         urls = [
-            "https://github.com/apache/incubator-brpc/archive/refs/tags/1.3.0.tar.gz",
+            "https://github.com/apache/brpc/archive/refs/tags/1.3.0.tar.gz",
         ],
     )
 
@@ -311,11 +327,41 @@ def _com_github_dltcollab_sse2neon():
     maybe(
         http_archive,
         name = "com_github_dltcollab_sse2neon",
-        sha256 = "4001e2dfb14fcf3831211581ed83bcc83cf6a3a69f638dcbaa899044a351bb2a",
-        strip_prefix = "sse2neon-1.5.1",
+        sha256 = "06f4693219deccb91b457135d836fc514a1c0a57e9fa66b143982901d2d19677",
+        strip_prefix = "sse2neon-1.6.0",
         type = "tar.gz",
         urls = [
-            "https://github.com/DLTcollab/sse2neon/archive/refs/tags/v1.5.1.tar.gz",
+            "https://github.com/DLTcollab/sse2neon/archive/refs/tags/v1.6.0.tar.gz",
         ],
         build_file = "@yacl//bazel:sse2neon.BUILD",
+    )
+
+def _com_github_libtom_libtommath():
+    maybe(
+        http_archive,
+        name = "com_github_libtom_libtommath",
+        sha256 = "f3c20ab5df600d8d89e054d096c116417197827d12732e678525667aa724e30f",
+        type = "tar.gz",
+        strip_prefix = "libtommath-1.2.0",
+        patch_args = ["-p1"],
+        patches = [
+            "@yacl//bazel:patches/libtommath-1.2.0.patch",
+        ],
+        urls = [
+            "https://github.com/libtom/libtommath/archive/v1.2.0.tar.gz",
+        ],
+        build_file = "@yacl//bazel:libtommath.BUILD",
+    )
+
+def _com_github_msgpack_msgpack():
+    maybe(
+        http_archive,
+        name = "com_github_msgpack_msgpack",
+        type = "tar.gz",
+        strip_prefix = "msgpack-c-cpp-3.3.0",
+        sha256 = "754c3ace499a63e45b77ef4bcab4ee602c2c414f58403bce826b76ffc2f77d0b",
+        urls = [
+            "https://github.com/msgpack/msgpack-c/archive/refs/tags/cpp-3.3.0.tar.gz",
+        ],
+        build_file = "@yacl//bazel:msgpack.BUILD",
     )

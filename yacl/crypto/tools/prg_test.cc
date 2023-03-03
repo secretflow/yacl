@@ -14,6 +14,7 @@
 
 #include "yacl/crypto/tools/prg.h"
 
+#include <cstdint>
 #include <memory>
 #include <random>
 
@@ -132,14 +133,31 @@ TEST(Prg, DeterministicWithDifferentSeed) {
   }
 }
 
+TEST(Prg, FillPRandomBytes) {
+  constexpr int kSize = 11;
+  std::vector<uint8_t> output1(kSize);
+  std::vector<uint8_t> output2(kSize);
+  auto c1 = FillPRandBytes(SymmetricCrypto::CryptoType::AES128_ECB, 0, 0, 0,
+                           absl::MakeSpan(output1));
+  auto c2 = FillPRandBytes(SymmetricCrypto::CryptoType::AES128_ECB, 0, 0, c1,
+                           absl::MakeSpan(output2));
+  const uint128_t expected =
+      (kSize + sizeof(uint128_t) - 1) / sizeof(uint128_t);
+  EXPECT_EQ(c1, expected);
+  EXPECT_EQ(c2, 2 * expected);
+  for (int i = 0; i < kSize; ++i) {
+    EXPECT_NE(output1[i], output2[i]);
+  }
+}
+
 TEST(Prg, FillAesRandom) {
   constexpr int kSize = 11;
   std::vector<uint64_t> output1(kSize);
   std::vector<uint64_t> output2(kSize);
-  auto c1 = FillPseudoRandom(SymmetricCrypto::CryptoType::AES128_ECB, 0, 0, 0,
-                             absl::MakeSpan(output1));
-  auto c2 = FillPseudoRandom(SymmetricCrypto::CryptoType::AES128_ECB, 0, 0, c1,
-                             absl::MakeSpan(output2));
+  auto c1 = FillPRand(SymmetricCrypto::CryptoType::AES128_ECB, 0, 0, 0,
+                      absl::MakeSpan(output1));
+  auto c2 = FillPRand(SymmetricCrypto::CryptoType::AES128_ECB, 0, 0, c1,
+                      absl::MakeSpan(output2));
   const uint128_t expected =
       (sizeof(uint64_t) * kSize + sizeof(uint128_t) - 1) / sizeof(uint128_t);
   EXPECT_EQ(c1, expected);
@@ -168,7 +186,7 @@ TEST(Prg, DeterministicWithDifferentSeedSm4) {
 }
 
 // nist ase_ctr drbg
-TEST(PseudoRandomCtrDrbg, BooleanWorks) {
+TEST(PRandomCtrDrbg, BooleanWorks) {
   // GIVEN
   Prg<bool> prg(kKey1, PRG_MODE::kNistAesCtrDrbg);
   // WHEN
@@ -185,7 +203,7 @@ TEST(PseudoRandomCtrDrbg, BooleanWorks) {
   EXPECT_TRUE(std::abs(ratio - 0.5) <= 0.05) << ratio;
 }
 
-TEST(PseudoRandomCtrDrbg, BuiltinScalarsWorks) {
+TEST(PRandomCtrDrbg, BuiltinScalarsWorks) {
   {
     // GIVEN
     Prg<int> prg(kKey1, PRG_MODE::kNistAesCtrDrbg);
@@ -227,7 +245,7 @@ TEST(PseudoRandomCtrDrbg, BuiltinScalarsWorks) {
   }
 }
 
-TEST(PseudoRandomCtrDrbg, WorksForCustomizedStruct) {
+TEST(PRandomCtrDrbg, WorksForCustomizedStruct) {
   // GIVEN
   Prg<Foo> prg(kKey1, PRG_MODE::kNistAesCtrDrbg);
   int ncalls = 3 * decltype(prg)::BatchSize() + 13;
@@ -240,7 +258,7 @@ TEST(PseudoRandomCtrDrbg, WorksForCustomizedStruct) {
   }
 }
 
-TEST(PseudoRandomCtrDrbg, DeterministicWithSameSeed) {
+TEST(PRandomCtrDrbg, DeterministicWithSameSeed) {
   Prg<int> prg1(kKey1, PRG_MODE::kNistAesCtrDrbg);
   Prg<int> prg2(kKey1, PRG_MODE::kNistAesCtrDrbg);
   for (int i = 0; i < 128; ++i) {
@@ -249,7 +267,7 @@ TEST(PseudoRandomCtrDrbg, DeterministicWithSameSeed) {
   }
 }
 
-TEST(PseudoRandomCtrDrbg, DeterministicWithDifferentSeed) {
+TEST(PRandomCtrDrbg, DeterministicWithDifferentSeed) {
   Prg<int> prg1(kKey1, PRG_MODE::kNistAesCtrDrbg);
   Prg<int> prg2(kKey2, PRG_MODE::kNistAesCtrDrbg);
   for (int i = 0; i < 128; ++i) {
@@ -259,7 +277,7 @@ TEST(PseudoRandomCtrDrbg, DeterministicWithDifferentSeed) {
 }
 
 // nist gm sm4_ctr drbg
-TEST(PseudoRandomSm4Drbg, BooleanWorks) {
+TEST(PRandomSm4Drbg, BooleanWorks) {
   // GIVEN
   Prg<bool> prg(kKey1, PRG_MODE::kGmSm4CtrDrbg);
   // WHEN
@@ -276,7 +294,7 @@ TEST(PseudoRandomSm4Drbg, BooleanWorks) {
   EXPECT_TRUE(std::abs(ratio - 0.5) <= 0.05) << ratio;
 }
 
-TEST(PseudoRandomSm4Drbg, BuiltinScalarsWorks) {
+TEST(PRandomSm4Drbg, BuiltinScalarsWorks) {
   {
     // GIVEN
     Prg<int> prg(kKey1, PRG_MODE::kGmSm4CtrDrbg);
@@ -318,7 +336,7 @@ TEST(PseudoRandomSm4Drbg, BuiltinScalarsWorks) {
   }
 }
 
-TEST(PseudoRandomSm4Drbg, WorksForCustomizedStruct) {
+TEST(PRandomSm4Drbg, WorksForCustomizedStruct) {
   // GIVEN
   Prg<Foo> prg(kKey1, PRG_MODE::kGmSm4CtrDrbg);
   int ncalls = 3 * decltype(prg)::BatchSize() + 13;
@@ -331,7 +349,7 @@ TEST(PseudoRandomSm4Drbg, WorksForCustomizedStruct) {
   }
 }
 
-TEST(PseudoRandomSm4Drbg, DeterministicWithSameSeed) {
+TEST(PRandomSm4Drbg, DeterministicWithSameSeed) {
   Prg<int> prg1(kKey1, PRG_MODE::kGmSm4CtrDrbg);
   Prg<int> prg2(kKey1, PRG_MODE::kGmSm4CtrDrbg);
   for (int i = 0; i < 128; ++i) {
@@ -340,7 +358,7 @@ TEST(PseudoRandomSm4Drbg, DeterministicWithSameSeed) {
   }
 }
 
-TEST(PseudoRandomSm4Drbg, DeterministicWithDifferentSeed) {
+TEST(PRandomSm4Drbg, DeterministicWithDifferentSeed) {
   Prg<int> prg1(kKey1, PRG_MODE::kGmSm4CtrDrbg);
   Prg<int> prg2(kKey2, PRG_MODE::kGmSm4CtrDrbg);
   for (int i = 0; i < 128; ++i) {

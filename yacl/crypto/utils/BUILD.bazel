@@ -20,8 +20,6 @@ yacl_cc_library(
     name = "rand",
     srcs = ["rand.cc"],
     hdrs = ["rand.h"],
-    # Openssl::libcrypto requires `dlopen`...
-    linkopts = ["-ldl"],
     deps = [
         "//yacl/base:dynamic_bitset",
         "//yacl/base:exception",

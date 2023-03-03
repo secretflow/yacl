@@ -25,13 +25,13 @@ class IDrbg {
   IDrbg() = default;
   virtual ~IDrbg() = default;
 
-  virtual void FillRandomBytes(absl::Span<uint8_t> out) = 0;
+  virtual void FillPRandBytes(absl::Span<uint8_t> out) = 0;
 
   template <typename T,
             std::enable_if_t<std::is_trivially_copyable_v<T>, int> = 0>
-  void FillRandom(absl::Span<T> out) {
-    FillRandomBytes(absl::MakeSpan(reinterpret_cast<uint8_t*>(out.data()),
-                                   out.size() * sizeof(T)));
+  void FillPRand(absl::Span<T> out) {
+    FillPRandBytes(absl::MakeSpan(reinterpret_cast<uint8_t*>(out.data()),
+                                  out.size() * sizeof(T)));
   }
 };
 
