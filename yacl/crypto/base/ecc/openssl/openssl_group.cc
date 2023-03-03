@@ -14,9 +14,12 @@
 
 #include "yacl/crypto/base/ecc/openssl/openssl_group.h"
 
+#include "yacl/crypto/base/hash/ssl_hash.h"
 #include "yacl/utils/scope_guard.h"
 
 namespace yacl::crypto::openssl {
+
+static constexpr size_t kHashToCurveCounterGuard = 100;
 
 thread_local BN_CTX_PTR OpensslGroup::ctx_ = BN_CTX_PTR(BN_CTX_new());
 
@@ -72,7 +75,7 @@ const EC_POINT *Cast(const EcPoint &p) {
   return std::get<AnyPointPtr>(p).get<EC_POINT>();
 }
 
-EC_POINT *Cast(const AnyPointPtr &ptr) { return ptr.get<EC_POINT>(); }
+EC_POINT *Cast(AnyPointPtr &ptr) { return ptr.get<EC_POINT>(); }
 
 AnyPointPtr WrapOpensslPoint(EC_POINT *point) {
   static auto point_deleter = [](void *p) {
@@ -86,28 +89,35 @@ AnyPointPtr WrapOpensslPoint(EC_POINT *point) {
   return AnyPointPtr(point, point_deleter);
 }
 
+OpensslGroup::OpensslGroup(const CurveMeta &meta, EC_GROUP_PTR group)
+    : EcGroup(meta), group_(std::move(group)), field_p_(BN_new()) {
+  SSL_RET_1(EC_GROUP_get_curve(group_.get(), field_p_.get(), nullptr, nullptr,
+                               ctx_.get()));
+}
+
 AnyPointPtr OpensslGroup::MakeOpensslPoint() const {
   return WrapOpensslPoint(EC_POINT_new(group_.get()));
 }
 
 MPInt OpensslGroup::GetCofactor() const {
-  return Bn2Mp(EC_GROUP_get0_cofactor(group_.get()));
+  static MPInt cache = Bn2Mp(EC_GROUP_get0_cofactor(group_.get()));
+  return cache;
 }
 
 MPInt OpensslGroup::GetField() const {
-  auto bn_p = BIGNUM_PTR(BN_new());
-  SSL_RET_1(EC_GROUP_get_curve(group_.get(), bn_p.get(), nullptr, nullptr,
-                               ctx_.get()));
-  return Bn2Mp(bn_p.get());
+  static MPInt cache = Bn2Mp(field_p_.get());
+  return cache;
 }
 
 MPInt OpensslGroup::GetOrder() const {
-  return Bn2Mp(EC_GROUP_get0_order(group_.get()));
+  static MPInt cache = Bn2Mp(EC_GROUP_get0_order(group_.get()));
+  return cache;
 }
 
 EcPoint OpensslGroup::GetGenerator() const {
-  return WrapOpensslPoint(
+  static EcPoint cache = WrapOpensslPoint(
       EC_POINT_dup(EC_GROUP_get0_generator(group_.get()), group_.get()));
+  return cache;
 }
 
 std::string OpensslGroup::ToString() { return GetCurveName(); }
@@ -180,6 +190,16 @@ AffinePoint OpensslGroup::GetAffinePoint(const EcPoint &point) const {
   return AffinePoint(Bn2Mp(x.get()), Bn2Mp(y.get()));
 }
 
+AnyPointPtr OpensslGroup::GetSslPoint(const AffinePoint &p) const {
+  auto point = MakeOpensslPoint();
+  // Convert AffinePoint to EC_POINT
+  auto x = Mp2Bn(p.x);
+  auto y = Mp2Bn(p.y);
+  SSL_RET_1(EC_POINT_set_affine_coordinates(group_.get(), Cast(point), x.get(),
+                                            y.get(), ctx_.get()));
+  return point;
+}
+
 Buffer OpensslGroup::SerializePoint(const EcPoint &point,
                                     PointOctetFormat format) const {
   Buffer buf;
@@ -222,8 +242,55 @@ EcPoint OpensslGroup::DeserializePoint(ByteContainerView buf,
 
 EcPoint OpensslGroup::HashToCurve(HashToCurveStrategy strategy,
                                   std::string_view str) const {
-  // TODO hash to curve
-  return yacl::crypto::EcPoint();
+  auto bits = EC_GROUP_order_bits(group_.get());
+  HashAlgorithm hash_algorithm;
+  switch (strategy) {
+    case HashToCurveStrategy::TryAndRehash_SHA2:
+      if (bits <= 224) {
+        hash_algorithm = HashAlgorithm::SHA224;
+      } else if (bits <= 256) {
+        hash_algorithm = HashAlgorithm::SHA256;
+      } else if (bits <= 384) {
+        hash_algorithm = HashAlgorithm::SHA384;
+      } else {
+        hash_algorithm = HashAlgorithm::SHA512;
+      }
+      break;
+    case HashToCurveStrategy::TryAndRehash_SHA3:
+      YACL_THROW("Openssl lib do not support TryAndRehash_SHA3 strategy now");
+      break;
+    case HashToCurveStrategy::TryAndRehash_SM:
+      hash_algorithm = HashAlgorithm::SM3;
+      break;
+    default:
+      YACL_THROW(
+          "Openssl lib only support TryAndRehash strategy now. select={}",
+          (int)strategy);
+  }
+
+  auto point = MakeOpensslPoint();
+  auto buf = SslHash(hash_algorithm).Update(str).CumulativeHash();
+  auto bn = BIGNUM_PTR(BN_new());
+  for (size_t t = 0; t < kHashToCurveCounterGuard; ++t) {
+    // hash value to BN
+    YACL_ENFORCE(BN_bin2bn(buf.data(), buf.size(), bn.get()) != nullptr,
+                 "Convert hash value to bignumber fail");
+    SSL_RET_1(BN_nnmod(bn.get(), bn.get(), field_p_.get(), ctx_.get()),
+              "hash-to-curve: bn mod p fail");
+
+    // check BN on the curve
+    int ret = EC_POINT_set_compressed_coordinates(group_.get(), Cast(point),
+                                                  bn.get(), 0, ctx_.get());
+    if (ret == 1) {
+      return point;
+    }
+
+    // do rehash
+    buf = SslHash(hash_algorithm).Update(buf).CumulativeHash();
+  }
+
+  YACL_THROW("Openssl HashToCurve exceed max loop({})",
+             kHashToCurveCounterGuard);
 }
 
 bool OpensslGroup::PointEqual(const EcPoint &p1, const EcPoint &p2) const {

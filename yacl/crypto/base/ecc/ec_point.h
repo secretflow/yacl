@@ -27,7 +27,7 @@ enum class PointOctetFormat {
   // The format is determined by the library itself.
   Autonomous,
 
-  // X9.62 compressed format
+  // ANSI X9.62 compressed format
   // The point is encoded as z||x, where the octet z specifies which solution of
   // the quadratic equation y is.
   // if y is even, output 0x02||x
@@ -35,11 +35,11 @@ enum class PointOctetFormat {
   // if point is inf, output 0x00
   X962Compressed,
 
-  // X9.62 uncompressed format
+  // ANSI X9.62 uncompressed format
   // The point is encoded as z||x||y, where z is the octet 0x04
   X962Uncompressed,
 
-  // X9.62 hybrid format
+  // ANSI X9.62 hybrid format
   // The point is encoded as z||x||y, where the octet z specifies which solution
   // of the quadratic equation y is. It's basically the uncompressed encoding
   // but the first byte encodes the evenness of y just like in compressed
@@ -74,7 +74,12 @@ class AnyPointPtr {
       : ptr_(point, std::move(deleter)) {}
 
   template <typename T>
-  inline T *get() const {
+  inline const T *get() const & {
+    return reinterpret_cast<const T *>(ptr_.get());
+  }
+
+  template <typename T>
+  inline T *get() & {
     return reinterpret_cast<T *>(ptr_.get());
   }
 

@@ -470,7 +470,7 @@ const std::vector<CurveMeta> kPredefinedCurves = {
     // Curve used in: https://eprint.iacr.org/2010/354.pdf
     {"Fp254BNa", {}, CurveForm::Weierstrass, FieldType::Prime, 127},
     // Curve used in: https://eprint.iacr.org/2010/354.pdf
-    {"Fp254n2BNa", {}, CurveForm::Weierstrass, FieldType::PrimeExt, 254},
+    {"Fp254n2BNa", {}, CurveForm::Weierstrass, FieldType::Extension, 254},
     // Curve used in
     // https://www.iacr.org/archive/eurocrypt2011/66320047/66320047.pdf
     {"Fp254BNb", {"bn/bn254"}, CurveForm::Weierstrass, FieldType::Prime, 127},

@@ -54,6 +54,33 @@ TEST(OpensslTest, BnWorks) {
     auto out = Bn2Mp(bn.get());
     ASSERT_EQ(out, in);
   }
+
+  auto tmp = OpensslGroup::Create(GetCurveMetaByName("prime256v1"));
+  auto *curve = dynamic_cast<OpensslGroup *>(tmp.get());
+  auto p = curve->MulBase(333_mp);
+  auto affine = curve->GetAffinePoint(p);
+  auto p2 = curve->GetSslPoint(affine);
+  EXPECT_TRUE(curve->PointEqual(p, p2));
+}
+
+TEST(OpensslTest, HashToCurveWorks) {
+  auto curve = OpensslGroup::Create(GetCurveMetaByName("sm2"));
+  auto is_unique = [&](EcPoint p) {
+    ASSERT_TRUE(curve->IsInCurveGroup(p));
+
+    static std::vector<EcPoint> v;
+    for (const auto &item : v) {
+      ASSERT_FALSE(curve->PointEqual(item, p));
+    }
+    v.emplace_back(std::move(p));
+  };
+
+  for (int i = 0; i < 1000; ++i) {
+    is_unique(curve->HashToCurve(HashToCurveStrategy::TryAndRehash_SHA2,
+                                 fmt::format("id{}", i)));
+    is_unique(curve->HashToCurve(HashToCurveStrategy::TryAndRehash_SM,
+                                 fmt::format("id{}", i)));
+  }
 }
 
 }  // namespace yacl::crypto::openssl::test
