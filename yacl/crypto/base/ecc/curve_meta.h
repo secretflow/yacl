@@ -57,7 +57,7 @@ enum class FieldType {
   // Detail: https://crypto.stackexchange.com/q/91610
   Binary,
   // Curves define on E(F_{p^n})
-  PrimeExt,
+  Extension,
 };
 
 struct CurveMeta {

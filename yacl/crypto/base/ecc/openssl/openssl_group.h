@@ -56,7 +56,11 @@ class OpensslGroup : public EcGroup {
   EcPoint Div(const EcPoint& point, const MPInt& scalar) const override;
   EcPoint Negate(const EcPoint& point) const override;
 
+  // EcPoint(OpensslPoint) -> AffinePoint
   AffinePoint GetAffinePoint(const EcPoint& point) const override;
+  // AffinePoint -> EcPoint(OpensslPoint)
+  AnyPointPtr GetSslPoint(const AffinePoint& p) const;
+
   Buffer SerializePoint(const EcPoint& point,
                         PointOctetFormat format) const override;
   void SerializePoint(const EcPoint& point, PointOctetFormat format,
@@ -72,12 +76,12 @@ class OpensslGroup : public EcGroup {
   bool IsInfinity(const EcPoint& point) const override;
 
  private:
-  explicit OpensslGroup(const CurveMeta& meta, EC_GROUP_PTR group)
-      : EcGroup(meta), group_(std::move(group)) {}
+  explicit OpensslGroup(const CurveMeta& meta, EC_GROUP_PTR group);
 
   AnyPointPtr MakeOpensslPoint() const;
 
   EC_GROUP_PTR group_;
+  BIGNUM_PTR field_p_;
   static thread_local BN_CTX_PTR ctx_;
 };
 

@@ -107,6 +107,37 @@ class EcCurveTest : public ::testing::TestWithParam<std::string> {
     ec_->SerializePoint(p2, &buf);
     ASSERT_TRUE(
         ec_->PointEqual(ec_->DeserializePoint(buf), ec_->GetGenerator()));
+
+    if (ec_->GetLibraryName() == "Toy") {
+      return;  // The toy lib do not support X9.62 format
+    }
+
+    // test ANSI X9.62 format
+    auto p3 = ec_->Mul(67890_mp, p1);
+    buf = ec_->SerializePoint(p3, PointOctetFormat::X962Compressed);
+    ASSERT_TRUE(buf.data<char>()[0] == 0x2 || buf.data<char>()[0] == 0x3)
+        << fmt::format("real={:x}", buf.data<uint8_t>()[0]);
+    auto p4 = ec_->DeserializePoint(buf, PointOctetFormat::X962Compressed);
+    ASSERT_TRUE(ec_->PointEqual(p3, p4));
+
+    buf = ec_->SerializePoint(p3, PointOctetFormat::X962Uncompressed);
+    ASSERT_TRUE(buf.data<char>()[0] == 0x4);
+    p4 = ec_->DeserializePoint(buf, PointOctetFormat::X962Uncompressed);
+    ASSERT_TRUE(ec_->PointEqual(p3, p4));
+
+    buf = ec_->SerializePoint(p3, PointOctetFormat::X962Hybrid);
+    ASSERT_TRUE(buf.data<char>()[0] == 0x6 || buf.data<char>()[0] == 0x7);
+    p4 = ec_->DeserializePoint(buf, PointOctetFormat::X962Hybrid);
+    ASSERT_TRUE(ec_->PointEqual(p3, p4));
+
+    // test zero
+    auto p5 = ec_->Mul(0_mp, p3);
+    ASSERT_TRUE(ec_->IsInfinity(p5));
+    buf = ec_->SerializePoint(p5, PointOctetFormat::X962Compressed);
+    ASSERT_TRUE(buf.data<char>()[0] == 0x0);
+    ASSERT_EQ(buf.size(), 1);
+    auto p6 = ec_->DeserializePoint(buf, PointOctetFormat::X962Compressed);
+    ASSERT_TRUE(ec_->IsInfinity(p6));
   }
 };
 

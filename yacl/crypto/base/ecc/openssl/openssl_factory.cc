@@ -14,6 +14,7 @@
 
 #include <map>
 
+#include "openssl/err.h"
 #include "openssl/evp.h"
 
 #include "yacl/crypto/base/ecc/openssl/openssl_group.h"
@@ -28,6 +29,21 @@ static const std::string kLibName = "OpenSSL";
 //  (shell) >> openssl ecparam -list_curves | grep ":" | tr '[:upper:]'
 //  '[:lower:]' | xargs -L1  | awk -F":" '{s2=$1; gsub("-", "_", s2);
 //  printf("{\"%s\", NID_%s},\n", $1, s2)}'
+//
+// Why there is no NID_X25519, NID_X448, NID_ED25519, NID_ED448 in list?
+// In OpenSSL the family of 25519 and 448 crypto-systems is not implemented at
+// the "mathematical" EC level, but rather as a high level crypto-system. This
+// was by design since they first appeared in OpenSSL as their definition by
+// their respective designers is explicitly outside the conventions for
+// "traditional" EC curves.
+//
+// As an example, while the underlying working is definitely based on EC scalar
+// multiplication, an X25519 operation is defined as a routine in its spec,
+// rather than as a multiplication between a scalar and a point. Things are
+// quite similar for the curves used inside Ed*.
+//
+// That is to say, even though Openssl's EVP_ level API supports Ed*/X* curves,
+// the EC_ level API does not.
 std::map<CurveName, int> kName2Nid = {
     {"secp112r1", NID_secp112r1},
     {"secp112r2", NID_secp112r2},
@@ -108,10 +124,6 @@ std::map<CurveName, int> kName2Nid = {
     {"brainpoolP512r1", NID_brainpoolP512r1},
     {"brainpoolP512t1", NID_brainpoolP512t1},
     {"sm2", NID_sm2},
-    {"curve25519", NID_X25519},
-    {"curve448", NID_X448},
-    {"ed25519", NID_ED25519},
-    {"ed448", NID_ED448},
 };
 
 REGISTER_EC_LIBRARY(kLibName, 100, OpensslGroup::IsSupported,
@@ -120,10 +132,13 @@ REGISTER_EC_LIBRARY(kLibName, 100, OpensslGroup::IsSupported,
 std::unique_ptr<EcGroup> OpensslGroup::Create(const CurveMeta &meta) {
   YACL_ENFORCE(kName2Nid.count(meta.LowerName()) > 0,
                "curve {} not supported by openssl", meta.name);
-  auto gp = EC_GROUP_new_by_curve_name(kName2Nid.at(meta.LowerName()));
-  YACL_ENFORCE(gp != nullptr, "Openssl create curve group {} fail, nid={}",
-               meta.LowerName(), kName2Nid.at(meta.LowerName()));
-  return std::unique_ptr<EcGroup>(new OpensslGroup(meta, EC_GROUP_PTR(gp)));
+  auto gptr = EC_GROUP_new_by_curve_name(kName2Nid.at(meta.LowerName()));
+  // ERR_error_string() is not reentrant, so we can't use it.
+  YACL_ENFORCE(
+      gptr != nullptr,
+      "Openssl create curve group {} fail, nid={}, err code maybe={} (guessed)",
+      meta.LowerName(), kName2Nid.at(meta.LowerName()), ERR_get_error());
+  return std::unique_ptr<EcGroup>(new OpensslGroup(meta, EC_GROUP_PTR(gptr)));
 }
 
 bool OpensslGroup::IsSupported(const CurveMeta &meta) {

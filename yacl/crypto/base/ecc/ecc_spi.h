@@ -26,12 +26,41 @@
 
 namespace yacl::crypto {
 
-// Hash to curve standard (draft):
-// https://datatracker.ietf.org/doc/draft-irtf-cfrg-hash-to-curve/
 enum class HashToCurveStrategy {
   // https://eprint.iacr.org/2009/226.pdf
-  // Note: This method is very fast, but it is susceptible to timing attacks.
-  TryAndIncrement,
+  // Auto select the most suitable algorithm:
+  //  - SHA2: select between SHA-224, SHA-256, SHA-384, SHA-512
+  //  - SHA3: select between SHA3-224, SHA3-256, SHA3-384, SHA3-512
+  //  - SM: Current only support SM3.
+  // Performance: This method is very fast, but it is susceptible to timing
+  // attacks.
+  TryAndIncrement_SHA2,
+  TryAndIncrement_SHA3,
+  TryAndIncrement_SM,
+
+  // Just like TryAndIncrement, but use re-hash instead of increment when try
+  // fails.
+  TryAndRehash_SHA2,
+  TryAndRehash_SHA3,
+  TryAndRehash_SM,
+
+  // Directly output the hash value as the x-coordinate of the point without any
+  // verification. And there is no y-coordinate info in output point.
+
+  // The applicable scenarios of this scheme are very limited, and the following
+  // requirements must be met:
+  //  - The calculation of points on curve depends only on the x-coordinate
+  //  - The usage scenario of the curve allows any hash value to be used as the
+  //    initial point, even if the point is not on the curve.
+  // It is currently known that this strategy can be safely used when curve is
+  // Curve25519 and scene is ECDH. Do not choose this strategy for other
+  // purpose.
+  HashAsPointX_SHA2,
+  HashAsPointX_SHA3,
+  HashAsPointX_SM,  // Currently only support SM3
+
+  // Below is IRTF CFRG hash-to-curve standard (draft):
+  // https://datatracker.ietf.org/doc/draft-irtf-cfrg-hash-to-curve/
 
   // This strategy is a collection of the following methods, and SPI will
   // automatically select the applicable method according to different curves:
@@ -167,7 +196,7 @@ class EcGroup {
     SerializePoint(point, PointOctetFormat::Autonomous, buf);
   }
 
-  // load a point
+  // Load a point, the format MUST BE same with SerializePoint
   virtual EcPoint DeserializePoint(ByteContainerView buf,
                                    PointOctetFormat format) const = 0;
   EcPoint DeserializePoint(ByteContainerView buf) const {
