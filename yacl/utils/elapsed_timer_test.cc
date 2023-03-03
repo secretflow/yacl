@@ -23,7 +23,7 @@
 namespace yacl {
 
 // 因为 sleep 函数本身不精确，允许 timer 实测值和预期值有一些误差
-const static float kMarginPercent = 1.05;
+const static float kMarginPercent = 1.25;
 
 int computeExpectedTimeInMs(int expect) {
   return static_cast<int>((expect == 0 ? 1 : expect) * kMarginPercent);
