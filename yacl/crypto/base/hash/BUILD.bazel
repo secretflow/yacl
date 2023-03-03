@@ -20,8 +20,6 @@ yacl_cc_library(
     name = "ssl_hash",
     srcs = ["ssl_hash.cc"],
     hdrs = ["ssl_hash.h"],
-    # Openssl::libcrypto requires `dlopen`...
-    linkopts = ["-ldl"],
     deps = [
         ":hash_interface",
         "//yacl/base:exception",

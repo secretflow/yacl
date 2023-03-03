@@ -14,21 +14,47 @@
 
 #pragma once
 
-#include "absl/types/span.h"
-#include "emp-tool/utils/aes_opt.h"
+#include <memory>
+#include <vector>
 
+#include "absl/types/span.h"
+
+#include "yacl/crypto/base/aes/aes_intrinsics.h"
 #include "yacl/crypto/primitives/ot/common.h"
 #include "yacl/link/link.h"
 
 namespace yacl::crypto {
 
-// KKRT width
-inline constexpr int kKkrtWidth = 4;
+inline constexpr int kKkrtWidth = 4;  // KKRT width
 using KkrtRow = std::array<uint128_t, kKkrtWidth>;
+
+// KKRT OT Extension Implementation
+//
+// This implementation bases on KKRT OTE, for more theoretical details, see
+// https://eprint.iacr.org/2016/799.pdf (Charpter 2).
+//
+//             (1-out-of-2)    (1-out-of-n)
+//              +---------+    +---------+
+//              |   ROT   | => |   ROT   |
+//              +---------+    +---------+
+//              num = t        num = n
+//              len = n        len = kappa
+//
+//  > t: computation security parameter * kKkrtWidth (128 * 4 = 512 for example)
+//
+// Security assumptions:
+//  *. correlation-robust hash function, for more details about its
+//  implementation, see `yacl/crypto-tools/random_permutation.h`
+//
+// NOTE
+//  * OT Extension sender requires receiver base ot context.
+//  * OT Extension receiver requires sender base ot context.
+//
 
 // In KKRT Oblivious PRF, the sender gets a group of PRFs(pseudo random
 // function) where each PRF can evaluate any input. The receiver get evaluated
 // results for its input numbers.
+
 class IGroupPRF {
  public:
   virtual ~IGroupPRF() = default;
@@ -79,12 +105,13 @@ class IGroupPRF {
 //     as repetition codes and KKRT as pseudo random codes.
 //   - This function requires base ot width to 512 now. Let us cut this to 128
 //     by implicitly calling IKNP inside KKRT.
+
 std::unique_ptr<IGroupPRF> KkrtOtExtSend(
-    const std::shared_ptr<link::Context>& ctx, const OtRecvStore& base_options,
+    const std::shared_ptr<link::Context>& ctx, const OtRecvStore& base_ot,
     size_t num_ot);
 
 void KkrtOtExtRecv(const std::shared_ptr<link::Context>& ctx,
-                   const OtSendStore& base_options,
+                   const OtSendStore& base_ot,
                    absl::Span<const uint128_t> choices,
                    absl::Span<uint128_t> recv_blocks);
 
@@ -93,7 +120,7 @@ class KkrtOtExtSender {
   KkrtOtExtSender() = default;
 
   void Init(const std::shared_ptr<link::Context>& ctx,
-            const OtRecvStore& base_options, uint64_t num_ot);
+            const OtRecvStore& base_ot, uint64_t num_ot);
 
   void RecvCorrection(const std::shared_ptr<link::Context>& ctx,
                       uint64_t recv_count);
@@ -106,7 +133,7 @@ class KkrtOtExtSender {
 
   std::shared_ptr<IGroupPRF> GetOprf() { return oprf_; }
 
-  uint64_t GetBatchSize() { return batch_size_; }
+  uint64_t GetBatchSize() const { return batch_size_; }
   void SetBatchSize(uint64_t batch_size) { batch_size_ = batch_size; }
 
  private:
@@ -120,7 +147,7 @@ class KkrtOtExtReceiver {
   KkrtOtExtReceiver() = default;
 
   void Init(const std::shared_ptr<link::Context>& ctx,
-            const OtSendStore& base_options, uint64_t num_ot);
+            const OtSendStore& base_ot, uint64_t num_ot);
 
   void Encode(uint64_t ot_idx, absl::Span<const uint128_t> inputs,
               absl::Span<uint8_t> dest_encode);
@@ -142,7 +169,7 @@ class KkrtOtExtReceiver {
   uint64_t batch_size_ = 128;
   uint64_t correction_idx_ = 0;
 
-  emp::AES_KEY aes_key_[kKkrtWidth];
+  AES_KEY aes_key_[kKkrtWidth];
 };
 
 }  // namespace yacl::crypto

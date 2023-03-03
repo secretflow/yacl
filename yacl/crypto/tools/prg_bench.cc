@@ -14,6 +14,7 @@
 
 #include "benchmark/benchmark.h"
 
+#include "yacl/crypto/base/symmetric_crypto.h"
 #include "yacl/crypto/tools/prg.h"
 
 namespace yacl::crypto {
@@ -22,17 +23,16 @@ static void BM_Prg(benchmark::State& state) {
   for (auto _ : state) {
     state.PauseTiming();
     Prg<int> prg(0, static_cast<PRG_MODE>(state.range(0)));
+
     state.ResumeTiming();
     prg();
   }
 }
 
 BENCHMARK(BM_Prg)
-    ->Arg(0)   // ctools::PRG_MODE::kNistAesCtrDrbg
-    ->Arg(1)   // ctools::PRG_MODE::kGmSm4CtrDrbg
-    ->Arg(2)   // ctools::PRG_MODE::kAesCbc
-    ->Arg(3)   // ctools::PRG_MODE::kAesCtr
-    ->Arg(4)   // ctools::PRG_MODE::kAesEcb
-    ->Arg(5);  // ctools::PRG_MODE::KSm4Ecb
+    ->Arg(0)   // PRG_MODE::kNistAesCtrDrbg
+    ->Arg(1)   // PRG_MODE::kGmSm4CtrDrbg
+    ->Arg(2)   // PRG_MODE::kAesEcb
+    ->Arg(3);  // PRG_MODE::KSm4Ecb
 
 }  // namespace yacl::crypto

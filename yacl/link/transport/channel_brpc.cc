@@ -336,6 +336,11 @@ void ChannelBrpc::SendAsyncImpl(const std::string& key,
 }
 
 void ChannelBrpc::SendImpl(const std::string& key, ByteContainerView value) {
+  SendImpl(key, value, 0);
+}
+
+void ChannelBrpc::SendImpl(const std::string& key, ByteContainerView value,
+                           uint32_t timeout) {
   if (value.size() > options_.http_max_payload_size) {
     SendChunked(key, value);
     return;
@@ -351,6 +356,9 @@ void ChannelBrpc::SendImpl(const std::string& key, ByteContainerView value) {
 
   ic_pb::PushResponse response;
   brpc::Controller cntl;
+  if (timeout != 0) {
+    cntl.set_timeout_ms(timeout);
+  }
   ic_pb::ReceiverService::Stub stub(channel_.get());
   stub.Push(&cntl, &request, &response, nullptr);
 

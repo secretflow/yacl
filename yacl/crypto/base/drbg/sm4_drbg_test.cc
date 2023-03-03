@@ -39,15 +39,15 @@ TEST(GmSm4DrbgTest, TestGenerate) {
   EXPECT_NE(random_buf1, random_buf2);
 }
 
-TEST(GmSm4DrbgTest, TestFillRandom) {
+TEST(GmSm4DrbgTest, TestFillPRand) {
   Sm4Drbg drbg;
 
   std::vector<uint8_t> add_input(8);
   drbg.Instantiate(add_input);
   std::vector<uint8_t> random_buf1(80);
   std::vector<uint8_t> random_buf2(80);
-  drbg.FillRandom(absl::MakeSpan(random_buf1));
-  drbg.FillRandom(absl::MakeSpan(random_buf2));
+  drbg.FillPRand(absl::MakeSpan(random_buf1));
+  drbg.FillPRand(absl::MakeSpan(random_buf2));
 
   EXPECT_NE(random_buf1, random_buf2);
 }
@@ -61,8 +61,8 @@ TEST(GmSm4DrbgTest, TestEntropySource) {
   drbg.Instantiate(add_input);
   std::vector<uint8_t> random_buf1(80);
   std::vector<uint8_t> random_buf2(80);
-  drbg.FillRandom(absl::MakeSpan(random_buf1));
-  drbg.FillRandom(absl::MakeSpan(random_buf2));
+  drbg.FillPRand(absl::MakeSpan(random_buf1));
+  drbg.FillPRand(absl::MakeSpan(random_buf2));
 
   EXPECT_NE(random_buf1, random_buf2);
 }

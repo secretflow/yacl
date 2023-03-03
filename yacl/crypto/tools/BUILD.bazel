@@ -18,8 +18,10 @@ package(default_visibility = ["//visibility:public"])
 
 yacl_cc_library(
     name = "prg",
+    srcs = ["prg.cc"],
     hdrs = ["prg.h"],
     deps = [
+        "//yacl/base:dynamic_bitset",
         "//yacl/crypto/base:symmetric_crypto",
         "//yacl/crypto/base/drbg:nist_aes_drbg",
         "//yacl/crypto/base/drbg:sm4_drbg",

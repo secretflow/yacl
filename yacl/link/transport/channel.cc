@@ -188,6 +188,14 @@ void ChannelBase::Send(const std::string& key, ByteContainerView value) {
   ThrottleWindowWait(sent_msg_count_.fetch_add(1) + 1);
 }
 
+void ChannelBase::Send(const std::string& key, ByteContainerView value,
+                       uint32_t timeout) {
+  YACL_ENFORCE(key != kAckKey && key != kFinKey,
+               "For developer: pls use another key for normal message.");
+  SendImpl(key, value, timeout);
+  ThrottleWindowWait(sent_msg_count_.fetch_add(1) + 1);
+}
+
 // all sender thread wait on it's send order.
 void ChannelBase::ThrottleWindowWait(size_t wait_count) {
   if (throttle_window_size_ == 0) {

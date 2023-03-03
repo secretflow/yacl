@@ -1,0 +1,100 @@
+# Copyright 2023 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+test_suite(
+    name = "mpint_tests",
+)
+
+yacl_cc_library(
+    name = "mpint",
+    srcs = ["mp_int.cc"],
+    hdrs = ["mp_int.h"],
+    deps = [
+        ":tommath_ext_features",
+        ":tommath_ext_types",
+        "//yacl/base:byte_container_view",
+        "//yacl/base:int128",
+        "@com_github_fmtlib_fmt//:fmtlib",
+        "@com_github_msgpack_msgpack//:msgpack",
+    ],
+)
+
+yacl_cc_library(
+    name = "type_traits",
+    hdrs = ["type_traits.h"],
+)
+
+yacl_cc_library(
+    name = "tommath_ext_types",
+    srcs = ["tommath_ext_types.cc"],
+    hdrs = ["tommath_ext_types.h"],
+    deps = [
+        "//yacl/base:int128",
+        "@com_github_libtom_libtommath//:libtommath",
+    ],
+)
+
+yacl_cc_library(
+    name = "tommath_ext_features",
+    srcs = ["tommath_ext_features.cc"],
+    hdrs = ["tommath_ext_features.h"],
+    deps = [
+        ":type_traits",
+        "//yacl/base:buffer",
+        "//yacl/base:exception",
+        "//yacl/utils:scope_guard",
+        "@com_github_libtom_libtommath//:libtommath",
+    ],
+)
+
+yacl_cc_library(
+    name = "montgomery_math",
+    srcs = ["montgomery_math.cc"],
+    hdrs = ["montgomery_math.h"],
+    deps = [
+        ":mpint",
+        "@com_github_libtom_libtommath//:libtommath",
+    ],
+)
+
+yacl_cc_test(
+    name = "montgomery_math_test",
+    srcs = ["montgomery_math_test.cc"],
+    deps = [
+        ":montgomery_math",
+        "@com_google_googletest//:gtest",
+    ],
+)
+
+yacl_cc_test(
+    name = "mp_ext_test",
+    srcs = ["tommath_ext_test.cc"],
+    deps = [
+        ":tommath_ext_features",
+        "@com_google_googletest//:gtest",
+    ],
+)
+
+yacl_cc_test(
+    name = "mp_int_test",
+    srcs = ["mp_int_test.cc"],
+    deps = [
+        ":mpint",
+        "@com_google_googletest//:gtest",
+    ],
+)

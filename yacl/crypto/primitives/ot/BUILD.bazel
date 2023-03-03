@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:yacl.bzl", "EMP_COPT_FLAGS", "yacl_cc_library", "yacl_cc_test")
+load("//bazel:yacl.bzl", "AES_COPT_FLAGS", "yacl_cc_library", "yacl_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -129,17 +129,19 @@ yacl_cc_library(
     name = "kkrt_ote",
     srcs = ["kkrt_ote.cc"],
     hdrs = ["kkrt_ote.h"],
-    copts = EMP_COPT_FLAGS,
+    copts = AES_COPT_FLAGS,
     deps = [
         ":common",
         "//yacl/base:exception",
         "//yacl/base:int128",
+        "//yacl/crypto/base/aes:aes_opt",
         "//yacl/crypto/base/hash:hash_utils",
         "//yacl/crypto/tools:prg",
         "//yacl/crypto/tools:random_oracle",
+        "//yacl/crypto/tools:random_permutation",
+        "//yacl/crypto/utils:rand",
         "//yacl/link",
         "//yacl/utils:matrix_utils",
-        "@com_github_emptoolkit_emp_tool//:emp-tool",
     ],
 )
 

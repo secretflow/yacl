@@ -20,8 +20,6 @@ yacl_cc_library(
     name = "gcm_crypto",
     srcs = ["gcm_crypto.cc"],
     hdrs = ["gcm_crypto.h"],
-    # Openssl::libcrypto requires `dlopen`...
-    linkopts = ["-ldl"],
     deps = [
         "//yacl/base:byte_container_view",
         "//yacl/base:exception",

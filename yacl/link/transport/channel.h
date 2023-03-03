@@ -45,6 +45,9 @@ class IChannel {
   // raise when push buffer overflow.
   // Note: if the message failed when transfer, there is no acknowledge.
   virtual void Send(const std::string& key, ByteContainerView value) = 0;
+  // timeout 0 indicate use options
+  virtual void Send(const std::string& key, ByteContainerView value,
+                    uint32_t timeout) = 0;
 
   // block waiting message.
   virtual Buffer Recv(const std::string& key) = 0;
@@ -87,6 +90,9 @@ class ChannelBase : public IChannel {
 
   void Send(const std::string& key, ByteContainerView value) final;
 
+  void Send(const std::string& key, ByteContainerView value,
+            uint32_t timeout) final;
+
   Buffer Recv(const std::string& key) override;
 
   void OnMessage(const std::string& key, ByteContainerView value) override;
@@ -114,6 +120,9 @@ class ChannelBase : public IChannel {
   virtual void SendAsyncImpl(const std::string& key, Buffer&& value) = 0;
 
   virtual void SendImpl(const std::string& key, ByteContainerView value) = 0;
+
+  virtual void SendImpl(const std::string& key, ByteContainerView value,
+                        uint32_t timeout) = 0;
 
  private:
   void ThrottleWindowWait(size_t);

@@ -74,8 +74,7 @@ INSTANTIATE_TEST_SUITE_P(Works_Instances, KkrtOtExtTest,
                                          TestParams{129},   //
                                          TestParams{4095},  //
                                          TestParams{4096},  //
-                                         TestParams{65536}  //
-                                         ));
+                                         TestParams{65536}));
 
 TEST(KkrtOtExtEdgeTest, Test) {
   // GIVEN
@@ -132,8 +131,12 @@ TEST_P(KkrtOtExtTest2, Works) {
   KkrtOtExtSender kkrtSender;
   KkrtOtExtReceiver kkrtReceiver;
 
-  kkrtSender.Init(contexts[0], base_ot.recv, num_ot);
-  kkrtReceiver.Init(contexts[1], base_ot.send, num_ot);
+  std::future<void> send_init =
+      std::async([&] { kkrtSender.Init(contexts[0], base_ot.recv, num_ot); });
+  std::future<void> recv_init =
+      std::async([&] { kkrtReceiver.Init(contexts[1], base_ot.send, num_ot); });
+  send_init.get();
+  recv_init.get();
 
   // kkrtSender.setBatchSize(kBatchSize);
   // kkrtReceiver.setBatchSize(kBatchSize);
@@ -191,7 +194,6 @@ INSTANTIATE_TEST_SUITE_P(Works_Instances2, KkrtOtExtTest2,
                                          TestParams{897},   //
                                          TestParams{4095},  //
                                          TestParams{4096},  //
-                                         TestParams{65536}  //
-                                         ));
+                                         TestParams{65536}));
 
 }  // namespace yacl::crypto

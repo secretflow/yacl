@@ -52,14 +52,14 @@ inline uint64_t SecureRandU64() { return RandU64(true); }
 // insecure mode: gen (with openssl rand_bytes)
 uint128_t RandU128(bool use_secure_rand = false);
 
-inline uint64_t SecureRandU128() { return RandU128(true); }
+inline uint128_t SecureRandU128() { return RandU128(true); }
 
 // Generate uint128_t random seed (internally calls RandU128())
 inline uint128_t RandSeed(bool use_secure_rand = false) {
   return RandU128(use_secure_rand);
 }
 
-inline uint64_t SecureRandSeed() { return RandSeed(true); }
+inline uint128_t SecureRandSeed() { return RandSeed(true); }
 
 // Generate rand bits for
 //  - vector<bool>

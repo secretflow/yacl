@@ -34,6 +34,8 @@ class MockChannel : public IChannel {
                void(const std::string &key, ByteContainerView value));
   MOCK_METHOD2(SendAsync, void(const std::string &key, Buffer &&value));
   MOCK_METHOD2(Send, void(const std::string &key, ByteContainerView value));
+  MOCK_METHOD3(Send, void(const std::string &key, ByteContainerView value,
+                          uint32_t timeout));
   MOCK_METHOD1(Recv, Buffer(const std::string &key));
   MOCK_METHOD2(OnMessage,
                void(const std::string &key, ByteContainerView value));
@@ -83,7 +85,7 @@ TEST_F(ContextConnectToMeshTest, ConnectToMeshShouldOk) {
       continue;
     }
     EXPECT_CALL(*std::static_pointer_cast<MockChannel>(channels_[i]),
-                Send(event, ByteContainerView{}));
+                Send(event, ByteContainerView{}, testing::_));
     std::string key = fmt::format("connect_{}", i);
     EXPECT_CALL(*std::static_pointer_cast<MockChannel>(channels_[i]),
                 Recv(key));
@@ -108,7 +110,7 @@ TEST_F(ContextConnectToMeshTest, ThrowExceptionIfNetworkError) {
 
   std::string event = fmt::format("connect_{}", self_rank_);
   ON_CALL(*std::static_pointer_cast<MockChannel>(channels_[0]),
-          Send(event, ByteContainerView{}))
+          Send(event, ByteContainerView{}, testing::_))
       .WillByDefault(ThrowNetworkErrorException());
 
   // WHEN THEN

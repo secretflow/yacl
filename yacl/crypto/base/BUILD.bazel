@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
+load("//bazel:yacl.bzl", "AES_COPT_FLAGS", "yacl_cc_library", "yacl_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -24,12 +24,12 @@ yacl_cc_library(
     hdrs = [
         "symmetric_crypto.h",
     ],
-    # Openssl::libcrypto requires `dlopen`...
-    linkopts = ["-ldl"],
+    copts = AES_COPT_FLAGS,
     deps = [
         "//yacl/base:byte_container_view",
         "//yacl/base:exception",
         "//yacl/base:int128",
+        "//yacl/crypto/base/aes:aes_intrinsics",
         "@com_github_openssl_openssl//:openssl",
         "@com_google_absl//absl/types:span",
     ],
@@ -67,8 +67,6 @@ yacl_cc_library(
     name = "asymmetric_sm2_crypto",
     srcs = ["asymmetric_sm2_crypto.cc"],
     hdrs = ["asymmetric_sm2_crypto.h"],
-    # Openssl::libcrypto requires `dlopen`...
-    linkopts = ["-ldl"],
     deps = [
         ":asymmetric_crypto",
         ":asymmetric_util",
@@ -90,8 +88,6 @@ yacl_cc_library(
     name = "asymmetric_rsa_crypto",
     srcs = ["asymmetric_rsa_crypto.cc"],
     hdrs = ["asymmetric_rsa_crypto.h"],
-    # Openssl::libcrypto requires `dlopen`...
-    linkopts = ["-ldl"],
     deps = [
         ":asymmetric_crypto",
         ":asymmetric_util",
@@ -121,8 +117,6 @@ yacl_cc_library(
     name = "sm2_signing",
     srcs = ["sm2_signing.cc"],
     hdrs = ["sm2_signing.h"],
-    # Openssl::libcrypto requires `dlopen`...
-    linkopts = ["-ldl"],
     deps = [
         ":asymmetric_util",
         ":signing",
@@ -144,8 +138,6 @@ yacl_cc_library(
     name = "rsa_signing",
     srcs = ["rsa_signing.cc"],
     hdrs = ["rsa_signing.h"],
-    # Openssl::libcrypto requires `dlopen`...
-    linkopts = ["-ldl"],
     deps = [
         ":signing",
         "//yacl/base:exception",
@@ -168,7 +160,6 @@ yacl_cc_library(
     name = "hmac",
     srcs = ["hmac.cc"],
     hdrs = ["hmac.h"],
-    linkopts = ["-ldl"],
     deps = [
         "//yacl/base:byte_container_view",
         "//yacl/base:exception",

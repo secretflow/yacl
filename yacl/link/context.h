@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <spdlog/common.h>
+
 #include <atomic>
 #include <limits>
 #include <map>
@@ -43,9 +45,6 @@ struct ContextDesc {
 
   // party description, describes the world.
   std::vector<Party> parties;
-
-  // connect to mesh retry time.
-  uint32_t connect_retry_times = 10;
 
   // connect to mesh retry interval.
   uint32_t connect_retry_interval_ms = 1000;  // 1 second.
@@ -114,10 +113,10 @@ struct ContextDescHasher {
       utils::hash_combine(seed, p.id, p.host);
     }
 
-    utils::hash_combine(seed, desc.connect_retry_times,
-                        desc.connect_retry_interval_ms, desc.recv_timeout_ms,
-                        desc.http_max_payload_size, desc.http_timeout_ms,
-                        desc.throttle_window_size, desc.brpc_channel_protocol,
+    utils::hash_combine(seed, desc.connect_retry_interval_ms,
+                        desc.recv_timeout_ms, desc.http_max_payload_size,
+                        desc.http_timeout_ms, desc.throttle_window_size,
+                        desc.brpc_channel_protocol,
                         desc.brpc_channel_connection_type);
 
     return seed;
@@ -169,7 +168,10 @@ class Context {
 
   Buffer Recv(size_t src_rank, std::string_view tag);
 
-  void ConnectToMesh();
+  // Connect to mesh, you can also set the connect log level to any
+  // spdlog::level
+  void ConnectToMesh(
+      spdlog::level::level_enum connect_log_level = spdlog::level::debug);
 
   std::unique_ptr<Context> Spawn();
 
@@ -195,6 +197,8 @@ class Context {
                          Buffer&& value);
   void SendInternal(size_t dst_rank, const std::string& key,
                     ByteContainerView value);
+  void SendInternal(size_t dst_rank, const std::string& key,
+                    ByteContainerView value, uint32_t timeout);
   Buffer RecvInternal(size_t src_rank, const std::string& key);
 
   // next collective algorithm id.

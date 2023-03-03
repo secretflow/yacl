@@ -14,6 +14,9 @@
 
 #include "yacl/crypto/base/symmetric_crypto.h"
 
+#include <algorithm>
+#include <iterator>
+
 #include "openssl/aes.h"
 #include "openssl/crypto.h"
 #include "openssl/err.h"

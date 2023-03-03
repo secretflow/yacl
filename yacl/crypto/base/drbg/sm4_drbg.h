@@ -80,7 +80,7 @@ class Sm4Drbg : public IDrbg {
   std::vector<uint8_t> Generate(size_t rand_length,
                                 absl::Span<const uint8_t> additional_input);
 
-  void FillRandomBytes(absl::Span<uint8_t> out) override;
+  void FillPRandBytes(absl::Span<uint8_t> out) override;
 
  private:
   void RngUpdate();

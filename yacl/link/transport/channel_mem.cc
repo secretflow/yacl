@@ -42,4 +42,9 @@ void ChannelMem::SendImpl(const std::string& key, ByteContainerView value) {
   return SendAsyncImpl(key, value);
 }
 
+void ChannelMem::SendImpl(const std::string& key, ByteContainerView value,
+                          uint32_t /* timeout */) {
+  return SendAsyncImpl(key, value);
+}
+
 }  // namespace yacl::link
