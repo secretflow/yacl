@@ -27,7 +27,7 @@
  * @brief      @ref yacl::dynamic_bitset declaration and implementation.
  *
  * @details    Standalone file, does not depend on other implementation files or
- * dependencies other than the standard library, can be taken and used directly.
+ * dependencies other than the standard library, which can be taken and used directly.
  *
  *             Can optionally include and use libpopcnt if @a
  * DYNAMIC_BITSET_NO_LIBPOPCNT is not defined and @a

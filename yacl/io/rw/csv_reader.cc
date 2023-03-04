@@ -94,7 +94,7 @@ void CsvReader::Init() {
     // split features into mmap files.
     BuildMmapFiles();
   } else {
-    // init rows_map_, in_->Tell() is point to ROW 0's start position.
+    // init rows_map_, in_->Tell() is the point to ROW 0's start position.
     UpdateRowMap();
     if (options_.row_reader_count_lines) {
       CountLines();

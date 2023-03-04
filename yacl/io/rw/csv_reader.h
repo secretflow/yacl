@@ -58,7 +58,7 @@ class CsvReader : public Reader {
   bool Next(ColumnVectorBatch* data) override;
 
   /**
-   * Same as Next(data) above, BUT, size the second parameter will overide
+   * Same as Next(data) above, BUT, size the second parameter will override
    * global batch_size setting.
    *
    * And Col reader can get more than one col by this.

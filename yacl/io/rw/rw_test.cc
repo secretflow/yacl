@@ -36,7 +36,7 @@ class IOTest : public ::testing::Test {};
 
 // how to use reader / writer.
 TEST(RW, test) {
-  // in this case, we steaming read from input & write into other file.
+  // in this case, we steamingly read from input & write into other file.
   {
     // How to build a csv reader.
     // build inputstream.
