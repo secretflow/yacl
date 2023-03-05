@@ -40,7 +40,7 @@ enum class HashAlgorithm : int {
 //
 // Data may be added to an instance of HashInterface via the Update() method at
 // any point during the object's lifetime. A user may call the CumulativeHash()
-// method to get a hash of all data added to the object from its creation or
+// method to get a hash of all data added to the object since its creation or
 // last call to its Init() method.
 //
 // Implementations of this interface need not be thread-safe.
