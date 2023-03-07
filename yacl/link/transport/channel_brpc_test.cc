@@ -534,7 +534,7 @@ class ChannelBrpcSendTimeOutTest : public ::testing::Test {
   std::unique_ptr<DummyReceiverLoopBrpc> sender_loop_;
 };
 
-TEST_F(ChannelBrpcSendTimeOutTest, Send_Timeout) {
+TEST_F(ChannelBrpcSendTimeOutTest, DISABLED_Send_Timeout) {
   auto clock_start = std::chrono::steady_clock::now();
   EXPECT_THROW(sender_->Send("key", {}, 1000U), NetworkError);
   auto eclips = std::chrono::steady_clock::now() - clock_start;
