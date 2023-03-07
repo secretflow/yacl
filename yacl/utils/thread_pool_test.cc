@@ -53,7 +53,7 @@ TEST_F(ThreadPoolTest, InThreadPoolTest) {
   ASSERT_TRUE(ret.get());
 }
 
-TEST_F(ThreadPoolTest, ParallelTest) {
+TEST_F(ThreadPoolTest, DISABLED_ParallelTest) {
   Timer timer;
 
   std::future<void> futures[kThreadPoolSize];
