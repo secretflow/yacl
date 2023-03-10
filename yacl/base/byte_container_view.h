@@ -25,7 +25,7 @@ namespace yacl {
 
 // ByteContainerView is an extension to absl::Span that can take various
 // containers that can store bytes (e.g., std::string, std::vector<uint8_t>,
-// etc.) and use as a span.
+// etc.) and be used as a span.
 class ByteContainerView : public absl::Span<const uint8_t> {
  public:
   using absl::Span<const uint8_t>::Span;

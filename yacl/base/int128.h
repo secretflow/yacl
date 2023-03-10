@@ -34,8 +34,8 @@ namespace details {
 // from abseil.
 constexpr __int128 BitCastToSigned(unsigned __int128 v) {
   // Casting an unsigned integer to a signed integer of the same
-  // width is implementation defined behavior if the source value would not fit
-  // in the destination type. We step around it with a roundtrip bitwise not
+  // width is an implementation-defined behavior if the source value would not fit
+  // in the destination type. We step around it with a roundtrip bitwise-not
   // operation to make sure this function remains constexpr. Clang and GCC
   // optimize this to a no-op on x86-64.
   return v & (static_cast<unsigned __int128>(1) << 127)

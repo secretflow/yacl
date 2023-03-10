@@ -46,7 +46,7 @@ class ThreadPool {
 
   // Submit task
   // if the thread pool has idle thread, the task will run immediately,
-  // otherwise the task will waiting in a queue.
+  // otherwise the task will wait in a queue.
   template <class F, class... Args>
   auto Submit(F &&f, Args &&...args)
       -> std::future<typename std::invoke_result_t<F, Args...>>;
@@ -55,7 +55,7 @@ class ThreadPool {
   bool InThreadPool() const;
 
   // get queue length.
-  // don't need lock mutex here, because length may be changed after function
+  // don't need to lock mutex here, because length may be changed after the function
   // returned
   size_t GetQueueLength() const { return tasks_.size(); }
 

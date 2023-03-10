@@ -33,7 +33,7 @@ struct ReaderOptions {
   bool use_header_order = false;
   // row reader count lines during Init().
   // this option is heavy.
-  // keep this false if you do not need get file lines before first full scan.
+  // keep this false if you do not need to get file lines before first full scan.
   bool row_reader_count_lines = false;
 };
 

@@ -10,5 +10,5 @@ YACL is a fundamental library used in the SecretFlow stack. The major components
     - [ot/](yacl/crypto/primitives/ot/): Oblivious transfer and oblivious transfer extensions.
   - [tools/](yacl/crypto/tools/): Theoretical cryptographic tools such as Random Oracle (RO), Pseudorandom Generator (PRG).
   - [utils/](yacl/crypto/utils/): Easy-to-use cryptographic utilities, designed with succinctness in mind.
-- [io/](yacl/io/): A simple streaming based io library.
-- [link/](yacl/link/): A simple rpc based MPI framework. It provides the [SPMD](https://en.wikipedia.org/wiki/SPMD) parallel programming capability.
+- [io/](yacl/io/): A simple streaming-based io library.
+- [link/](yacl/link/): A simple rpc-based MPI framework. It provides the [SPMD](https://en.wikipedia.org/wiki/SPMD) parallel programming capability.
