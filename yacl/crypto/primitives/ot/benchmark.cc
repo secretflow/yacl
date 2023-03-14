@@ -46,6 +46,5 @@ BM_REGISTER_ALL_OT(BM_DefaultArguments);
 // BM_REGISTER_IKNP_OTE(BM_DefaultArguments);
 // BM_REGISTER_KKRT_OTE(BM_DefaultArguments);
 // BM_REGISTER_SGRR_OTE(BM_DefaultArguments);
-// BM_REGISTER_FERRET_OTE(BM_PerfArguments);
 
 }  // namespace yacl::crypto

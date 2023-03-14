@@ -183,34 +183,6 @@ yacl_cc_test(
     ],
 )
 
-yacl_cc_library(
-    name = "ferret_ote",
-    srcs = ["ferret_ote.cc"],
-    hdrs = ["ferret_ote.h"],
-    deps = [
-        ":ot_store",
-        "//yacl/base:exception",
-        "//yacl/crypto/primitives/ot:sgrr_ote",
-        "//yacl/crypto/tools:linear_code",
-        "//yacl/crypto/tools:prg",
-        "//yacl/crypto/tools:random_permutation",
-        "//yacl/crypto/utils:math",
-        "//yacl/crypto/utils:rand",
-        "//yacl/link",
-        "//yacl/utils:cuckoo_index",
-    ],
-)
-
-yacl_cc_test(
-    name = "ferret_ote_test",
-    srcs = ["ferret_ote_test.cc"],
-    deps = [
-        ":ferret_ote",
-        "//yacl/crypto/utils:rand",
-        "//yacl/link:test_util",
-    ],
-)
-
 yacl_cc_binary(
     name = "benchmark",
     srcs = [
@@ -219,7 +191,6 @@ yacl_cc_binary(
     ],
     deps = [
         ":base_ot",
-        ":ferret_ote",
         ":iknp_ote",
         ":kkrt_ote",
         ":sgrr_ote",

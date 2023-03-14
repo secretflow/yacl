@@ -21,11 +21,11 @@
 #include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
 #include "yacl/crypto/primitives/ot/base_ot.h"
-#include "yacl/crypto/primitives/ot/ferret_ote.h"
 #include "yacl/crypto/primitives/ot/iknp_ote.h"
 #include "yacl/crypto/primitives/ot/kkrt_ote.h"
 #include "yacl/crypto/primitives/ot/ot_store.h"
 #include "yacl/crypto/primitives/ot/sgrr_ote.h"
+#include "yacl/crypto/utils/math.h"
 #include "yacl/crypto/utils/rand.h"
 #include "yacl/link/test_util.h"
 #include "yacl/utils/matrix_utils.h"
@@ -149,29 +149,6 @@ BENCHMARK_DEFINE_F(OtBench, SgrrOTe)(benchmark::State& state) {
   }
 }
 
-BENCHMARK_DEFINE_F(OtBench, FerretOTe)(benchmark::State& state) {
-  YACL_ENFORCE(lctxs_.size() == 2);
-  for (auto _ : state) {
-    state.PauseTiming();
-    const size_t num_ot = state.range(0);
-
-    // preprare inputs
-    auto option = MakeFerretOtExtOption(num_ot);  // make option
-    auto cots = MockCompactCots(option.cot_num);  // mock base ot
-    dynamic_bitset<uint128_t> choice;
-
-    state.ResumeTiming();
-
-    // run base OT
-    auto sender = std::async(
-        [&] { FerretOtExtSend(lctxs_[0], cots.send, option, num_ot); });
-    auto receiver = std::async(
-        [&] { FerretOtExtRecv(lctxs_[1], cots.recv, option, num_ot); });
-    sender.get();
-    receiver.get();
-  }
-}
-
 #define BM_REGISTER_SIMPLEST_OT(Arguments) \
   BENCHMARK_REGISTER_F(OtBench, SimplestOT)->Apply(Arguments);
 
@@ -184,13 +161,9 @@ BENCHMARK_DEFINE_F(OtBench, FerretOTe)(benchmark::State& state) {
 #define BM_REGISTER_SGRR_OTE(Arguments) \
   BENCHMARK_REGISTER_F(OtBench, SgrrOTe)->Apply(Arguments);
 
-#define BM_REGISTER_FERRET_OTE(Arguments) \
-  BENCHMARK_REGISTER_F(OtBench, FerretOTe)->Apply(Arguments);
-
 #define BM_REGISTER_ALL_OT(Arguments) \
   BM_REGISTER_SIMPLEST_OT(Arguments)  \
   BM_REGISTER_IKNP_OTE(Arguments)     \
   BM_REGISTER_KKRT_OTE(Arguments)     \
-  BM_REGISTER_SGRR_OTE(Arguments)     \
-  BM_REGISTER_FERRET_OTE(Arguments)
+  BM_REGISTER_SGRR_OTE(Arguments)
 }  // namespace yacl::crypto
