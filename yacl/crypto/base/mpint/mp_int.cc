@@ -267,11 +267,20 @@ uint64_t MPInt::Get() const {
 }
 
 #ifdef __APPLE__
+
 template <>
 unsigned long MPInt::Get() const {  // NOLINT: macOS uint64_t is ull
   static_assert(sizeof(unsigned long) == 8);
   return mp_get_mag_u64(&n_);
 }
+
+template <>
+void MPInt::Set(long value) {
+  static_assert(sizeof(long) == 8);
+  MPINT_ENFORCE_OK(mp_grow(&n_, 2));
+  mp_set_i64(&n_, value);
+}
+
 #endif
 
 template <>
