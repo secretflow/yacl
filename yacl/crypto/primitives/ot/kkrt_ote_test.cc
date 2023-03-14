@@ -22,7 +22,7 @@
 #include <thread>
 
 #include "yacl/base/exception.h"
-#include "yacl/crypto/primitives/ot/test_utils.h"
+#include "yacl/crypto/primitives/ot/ot_store.h"
 #include "yacl/crypto/tools/prg.h"
 #include "yacl/crypto/utils/rand.h"
 #include "yacl/link/test_util.h"
@@ -41,7 +41,7 @@ TEST_P(KkrtOtExtTest, Works) {
   auto contexts = link::test::SetupWorld(kWorldSize);
 
   // KKRT requires 512 width.
-  auto base_ot = MakeBaseOts(512);
+  auto base_ot = MockRots(512);
 
   const size_t num_ot = GetParam().num_ot;
   std::vector<uint128_t> recv_out(num_ot);
@@ -80,7 +80,7 @@ TEST(KkrtOtExtEdgeTest, Test) {
   // GIVEN
   const int kWorldSize = 2;
   auto contexts = link::test::SetupWorld(kWorldSize);
-  auto base_ot = MakeBaseOts(512);
+  auto base_ot = MockRots(512);
 
   size_t kNumOt = 16;
   // WHEN THEN
@@ -115,7 +115,7 @@ TEST_P(KkrtOtExtTest2, Works) {
   auto contexts = link::test::SetupWorld(kWorldSize);
 
   // KKRT requires 512 width.
-  auto base_ot = MakeBaseOts(512);
+  auto base_ot = MockRots(512);
 
   const size_t num_ot = GetParam().num_ot;
   std::vector<uint128_t> recv_out(num_ot);

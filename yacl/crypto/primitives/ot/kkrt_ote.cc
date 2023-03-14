@@ -37,15 +37,11 @@ namespace {
 
 constexpr int kKappa = 128;                      // Security Parameter
 constexpr int kIknpWidth = kKkrtWidth * kKappa;  // IKNP OT Extension Width
-const auto& RO = RandomOracle::GetBlake3();
-
-// constants for batch size = 128
+// TODO(shuyan.ycf): switch to 1024 when we have efficient 1024x128 transpose.
 constexpr int kBatchSize = 128;  // How many blocks do we have.
 constexpr int kNumBlockPerBatch = kBatchSize / kKappa;
 constexpr int kPrgBatchSize = kBatchSize * kNumBlockPerBatch;
 static_assert(kBatchSize % kKappa == 0);
-
-// constants for batch size = 1024
 constexpr int kBatchSize1024 = 1024;
 constexpr int kNumBlockPerBatch1024 = kBatchSize1024 / kKappa;
 constexpr int kPrgBatchSize1024 = kBatchSize * kNumBlockPerBatch1024;
@@ -96,8 +92,7 @@ class KkrtGroupPRF : public IGroupPRF {
       prc_buf[w] ^= q[w];
     }
 
-    return RO.Gen<uint128_t>(
-        ByteContainerView(prc_buf.data(), sizeof(prc_buf)));
+    return RO_Blake3_128(ByteContainerView(prc_buf.data(), sizeof(prc_buf)));
   }
 
   // According to KKRT paper, the final PRF output should be: H(q ^ (c(r) & s))
@@ -113,6 +108,7 @@ class KkrtGroupPRF : public IGroupPRF {
       prc[w] ^= q[w];
     }
 
+    const auto& RO = RandomOracle::GetBlake3();
     auto tmp = RO(ByteContainerView(prc.data(), sizeof(prc)), bufsize);
     std::memcpy(outbuf, tmp.data(), bufsize);
   }
@@ -159,23 +155,22 @@ class KkrtGroupPRF : public IGroupPRF {
 };
 
 std::unique_ptr<IGroupPRF> KkrtOtExtSend(
-    const std::shared_ptr<link::Context>& ctx, const OtRecvStore& base_options,
-    size_t num_ot) {
-  YACL_ENFORCE_EQ(base_options.blocks.size(), base_options.choices.size());
-  YACL_ENFORCE_EQ(kIknpWidth, (int)base_options.choices.size());
+    const std::shared_ptr<link::Context>& ctx,
+    const std::shared_ptr<OtRecvStore>& base_ot, size_t num_ot) {
+  YACL_ENFORCE_EQ(kIknpWidth, (int)base_ot->Size());
   YACL_ENFORCE(num_ot > 0);
 
   // Build S for sender.
   KkrtRow S{0};
   for (size_t w = 0; w < kKkrtWidth; ++w) {
     for (size_t k = 0; k < kKappa; ++k) {
-      S[w] |= uint128_t(base_options.choices[w * kKappa + k]) << k;
+      S[w] |= uint128_t(base_ot->GetChoice(w * kKappa + k)) << k;
     }
   }
   // Build PRG from seed Ks.
   std::vector<Prg<uint128_t, kPrgBatchSize>> prgs;
   for (size_t k = 0; k < kIknpWidth; ++k) {
-    prgs.emplace_back(base_options.blocks[k]);
+    prgs.emplace_back(base_ot->GetBlock(k));
   }
 
   // Build PRF.
@@ -195,7 +190,7 @@ std::unique_ptr<IGroupPRF> KkrtOtExtSend(
           q[k * kNumBlockPerBatch + b] = prgs[col_idx]();
         }
       }
-      MatrixTranspose128(&q);
+      SseTranspose128(&q);
       for (size_t i = 0; i < num_this_batch; ++i) {
         Q[i][w] = q[i];  // Q = G(ks)
       }
@@ -222,10 +217,10 @@ std::unique_ptr<IGroupPRF> KkrtOtExtSend(
 }
 
 void KkrtOtExtRecv(const std::shared_ptr<link::Context>& ctx,
-                   const OtSendStore& base_options,
+                   const std::shared_ptr<OtSendStore>& base_ot,
                    absl::Span<const uint128_t> inputs,
                    absl::Span<uint128_t> recv_blocks) {
-  YACL_ENFORCE(base_options.blocks.size() == kIknpWidth);
+  YACL_ENFORCE(base_ot->Size() == kIknpWidth);
   YACL_ENFORCE(inputs.size() == recv_blocks.size() && !inputs.empty());
 
   const size_t num_ot = inputs.size();
@@ -235,9 +230,9 @@ void KkrtOtExtRecv(const std::shared_ptr<link::Context>& ctx,
   std::vector<Prg<uint128_t, kPrgBatchSize>> prgs1;
   for (size_t k = 0; k < kIknpWidth; ++k) {
     // Build PRG from seed K0.
-    prgs0.emplace_back(base_options.blocks[k][0]);
+    prgs0.emplace_back(base_ot->GetBlock(k, 0));
     // Build PRG from seed K1.
-    prgs1.emplace_back(base_options.blocks[k][1]);
+    prgs1.emplace_back(base_ot->GetBlock(k, 1));
   }
   AES_KEY aes_key[kKkrtWidth];
   PrcInit(ctx, aes_key);
@@ -260,8 +255,8 @@ void KkrtOtExtRecv(const std::shared_ptr<link::Context>& ctx,
         }
       }
 
-      MatrixTranspose128(&t);
-      MatrixTranspose128(&u);
+      SseTranspose128(&t);
+      SseTranspose128(&u);
       for (size_t i = 0; i < num_this_batch; ++i) {
         T[i][w] = t[i];  // T = G(k0)
         U[i][w] = u[i];  // U = G(k1)
@@ -283,15 +278,15 @@ void KkrtOtExtRecv(const std::shared_ptr<link::Context>& ctx,
                    fmt::format("KKRT:{}", batch_idx));
     for (size_t i = 0; i < num_this_batch; ++i) {
       recv_blocks[batch_idx * kBatchSize + i] =
-          RO.Gen<uint128_t>(ByteContainerView(T[i].data(), sizeof(T[i])));
+          RO_Blake3_128(ByteContainerView(T[i].data(), sizeof(T[i])));
     }
   }
 }
 
 void KkrtOtExtSender::Init(const std::shared_ptr<link::Context>& ctx,
-                           const OtRecvStore& base_options, uint64_t num_ot) {
-  YACL_ENFORCE_EQ(base_options.blocks.size(), base_options.choices.size());
-  YACL_ENFORCE(kIknpWidth == base_options.choices.size());
+                           const std::shared_ptr<OtRecvStore>& base_ot,
+                           uint64_t num_ot) {
+  YACL_ENFORCE(kIknpWidth == base_ot->Size());
   YACL_ENFORCE(num_ot > 0);
 
   correction_idx_ = 0;
@@ -300,14 +295,14 @@ void KkrtOtExtSender::Init(const std::shared_ptr<link::Context>& ctx,
   KkrtRow S{0};
   for (size_t w = 0; w < kKkrtWidth; ++w) {
     for (size_t k = 0; k < kKappa; ++k) {
-      S[w] |= uint128_t(base_options.choices[w * kKappa + k] ? 1 : 0) << k;
+      S[w] |= uint128_t(base_ot->GetChoice(w * kKappa + k) ? 1 : 0) << k;
     }
   }
   // Build PRG from seed Ks.
   std::vector<Prg<uint128_t, kPrgBatchSize1024>> prgs;
 
   for (size_t k = 0; k < kIknpWidth; ++k) {
-    prgs.emplace_back(base_options.blocks[k]);
+    prgs.emplace_back(base_ot->GetBlock(k));
   }
 
   // Build PRF.
@@ -389,17 +384,18 @@ void KkrtOtExtSender::Encode(uint64_t ot_idx, const uint128_t input, void* dest,
 }
 
 void KkrtOtExtReceiver::Init(const std::shared_ptr<link::Context>& ctx,
-                             const OtSendStore& base_options, uint64_t num_ot) {
+                             const std::shared_ptr<OtSendStore>& base_ot,
+                             uint64_t num_ot) {
   const size_t num_batch = (num_ot + kBatchSize1024 - 1) / kBatchSize1024;
 
   PrcInit(ctx, aes_key_);
 
-  std::vector<Prg<uint128_t, kPrgBatchSize1024>> prgs0;
-  std::vector<Prg<uint128_t, kPrgBatchSize1024>> prgs1;
+  std::vector<Prg<uint128_t>> prgs0;
+  std::vector<Prg<uint128_t>> prgs1;
 
   for (size_t k = 0; k < kIknpWidth; ++k) {
-    prgs0.emplace_back(base_options.blocks[k][0]);  // Build PRG from seed K0.
-    prgs1.emplace_back(base_options.blocks[k][1]);  // Build PRG from seed K1.
+    prgs0.emplace_back(base_ot->GetBlock(k, 0));  // Build PRG from seed K0.
+    prgs1.emplace_back(base_ot->GetBlock(k, 1));  // Build PRG from seed K1.
   }
 
   T_.resize(num_ot);
@@ -456,6 +452,7 @@ void KkrtOtExtReceiver::Encode(uint64_t ot_idx,
     U_[ot_idx][w] ^= prc[w];
   }
 
+  const auto& RO = RandomOracle::GetBlake3();
   const size_t bufsize = std::min(dest_encode.size(), sizeof(uint128_t));
   auto tmp =
       RO(ByteContainerView(T_[ot_idx].data(), sizeof(T_[ot_idx])), bufsize);
@@ -474,6 +471,7 @@ void KkrtOtExtReceiver::Encode(uint64_t ot_idx, const uint128_t input,
     U_[ot_idx][w] ^= prc[w];
   }
 
+  const auto& RO = RandomOracle::GetBlake3();
   const size_t bufsize = std::min(dest_encode.size(), sizeof(uint128_t));
   auto tmp =
       RO(ByteContainerView(T_[ot_idx].data(), sizeof(T_[ot_idx])), bufsize);

@@ -76,6 +76,7 @@ yacl_cc_library(
     hdrs = ["random_permutation.h"],
     deps = [
         "//yacl/crypto/base:symmetric_crypto",
+        "//yacl/crypto/base/aes:aes_intrinsics",
     ],
 )
 
@@ -94,5 +95,23 @@ yacl_cc_binary(
     deps = [
         ":random_permutation",
         "@com_github_google_benchmark//:benchmark_main",
+    ],
+)
+
+yacl_cc_library(
+    name = "linear_code",
+    hdrs = ["linear_code.h"],
+    deps = [
+        "//yacl/crypto/tools:random_permutation",
+        "//yacl/utils:thread_pool",
+    ],
+)
+
+yacl_cc_test(
+    name = "linear_code_test",
+    srcs = ["linear_code_test.cc"],
+    deps = [
+        ":linear_code",
+        "//yacl/crypto/utils:rand",
     ],
 )

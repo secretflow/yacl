@@ -12,26 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:yacl.bzl", "AES_COPT_FLAGS", "yacl_cc_library", "yacl_cc_test")
+load("//bazel:yacl.bzl", "AES_COPT_FLAGS", "yacl_cc_binary", "yacl_cc_library", "yacl_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
 yacl_cc_library(
-    name = "common",
-    hdrs = ["common.h"],
+    name = "ot_store",
+    srcs = ["ot_store.cc"],
+    hdrs = ["ot_store.h"],
     deps = [
         "//yacl/base:dynamic_bitset",
         "//yacl/base:int128",
+        "//yacl/crypto/utils:rand",
+        "//yacl/link:context",
     ],
 )
 
-yacl_cc_library(
-    name = "test_utils",
-    hdrs = ["test_utils.h"],
+yacl_cc_test(
+    name = "ot_store_test",
+    srcs = ["ot_store_test.cc"],
     deps = [
-        "//yacl/base:int128",
-        "//yacl/crypto/tools:prg",
-        "//yacl/crypto/utils:rand",
+        ":ot_store",
+        "//yacl/link:test_util",
     ],
 )
 
@@ -104,7 +106,7 @@ yacl_cc_library(
     srcs = ["iknp_ote.cc"],
     hdrs = ["iknp_ote.h"],
     deps = [
-        ":common",
+        ":ot_store",
         "//yacl/base:exception",
         "//yacl/base:int128",
         "//yacl/crypto/tools:prg",
@@ -119,7 +121,6 @@ yacl_cc_test(
     srcs = ["iknp_ote_test.cc"],
     deps = [
         ":iknp_ote",
-        ":test_utils",
         "//yacl/crypto/utils:rand",
         "//yacl/link:test_util",
     ],
@@ -131,7 +132,7 @@ yacl_cc_library(
     hdrs = ["kkrt_ote.h"],
     copts = AES_COPT_FLAGS,
     deps = [
-        ":common",
+        ":ot_store",
         "//yacl/base:exception",
         "//yacl/base:int128",
         "//yacl/crypto/base/aes:aes_opt",
@@ -150,7 +151,6 @@ yacl_cc_test(
     srcs = ["kkrt_ote_test.cc"],
     deps = [
         ":kkrt_ote",
-        ":test_utils",
         "//yacl/crypto/utils:rand",
         "//yacl/link:test_util",
     ],
@@ -160,10 +160,13 @@ yacl_cc_library(
     name = "sgrr_ote",
     srcs = ["sgrr_ote.cc"],
     hdrs = ["sgrr_ote.h"],
+    copts = AES_COPT_FLAGS,
     deps = [
-        ":common",
+        ":ot_store",
+        "//yacl/crypto/base/aes:aes_opt",
         "//yacl/crypto/tools:prg",
         "//yacl/crypto/tools:random_permutation",
+        "//yacl/crypto/utils:math",
         "//yacl/crypto/utils:rand",
         "//yacl/link",
         "@com_google_absl//absl/numeric:bits",
@@ -175,8 +178,54 @@ yacl_cc_test(
     srcs = ["sgrr_ote_test.cc"],
     deps = [
         ":sgrr_ote",
-        ":test_utils",
         "//yacl/crypto/utils:rand",
         "//yacl/link:test_util",
+    ],
+)
+
+yacl_cc_library(
+    name = "ferret_ote",
+    srcs = ["ferret_ote.cc"],
+    hdrs = ["ferret_ote.h"],
+    deps = [
+        ":ot_store",
+        "//yacl/base:exception",
+        "//yacl/crypto/primitives/ot:sgrr_ote",
+        "//yacl/crypto/tools:linear_code",
+        "//yacl/crypto/tools:prg",
+        "//yacl/crypto/tools:random_permutation",
+        "//yacl/crypto/utils:math",
+        "//yacl/crypto/utils:rand",
+        "//yacl/link",
+        "//yacl/utils:cuckoo_index",
+    ],
+)
+
+yacl_cc_test(
+    name = "ferret_ote_test",
+    srcs = ["ferret_ote_test.cc"],
+    deps = [
+        ":ferret_ote",
+        "//yacl/crypto/utils:rand",
+        "//yacl/link:test_util",
+    ],
+)
+
+yacl_cc_binary(
+    name = "benchmark",
+    srcs = [
+        "benchmark.cc",
+        "benchmark.h",
+    ],
+    deps = [
+        ":base_ot",
+        ":ferret_ote",
+        ":iknp_ote",
+        ":kkrt_ote",
+        ":sgrr_ote",
+        "//yacl/crypto/utils:rand",
+        "//yacl/link:test_util",
+        "@com_github_google_benchmark//:benchmark_main",
+        "@com_google_absl//absl/numeric:bits",
     ],
 )

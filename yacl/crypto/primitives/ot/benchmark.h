@@ -21,18 +21,16 @@
 #include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
 #include "yacl/crypto/primitives/ot/base_ot.h"
+#include "yacl/crypto/primitives/ot/ferret_ote.h"
 #include "yacl/crypto/primitives/ot/iknp_ote.h"
 #include "yacl/crypto/primitives/ot/kkrt_ote.h"
+#include "yacl/crypto/primitives/ot/ot_store.h"
 #include "yacl/crypto/primitives/ot/sgrr_ote.h"
-#include "yacl/crypto/primitives/ot/test_utils.h"
 #include "yacl/crypto/utils/rand.h"
 #include "yacl/link/test_util.h"
 #include "yacl/utils/matrix_utils.h"
 
 namespace yacl::crypto {
-
-#define LOG2(X) \
-  ((unsigned)(8 * sizeof(unsigned long long) - absl::countl_zero(X) - 1))
 
 class OtBench : public benchmark::Fixture {
  public:
@@ -81,7 +79,7 @@ BENCHMARK_DEFINE_F(OtBench, IknpOTe)(benchmark::State& state) {
     std::vector<std::array<uint128_t, 2>> send_blocks(num_ot);
     std::vector<uint128_t> recv_blocks(num_ot);
     auto choices = RandBits<dynamic_bitset<uint128_t>>(num_ot);
-    auto base_ot = MakeBaseOts(128);
+    auto base_ot = MockRots(128);
 
     state.ResumeTiming();
 
@@ -107,7 +105,7 @@ BENCHMARK_DEFINE_F(OtBench, KkrtOTe)(benchmark::State& state) {
     // preprare inputs
     std::vector<uint128_t> inputs(num_ot);
     std::vector<uint128_t> recv_out(num_ot);
-    auto base_ot = MakeBaseOts(512);
+    auto base_ot = MockRots(512);
 
     state.ResumeTiming();
 
@@ -126,25 +124,49 @@ BENCHMARK_DEFINE_F(OtBench, SgrrOTe)(benchmark::State& state) {
   YACL_ENFORCE(lctxs_.size() == 2);
   for (auto _ : state) {
     state.PauseTiming();
-    const size_t num_ot = state.range(0);
-    const auto n = LOG2(num_ot);
+    const size_t range_n = state.range(0);
 
     // preprare inputs
-    uint32_t choice_value = CreateRandomRangeNum(n);
-    auto base_ot = MakeBaseOts(512);
-    std::vector<uint128_t> entire_seeds(n);
-    std::vector<uint128_t> punctured_seeds(n - 1);
+    uint32_t choice_value = RandInRange(range_n - 1);
+    auto base_ot = MockRots(Log2Ceil(range_n));
+    std::vector<uint128_t> send_out(range_n);
+    std::vector<uint128_t> recv_out(range_n);
 
     state.ResumeTiming();
 
     // run base OT
     auto sender = std::async([&] {
-      SgrrOtExtSend(lctxs_[0], base_ot.send, n, absl::MakeSpan(entire_seeds));
+      // TIMER_START()
+      SgrrOtExtSend(lctxs_[0], base_ot.send, range_n, absl::MakeSpan(send_out));
+      // TIMER_END()
     });
     auto receiver = std::async([&] {
-      SgrrOtExtRecv(lctxs_[1], base_ot.recv, n, choice_value,
-                    absl::MakeSpan(punctured_seeds));
+      SgrrOtExtRecv(lctxs_[1], base_ot.recv, range_n, choice_value,
+                    absl::MakeSpan(recv_out));
     });
+    sender.get();
+    receiver.get();
+  }
+}
+
+BENCHMARK_DEFINE_F(OtBench, FerretOTe)(benchmark::State& state) {
+  YACL_ENFORCE(lctxs_.size() == 2);
+  for (auto _ : state) {
+    state.PauseTiming();
+    const size_t num_ot = state.range(0);
+
+    // preprare inputs
+    auto option = MakeFerretOtExtOption(num_ot);  // make option
+    auto cots = MockCompactCots(option.cot_num);  // mock base ot
+    dynamic_bitset<uint128_t> choice;
+
+    state.ResumeTiming();
+
+    // run base OT
+    auto sender = std::async(
+        [&] { FerretOtExtSend(lctxs_[0], cots.send, option, num_ot); });
+    auto receiver = std::async(
+        [&] { FerretOtExtRecv(lctxs_[1], cots.recv, option, num_ot); });
     sender.get();
     receiver.get();
   }
@@ -162,9 +184,13 @@ BENCHMARK_DEFINE_F(OtBench, SgrrOTe)(benchmark::State& state) {
 #define BM_REGISTER_SGRR_OTE(Arguments) \
   BENCHMARK_REGISTER_F(OtBench, SgrrOTe)->Apply(Arguments);
 
+#define BM_REGISTER_FERRET_OTE(Arguments) \
+  BENCHMARK_REGISTER_F(OtBench, FerretOTe)->Apply(Arguments);
+
 #define BM_REGISTER_ALL_OT(Arguments) \
   BM_REGISTER_SIMPLEST_OT(Arguments)  \
   BM_REGISTER_IKNP_OTE(Arguments)     \
   BM_REGISTER_KKRT_OTE(Arguments)     \
-  BM_REGISTER_SGRR_OTE(Arguments)
+  BM_REGISTER_SGRR_OTE(Arguments)     \
+  BM_REGISTER_FERRET_OTE(Arguments)
 }  // namespace yacl::crypto

@@ -4,6 +4,18 @@
 
 YACL (Yet Another Crypto library) is a C++ library that contains modules and utilities which other SecretFlow code depends on.
 
+Repo layout:
+
+- [base/](yacl/base/): Some basic types and utils in yacl.
+- [crypto/](yacl/crypto/): A crypto library desigend for secure computation and so on.
+  - [base/](yacl/crypto/base): **Basic/standarized crypto**, i.e. AES, DRBG, hashing.
+  - [primitives/](yacl/crypto/primitives/): **Crypto primitives**, i.e. OT, DPF.
+  - [tools/](yacl/crypto/tools/): **Theoretical crypto tools**, i.e. Random Oracle (RO), PRG.
+  - [utils/](yacl/crypto/utils/): Easy-to-use **crypto utilities**.
+- [io/](yacl/io/): A simple streaming-based io library.
+- [link/](yacl/link/): A simple rpc-based MPI framework. It provides the [SPMD](https://en.wikipedia.org/wiki/SPMD) parallel programming capability.
+
+
 ## Build
 
 ### Prerequisite

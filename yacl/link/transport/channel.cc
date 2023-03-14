@@ -177,7 +177,7 @@ void ChannelBase::SendAsync(const std::string& key, ByteContainerView value) {
 void ChannelBase::SendAsync(const std::string& key, Buffer&& value) {
   YACL_ENFORCE(key != kAckKey && key != kFinKey,
                "For developer: pls use another key for normal message.");
-  SendAsyncImpl(key, value);
+  SendAsyncImpl(key, std::move(value));
   ThrottleWindowWait(sent_msg_count_.fetch_add(1) + 1);
 }
 
