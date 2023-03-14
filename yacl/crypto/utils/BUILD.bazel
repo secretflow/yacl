@@ -38,3 +38,11 @@ yacl_cc_binary(
         "@com_github_google_benchmark//:benchmark_main",
     ],
 )
+
+yacl_cc_library(
+    name = "math",
+    hdrs = ["math.h"],
+    deps = [
+        "@com_google_absl//absl/strings",
+    ],
+)

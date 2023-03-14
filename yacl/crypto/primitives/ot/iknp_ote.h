@@ -19,7 +19,7 @@
 #include "absl/types/span.h"
 
 #include "yacl/base/dynamic_bitset.h"
-#include "yacl/crypto/primitives/ot/common.h"
+#include "yacl/crypto/primitives/ot/ot_store.h"
 #include "yacl/link/link.h"
 
 namespace yacl::crypto {
@@ -49,12 +49,12 @@ namespace yacl::crypto {
 //
 
 void IknpOtExtSend(const std::shared_ptr<link::Context>& ctx,
-                   const OtRecvStore& base_ot,
+                   const std::shared_ptr<OtRecvStore>& base_ot,
                    absl::Span<std::array<uint128_t, 2>> send_blocks,
                    bool cot = false);
 
 void IknpOtExtRecv(const std::shared_ptr<link::Context>& ctx,
-                   const OtSendStore& base_ot,
+                   const std::shared_ptr<OtSendStore>& base_ot,
                    const dynamic_bitset<uint128_t>& choices,
                    absl::Span<uint128_t> recv_blocks, bool cot = false);
 

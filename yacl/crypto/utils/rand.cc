@@ -99,13 +99,13 @@ uint128_t RandU128(bool use_secure_rand) {
 }
 
 template <>
-std::vector<bool> RandBits<std::vector<bool>>(size_t len,
+std::vector<bool> RandBits<std::vector<bool>>(uint64_t len,
                                               bool use_secure_rand) {
   std::vector<bool> out(len, false);
   const unsigned stride = sizeof(unsigned) * 8;
   if (use_secure_rand) {  // drbg is more secure
     Prg<unsigned> prg(RandU128(true), PRG_MODE::kNistAesCtrDrbg);
-    for (size_t i = 0; i < len; i += stride) {
+    for (uint64_t i = 0; i < len; i += stride) {
       unsigned rand = prg();
       unsigned size = std::min(stride, static_cast<unsigned>(len - i));
       for (unsigned j = 0; j < size; ++j) {
@@ -114,7 +114,7 @@ std::vector<bool> RandBits<std::vector<bool>>(size_t len,
     }
   } else {  // fast path
     Prg<unsigned> prg(RandU128(false), PRG_MODE::kAesEcb);
-    for (size_t i = 0; i < len; i += stride) {
+    for (uint64_t i = 0; i < len; i += stride) {
       unsigned rand = prg();
       unsigned size = std::min(stride, static_cast<unsigned>(len - i));
       for (unsigned j = 0; j < size; ++j) {
@@ -127,13 +127,13 @@ std::vector<bool> RandBits<std::vector<bool>>(size_t len,
 
 #define IMPL_RANDBIT_DYNAMIC_BIT_TYPE(TYPE)                                   \
   template <>                                                                 \
-  dynamic_bitset<TYPE> RandBits<dynamic_bitset<TYPE>>(size_t len,             \
+  dynamic_bitset<TYPE> RandBits<dynamic_bitset<TYPE>>(uint64_t len,           \
                                                       bool use_secure_rand) { \
     dynamic_bitset<TYPE> out(len);                                            \
     const unsigned stride = sizeof(unsigned) * 8;                             \
     if (use_secure_rand) {                                                    \
       Prg<unsigned> prg(RandU128(true), PRG_MODE::kNistAesCtrDrbg);           \
-      for (size_t i = 0; i < len; i += stride) {                              \
+      for (uint64_t i = 0; i < len; i += stride) {                            \
         unsigned rand = prg();                                                \
         unsigned size = std::min(stride, static_cast<unsigned>(len - i));     \
         for (unsigned j = 0; j < size; ++j) {                                 \
@@ -142,7 +142,7 @@ std::vector<bool> RandBits<std::vector<bool>>(size_t len,
       }                                                                       \
     } else {                                                                  \
       Prg<unsigned> prg(RandU128(false), PRG_MODE::kAesEcb);                  \
-      for (size_t i = 0; i < len; i += stride) {                              \
+      for (uint64_t i = 0; i < len; i += stride) {                            \
         unsigned rand = prg();                                                \
         unsigned size = std::min(stride, static_cast<unsigned>(len - i));     \
         for (unsigned j = 0; j < size; ++j) {                                 \

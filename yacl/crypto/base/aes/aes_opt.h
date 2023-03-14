@@ -210,9 +210,16 @@ static inline void AES_opt_key_schedule(uint128_t *user_key, AES_KEY *keys) {
 }
 
 template <int numKeys, int numEncs>
-static inline void ParaEnc(uint128_t *blks, AES_KEY *keys) {
+static inline void ParaEnc(uint128_t *blks, const AES_KEY *keys) {
   auto *tmp = reinterpret_cast<__m128i *>(blks);
   ParaEnc<numKeys, numEncs>(tmp, keys);
+}
+
+template <int numKeys>
+static inline void ParaEnc(uint128_t *blks, const AES_KEY *keys,
+                           size_t num_encs) {
+  auto *tmp = reinterpret_cast<__m128i *>(blks);
+  ParaEnc<numKeys>(tmp, keys, num_encs);
 }
 
 }  // namespace yacl::crypto

@@ -17,11 +17,11 @@
 #include <gtest/gtest.h>
 
 #include <future>
+#include <memory>
 #include <thread>
 #include <vector>
 
 #include "yacl/base/exception.h"
-#include "yacl/crypto/primitives/ot/test_utils.h"
 #include "yacl/crypto/utils/rand.h"
 #include "yacl/link/test_util.h"
 
@@ -39,7 +39,7 @@ TEST_P(IknpOtExtTest, Works) {
   const int kWorldSize = 2;
   const size_t num_ot = GetParam().num_ot;
   auto lctxs = link::test::SetupWorld(kWorldSize);             // setup network
-  auto base_ot = MakeBaseOts(128);                             // mock base ot
+  auto base_ot = MockRots(128);                                // mock base ot
   auto choices = RandBits<dynamic_bitset<uint128_t>>(num_ot);  // get input
 
   // WHEN
@@ -64,7 +64,7 @@ TEST_P(IknpCotExtTest, Works) {
   const int kWorldSize = 2;
   const size_t num_ot = GetParam().num_ot;
   auto lctxs = link::test::SetupWorld(kWorldSize);             // setup network
-  auto base_ot = MakeBaseOts(128);                             // mock base ot
+  auto base_ot = MockRots(128);                                // mock base ot
   auto choices = RandBits<dynamic_bitset<uint128_t>>(num_ot);  // get input
 
   // WHEN
@@ -80,7 +80,7 @@ TEST_P(IknpCotExtTest, Works) {
 
   // THEN
   // cot correlation = base ot choice
-  uint128_t check = base_ot.recv.choices.data()[0];
+  uint128_t check = base_ot.recv->CopyChoice().data()[0];
   for (size_t i = 0; i < num_ot; ++i) {
     EXPECT_EQ(send_out[i][choices[i]], recv_out[i]);
     EXPECT_EQ(check, send_out[i][0] ^ send_out[i][1]);
@@ -108,7 +108,7 @@ TEST(IknpOtExtEdgeTest, Test) {
   const int kWorldSize = 2;
   const size_t kNumOt = 16;
   auto lctxs = link::test::SetupWorld(kWorldSize);             // setup network
-  auto base_ot = MakeBaseOts(128);                             // mock base ot
+  auto base_ot = MockRots(128);                                // mock base ot
   auto choices = RandBits<dynamic_bitset<uint128_t>>(kNumOt);  // get input
 
   // WHEN

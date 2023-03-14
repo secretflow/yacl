@@ -18,7 +18,7 @@
 
 #include "absl/types/span.h"
 
-#include "yacl/crypto/primitives/ot/common.h"
+#include "yacl/crypto/primitives/ot/ot_store.h"
 #include "yacl/crypto/utils/rand.h"
 #include "yacl/link/link.h"
 
@@ -46,12 +46,11 @@ namespace yacl::crypto {
 // https://stackoverflow.com/questions/50402168
 
 void SgrrOtExtRecv(const std::shared_ptr<link::Context>& ctx,
-                   const OtRecvStore& base_ot, size_t n, size_t index,
-                   absl::Span<uint128_t> punctured_msgs);
+                   const std::shared_ptr<OtRecvStore>& base_ot, uint32_t n,
+                   uint32_t index, absl::Span<uint128_t> output);
 
 void SgrrOtExtSend(const std::shared_ptr<link::Context>& ctx,
-                   const OtSendStore& base_ot, size_t n,
-                   absl::Span<uint128_t> all_msgs,
-                   uint128_t seed = RandSeed(true));
+                   const std::shared_ptr<OtSendStore>& base_ot, uint32_t n,
+                   absl::Span<uint128_t> output);
 
 }  // namespace yacl::crypto

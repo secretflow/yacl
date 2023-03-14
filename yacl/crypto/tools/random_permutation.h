@@ -20,6 +20,7 @@
 
 #include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
+#include "yacl/crypto/base/aes/aes_intrinsics.h"
 #include "yacl/crypto/base/symmetric_crypto.h"
 
 namespace yacl::crypto {
@@ -44,7 +45,9 @@ class RandomPerm {
   using Ctype = SymmetricCrypto::CryptoType;
 
   explicit RandomPerm(Ctype ctype, uint128_t key, uint128_t iv = 0)
-      : sym_alg_(ctype, key, iv) {}
+      : sym_alg_(ctype, key, iv) {
+    // AES_set_encrypt_key(key, &aes_key_);
+  }
 
   // Multi-block input, multi-block output
   void Gen(absl::Span<const uint128_t> x, absl::Span<uint128_t> out) const {
@@ -56,6 +59,10 @@ class RandomPerm {
     std::vector<uint128_t> res(x.size());
     Gen(x, absl::MakeSpan(res));
     return res;
+  }
+
+  void GenInplace(absl::Span<uint128_t> inout) {
+    sym_alg_.Encrypt(inout, inout);
   }
 
   // Single-block input, single-block output
@@ -75,6 +82,7 @@ class RandomPerm {
 
  private:
   SymmetricCrypto sym_alg_;
+  // AES_KEY aes_key_;
 };
 
 // Correlation Robust Hash function (Single Block input)

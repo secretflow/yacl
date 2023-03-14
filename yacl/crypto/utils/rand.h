@@ -16,6 +16,7 @@
 
 #include <openssl/rand.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <random>
 #include <type_traits>
@@ -73,11 +74,11 @@ struct is_supported_bit_vector_type
 
 template <typename T = dynamic_bitset<uint128_t>,
           std::enable_if_t<is_supported_bit_vector_type<T>::value, bool> = true>
-T RandBits(size_t len, bool use_secure_rand = false);
+T RandBits(uint64_t len, bool use_secure_rand = false);
 
 template <typename T = dynamic_bitset<uint128_t>,
           std::enable_if_t<is_supported_bit_vector_type<T>::value, bool> = true>
-inline T SecureRandBits(size_t len) {
+inline T SecureRandBits(uint64_t len) {
   return RandBits(len, true);
 }
 
@@ -87,7 +88,7 @@ inline T SecureRandBits(size_t len) {
 template <typename T,
           std::enable_if_t<std::is_standard_layout<T>::value, int> = 0>
 inline void FillRand(absl::Span<T> out, bool use_secure_rand = false) {
-  const size_t nbytes = out.size() * sizeof(T);
+  const uint64_t nbytes = out.size() * sizeof(T);
   if (use_secure_rand) {
     YACL_ENFORCE(
         RAND_priv_bytes(reinterpret_cast<uint8_t*>(out.data()), nbytes) == 1);
@@ -100,23 +101,39 @@ inline void FillRand(absl::Span<T> out, bool use_secure_rand = false) {
 // Generate random T-type vectors
 // Note: The output is `sizeof(T)` bytes aligned.
 template <typename T, std::enable_if_t<std::is_standard_layout_v<T>, int> = 0>
-inline std::vector<T> RandVec(size_t len, bool use_secure_rand = false) {
+inline std::vector<T> RandVec(uint64_t len, bool use_secure_rand = false) {
   std::vector<T> out(len);
   FillRand(absl::MakeSpan(out), use_secure_rand);
   return out;
 }
 
 // Generate random number of bytes
-inline std::vector<uint8_t> RandBytes(size_t len,
+inline std::vector<uint8_t> RandBytes(uint64_t len,
                                       bool use_secure_rand = false) {
   return RandVec<uint8_t>(len, use_secure_rand);
 }
 
-inline std::vector<uint8_t> SecureRandBytes(size_t len) {
+inline std::vector<uint8_t> SecureRandBytes(uint64_t len) {
   return RandBytes(len, true);
 }
 
+// wanring: the output may not be strictly uniformly random
+inline uint32_t RandInRange(uint32_t n) {
+  Prg<uint32_t> gen(RandSeed());
+  return gen() % n;
+}
+
+inline std::vector<uint64_t> MakeRegularRandChoices(uint64_t t, uint64_t n) {
+  const auto bin_size = (n + t - 1) / t;
+  std::vector<uint64_t> out(t);
+  for (uint64_t i = 0; i < t; i++) {
+    const uint64_t limit = std::min(bin_size, n - i * bin_size);
+    out[i] = RandInRange(limit) + i * bin_size;
+  }
+  return out;
+}
+
 // TODO(shanzhu) RFC: add more generic random interface, e.g.
-//        void FillRand(RandContext* ctx, char* buf, size_t len);
+//        void FillRand(RandContext* ctx, char* buf, uint64_t len);
 
 }  // namespace yacl::crypto

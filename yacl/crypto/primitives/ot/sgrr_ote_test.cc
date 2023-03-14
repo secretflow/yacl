@@ -16,14 +16,15 @@
 
 #include <future>
 #include <thread>
+#include <utility>
+#include <vector>
 
 #include "fmt/format.h"
 #include "gtest/gtest.h"
 
 #include "yacl/base/exception.h"
-#include "yacl/crypto/primitives/ot/common.h"
-#include "yacl/crypto/primitives/ot/test_utils.h"
-#include "yacl/crypto/utils/rand.h"
+#include "yacl/crypto/primitives/ot/ot_store.h"
+#include "yacl/crypto/utils/math.h"
 #include "yacl/link/test_util.h"
 
 namespace yacl::crypto {
@@ -37,19 +38,20 @@ class SgrrParamTest : public ::testing::TestWithParam<TestParams> {};
 TEST_P(SgrrParamTest, Works) {
   size_t n = GetParam().n;
 
-  auto index = CreateRandomRangeNum(n - 1);
+  auto index = RandInRange(n);
   auto lctxs = link::test::SetupWorld(2);
-  auto base_ot = MakeBaseOts(log2_ceil(n));  // mock many base OTs
+  auto base_ot = MockRots(Log2Ceil(n));  // mock many base OTs
 
   std::vector<uint128_t> send_out(n);
   std::vector<uint128_t> recv_out(n);
 
   std::future<void> sender = std::async([&] {
-    SgrrOtExtRecv(lctxs[0], base_ot.recv, n, index, absl::MakeSpan(recv_out));
+    SgrrOtExtRecv(lctxs[0], std::move(base_ot.recv), n, index,
+                  absl::MakeSpan(recv_out));
   });
   std::future<void> receiver = std::async([&] {
-    SgrrOtExtSend(lctxs[1], base_ot.send, n, absl::MakeSpan(send_out),
-                  RandSeed());
+    SgrrOtExtSend(lctxs[1], std::move(base_ot.send), n,
+                  absl::MakeSpan(send_out));
   });
   sender.get();
   receiver.get();
@@ -67,12 +69,10 @@ TEST_P(SgrrParamTest, Works) {
 }
 
 INSTANTIATE_TEST_SUITE_P(Works_Instances, SgrrParamTest,
-                         testing::Values(TestParams{4},        //
-                                         TestParams{5},        //
-                                         TestParams{7},        //
-                                         TestParams{1024},     //
-                                         TestParams{1 << 10},  //
-                                         TestParams{1 << 15}   //
-                                         ));
+                         testing::Values(TestParams{4}, TestParams{5},  //
+                                         TestParams{7},                 //
+                                         TestParams{1024},              //
+                                         TestParams{1 << 10},           //
+                                         TestParams{1 << 15}));
 
 }  // namespace yacl::crypto

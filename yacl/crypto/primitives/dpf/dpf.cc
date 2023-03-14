@@ -346,8 +346,6 @@ void DpfKey::Deserialize(const std::string& s) {
   sec_param_ = proto.sec_param();
 
   mseed_ = MakeUint128(proto.mseed().hi(), proto.mseed().lo());
-
-  SPDLOG_DEBUG("Got seed {}", GetSeed());
 }
 
 }  // namespace yacl::crypto
