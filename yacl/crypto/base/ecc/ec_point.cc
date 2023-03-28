@@ -42,6 +42,10 @@ void AffinePoint::Deserialize(ByteContainerView in) {
   obj.convert(*this);
 }
 
+std::size_t AffinePoint::HashCode() const {
+  return x.Get<size_t>() ^ y.Get<size_t>();
+}
+
 std::ostream& operator<<(std::ostream& os, const AffinePoint& point) {
   os << point.ToString();
   return os;

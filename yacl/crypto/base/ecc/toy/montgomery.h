@@ -18,15 +18,21 @@
 
 namespace yacl::crypto::toy {
 
-// y^2 = x^3 + Ax + B
-class ToyWeierstrassGroup : public ToyEcGroup {
+// RFC 7748 (Elliptic Curves for Security) implementation
+// https://tools.ietf.org/html/rfc7748
+// https://www.rfc-editor.org/errata_search.php?rfc=7748
+//
+// Only used in ECDH scenarios
+// XGroup only use X-coordinates of points
+class ToyXGroup : public ToyEcGroup {
  public:
-  using ToyEcGroup::ToyEcGroup;
+  ToyXGroup(const CurveMeta &curve_meta, const CurveParam &param);
 
   std::string ToString() override;
 
+  // Add is not supported, since only the x coordinate cannot uniquely determine
+  // a point
   EcPoint Add(const EcPoint &p1, const EcPoint &p2) const override;
-
   EcPoint Mul(const EcPoint &point, const MPInt &scalar) const override;
   EcPoint Negate(const EcPoint &point) const override;
 
@@ -39,13 +45,13 @@ class ToyWeierstrassGroup : public ToyEcGroup {
 
   EcPoint HashToCurve(HashToCurveStrategy strategy,
                       std::string_view str) const override;
+
   bool PointEqual(const EcPoint &p1, const EcPoint &p2) const override;
   bool IsInCurveGroup(const EcPoint &point) const override;
   bool IsInfinity(const EcPoint &point) const override;
-  bool IsInfinity(const AffinePoint &point) const;
 
  private:
-  AffinePoint Add(const AffinePoint &p1, const AffinePoint &p2) const;
+  MPInt a24_;
 };
 
 }  // namespace yacl::crypto::toy

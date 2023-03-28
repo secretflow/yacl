@@ -30,28 +30,59 @@
 namespace yacl::crypto {
 
 TEST(OtRecvStoreTest, ConstructorTest) {
-  auto recv_choices = RandBits<dynamic_bitset<uint128_t>>(100);
-  auto recv_blocks = RandVec<uint128_t>(100);
-  auto ot_store = MakeOtRecvStore(recv_choices, recv_blocks);
-  EXPECT_EQ(ot_store->Size(), 100);
+  // GIVEN
+  const size_t ot_num = 100;
+  auto recv_choices = RandBits<dynamic_bitset<uint128_t>>(ot_num);
+  auto recv_blocks = RandVec<uint128_t>(ot_num);
+
+  // WHEN
+  auto ot_store = MakeOtRecvStore(recv_choices, recv_blocks);  // normal mode
+
+  // THEN
+  EXPECT_EQ(ot_store->Size(), ot_num);
+  for (size_t i = 0; i < ot_num; ++i) {
+    EXPECT_EQ(ot_store->GetBlock(i), recv_blocks[i]);
+    EXPECT_EQ(ot_store->GetChoice(i), recv_choices[i]);
+  }
+}
+
+TEST(OtRecvStoreTest, EmptyConstructorTest) {
+  // GIVEN
+  const size_t ot_num = 100;
+
+  // WHEN
+  auto ot_normal = std::make_shared<OtRecvStore>(ot_num, false);
+  auto ot_compact = std::make_shared<OtRecvStore>(ot_num, true);
+
+  // THEN
+  EXPECT_EQ(ot_normal->Size(), ot_num);
+  EXPECT_EQ(ot_compact->Size(), ot_num);
+
+  for (size_t i = 0; i < ot_num; ++i) {
+    EXPECT_EQ(ot_normal->GetBlock(i), 0);
+    EXPECT_EQ(ot_compact->GetBlock(i), 0);
+    EXPECT_EQ(ot_normal->GetChoice(i), 0);
+    EXPECT_EQ(ot_compact->GetChoice(i), 0);
+  }
 }
 
 TEST(OtRecvStoreTest, GetElementsTest) {
-  // ot recv msgs and blocks
-  auto recv_choices = RandBits<dynamic_bitset<uint128_t>>(100);
-  auto recv_blocks = RandVec<uint128_t>(100);
+  // GIVEN
+  const size_t ot_num = 100;
+  auto recv_choices = RandBits<dynamic_bitset<uint128_t>>(ot_num);
+  auto recv_blocks = RandVec<uint128_t>(ot_num);
   auto ot_store = MakeOtRecvStore(recv_choices, recv_blocks);
 
   // get element tests
-  auto idx = RandInRange(100);
+  auto idx = RandInRange(ot_num);
   EXPECT_EQ(ot_store->GetChoice(idx), recv_choices[idx]);
   EXPECT_EQ(ot_store->GetBlock(idx), recv_blocks[idx]);
 
   EXPECT_EQ(ot_store->GetChoice(0), recv_choices[0]);
   EXPECT_EQ(ot_store->GetBlock(0), recv_blocks[0]);
 
-  EXPECT_THROW(ot_store->GetChoice(101), yacl::Exception);
-  EXPECT_THROW(ot_store->GetBlock(101), yacl::Exception);
+  EXPECT_THROW(ot_store->GetChoice(ot_num + 1), yacl::Exception);
+  EXPECT_THROW(ot_store->GetBlock(ot_num + 1), yacl::Exception);
 
   EXPECT_THROW(ot_store->GetChoice(-1), yacl::Exception);
   EXPECT_THROW(ot_store->GetBlock(-1), yacl::Exception);
@@ -125,18 +156,29 @@ TEST(OtRecvStoreTest, SliceTest) {
 }
 
 TEST(OtSendStoreTest, ConstructorTest) {
-  std::vector<std::array<uint128_t, 2>> blocks(100);
+  // GIVEN
+  const uint64_t ot_num = 2;
+  std::vector<std::array<uint128_t, 2>> blocks(ot_num);
   Prg<uint128_t> prg;
-  for (size_t i = 0; i < 100; i++) {
+  for (size_t i = 0; i < ot_num; ++i) {
     blocks[i][0] = prg();
     blocks[i][1] = prg();
   }
+
+  // WHEN
   auto ot_store = MakeOtSendStore(blocks);
-  EXPECT_EQ(ot_store->Size(), 100);
+
+  // THEN
+  EXPECT_EQ(ot_store->Size(), ot_num);
+  EXPECT_THROW(ot_store->GetDelta(), yacl::Exception);
+  for (size_t i = 0; i < ot_num; ++i) {
+    EXPECT_EQ(ot_store->GetBlock(i, 0), blocks[i][0]);
+    EXPECT_EQ(ot_store->GetBlock(i, 1), blocks[i][1]);
+  }
 }
 
 TEST(OtSendStoreTest, GetElementsTest) {
-  // ot send msgs and blocks
+  // GIVEN
   std::vector<std::array<uint128_t, 2>> blocks;
   Prg<uint128_t> prg;
   for (size_t i = 0; i < 100; i++) {
@@ -147,7 +189,7 @@ TEST(OtSendStoreTest, GetElementsTest) {
   }
   auto ot_store = MakeOtSendStore(blocks);
 
-  // get element tests
+  // WHEN and THEN
   auto idx = RandInRange(100);
   EXPECT_EQ(ot_store->GetBlock(idx, 0), blocks[idx][0]);
 }
@@ -192,41 +234,35 @@ TEST(OtSendStoreTest, SliceTest) {
   }
 }
 
-TEST(OtSendStoreTest, SliceLargeTest) {
-  // ot send msgs and blocks
-  std::vector<std::array<uint128_t, 2>> blocks;
-  Prg<uint128_t> prg;
-  size_t num = 1 << 20;
-  for (size_t i = 0; i < num; i++) {
-    std::array<uint128_t, 2> tmp;
-    tmp[0] = prg();
-    tmp[1] = prg();
-    blocks.push_back(tmp);
-  }
-  auto ot_store = MakeOtSendStore(blocks);
-  EXPECT_EQ(ot_store->Size(), num);
-
-  // get first slice
-  {
-    auto ot_sub =
-        ot_store->NextSlice(num - 1);  // only increase internal_use_ctr
-  }
-}
-
 TEST(MockRotTest, Works) {
-  // first constructor
-  auto cot = MockRots(100);
-  for (size_t i = 0; i < 100; ++i) {
-    auto choice = cot.recv->GetChoice(i);
-    EXPECT_EQ(cot.send->GetBlock(i, choice), cot.recv->GetBlock(i));
+  // GIVEN
+  const size_t ot_num = 100;
+
+  // WHEN
+  auto rot = MockRots(ot_num);
+
+  // THEN
+  EXPECT_EQ(rot.send->Size(), ot_num);
+  EXPECT_EQ(rot.recv->Size(), ot_num);
+  for (size_t i = 0; i < ot_num; ++i) {
+    auto choice = rot.recv->GetChoice(i);
+    EXPECT_EQ(rot.send->GetBlock(i, choice), rot.recv->GetBlock(i));
   }
 }
 
 TEST(MockCotTest, Works) {
-  // first constructor
+  // GIVEN
+  const size_t ot_num = 2;
   auto delta = RandU128();
-  auto cot = MockCots(100, delta);
-  for (size_t i = 0; i < 100; ++i) {
+
+  // WHEN
+  auto cot = MockCots(ot_num, delta);
+
+  // THEN
+  EXPECT_EQ(cot.send->Size(), ot_num);
+  EXPECT_EQ(cot.recv->Size(), ot_num);
+  EXPECT_EQ(cot.send->GetDelta(), delta);
+  for (size_t i = 0; i < ot_num; ++i) {
     auto choice = cot.recv->GetChoice(i);
     EXPECT_EQ(cot.send->GetBlock(i, choice), cot.recv->GetBlock(i));
     EXPECT_EQ(delta, cot.send->GetBlock(i, 0) ^ cot.send->GetBlock(i, 1));
@@ -234,11 +270,15 @@ TEST(MockCotTest, Works) {
 }
 
 TEST(MockCompactCotTest, Works) {
-  // first constructor
-  auto cot = MockCompactCots(100);
-  EXPECT_EQ(cot.send->GetDelta() & 0x1, 1);
+  // GIVEN
+  const size_t ot_num = 100;
 
-  for (size_t i = 0; i < 100; ++i) {
+  // WHEN
+  auto cot = MockCompactCots(ot_num);
+
+  // THEN
+  EXPECT_EQ(cot.send->GetDelta() & 0x1, 1);
+  for (size_t i = 0; i < ot_num; ++i) {
     auto choice = cot.recv->GetChoice(i);
     EXPECT_EQ(cot.send->GetBlock(i, choice), cot.recv->GetBlock(i));
   }

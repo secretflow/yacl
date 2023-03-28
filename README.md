@@ -1,19 +1,19 @@
-# YACL: Yet Another Crypto library
+# YACL (Yet Another Crypto Library) 
 
 [![CircleCI](https://dl.circleci.com/status-badge/img/gh/secretflow/yacl/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/secretflow/yacl/tree/main)
 
-YACL (Yet Another Crypto library) is a C++ library that contains modules and utilities which other SecretFlow code depends on.
+A C++ library that contains cryptgraphy, network and io modules which other SecretFlow code depends on.
 
 Repo layout:
 
-- [base/](yacl/base/): Some basic types and utils in yacl.
-- [crypto/](yacl/crypto/): A crypto library desigend for secure computation and so on.
-  - [base/](yacl/crypto/base): **Basic/standarized crypto**, i.e. AES, DRBG, hashing.
-  - [primitives/](yacl/crypto/primitives/): **Crypto primitives**, i.e. OT, DPF.
-  - [tools/](yacl/crypto/tools/): **Theoretical crypto tools**, i.e. Random Oracle (RO), PRG.
-  - [utils/](yacl/crypto/utils/): Easy-to-use **crypto utilities**.
-- [io/](yacl/io/): A simple streaming-based io library.
-- [link/](yacl/link/): A simple rpc-based MPI framework. It provides the [SPMD](https://en.wikipedia.org/wiki/SPMD) parallel programming capability.
+- [base](yacl/base/): some basic types and utils in yacl.
+- [crypto](yacl/crypto/): a crypto library desigend for secure computation and so on.
+  - [base](yacl/crypto/base): **basic/standarized crypto**, i.e. AES, DRBG, hashing.
+  - [primitives](yacl/crypto/primitives/): **crypto primitives**, i.e. OT, DPF.
+  - [tools](yacl/crypto/tools/): **theoretical crypto tools**, i.e. Random Oracle (RO), PRG.
+  - [utils](yacl/crypto/utils/): easy-to-use **crypto utilities**.
+- [io](yacl/io/): a simple streaming-based io library.
+- [link](yacl/link/): a simple rpc-based MPI framework, providing the [SPMD](https://en.wikipedia.org/wiki/SPMD) parallel programming capability.
 
 
 ## Build
@@ -60,3 +60,4 @@ bazel test //... --config=asan -c dbg
 
 - `--define gperf=on` enable gperf
 - `--define tracelog=on` enable link trace log.
+

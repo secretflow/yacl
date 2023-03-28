@@ -55,4 +55,40 @@ TEST(RandomPermTest, BlocksWorks) {
   EXPECT_EQ(RP.Gen(absl::MakeSpan(input)), RP.Gen(absl::MakeSpan(input)));
 }
 
+TEST(RandomPermTest, CrHashWorks) {
+  const size_t x = RandomU128();
+  const size_t y = RandomU128();
+
+  EXPECT_NE(CrHash_128(x), 0);
+  EXPECT_EQ(CrHash_128(x), CrHash_128(x));
+  EXPECT_NE(CrHash_128(x), CrHash_128(y));
+}
+
+TEST(RandomPermTest, ParaCrHashWorks) {
+  const auto size = 20;
+
+  std::vector<uint128_t> zeros(size, 0);
+  auto input = RandomBlocks(size);
+  auto output = ParaCrHash_128(absl::MakeSpan(input));
+
+  EXPECT_NE(absl::MakeSpan(output), absl::MakeSpan(zeros));
+  EXPECT_NE(absl::MakeSpan(output), absl::MakeSpan(input));
+  EXPECT_EQ(absl::MakeSpan(output), ParaCrHash_128(absl::MakeSpan(input)));
+}
+
+TEST(RandomPermTest, ParaCrHashInplaceWorks) {
+  const auto size = 20;
+
+  std::vector<uint128_t> zeros(size, 0);
+  auto inout = RandomBlocks(size);
+  auto inout_copy = inout;
+
+  ParaCrHashInplace_128(absl::MakeSpan(inout));
+  EXPECT_NE(absl::MakeSpan(inout), absl::MakeSpan(zeros));
+  EXPECT_NE(absl::MakeSpan(inout), absl::MakeSpan(inout_copy));
+
+  ParaCrHashInplace_128(absl::MakeSpan(inout_copy));
+  EXPECT_EQ(absl::MakeSpan(inout), absl::MakeSpan(inout_copy));
+}
+
 }  // namespace yacl::crypto

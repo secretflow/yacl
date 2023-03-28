@@ -44,6 +44,8 @@ enum class PrimeType : int {
 class MPInt {
  public:
   // Pre-defined variables ...
+  // WARNING: Do not use these variables in the global environment. Your global
+  // variables may be initialized earlier than these.
   static const MPInt _1_;
   static const MPInt _2_;
 
@@ -172,6 +174,11 @@ class MPInt {
   void ToBytes(unsigned char *buf, size_t buf_len,
                Endian endian = Endian::native) const;
 
+  // Get the i'th bit. Always return 0 or 1
+  uint8_t operator[](int idx) const;
+  uint8_t GetBit(int idx) const;
+  void SetBit(int idx, uint8_t bit);
+
   /**
    * Generate a random prime
    * *Warning*: You can NOT call this function before main() function
@@ -245,6 +252,7 @@ class MPInt {
   static void PowMod(const MPInt &a, const MPInt &b, const MPInt &mod,
                      MPInt *d);
   static void Pow(const MPInt &a, uint32_t b, MPInt *c);
+  MPInt PowMod(const MPInt &b, const MPInt &mod) const;
   MPInt Pow(uint32_t b) const;
   void PowInplace(uint32_t b);
 

@@ -86,7 +86,7 @@ struct ContextDesc {
   std::string brpc_channel_protocol = "baidu_std";
 
   // BRPC client channel connection type.
-  std::string brpc_channel_connection_type = "single";
+  std::string brpc_channel_connection_type = "";
 
   // ssl options for link channel
   bool enable_ssl = false;
@@ -197,8 +197,6 @@ class Context {
                          Buffer&& value);
   void SendInternal(size_t dst_rank, const std::string& key,
                     ByteContainerView value);
-  void SendInternal(size_t dst_rank, const std::string& key,
-                    ByteContainerView value, uint32_t timeout);
   Buffer RecvInternal(size_t src_rank, const std::string& key);
 
   // next collective algorithm id.

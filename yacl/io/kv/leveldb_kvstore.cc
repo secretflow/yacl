@@ -85,4 +85,19 @@ bool LeveldbKVStore::Get(absl::string_view key, Buffer *value) const {
   return true;
 }
 
+size_t LeveldbKVStore::Count() const {
+  size_t count = 0;
+
+  leveldb::Iterator *it = db_->NewIterator(leveldb::ReadOptions());
+  for (it->SeekToFirst(); it->Valid(); it->Next()) {
+    count++;
+  }
+
+  YACL_ENFORCE(it->status().ok());
+
+  delete it;
+
+  return count;
+}
+
 }  // namespace yacl::io

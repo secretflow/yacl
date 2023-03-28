@@ -51,7 +51,7 @@ index 7bd06ec5..68b1a58d 100644
          span = Span::CreateServerSpan(
              path, trace_id, span_id, parent_span_id, msg->base_real_us());
 diff --git a/src/bvar/default_variables.cpp b/src/bvar/default_variables.cpp
-index be02c50a..172dcbe4 100644
+index be02c50a..186abe54 100644
 --- a/src/bvar/default_variables.cpp
 +++ b/src/bvar/default_variables.cpp
 @@ -110,8 +110,9 @@ static bool read_proc_status(ProcStat &stat) {
@@ -65,6 +65,15 @@ index be02c50a..172dcbe4 100644
                 &stat.pid, &stat.ppid, &stat.pgrp, &stat.session,
                 &stat.tpgid, &stat.flags, &stat.priority, &stat.nice) != 8) {
          PLOG(WARNING) << "Fail to sscanf";
+@@ -635,7 +636,7 @@ public:
+     bool operator()(rusage* stat) const {
+         const int rc = getrusage(RUSAGE_SELF, stat);
+         if (rc < 0) {
+-            PLOG(WARNING) << "Fail to getrusage";
++            // PLOG(WARNING) << "Fail to getrusage";
+             return false;
+         }
+         return true;
 diff --git a/BUILD.bazel b/BUILD.bazel
 index 5e59bd1c..9df99bfc 100644
 --- a/BUILD.bazel

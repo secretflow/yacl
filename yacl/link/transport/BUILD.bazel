@@ -27,6 +27,7 @@ yacl_cc_library(
         "//yacl/base:byte_container_view",
         "//yacl/base:exception",
         "//yacl/link:ssl_options",
+        "//yacl/utils:segment_tree",
         "@com_github_brpc_brpc//:brpc",
     ],
 )

@@ -28,3 +28,7 @@ rules_foreign_cc_dependencies(
     register_default_tools = False,
     register_preinstalled_tools = True,
 )
+
+load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
+
+protobuf_deps()

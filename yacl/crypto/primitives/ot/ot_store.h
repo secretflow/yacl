@@ -24,25 +24,15 @@
 
 namespace yacl::crypto {
 
-// enum class OtStoreTy {
-//   Normal,   // use two buffers for OT storage
-//   Compact,  // use one buffer for OT storage
-// };
-
-// enum class OtTy {
-//   Rot,  // Random Oblivious Transfer
-//   Cot,  // Correlated Oblivious Transfer (with delta)
-// };
-
 class SliceBase {
  public:
   // setters and getters
-  uint64_t Size() const { return internal_use_size_; }
   bool IsSliced() const { return internal_buf_ctr_ != 0; }
   virtual ~SliceBase() = default;
 
  protected:
   uint64_t GetUseCtr() const { return internal_use_ctr_; }
+  uint64_t GetUseSize() const { return internal_use_size_; }
   uint64_t GetBufCtr() const { return internal_buf_ctr_; }
   uint64_t GetBufSize() const { return internal_buf_size_; }
   virtual void ConsistencyCheck() const;
@@ -95,8 +85,9 @@ class OtRecvStore : public SliceBase {
   using BlkBufPtr = std::shared_ptr<std::vector<uint128_t>>;
 
   // full constructor for ot receiver store
-  OtRecvStore(BitBufPtr, BlkBufPtr blocks, uint64_t use_ctr, uint64_t use_size,
-              uint64_t buf_ctr, uint64_t buf_size, bool compact_mode = false);
+  OtRecvStore(BitBufPtr bit_ptr, BlkBufPtr blk_ptr, uint64_t use_ctr,
+              uint64_t use_size, uint64_t buf_ctr, uint64_t buf_size,
+              bool compact_mode = false);
 
   // empty constructor
   explicit OtRecvStore(uint64_t num, bool compact_mode = false);
@@ -105,13 +96,28 @@ class OtRecvStore : public SliceBase {
   std::shared_ptr<OtRecvStore> NextSlice(uint64_t num);
 
   // whether the ot store is in compact mode
-  bool IsCompactCot() const { return compact_mode_; }
+  bool IsCompact() const { return compact_mode_; }
+
+  // access the raw pointer of receiver's choices (type: dynamic_bitset)
+  void* choice_data() { return bit_buf_->data(); }
+
+  // access the raw pointer of receiver's blocks (type: uint128_t array)
+  void* block_data() { return blk_buf_->data(); }
+
+  // get the avaliable ot number for this slice
+  uint64_t Size() const { return GetUseSize(); }
 
   // access a choice bit with a given slice index
-  bool GetChoice(uint64_t idx) const;
+  uint8_t GetChoice(uint64_t idx) const;
 
-  // modify a choice bit with a given slice index
+  // access a block element with the given index
+  uint128_t GetBlock(uint64_t idx) const;
+
+  // modify a choice bit(val) with a given slice index
   void SetChoice(uint64_t idx, bool val);
+
+  // modify a block with a given slice index
+  void SetBlock(uint64_t idx, uint128_t val);
 
   // flip a choice bit with a given slice index
   void FlipChoice(uint64_t idx);
@@ -122,16 +128,14 @@ class OtRecvStore : public SliceBase {
   // copy out the sliced choice buffer [wanring: low efficiency]
   std::vector<uint128_t> CopyBlocks() const;
 
-  // access a block element with the given index
-  uint128_t GetBlock(uint64_t idx) const;
-
-  // modify a block with a given slice index
-  void SetBlock(uint64_t idx, uint128_t val) const;
-
  private:
+  // check the consistency of ot receiver store
   void ConsistencyCheck() const override;
 
-  bool compact_mode_ = false;  // by default, don't use compact mode
+  // [warning] please don't use compact mode unless you know what you are doing
+  // In compact mode, we store one ot block and one choice bit in uint128_t,
+  // thus the valid ot length is only 127 bits, which may incur security issues.
+  bool compact_mode_ = false;
 
   // Compact mode for COT (Receiver):
   //
@@ -139,7 +143,7 @@ class OtRecvStore : public SliceBase {
   //                                  |                               |
   //                              choice[0]                        choice[n]
 
-  BitBufPtr bit_buf_;  // store choices in normal mode
+  BitBufPtr bit_buf_;  // store choices in normal mode, nullptr in compact mode
   BlkBufPtr blk_buf_;  // store blocks in normal mode; store blocks and choices
                        // in compact mode
 };
@@ -159,62 +163,63 @@ std::shared_ptr<OtRecvStore> MakeCompactCotRecvStore(
 // Data structure that stores multiple ot sender's data (a.k.a. the ot messages)
 class OtSendStore : public SliceBase {
  public:
-  using NormalBufPtr = std::shared_ptr<std::vector<std::array<uint128_t, 2>>>;
-  using CompactBufPtr = std::shared_ptr<std::vector<uint128_t>>;
+  using BlkBufPtr = std::shared_ptr<std::vector<uint128_t>>;
 
-  // constructor for all ot
-  explicit OtSendStore(NormalBufPtr blocks, uint64_t use_ctr, uint64_t use_size,
-                       uint64_t buf_ctr, uint64_t buf_size);
-
-  // constructor for compact mode
-  explicit OtSendStore(CompactBufPtr cot_blocks, uint128_t delta,
-                       uint64_t use_ctr, uint64_t use_size, uint64_t buf_ctr,
-                       uint64_t buf_size);
+  // full constructor for ot receiver store
+  OtSendStore(BlkBufPtr blk_ptr, uint128_t delta, uint64_t use_ctr,
+              uint64_t use_size, uint64_t buf_ctr, uint64_t buf_size,
+              bool compact_mode = false);
 
   // empty constructor
-  explicit OtSendStore(uint64_t num, bool use_compact_mode = false);
-
-  bool IsCompactCot() const { return compact_mode_; }
+  explicit OtSendStore(uint64_t num, bool compact_mode = false);
 
   // slice the ot store
   std::shared_ptr<OtSendStore> NextSlice(uint64_t num);
 
-  // access the delta of the cot (comapct mode only)
+  // whether the ot store is in compact mode
+  bool IsCompact() const { return compact_mode_; }
+
+  // access the raw pointer of chosen block
+  void* data() const;
+
+  // get the avaliable ot number for this slice
+  uint64_t Size() const;
+
+  // access the delta of the cot
   uint128_t GetDelta() const;
 
-  // set the delta of the cot (comapct mode only)
+  // access a block with the given index
+  uint128_t GetBlock(uint64_t ot_idx, uint64_t msg_idx) const;
+
+  // set the delta of the cot
   void SetDelta(uint128_t delta);
 
-  // access a block with the given index
-  uint128_t GetBlock(uint64_t idx1, uint64_t idx2) const;
-
   // modify a block with the given index
-  void SetBlock(uint64_t idx1, uint64_t idx2, uint128_t val);
+  void SetNormalBlock(uint64_t ot_idx, uint64_t msg_idx, uint128_t val);
 
-  // set a cot block (comapct mode only)
-  void SetCompactBlock(uint64_t idx, uint128_t val);
+  // set a cot block
+  void SetCompactBlock(uint64_t ot_idx, uint128_t val);
 
-  // copy out cot blocks (comapct mode only)
+  // copy out cot blocks
   std::vector<uint128_t> CopyCotBlocks() const;
 
  private:
+  // check the consistency of ot receiver store
   void ConsistencyCheck() const override;
 
-  bool compact_mode_ = false;  // by default, don't use compact mode
-  uint128_t delta_;            // for cot only
+  bool compact_mode_ = false;  // by default, compact mode stores correlated ot
+                               // and normal mode stores random ot
 
-  NormalBufPtr blk_buf_normal_;  // store two blocks in normal mode; nullptr in
-                                 // compact mode
-  CompactBufPtr blk_buf_compact_;  // store one blocks in normal mode (for cot
-                                   // only); nullptr in normal mode
+  uint128_t delta_ = 0;  // store cot's delta
+  BlkBufPtr blk_buf_;    // store blocks
 };
 
 // Easier way of generate a ot_store pointer from a given blocks buffer
 std::shared_ptr<OtSendStore> MakeOtSendStore(
     const std::vector<std::array<uint128_t, 2>>& blocks);
 
-// Easier way of generate a compact cot_store pointer from a given blocks buffer
-// and cot delta
+// Easier way of generate a compact cot_store pointer from a given blocks
+// buffer and cot delta
 std::shared_ptr<OtSendStore> MakeCompactCotSendStore(
     const std::vector<uint128_t>& blocks, uint128_t delta);
 

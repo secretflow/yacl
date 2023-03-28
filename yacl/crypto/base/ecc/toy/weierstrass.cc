@@ -16,61 +16,8 @@
 
 namespace yacl::crypto::toy {
 
-static const std::string kLibName = "Toy";
-
-static std::map<CurveName, WeierstrassCurveParam> kPredefinedCurves = {
-    {"secp256k1",
-     {
-         "0x0"_mp,  // A
-         "0x7"_mp,  // B
-         {"0x79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"_mp,
-          "0x483ada7726a3c4655da4fbfc0e1108a8fd17b448a68554199c47d08ffb10d4b8"_mp},
-         "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f"_mp,
-         "0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141"_mp,
-         "0x1"_mp  // h
-     }},
-    // https://www.oscca.gov.cn/sca/xxgk/2010-12/17/content_1002386.shtml
-    {"sm2",
-     {
-         "0xFFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFC"_mp,
-         "0x28E9FA9E9D9F5E344D5A9E4BCF6509A7F39789F515AB8F92DDBCBD414D940E93"_mp,
-         {"0x32C4AE2C1F1981195F9904466A39C9948FE30BBFF2660BE1715A4589334C74C7"_mp,
-          "0xBC3736A2F4F6779C59BDCEE36B692153D0A9877CC62A474002DF32E52139F0A0"_mp},
-         "0xFFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFF"_mp,
-         "0xFFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFF7203DF6B21C6052B53BBF40939D54123"_mp,
-         "0x1"_mp  // h
-     }},
-};
-
 static const AffinePoint kInfPoint = AffinePoint(MPInt(0), MPInt(0));
 static const EcPoint kInfEcPoint = kInfPoint;
-
-REGISTER_EC_LIBRARY(kLibName, 10, ToyWeierstrassGroup::IsSupported,
-                    ToyWeierstrassGroup::Create);
-
-std::unique_ptr<EcGroup> ToyWeierstrassGroup::Create(const CurveMeta &meta) {
-  YACL_ENFORCE(kPredefinedCurves.count(meta.LowerName()) > 0,
-               "curve {} not supported", meta.name);
-  return std::unique_ptr<ToyWeierstrassGroup>(
-      new ToyWeierstrassGroup(meta, kPredefinedCurves.at(meta.LowerName())));
-}
-
-bool ToyWeierstrassGroup::IsSupported(const CurveMeta &meta) {
-  return kPredefinedCurves.count(meta.LowerName()) > 0;
-}
-
-ToyWeierstrassGroup::ToyWeierstrassGroup(const CurveMeta &curve_meta,
-                                         const WeierstrassCurveParam &param)
-    : EcGroup(curve_meta), params_(param) {}
-
-std::string ToyWeierstrassGroup::GetLibraryName() const { return kLibName; }
-
-MPInt ToyWeierstrassGroup::GetCofactor() const { return params_.h; }
-
-MPInt ToyWeierstrassGroup::GetField() const { return params_.p; }
-MPInt ToyWeierstrassGroup::GetOrder() const { return params_.n; }
-
-EcPoint ToyWeierstrassGroup::GetGenerator() const { return params_.G; }
 
 std::string ToyWeierstrassGroup::ToString() {
   return fmt::format("{} ==> y^2 = x^3 + {}x + {} (mod {})", GetCurveName(),
@@ -99,6 +46,11 @@ AffinePoint ToyWeierstrassGroup::Add(const AffinePoint &p1,
     tmp += params_.A;
     MPInt::MulMod(tmp, p1.y.Mul(2).InvertMod(params_.p), params_.p, &lambda);
   } else {
+    // As you can see, InvertMod() is very slow.
+    // If we do things using projective coordinates, it turns out that we don't
+    // need to compute any inverses at all (we do increase the number of modular
+    // additions and multiplications we need, however the time involved there is
+    // much less than doing a single modular inversion, and so it is a win).
     MPInt::MulMod(p2.y - p1.y,
                   (p2.x.SubMod(p1.x, params_.p)).InvertMod(params_.p),
                   params_.p, &lambda);
@@ -106,30 +58,18 @@ AffinePoint ToyWeierstrassGroup::Add(const AffinePoint &p1,
 
   auto x3 = lambda.Pow(2).SubMod(p1.x + p2.x, params_.p);
   auto y3 = (lambda * (p1.x - x3)).SubMod(p1.y, params_.p);
-  return AffinePoint(x3, y3);
+  return {x3, y3};
 }
 
 EcPoint ToyWeierstrassGroup::Add(const EcPoint &p1, const EcPoint &p2) const {
-  const AffinePoint &op1 = std::get<AffinePoint>(p1);
-  const AffinePoint &op2 = std::get<AffinePoint>(p2);
+  const auto &op1 = std::get<AffinePoint>(p1);
+  const auto &op2 = std::get<AffinePoint>(p2);
   return Add(op1, op2);
 }
 
-EcPoint ToyWeierstrassGroup::Sub(const EcPoint &p1, const EcPoint &p2) const {
-  return Add(p1, Negate(p2));
-}
-
-EcPoint ToyWeierstrassGroup::Double(const EcPoint &p) const {
-  return Mul(2_mp, p);
-}
-
-EcPoint ToyWeierstrassGroup::MulBase(const MPInt &scalar) const {
-  return Mul(scalar, params_.G);
-}
-
-EcPoint ToyWeierstrassGroup::Mul(const MPInt &scalar,
-                                 const EcPoint &point) const {
-  const AffinePoint &op = std::get<AffinePoint>(point);
+EcPoint ToyWeierstrassGroup::Mul(const EcPoint &point,
+                                 const MPInt &scalar) const {
+  const auto &op = std::get<AffinePoint>(point);
 
   if (IsInfinity(op)) {
     return kInfEcPoint;
@@ -153,33 +93,12 @@ EcPoint ToyWeierstrassGroup::Mul(const MPInt &scalar,
   }
 }
 
-EcPoint ToyWeierstrassGroup::MulDoubleBase(const MPInt &s1, const EcPoint &p1,
-                                           const MPInt &s2) const {
-  return Add(Mul(s1, p1), MulBase(s2));
-}
-
-EcPoint ToyWeierstrassGroup::Div(const EcPoint &point,
-                                 const MPInt &scalar) const {
-  YACL_ENFORCE(!scalar.IsZero(), "Ecc point can not div by zero!");
-
-  if (scalar.IsPositive()) {
-    return Mul(scalar.InvertMod(params_.n), point);
-  }
-
-  auto res = Mul(scalar.Abs().InvertMod(params_.n), point);
-  return Negate(res);
-}
-
 EcPoint ToyWeierstrassGroup::Negate(const EcPoint &point) const {
-  const AffinePoint &op = std::get<AffinePoint>(point);
+  const auto &op = std::get<AffinePoint>(point);
   if (IsInfinity(op)) {
     return point;
   }
   return AffinePoint(op.x, params_.p - op.y);
-}
-
-AffinePoint ToyWeierstrassGroup::GetAffinePoint(const EcPoint &point) const {
-  return std::get<AffinePoint>(point);
 }
 
 Buffer ToyWeierstrassGroup::SerializePoint(const EcPoint &point,
@@ -218,7 +137,7 @@ bool ToyWeierstrassGroup::PointEqual(const EcPoint &p1,
 }
 
 bool ToyWeierstrassGroup::IsInCurveGroup(const EcPoint &point) const {
-  const AffinePoint &p = std::get<AffinePoint>(point);
+  const auto &p = std::get<AffinePoint>(point);
   return IsInfinity(p) ||
          ((p.y.Pow(2) - p.x.Pow(3) - params_.A * p.x - params_.B) % params_.p)
              .IsZero();

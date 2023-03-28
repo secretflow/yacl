@@ -18,6 +18,7 @@
 
 #include "yacl/base/dynamic_bitset.h"
 #include "yacl/base/int128.h"
+#include "yacl/crypto/primitives/ot/ot_store.h"
 #include "yacl/link/link.h"
 
 namespace yacl::crypto {
@@ -31,18 +32,23 @@ void BaseOtRecv(const std::shared_ptr<link::Context>& ctx,
 void BaseOtSend(const std::shared_ptr<link::Context>& ctx,
                 absl::Span<std::array<Block, 2>> send_blocks);
 
-inline std::vector<Block> BaseOtRecv(const std::shared_ptr<link::Context>& ctx,
-                                     const dynamic_bitset<uint128_t>& choices) {
-  std::vector<Block> blocks(choices.size());
+// ==================== //
+//   Support OT Store   //
+// ==================== //
+
+inline std::shared_ptr<OtRecvStore> BaseOtRecv(
+    const std::shared_ptr<link::Context>& ctx,
+    const dynamic_bitset<uint128_t>& choices, uint32_t num_ot) {
+  std::vector<Block> blocks(num_ot);
   BaseOtRecv(ctx, choices, absl::MakeSpan(blocks));
-  return blocks;
+  return MakeOtRecvStore(choices, blocks);  // FIXME: Drop explicit copy
 }
 
-inline std::vector<std::array<Block, 2>> BaseOtSend(
-    const std::shared_ptr<link::Context>& ctx, size_t num_choice) {
-  std::vector<std::array<Block, 2>> blocks(num_choice);
+inline std::shared_ptr<OtSendStore> BaseOtSend(
+    const std::shared_ptr<link::Context>& ctx, uint32_t num_ot) {
+  std::vector<std::array<Block, 2>> blocks(num_ot);
   BaseOtSend(ctx, absl::MakeSpan(blocks));
-  return blocks;
+  return MakeOtSendStore(blocks);  // FIXME: Drop explicit copy
 }
 
 }  // namespace yacl::crypto

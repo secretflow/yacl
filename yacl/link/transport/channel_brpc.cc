@@ -323,6 +323,7 @@ void ChannelBrpc::SendAsyncInternal(const std::string& key, ValueType&& value) {
 
   OnPushDone* done = new OnPushDone(shared_from_this());
   ic_pb::ReceiverService::Stub stub(channel_.get());
+  done->cntl_.ignore_eovercrowded();
   stub.Push(&done->cntl_, &request, &done->response_, done);
 }
 
@@ -412,6 +413,7 @@ void ChannelBrpc::SendChunked(const std::string& key, ByteContainerView value) {
       }
 
       auto& cntl = cntls[idx];
+      cntl.ignore_eovercrowded();
       auto& response = responses[idx];
       ic_pb::ReceiverService::Stub stub(channel_.get());
       stub.Push(&cntl, &request, &response, brpc::DoNothing());

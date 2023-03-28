@@ -45,17 +45,45 @@ TEST_P(IknpOtExtTest, Works) {
   // WHEN
   std::vector<std::array<uint128_t, 2>> send_out(num_ot);
   std::vector<uint128_t> recv_out(num_ot);
-  std::future<void> sender = std::async(
-      [&] { IknpOtExtSend(lctxs[0], base_ot.recv, absl::MakeSpan(send_out)); });
+  std::future<void> sender = std::async([&] {
+    IknpOtExtSend(lctxs[0], base_ot.recv, absl::MakeSpan(send_out), false);
+  });
   std::future<void> receiver = std::async([&] {
-    IknpOtExtRecv(lctxs[1], base_ot.send, choices, absl::MakeSpan(recv_out));
+    IknpOtExtRecv(lctxs[1], base_ot.send, choices, absl::MakeSpan(recv_out),
+                  false);
   });
   receiver.get();
   sender.get();
 
   // THEN
   for (size_t i = 0; i < num_ot; ++i) {
+    EXPECT_NE(recv_out[i], 0);
+    EXPECT_NE(send_out[i][0], 0);
+    EXPECT_NE(send_out[i][1], 0);
     EXPECT_EQ(send_out[i][choices[i]], recv_out[i]);
+  }
+}
+
+TEST_P(IknpOtExtTest, OtStoreWorks) {
+  // GIVEN
+  const int kWorldSize = 2;
+  const size_t num_ot = GetParam().num_ot;
+  auto lctxs = link::test::SetupWorld(kWorldSize);             // setup network
+  auto base_ot = MockRots(128);                                // mock base ot
+  auto choices = RandBits<dynamic_bitset<uint128_t>>(num_ot);  // get input
+
+  // WHEN
+  auto sender =
+      std::async([&] { return IknpOtExtSend(lctxs[0], base_ot.recv, num_ot); });
+  auto receiver = std::async(
+      [&] { return IknpOtExtRecv(lctxs[1], base_ot.send, choices, num_ot); });
+  auto recv_out = receiver.get();
+  auto send_out = sender.get();
+
+  // THEN
+  for (size_t i = 0; i < num_ot; ++i) {
+    unsigned idx = choices[i] ? 1 : 0;
+    EXPECT_EQ(send_out->GetBlock(i, idx), recv_out->GetBlock(i));
   }
 }
 
@@ -70,10 +98,12 @@ TEST_P(IknpCotExtTest, Works) {
   // WHEN
   std::vector<std::array<uint128_t, 2>> send_out(num_ot);
   std::vector<uint128_t> recv_out(num_ot);
-  std::future<void> sender = std::async(
-      [&] { IknpOtExtSend(lctxs[0], base_ot.recv, absl::MakeSpan(send_out)); });
+  std::future<void> sender = std::async([&] {
+    IknpOtExtSend(lctxs[0], base_ot.recv, absl::MakeSpan(send_out), true);
+  });
   std::future<void> receiver = std::async([&] {
-    IknpOtExtRecv(lctxs[1], base_ot.send, choices, absl::MakeSpan(recv_out));
+    IknpOtExtRecv(lctxs[1], base_ot.send, choices, absl::MakeSpan(recv_out),
+                  true);
   });
   receiver.get();
   sender.get();
@@ -82,8 +112,40 @@ TEST_P(IknpCotExtTest, Works) {
   // cot correlation = base ot choice
   uint128_t check = base_ot.recv->CopyChoice().data()[0];
   for (size_t i = 0; i < num_ot; ++i) {
+    EXPECT_NE(recv_out[i], 0);
+    EXPECT_NE(send_out[i][0], 0);
+    EXPECT_NE(send_out[i][1], 0);
     EXPECT_EQ(send_out[i][choices[i]], recv_out[i]);
     EXPECT_EQ(check, send_out[i][0] ^ send_out[i][1]);
+  }
+}
+
+TEST_P(IknpCotExtTest, OtStoreWorks) {
+  // GIVEN
+  const int kWorldSize = 2;
+  const size_t num_ot = GetParam().num_ot;
+  auto lctxs = link::test::SetupWorld(kWorldSize);             // setup network
+  auto base_ot = MockRots(128);                                // mock base ot
+  auto choices = RandBits<dynamic_bitset<uint128_t>>(num_ot);  // get input
+
+  // WHEN
+  auto sender = std::async(
+      [&] { return IknpOtExtSend(lctxs[0], base_ot.recv, num_ot, true); });
+  auto receiver = std::async([&] {
+    return IknpOtExtRecv(lctxs[1], base_ot.send, choices, num_ot, true);
+  });
+  auto recv_out = receiver.get();
+  auto send_out = sender.get();
+
+  // THEN
+  // cot correlation = base ot choice
+  uint128_t check = base_ot.recv->CopyChoice().data()[0];  // base ot choices
+  uint128_t delta = send_out->GetDelta();                  // cot's delta
+  EXPECT_EQ(check, delta);
+  for (size_t i = 0; i < num_ot; ++i) {
+    unsigned idx = choices[i] ? 1 : 0;
+    EXPECT_EQ(send_out->GetBlock(i, idx), recv_out->GetBlock(i));
+    EXPECT_EQ(check, send_out->GetBlock(i, 0) ^ send_out->GetBlock(i, 1));
   }
 }
 

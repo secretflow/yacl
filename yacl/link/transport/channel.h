@@ -26,6 +26,7 @@
 
 #include "yacl/base/buffer.h"
 #include "yacl/base/byte_container_view.h"
+#include "yacl/utils/segment_tree.h"
 
 namespace yacl::link {
 
@@ -36,6 +37,7 @@ class IChannel {
 
   // SendAsync asynchronously.
   // return when the message successfully pushed into peer's recv buffer.
+  // SendAsync is not reentrant with same key.
   virtual void SendAsync(const std::string& key, ByteContainerView value) = 0;
 
   virtual void SendAsync(const std::string& key, Buffer&& value) = 0;
@@ -43,11 +45,8 @@ class IChannel {
   // SendAsync synchronously.
   // return when the message is successfully pushed into the send buffer.
   // raise when push buffer overflow.
-  // Note: if the message failed when transfer, there is no acknowledge.
+  // Send is not reentrant with same key.
   virtual void Send(const std::string& key, ByteContainerView value) = 0;
-  // timeout 0 indicate use options
-  virtual void Send(const std::string& key, ByteContainerView value,
-                    uint32_t timeout) = 0;
 
   // block waiting message.
   virtual Buffer Recv(const std::string& key) = 0;
@@ -69,6 +68,14 @@ class IChannel {
 
   // set send throttle window size
   virtual void SetThrottleWindowSize(size_t) = 0;
+
+  // test if this channel can send a dummy msg to peer.
+  // use fixed 0 seq_id as dummy msg's id make this function reentrant.
+  // because ConnectToMesh will retry on this multiple times.
+  virtual void TestSend(uint32_t timeout) = 0;
+
+  // wait for dummy msg from peer, timeout by recv_timeout_ms_.
+  virtual void TestRecv() = 0;
 };
 
 // forward declaractions.
@@ -84,14 +91,12 @@ class ChannelBase : public IChannel {
         peer_rank_(peer_rank),
         recv_timeout_ms_(recv_timeout_ms) {}
 
+  // all send interface for normal msg is not reentrant with same key.
   void SendAsync(const std::string& key, ByteContainerView value) final;
 
   void SendAsync(const std::string& key, Buffer&& value) final;
 
   void Send(const std::string& key, ByteContainerView value) final;
-
-  void Send(const std::string& key, ByteContainerView value,
-            uint32_t timeout) final;
 
   Buffer Recv(const std::string& key) override;
 
@@ -109,6 +114,14 @@ class ChannelBase : public IChannel {
   void SetThrottleWindowSize(size_t size) final {
     throttle_window_size_ = size;
   }
+
+  // test if this channel can send a dummy msg to peer.
+  // use 0 seq_id as dummy msg's id.
+  // Reentrancy function for ConnectToMesh test.
+  void TestSend(uint32_t timeout) final;
+
+  // wait for dummy msg from peer, timeout by recv_timeout_ms_.
+  void TestRecv() final;
 
   // wait for all SendAsync Done.
   virtual void WaitAsyncSendToFinish() = 0;
@@ -136,6 +149,8 @@ class ChannelBase : public IChannel {
   template <typename T>
   void OnNormalMessage(const std::string&, T&&);
 
+  void SendAck(size_t seq_id);
+
  protected:
   const size_t self_rank_;
   const size_t peer_rank_;
@@ -145,19 +160,23 @@ class ChannelBase : public IChannel {
   // message database related.
   bthread::Mutex msg_mutex_;
   bthread::ConditionVariable msg_db_cond_;
-  std::map<std::string, Buffer> msg_db_;
+  // msg_key -> <value, seq_id>
+  std::map<std::string, std::pair<Buffer, size_t>> msg_db_;
 
-  // if WaitLinkTaskFinish is called.
-  // auto ack all normal msg if true.
-  bool waiting_finish_ = false;
   // for Throttle Window
   std::atomic<size_t> throttle_window_size_ = 0;
-  // count for normal msg sent to peer.
-  std::atomic<size_t> sent_msg_count_ = 0;
-  // count for received normal msg from peer.
-  size_t received_msg_count_ = 0;
-  // count for received ack msg from peer.
   size_t ack_msg_count_ = 0;
+
+  // for WaitLinkTaskFinish
+  // if WaitLinkTaskFinish is called.
+  // auto ack all normal msg if true.
+  std::atomic<bool> waiting_finish_ = false;
+  // id count for normal msg sent to peer.
+  std::atomic<size_t> sent_msg_seq_id_ = 0;
+  // ids for received normal msg from peer.
+  utils::SegmentTree<size_t> received_msg_ids_;
+  // ids for received ack msg from peer.
+  utils::SegmentTree<size_t> received_ack_ids_;
   // if peer's fin msg is received.
   bool received_fin_ = false;
   // and how many normal msg sent by peer.

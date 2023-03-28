@@ -61,6 +61,7 @@ TEST_P(SgrrParamTest, Works) {
 
   for (size_t i = 0; i < n; ++i) {
     if (index != i) {
+      EXPECT_NE(recv_out[i], 0);
       EXPECT_EQ(send_out[i], recv_out[i]);
     } else {
       EXPECT_EQ(0, recv_out[i]);

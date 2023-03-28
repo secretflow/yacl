@@ -24,6 +24,9 @@
 #include "yacl/crypto/base/ecc/ec_point.h"
 #include "yacl/crypto/base/mpint/mp_int.h"
 
+// ECC usage example:
+//   auto curve = ::yacl::crypto::EcGroupFactory::Create("sm2");
+// And now you can perform ecc operations using the 'curve' object.
 namespace yacl::crypto {
 
 enum class HashToCurveStrategy {
@@ -97,9 +100,9 @@ class EcGroup {
   // Elliptic curve meta info query //
   //================================//
 
-  virtual CurveName GetCurveName() const { return meta_.name; }
-  virtual CurveForm GetCurveForm() const { return meta_.form; }
-  virtual FieldType GetFieldType() const { return meta_.field_type; }
+  virtual CurveName GetCurveName() const = 0;
+  virtual CurveForm GetCurveForm() const = 0;
+  virtual FieldType GetFieldType() const = 0;
   // Get the underlying elliptic curve lib name, e.g. openssl
   virtual std::string GetLibraryName() const = 0;
 
@@ -141,7 +144,7 @@ class EcGroup {
   // For example, the secp256k1 curve returns 128-bit security, but real is
   // 127.8-bit and Curve25519 also returns 128-bit security, but real is
   // 125.8-bit.
-  virtual size_t GetSecurityStrength() const { return meta_.secure_bits; }
+  virtual size_t GetSecurityStrength() const = 0;
 
   virtual std::string ToString() = 0;
 
@@ -151,10 +154,15 @@ class EcGroup {
 
   // return p1 + p2
   virtual EcPoint Add(const EcPoint &p1, const EcPoint &p2) const = 0;
+  virtual void AddInplace(EcPoint *p1, const EcPoint &p2) const = 0;
+
   // return p1 - p2
   virtual EcPoint Sub(const EcPoint &p1, const EcPoint &p2) const = 0;
+  virtual void SubInplace(EcPoint *p1, const EcPoint &p2) const = 0;
+
   // return p * 2
   virtual EcPoint Double(const EcPoint &p) const = 0;
+  virtual void DoubleInplace(EcPoint *p) const = 0;
 
   // three types of scalar multiplications:
   //
@@ -166,18 +174,21 @@ class EcGroup {
   // multiplications and then to add both results. (e.g. 𝑘𝑃+𝑟𝐵)
   // @param scalar: can be < 0
   virtual EcPoint MulBase(const MPInt &scalar) const = 0;
-  virtual EcPoint Mul(const MPInt &scalar, const EcPoint &point) const = 0;
-  // Returns: s1*p1 + s2*G
-  virtual EcPoint MulDoubleBase(const MPInt &scalar1, const EcPoint &point1,
-                                const MPInt &scalar2) const = 0;
+  virtual EcPoint Mul(const EcPoint &point, const MPInt &scalar) const = 0;
+  virtual void MulInplace(EcPoint *point, const MPInt &scalar) const = 0;
+  // Returns: s1*G + s2*p2
+  virtual EcPoint MulDoubleBase(const MPInt &s1, const MPInt &s2,
+                                const EcPoint &p2) const = 0;
 
   // Output: p / s = p * s^-1
   // Please note that not all scalars have inverses
   // An exception will be thrown if the inverse of s does not exist
   virtual EcPoint Div(const EcPoint &point, const MPInt &scalar) const = 0;
+  virtual void DivInplace(EcPoint *point, const MPInt &scalar) const = 0;
 
   // Output: -p
   virtual EcPoint Negate(const EcPoint &point) const = 0;
+  virtual void NegateInplace(EcPoint *point) const = 0;
 
   //================================//
   //     EcPoint helper tools       //
@@ -206,9 +217,28 @@ class EcGroup {
   // Get a human-readable representation of elliptic curve point
   virtual AffinePoint GetAffinePoint(const EcPoint &point) const = 0;
 
-  // map a string to curve point
+  // Map a string to curve point
   virtual EcPoint HashToCurve(HashToCurveStrategy strategy,
                               std::string_view str) const = 0;
+
+  // Get the hash code of EcPoint so that you can store EcPoint in STL
+  // associative containers such as std::unordered_map, std::unordered_set, etc.
+  // > https://en.cppreference.com/w/cpp/named_req/UnorderedAssociativeContainer
+  //
+  // Note: C++ specification requires the return type must be std::size_t
+  // > https://en.cppreference.com/w/cpp/named_req/Hash
+  //
+  // Do not modify the value of the point in container, the following code is
+  // very dangerous:
+  // ``` C++
+  // auto p = ec_->GetGenerator();
+  // std::unordered_map<EcPoint, int, HashT, EqualT> points_map;
+  // for (int i = 0; i < 10; ++i) {
+  //   ec_->DoubleInplace(&p);
+  //   points_map[p] = i;
+  // }
+  // ```
+  virtual std::size_t HashPoint(const EcPoint &point) const = 0;
 
   // Check p1 & p2 are equal
   // It is not recommended to directly compare the buffer of EcPoint using
@@ -223,11 +253,6 @@ class EcGroup {
 
   // Is the point at infinity
   virtual bool IsInfinity(const EcPoint &point) const = 0;
-
- protected:
-  explicit EcGroup(CurveMeta meta) : meta_(std::move(meta)) {}
-
-  CurveMeta meta_;
 };
 
 // Give curve meta, return curve instance.

@@ -38,6 +38,19 @@ yacl_cc_test(
 )
 
 yacl_cc_library(
+    name = "segment_tree",
+    hdrs = ["segment_tree.h"],
+)
+
+yacl_cc_test(
+    name = "segment_tree_test",
+    srcs = ["segment_tree_test.cc"],
+    deps = [
+        ":segment_tree",
+    ],
+)
+
+yacl_cc_library(
     name = "scope_guard",
     hdrs = ["scope_guard.h"],
     deps = ["@com_google_absl//absl/cleanup"],

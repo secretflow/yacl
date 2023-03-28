@@ -16,10 +16,14 @@
 
 #include "gtest/gtest.h"
 
+namespace yacl::crypto::toy {
+std::unique_ptr<EcGroup> Create(const CurveMeta &meta);
+}
+
 namespace yacl::crypto::toy::test {
 
-TEST(CurveTest, Secp256k1Works) {
-  auto curve = ToyWeierstrassGroup::Create(GetCurveMetaByName("secp256k1"));
+TEST(ToyWTest, Secp256k1Works) {
+  auto curve = Create(GetCurveMetaByName("secp256k1"));
   EXPECT_EQ(curve->GetCurveName(), "secp256k1");
   EXPECT_EQ(curve->GetCurveForm(), CurveForm::Weierstrass);
   EXPECT_EQ(curve->GetLibraryName(), "Toy");
@@ -38,7 +42,7 @@ TEST(CurveTest, Secp256k1Works) {
 
   // small case: add & mul
   auto g2a = curve->Add(curve->GetGenerator(), curve->GetGenerator());
-  auto g2b = curve->Mul(2_mp, curve->GetGenerator());
+  auto g2b = curve->Mul(curve->GetGenerator(), 2_mp);
   auto g2c = curve->MulBase(2_mp);
   EXPECT_TRUE(curve->PointEqual(g2a, g2b));
   EXPECT_TRUE(curve->PointEqual(g2a, g2c));
@@ -51,7 +55,7 @@ TEST(CurveTest, Secp256k1Works) {
   EXPECT_TRUE(curve->IsInCurveGroup(g2a));
   EXPECT_FALSE(curve->IsInfinity(g2a));
 
-  EXPECT_TRUE(curve->IsInfinity(curve->Mul(0_mp, g2c)));
+  EXPECT_TRUE(curve->IsInfinity(curve->Mul(g2c, 0_mp)));
   EXPECT_TRUE(curve->PointEqual(curve->MulBase(-1_mp),
                                 curve->Negate(curve->GetGenerator())));
 
@@ -81,7 +85,7 @@ TEST(CurveTest, Secp256k1Works) {
 
   auto scalar2 =
       "-0x6a5ab59522b1f30782d104e7357a62a4765bc57ebd5279b9ea573a6eaed8593b"_mp;
-  auto sg2 = curve->GetAffinePoint(curve->Mul(scalar2, sg));
+  auto sg2 = curve->GetAffinePoint(curve->Mul(sg, scalar2));
   EXPECT_EQ(
       sg2.x,
       "97558491001741493100682586125779371803575554251176920086377653822240438145201"_mp);
@@ -90,11 +94,11 @@ TEST(CurveTest, Secp256k1Works) {
       "3873643218096366517011519658811590004229407662248396464966752139819222285242"_mp);
   EXPECT_TRUE(curve->PointEqual(curve->Div(sg2, scalar2), sg));
 
-  EXPECT_TRUE(curve->PointEqual(curve->Mul(scalar2, curve->MulBase(scalar1)),
-                                curve->Mul(scalar1, curve->MulBase(scalar2))));
+  EXPECT_TRUE(curve->PointEqual(curve->Mul(curve->MulBase(scalar1), scalar2),
+                                curve->Mul(curve->MulBase(scalar2), scalar1)));
 
   auto sg3 =
-      curve->GetAffinePoint(curve->MulDoubleBase(12345_mp, sg2, -6789_mp));
+      curve->GetAffinePoint(curve->MulDoubleBase(-6789_mp, 12345_mp, sg2));
   EXPECT_EQ(
       sg3.x,
       "79914623817369507497155870284859519547754128956319824651094395882608386841415"_mp);
@@ -103,15 +107,14 @@ TEST(CurveTest, Secp256k1Works) {
       "42371308820993604738923640079906132358355437118721947350660194247433151072035"_mp);
 }
 
-TEST(CurveTest, SerializeWorks) {
-  auto curve = ToyWeierstrassGroup::Create(GetCurveMetaByName("sm2"));
+TEST(ToyWTest, SerializeWorks) {
+  auto curve = Create(GetCurveMetaByName("sm2"));
   auto p1 = curve->MulBase(123456789_mp);
   auto buf = curve->SerializePoint(p1);
   auto p2 = curve->DeserializePoint(buf);
 
   EXPECT_TRUE(curve->IsInCurveGroup(p2));
-  EXPECT_FALSE(ToyWeierstrassGroup::Create(GetCurveMetaByName("secp256k1"))
-                   ->IsInCurveGroup(p2));
+  EXPECT_FALSE(Create(GetCurveMetaByName("secp256k1"))->IsInCurveGroup(p2));
   EXPECT_TRUE(
       curve->PointEqual(curve->Div(p2, 123456789_mp), curve->GetGenerator()));
 }

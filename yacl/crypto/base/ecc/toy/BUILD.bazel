@@ -18,8 +18,40 @@ package(default_visibility = ["//visibility:public"])
 
 yacl_cc_library(
     name = "toy",
+    srcs = [
+        "factory.cc",
+    ],
     deps = [
+        ":montgomery",
         ":weierstrass",
+    ],
+    alwayslink = 1,
+)
+
+yacl_cc_library(
+    name = "common",
+    srcs = [
+        "common.cc",
+    ],
+    hdrs = [
+        "common.h",
+    ],
+    deps = [
+        "//yacl/crypto/base/ecc:spi",
+        "//yacl/crypto/base/hash:ssl_hash",
+    ],
+)
+
+yacl_cc_library(
+    name = "montgomery",
+    srcs = [
+        "montgomery.cc",
+    ],
+    hdrs = [
+        "montgomery.h",
+    ],
+    deps = [
+        ":common",
     ],
 )
 
@@ -32,15 +64,22 @@ yacl_cc_library(
         "weierstrass.h",
     ],
     deps = [
-        "//yacl/crypto/base/ecc:spi",
+        ":common",
     ],
-    alwayslink = 1,
+)
+
+yacl_cc_test(
+    name = "montgomery_test",
+    srcs = ["montgomery_test.cc"],
+    deps = [
+        ":toy",
+    ],
 )
 
 yacl_cc_test(
     name = "weierstrass_test",
     srcs = ["weierstrass_test.cc"],
     deps = [
-        ":weierstrass",
+        ":toy",
     ],
 )

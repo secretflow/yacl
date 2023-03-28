@@ -45,31 +45,19 @@ class RandomPerm {
   using Ctype = SymmetricCrypto::CryptoType;
 
   explicit RandomPerm(Ctype ctype, uint128_t key, uint128_t iv = 0)
-      : sym_alg_(ctype, key, iv) {
-    // AES_set_encrypt_key(key, &aes_key_);
-  }
+      : sym_alg_(ctype, key, iv) {}
 
-  // Multi-block input, multi-block output
-  void Gen(absl::Span<const uint128_t> x, absl::Span<uint128_t> out) const {
-    YACL_ENFORCE(x.size() == out.size());
-    sym_alg_.Encrypt(x, out);
-  }
+  // generate a block x's random permutation, and outputs
+  uint128_t Gen(uint128_t x) const;
 
-  std::vector<uint128_t> Gen(absl::Span<const uint128_t> x) const {
-    std::vector<uint128_t> res(x.size());
-    Gen(x, absl::MakeSpan(res));
-    return res;
-  }
+  // given input block vector x, generate its random permutation.
+  std::vector<uint128_t> Gen(absl::Span<const uint128_t> x) const;
 
-  void GenInplace(absl::Span<uint128_t> inout) {
-    sym_alg_.Encrypt(inout, inout);
-  }
+  // given input block vector x, generate its random permutation to out.
+  void Gen(absl::Span<const uint128_t> x, absl::Span<uint128_t> out) const;
 
-  // Single-block input, single-block output
-  uint128_t Gen(uint128_t x) const {
-    YACL_ENFORCE(sym_alg_.GetType() != Ctype::AES128_CTR);
-    return sym_alg_.Encrypt(x);
-  }
+  // generate (block vector) x's random permutation, and inplace
+  void GenInplace(absl::Span<uint128_t> inout);
 
   // Example: const auto rp = RandomPerm::GetDefault();
   static RandomPerm& GetDefault() {
@@ -88,51 +76,37 @@ class RandomPerm {
 // Correlation Robust Hash function (Single Block input)
 // See https://eprint.iacr.org/2019/074.pdf Sec 7.2
 // CrHash = RP(x) ^ x
-inline uint128_t CrHash_128(uint128_t x) {
-  const auto& RP = RandomPerm::GetDefault();
-  return RP.Gen(x) ^ x;
-}
+uint128_t CrHash_128(uint128_t x);
 
-// Evaluate many CrHash in Parallel (Single Block input)
-inline void ParaCrHash_128(absl::Span<const uint128_t> x,
-                           absl::Span<uint128_t> out) {
-  using Ctype = SymmetricCrypto::CryptoType;
-  const auto& RP = RandomPerm(Ctype::AES128_ECB, 0x12345678);
-  RP.Gen(x, out);
-  for (size_t i = 0; i < x.size(); i++) {
-    out[i] ^= x[i];
-  }
-}
+// parallel crhash for many blocks
+std::vector<uint128_t> ParaCrHash_128(absl::Span<const uint128_t> x);
 
-inline std::vector<uint128_t> ParaCrHash_128(absl::Span<const uint128_t> x) {
-  std::vector<uint128_t> res(x.size());
-  ParaCrHash_128(x, absl::MakeSpan(res));
-  return res;
-}
+// inplace parallel crhash for many blocks
+void ParaCrHashInplace_128(absl::Span<uint128_t> inout);
 
 // Circular Correlation Robust Hash function (Single Block)
 // See https://eprint.iacr.org/2019/074.pdf Sec 7.3
 // CcrHash = RP(theta(x)) ^ theta(x)
 // theta(x) = x ^ ((x.left ^ x.right) >> 64)
-inline uint128_t CcrHash_128(uint128_t x) {
-  return CrHash_128(x ^ (x >> 64 & 0xffffffffffffffff));
-}
+// uint128_t CcrHash_128(uint128_t x);
+
+// std::vector<uint128_t> ParaCrrHash_128(absl::Span<const uint128_t> x);
 
 // Evaluate many CrHash in Parallel (Single Block input)
-inline void Para_CcrHash_128(absl::Span<const uint128_t> x,
-                             absl::Span<uint128_t> out) {
-  std::vector<uint128_t> tmp(x.size());
-  for (size_t i = 0; i < x.size(); i++) {
-    tmp[i] = x[i] ^ (x[i] >> 64 & 0xffffffffffffffff);
-  }
-  ParaCrHash_128(absl::MakeConstSpan(tmp), out);
-}
+// inline void ParaCcrHash_128(absl::Span<const uint128_t> x,
+//                             absl::Span<uint128_t> out) {
+//   std::vector<uint128_t> tmp(x.size());
+//   for (size_t i = 0; i < x.size(); i++) {
+//     tmp[i] = x[i] ^ (x[i] >> 64 & 0xffffffffffffffff);
+//   }
+// }
 
-inline std::vector<uint128_t> ParaCcrHash_128(absl::Span<const uint128_t> x) {
-  std::vector<uint128_t> res(x.size());
-  Para_CcrHash_128(x, absl::MakeSpan(res));
-  return res;
-}
+// inline std::vector<uint128_t> ParaCcrHash_128(absl::Span<const uint128_t> x)
+// {
+//   std::vector<uint128_t> res(x.size());
+//   ParaCcrHash_128(x, absl::MakeSpan(res));
+//   return res;
+// }
 
 // TODO(@shanzhu) Tweakable Correlation Robust Hash function (Multiple Blocks)
 // See https://eprint.iacr.org/2019/074.pdf Sec 7.4

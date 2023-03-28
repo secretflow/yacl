@@ -83,4 +83,14 @@ TEST(OpensslTest, HashToCurveWorks) {
   }
 }
 
+TEST(OpensslTest, AddInplaceWorks) {
+  std::shared_ptr<EcGroup> p = OpensslGroup::Create(GetCurveMetaByName("sm2"));
+  auto curve = std::dynamic_pointer_cast<OpensslGroup>(p);
+
+  auto p1 = curve->MulBase(1000_mp);
+  auto p2 = curve->MulBase(2000_mp);
+  curve->AddInplace(&p1, p2);
+  ASSERT_TRUE(curve->PointEqual(p1, curve->MulBase(3000_mp)));
+}
+
 }  // namespace yacl::crypto::openssl::test
