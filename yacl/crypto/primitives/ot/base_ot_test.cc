@@ -57,6 +57,32 @@ TEST_P(BaseOtTest, Works) {
   for (unsigned i = 0; i < params.num_ot; ++i) {
     unsigned idx = choices[i] ? 1 : 0;
     EXPECT_EQ(send_blocks[i][idx], recv_blocks[i]);
+    EXPECT_NE(recv_blocks[i], 0);
+    EXPECT_NE(send_blocks[i][0], 0);
+    EXPECT_NE(send_blocks[i][1], 0);
+  }
+}
+
+TEST_P(BaseOtTest, OtStoreWorks) {
+  // GIVEN
+  const int kWorldSize = 2;
+  auto contexts = link::test::SetupWorld(kWorldSize);
+
+  auto params = GetParam();
+
+  // WHEN
+  auto choices = RandBits<dynamic_bitset<uint128_t>>(params.num_ot);
+  auto sender =
+      std::async([&] { return BaseOtSend(contexts[0], params.num_ot); });
+  auto receiver = std::async(
+      [&] { return BaseOtRecv(contexts[1], choices, params.num_ot); });
+  auto send_blocks = sender.get();
+  auto recv_blocks = receiver.get();
+
+  // THEN
+  for (unsigned i = 0; i < params.num_ot; ++i) {
+    unsigned idx = choices[i] ? 1 : 0;
+    EXPECT_EQ(send_blocks->GetBlock(i, idx), recv_blocks->GetBlock(i));
   }
 }
 

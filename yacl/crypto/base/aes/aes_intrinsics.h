@@ -88,7 +88,7 @@ struct AES_KEY {
 };
 
 // set aes encryption key
-#define EXPAND_ASSIST(v1, v2, v3, v4, shuff_const, aes_const)           \
+#define AES_EXPAND_ASSIST(v1, v2, v3, v4, shuff_const, aes_const)       \
   v2 = _mm_aeskeygenassist_si128(v4, aes_const);                        \
   v3 = _mm_castps_si128(                                                \
       _mm_shuffle_ps(_mm_castsi128_ps(v3), _mm_castsi128_ps(v1), 16));  \
@@ -110,25 +110,25 @@ inline void
   __m128i *kp = key->rd_key;
   kp[0] = x0 = userkey;
   x2 = _mm_setzero_si128();
-  EXPAND_ASSIST(x0, x1, x2, x0, 255, 1);
+  AES_EXPAND_ASSIST(x0, x1, x2, x0, 255, 1);
   kp[1] = x0;
-  EXPAND_ASSIST(x0, x1, x2, x0, 255, 2);
+  AES_EXPAND_ASSIST(x0, x1, x2, x0, 255, 2);
   kp[2] = x0;
-  EXPAND_ASSIST(x0, x1, x2, x0, 255, 4);
+  AES_EXPAND_ASSIST(x0, x1, x2, x0, 255, 4);
   kp[3] = x0;
-  EXPAND_ASSIST(x0, x1, x2, x0, 255, 8);
+  AES_EXPAND_ASSIST(x0, x1, x2, x0, 255, 8);
   kp[4] = x0;
-  EXPAND_ASSIST(x0, x1, x2, x0, 255, 16);
+  AES_EXPAND_ASSIST(x0, x1, x2, x0, 255, 16);
   kp[5] = x0;
-  EXPAND_ASSIST(x0, x1, x2, x0, 255, 32);
+  AES_EXPAND_ASSIST(x0, x1, x2, x0, 255, 32);
   kp[6] = x0;
-  EXPAND_ASSIST(x0, x1, x2, x0, 255, 64);
+  AES_EXPAND_ASSIST(x0, x1, x2, x0, 255, 64);
   kp[7] = x0;
-  EXPAND_ASSIST(x0, x1, x2, x0, 255, 128);
+  AES_EXPAND_ASSIST(x0, x1, x2, x0, 255, 128);
   kp[8] = x0;
-  EXPAND_ASSIST(x0, x1, x2, x0, 255, 27);
+  AES_EXPAND_ASSIST(x0, x1, x2, x0, 255, 27);
   kp[9] = x0;
-  EXPAND_ASSIST(x0, x1, x2, x0, 255, 54);
+  AES_EXPAND_ASSIST(x0, x1, x2, x0, 255, 54);
   kp[10] = x0;
   key->rounds = 10;
 }

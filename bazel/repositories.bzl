@@ -68,15 +68,15 @@ def _com_github_brpc_brpc():
     maybe(
         http_archive,
         name = "com_github_brpc_brpc",
-        sha256 = "b9d638b76725552ed11178c650d7fc95e30f252db7972a93dc309a0698c7d2b8",
-        strip_prefix = "brpc-1.3.0",
+        sha256 = "6ea39d8984217f62ef954b7ebc0dfa724c62472a5ae7033ed189f994f28b9e30",
+        strip_prefix = "brpc-1.4.0",
         type = "tar.gz",
         patch_args = ["-p1"],
         patches = [
             "@yacl//bazel:patches/brpc.patch",
         ],
         urls = [
-            "https://github.com/apache/brpc/archive/refs/tags/1.3.0.tar.gz",
+            "https://github.com/apache/brpc/archive/refs/tags/1.4.0.tar.gz",
         ],
     )
 
@@ -136,11 +136,11 @@ def _com_google_absl():
     maybe(
         http_archive,
         name = "com_google_absl",
-        sha256 = "4208129b49006089ba1d6710845a45e31c59b0ab6bff9e5788a87f55c5abd602",
+        sha256 = "81311c17599b3712069ded20cca09a62ab0bf2a89dfa16993786c8782b7ed145",
         type = "tar.gz",
-        strip_prefix = "abseil-cpp-20220623.0",
+        strip_prefix = "abseil-cpp-20230125.1",
         urls = [
-            "https://github.com/abseil/abseil-cpp/archive/refs/tags/20220623.0.tar.gz",
+            "https://github.com/abseil/abseil-cpp/archive/refs/tags/20230125.1.tar.gz",
         ],
     )
 
@@ -186,11 +186,11 @@ def _com_google_googletest():
     maybe(
         http_archive,
         name = "com_google_googletest",
-        sha256 = "81964fe578e9bd7c94dfdb09c8e4d6e6759e19967e397dbea48d1c10e45d0df2",
+        sha256 = "ad7fdba11ea011c1d925b3289cf4af2c66a352e18d4c7264392fead75e919363",
         type = "tar.gz",
-        strip_prefix = "googletest-release-1.12.1",
+        strip_prefix = "googletest-1.13.0",
         urls = [
-            "https://github.com/google/googletest/archive/refs/tags/release-1.12.1.tar.gz",
+            "https://github.com/google/googletest/archive/refs/tags/v1.13.0.tar.gz",
         ],
     )
 
@@ -199,10 +199,10 @@ def _com_github_google_benchmark():
         http_archive,
         name = "com_github_google_benchmark",
         type = "tar.gz",
-        strip_prefix = "benchmark-1.7.0",
-        sha256 = "3aff99169fa8bdee356eaa1f691e835a6e57b1efeadb8a0f9f228531158246ac",
+        strip_prefix = "benchmark-1.7.1",
+        sha256 = "6430e4092653380d9dc4ccb45a1e2dc9259d581f4866dc0759713126056bc1d7",
         urls = [
-            "https://github.com/google/benchmark/archive/refs/tags/v1.7.0.tar.gz",
+            "https://github.com/google/benchmark/archive/refs/tags/v1.7.1.tar.gz",
         ],
     )
 
@@ -235,10 +235,10 @@ def _rule_python():
     maybe(
         http_archive,
         name = "rules_python",
-        sha256 = "c03246c11efd49266e8e41e12931090b613e12a59e6f55ba2efd29a7cb8b4258",
-        strip_prefix = "rules_python-0.11.0",
+        sha256 = "a644da969b6824cc87f8fe7b18101a8a6c57da5db39caa6566ec6109f37d2141",
+        strip_prefix = "rules_python-0.20.0",
         urls = [
-            "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.11.0.tar.gz",
+            "https://github.com/bazelbuild/rules_python/releases/download/0.20.0/rules_python-0.20.0.tar.gz",
         ],
     )
 
@@ -274,7 +274,10 @@ def _com_github_intel_ipp():
         strip_prefix = "ipp-crypto-ippcp_2021.4",
         build_file = "@yacl//bazel:ipp.BUILD",
         patch_args = ["-p1"],
-        patches = ["@yacl//bazel:patches/ippcp.patch"],
+        patches = [
+            "@yacl//bazel:patches/ippcp.patch", 
+            "@yacl//bazel:patches/ippcp-56.patch"
+        ],
         urls = [
             "https://github.com/intel/ipp-crypto/archive/refs/tags/ippcp_2021.4.tar.gz",
         ],

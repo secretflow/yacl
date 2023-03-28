@@ -22,6 +22,9 @@ class KVStore {
 
   // get value by key
   virtual bool Get(absl::string_view key, Buffer *value) const = 0;
+
+  // get count
+  virtual size_t Count() const = 0;
 };
 
 class IndexStore {
@@ -38,6 +41,8 @@ class IndexStore {
   bool Get(size_t index, Buffer *value) {
     return kv_store_->Get(std::to_string(index), value);
   }
+
+  size_t Count() const { return kv_store_->Count(); }
 
  private:
   std::shared_ptr<KVStore> kv_store_;

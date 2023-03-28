@@ -120,4 +120,37 @@ TEST(TommathExtTest, Serialize) {
   }
 }
 
+TEST(TommathExtTest, GetBit) {
+  uint64_t s = 0x78541254;
+  mp_int n;
+  MP_ASSERT_OK(mp_init_u64(&n, s));
+  ON_SCOPE_EXIT([&] { mp_clear(&n); });
+
+  mp_int new_n;
+  MP_ASSERT_OK(mp_init(&new_n));
+  ON_SCOPE_EXIT([&] { mp_clear(&new_n); });
+
+  int idx = 0;
+  while (s != 0) {
+    EXPECT_EQ(s & 1, mp_ext_get_bit(n, idx));
+    mp_ext_set_bit(&new_n, idx, s & 1);
+    s >>= 1;
+    ++idx;
+  }
+
+  EXPECT_TRUE(mp_cmp(&n, &new_n) == 0);
+  mp_ext_set_bit(&new_n, 666, 0);
+  EXPECT_TRUE(mp_cmp(&n, &new_n) == 0);
+
+  mp_ext_set_bit(&new_n, 1000, 1);
+  EXPECT_EQ(mp_ext_get_bit(new_n, 999), 0);
+  EXPECT_EQ(mp_ext_get_bit(new_n, 1000), 1);
+  EXPECT_EQ(mp_ext_get_bit(new_n, 1001), 0);
+  EXPECT_EQ(mp_ext_count_bits_fast(new_n), 1001);
+
+  mp_ext_set_bit(&new_n, 1000, 0);
+  EXPECT_EQ(mp_ext_get_bit(new_n, 1000), 0);
+  EXPECT_LE(mp_ext_count_bits_fast(new_n), 64);
+}
+
 }  // namespace yacl::crypto::test

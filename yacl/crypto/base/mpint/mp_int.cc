@@ -267,20 +267,11 @@ uint64_t MPInt::Get() const {
 }
 
 #ifdef __APPLE__
-
 template <>
 unsigned long MPInt::Get() const {  // NOLINT: macOS uint64_t is ull
   static_assert(sizeof(unsigned long) == 8);
   return mp_get_mag_u64(&n_);
 }
-
-template <>
-void MPInt::Set(long value) {
-  static_assert(sizeof(long) == 8);
-  MPINT_ENFORCE_OK(mp_grow(&n_, 2));
-  mp_set_i64(&n_, value);
-}
-
 #endif
 
 template <>
@@ -461,6 +452,12 @@ void MPInt::ToBytes(unsigned char *buf, size_t buf_len,
   mp_ext_to_bytes(n_, buf, buf_len, endian);
 }
 
+uint8_t MPInt::operator[](int idx) const { return GetBit(idx); }
+
+uint8_t MPInt::GetBit(int idx) const { return mp_ext_get_bit(n_, idx); }
+
+void MPInt::SetBit(int idx, uint8_t bit) { mp_ext_set_bit(&n_, idx, bit); }
+
 void MPInt::RandPrimeOver(size_t bit_size, MPInt *out, PrimeType prime_type) {
   YACL_ENFORCE_GT(bit_size, 80u, "bit_size must > 80");
   int trials = mp_prime_rabin_miller_trials(bit_size);
@@ -563,6 +560,12 @@ MPInt MPInt::Pow(uint32_t b) const {
 
 void MPInt::PowInplace(uint32_t b) {
   MPINT_ENFORCE_OK(mp_expt_u32(&n_, b, &n_));
+}
+
+MPInt MPInt::PowMod(const MPInt &b, const MPInt &mod) const {
+  MPInt res;
+  MPINT_ENFORCE_OK(mp_exptmod(&n_, &b.n_, &mod.n_, &res.n_));
+  return res;
 }
 
 void MPInt::PowMod(const MPInt &a, const MPInt &b, const MPInt &mod, MPInt *d) {

@@ -504,46 +504,4 @@ class DummyReceiverLoopBrpc final : public ReceiverLoopBase {
   brpc::Server server_;
 };
 
-class ChannelBrpcSendTimeOutTest : public ::testing::Test {
- protected:
-  void SetUp() override {
-    const size_t send_rank = 0;
-    const size_t recv_rank = 1;
-    sender_ = std::make_shared<ChannelBrpc>(send_rank, recv_rank, options_);
-    receiver_ = std::make_shared<ChannelBrpc>(recv_rank, send_rank, options_);
-    receiver_loop_ = std::make_unique<DummyReceiverLoopBrpc>();
-    receiver_loop_->AddListener(0, receiver_);
-    receiver_host_ = receiver_loop_->Start("127.0.0.1:0");
-
-    sender_loop_ = std::make_unique<DummyReceiverLoopBrpc>();
-    sender_loop_->AddListener(1, sender_);
-    sender_host_ = sender_loop_->Start("127.0.0.1:0");
-
-    sender_->SetPeerHost(receiver_host_);
-    receiver_->SetPeerHost(sender_host_);
-  }
-
-  void TearDown() override {}
-
-  ChannelBrpc::Options options_;
-  std::shared_ptr<ChannelBrpc> sender_;
-  std::shared_ptr<ChannelBrpc> receiver_;
-  std::string receiver_host_;
-  std::unique_ptr<DummyReceiverLoopBrpc> receiver_loop_;
-  std::string sender_host_;
-  std::unique_ptr<DummyReceiverLoopBrpc> sender_loop_;
-};
-
-TEST_F(ChannelBrpcSendTimeOutTest, DISABLED_Send_Timeout) {
-  auto clock_start = std::chrono::steady_clock::now();
-  EXPECT_THROW(sender_->Send("key", {}, 1000U), NetworkError);
-  auto eclips = std::chrono::steady_clock::now() - clock_start;
-  EXPECT_GT(
-      std::chrono::duration_cast<std::chrono::milliseconds>(eclips).count(),
-      900U);
-  EXPECT_LT(
-      std::chrono::duration_cast<std::chrono::milliseconds>(eclips).count(),
-      1100U);
-}
-
 }  // namespace yacl::link::test

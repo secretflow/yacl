@@ -44,16 +44,16 @@ static void BM_CrHash(benchmark::State& state) {
   }
 }
 
-static void BM_CcrHash(benchmark::State& state) {
-  for (auto _ : state) {
-    state.PauseTiming();
-    size_t n = state.range(0);
-    std::vector<uint128_t> input(n);
-    std::fill(input.begin(), input.end(), 0);
-    state.ResumeTiming();
-    ParaCcrHash_128(absl::MakeSpan(input));
-  }
-}
+// static void BM_CcrHash(benchmark::State& state) {
+//   for (auto _ : state) {
+//     state.PauseTiming();
+//     size_t n = state.range(0);
+//     std::vector<uint128_t> input(n);
+//     std::fill(input.begin(), input.end(), 0);
+//     state.ResumeTiming();
+//     ParaCcrHash_128(absl::MakeSpan(input));
+//   }
+// }
 
 // Register the function as a benchmark
 BENCHMARK(BM_RP)
@@ -76,14 +76,14 @@ BENCHMARK(BM_CrHash)
     ->Arg(81920)
     ->Arg(1 << 24);
 
-BENCHMARK(BM_CcrHash)
-    ->Unit(benchmark::kMillisecond)
-    ->Arg(1024)
-    ->Arg(5120)
-    ->Arg(10240)
-    ->Arg(20480)
-    ->Arg(40960)
-    ->Arg(81920)
-    ->Arg(1 << 24);
+// BENCHMARK(BM_CcrHash)
+//     ->Unit(benchmark::kMillisecond)
+//     ->Arg(1024)
+//     ->Arg(5120)
+//     ->Arg(10240)
+//     ->Arg(20480)
+//     ->Arg(40960)
+//     ->Arg(81920)
+//     ->Arg(1 << 24);
 
 }  // namespace yacl::crypto

@@ -38,4 +38,8 @@ size_t mp_ext_serialize_size(const mp_int &num);
 void mp_ext_serialize(const mp_int &num, uint8_t *buf, size_t buf_len);
 void mp_ext_deserialize(mp_int *num, const uint8_t *buf, size_t buf_len);
 
+// return 0 or 1
+uint8_t mp_ext_get_bit(const mp_int &a, int index);
+void mp_ext_set_bit(mp_int *a, int index, uint8_t value);
+
 }  // namespace yacl::crypto

@@ -37,7 +37,9 @@ std::shared_ptr<Context> FactoryBrpc::CreateContext(const ContextDesc& desc,
     opts.http_timeout_ms = desc.http_timeout_ms;
     opts.http_max_payload_size = desc.http_max_payload_size;
     opts.channel_protocol = desc.brpc_channel_protocol;
-    opts.channel_connection_type = desc.brpc_channel_connection_type;
+    if (!desc.brpc_channel_connection_type.empty()) {
+      opts.channel_connection_type = desc.brpc_channel_connection_type;
+    }
     auto channel = std::make_shared<ChannelBrpc>(self_rank, rank,
                                                  desc.recv_timeout_ms, opts);
     channel->SetPeerHost(desc.parties[rank].host,

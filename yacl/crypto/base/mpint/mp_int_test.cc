@@ -61,6 +61,24 @@ TEST_F(MPIntTest, ArithmeticWorks) {
   EXPECT_TRUE(x1 == MPInt(23 * 3));
 }
 
+TEST_F(MPIntTest, PowWorks) {
+  EXPECT_EQ(MPInt::_2_.Pow(0), MPInt::_1_);
+  EXPECT_EQ(MPInt::_2_.Pow(1), MPInt::_2_);
+  EXPECT_EQ(MPInt::_2_.Pow(2), 4_mp);
+  EXPECT_EQ(MPInt::_2_.Pow(3), 8_mp);
+
+  EXPECT_EQ(MPInt::_2_.Pow(255), 1_mp << 255);
+  EXPECT_EQ(
+      MPInt::_2_.Pow(255) - 19_mp,
+      "0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed"_mp);
+
+  // PowMod
+  EXPECT_EQ(MPInt::_2_.PowMod(0_mp, 5_mp), MPInt::_1_);
+  EXPECT_EQ(MPInt::_2_.PowMod(1_mp, 5_mp), MPInt::_2_);
+  EXPECT_EQ(MPInt::_2_.PowMod(2_mp, 5_mp), 4_mp);
+  EXPECT_EQ(MPInt::_2_.PowMod(3_mp, 5_mp), 3_mp);
+}
+
 TEST_F(MPIntTest, CtorZeroWorks) {
   MPInt x;
   EXPECT_TRUE(x.IsZero());
@@ -108,7 +126,7 @@ TEST_F(MPIntTest, InvertModWorks) {
 
 TEST_F(MPIntTest, ToStringWorks) {
   MPInt x1;
-  MPInt x2((int64_t)0x12345abcdef);
+  MPInt x2(static_cast<int64_t>(0x12345abcdef));
 
   EXPECT_EQ(x1.ToHexString(), "0");
   EXPECT_EQ(x2.ToHexString(), "12345ABCDEF");

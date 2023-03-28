@@ -17,7 +17,7 @@
 #include "openssl/bn.h"
 #include "openssl/ec.h"
 
-#include "yacl/crypto/base/ecc/ecc_spi.h"
+#include "yacl/crypto/base/ecc/group_sketch.h"
 
 namespace yacl::crypto::openssl {
 
@@ -32,7 +32,7 @@ INTERNAL_WRAP_SSL_ECC_TYPE(EC_GROUP, EC_GROUP_free)
 INTERNAL_WRAP_SSL_ECC_TYPE(BN_CTX, BN_CTX_free)
 INTERNAL_WRAP_SSL_ECC_TYPE(BIGNUM, BN_free)
 
-class OpensslGroup : public EcGroup {
+class OpensslGroup : public EcGroupSketch {
  public:
   static std::unique_ptr<EcGroup> Create(const CurveMeta& meta);
   static bool IsSupported(const CurveMeta& meta);
@@ -46,15 +46,19 @@ class OpensslGroup : public EcGroup {
   std::string ToString() override;
 
   EcPoint Add(const EcPoint& p1, const EcPoint& p2) const override;
-  EcPoint Sub(const EcPoint& p1, const EcPoint& p2) const override;
+  void AddInplace(EcPoint* p1, const EcPoint& p2) const override;
+
   EcPoint Double(const EcPoint& p) const override;
+  void DoubleInplace(EcPoint* p) const override;
 
   EcPoint MulBase(const MPInt& scalar) const override;
-  EcPoint Mul(const MPInt& scalar, const EcPoint& point) const override;
-  EcPoint MulDoubleBase(const MPInt& scalar1, const EcPoint& point1,
-                        const MPInt& scalar2) const override;
-  EcPoint Div(const EcPoint& point, const MPInt& scalar) const override;
+  EcPoint Mul(const EcPoint& point, const MPInt& scalar) const override;
+  void MulInplace(EcPoint* point, const MPInt& scalar) const override;
+  EcPoint MulDoubleBase(const MPInt& s1, const MPInt& s2,
+                        const EcPoint& p2) const override;
+
   EcPoint Negate(const EcPoint& point) const override;
+  void NegateInplace(EcPoint* point) const override;
 
   // EcPoint(OpensslPoint) -> AffinePoint
   AffinePoint GetAffinePoint(const EcPoint& point) const override;
@@ -71,6 +75,7 @@ class OpensslGroup : public EcGroup {
   EcPoint HashToCurve(HashToCurveStrategy strategy,
                       std::string_view str) const override;
 
+  size_t HashPoint(const EcPoint& point) const override;
   bool PointEqual(const EcPoint& p1, const EcPoint& p2) const override;
   bool IsInCurveGroup(const EcPoint& point) const override;
   bool IsInfinity(const EcPoint& point) const override;

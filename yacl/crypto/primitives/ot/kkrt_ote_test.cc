@@ -65,6 +65,8 @@ TEST_P(KkrtOtExtTest, Works) {
     uint128_t sender_encoded_other = encoder->Eval(i, prg());
     EXPECT_EQ(sender_encoded, recv_out[i]);
     EXPECT_NE(sender_encoded_other, recv_out[i]);
+    EXPECT_NE(sender_encoded, 0);
+    EXPECT_NE(sender_encoded_other, 0);
   }
 }
 
@@ -183,6 +185,8 @@ TEST_P(KkrtOtExtTest2, Works) {
     uint128_t sender_encoded_other = encoder->Eval(i, prg());
     EXPECT_EQ(sender_encoded, recv_out[i]);
     EXPECT_NE(sender_encoded_other, recv_out[i]);
+    EXPECT_NE(sender_encoded, 0);
+    EXPECT_NE(sender_encoded_other, 0);
   }
 }
 

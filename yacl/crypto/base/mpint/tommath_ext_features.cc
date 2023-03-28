@@ -416,4 +416,31 @@ void mp_ext_deserialize(mp_int *num, const uint8_t *buf, size_t buf_len) {
   }
 }
 
+uint8_t mp_ext_get_bit(const mp_int &a, int index) {
+  int limb = index / MP_DIGIT_BIT;
+  if (limb >= a.used) {
+    return 0;
+  }
+
+  return (a.dp[limb] >> (index % MP_DIGIT_BIT)) & 1;
+}
+
+void mp_ext_set_bit(mp_int *a, int index, uint8_t value) {
+  int limb = index / MP_DIGIT_BIT;
+  if (limb > a->alloc) {
+    MPINT_ENFORCE_OK(mp_grow(a, limb + 1));
+    for (int i = a->used + 1; i <= limb; ++i) {
+      a->dp[i] = 0;
+    }
+  }
+
+  if (limb >= a->used) {
+    a->used = limb + 1;
+  }
+
+  mp_digit loc = static_cast<mp_digit>(1) << (index % MP_DIGIT_BIT);
+  value != 0 ? a->dp[limb] |= loc : a->dp[limb] &= ~loc;
+  mp_clamp(a);
+}
+
 }  // namespace yacl::crypto

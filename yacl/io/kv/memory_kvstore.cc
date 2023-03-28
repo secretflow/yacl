@@ -25,4 +25,6 @@ bool MemoryKVStore::Get(absl::string_view key, Buffer *value) const {
   return false;
 }
 
+size_t MemoryKVStore::Count() const { return kv_map.size(); }
+
 }  // namespace yacl::io

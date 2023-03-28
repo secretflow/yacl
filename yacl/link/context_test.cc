@@ -34,8 +34,6 @@ class MockChannel : public IChannel {
                void(const std::string &key, ByteContainerView value));
   MOCK_METHOD2(SendAsync, void(const std::string &key, Buffer &&value));
   MOCK_METHOD2(Send, void(const std::string &key, ByteContainerView value));
-  MOCK_METHOD3(Send, void(const std::string &key, ByteContainerView value,
-                          uint32_t timeout));
   MOCK_METHOD1(Recv, Buffer(const std::string &key));
   MOCK_METHOD2(OnMessage,
                void(const std::string &key, ByteContainerView value));
@@ -46,6 +44,9 @@ class MockChannel : public IChannel {
   uint32_t GetRecvTimeout() const override { return timeout_; }
   void WaitLinkTaskFinish() override {}
   void SetThrottleWindowSize(size_t) override {}
+
+  MOCK_METHOD1(TestSend, void(uint32_t));
+  MOCK_METHOD0(TestRecv, void());
 
  private:
   std::uint32_t timeout_{std::numeric_limits<std::uint32_t>::max()};
@@ -85,10 +86,9 @@ TEST_F(ContextConnectToMeshTest, ConnectToMeshShouldOk) {
       continue;
     }
     EXPECT_CALL(*std::static_pointer_cast<MockChannel>(channels_[i]),
-                Send(event, ByteContainerView{}, testing::_));
-    std::string key = fmt::format("connect_{}", i);
+                TestSend(testing::_));
     EXPECT_CALL(*std::static_pointer_cast<MockChannel>(channels_[i]),
-                Recv(key));
+                TestRecv());
   }
   // WHEN
   ctx.ConnectToMesh();
@@ -109,9 +109,9 @@ TEST_F(ContextConnectToMeshTest, ThrowExceptionIfNetworkError) {
   Context ctx(ctx_desc, self_rank_, channels_, msg_loop);
 
   std::string event = fmt::format("connect_{}", self_rank_);
-  ON_CALL(*std::static_pointer_cast<MockChannel>(channels_[0]),
-          Send(event, ByteContainerView{}, testing::_))
-      .WillByDefault(ThrowNetworkErrorException());
+  EXPECT_CALL(*std::static_pointer_cast<MockChannel>(channels_[0]),
+              TestSend(testing::_))
+      .WillRepeatedly(ThrowNetworkErrorException());
 
   // WHEN THEN
   EXPECT_THROW(ctx.ConnectToMesh(), ::yacl::RuntimeError);

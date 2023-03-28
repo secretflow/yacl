@@ -58,4 +58,32 @@ void IknpOtExtRecv(const std::shared_ptr<link::Context>& ctx,
                    const dynamic_bitset<uint128_t>& choices,
                    absl::Span<uint128_t> recv_blocks, bool cot = false);
 
+// ==================== //
+//   Support OT Store   //
+// ==================== //
+
+inline std::shared_ptr<OtSendStore> IknpOtExtSend(
+    const std::shared_ptr<link::Context>& ctx,
+    const std::shared_ptr<OtRecvStore>& base_ot, uint32_t ot_num,
+    bool cot = false) {
+  std::vector<std::array<uint128_t, 2>> blocks(ot_num);
+  IknpOtExtSend(ctx, base_ot, absl::MakeSpan(blocks), cot);
+  auto ret = MakeOtSendStore(blocks);
+  if (cot) {
+    auto tmp_choice = base_ot->CopyChoice();
+    ret->SetDelta(static_cast<uint128_t>(*tmp_choice.data()));
+  }
+  return ret;  // FIXME: Drop explicit copy
+}
+
+inline std::shared_ptr<OtRecvStore> IknpOtExtRecv(
+    const std::shared_ptr<link::Context>& ctx,
+    const std::shared_ptr<OtSendStore>& base_ot,
+    const dynamic_bitset<uint128_t>& choices, uint32_t ot_num,
+    bool cot = false) {
+  std::vector<uint128_t> blocks(ot_num);
+  IknpOtExtRecv(ctx, base_ot, choices, absl::MakeSpan(blocks), cot);
+  return MakeOtRecvStore(choices, blocks);  // FIXME: Drop explicit copy
+}
+
 }  // namespace yacl::crypto

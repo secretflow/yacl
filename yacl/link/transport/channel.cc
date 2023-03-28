@@ -16,6 +16,7 @@
 
 #include <set>
 
+#include "absl/strings/numbers.h"
 #include "spdlog/spdlog.h"
 
 #include "yacl/base/buffer.h"
@@ -24,10 +25,43 @@
 
 namespace yacl::link {
 
+namespace {
 // use acsii control code inside ack/fin msg key.
 // avoid conflict to normal msg key.
-static const std::string kAckKey{'A', 'C', 'K', '\x01', '\x00'};
-static const std::string kFinKey{'F', 'I', 'N', '\x01', '\x00'};
+const std::string kAckKey{'A', 'C', 'K', '\x01', '\x02'};
+const std::string kFinKey{'F', 'I', 'N', '\x01', '\x02'};
+const std::string kSeqKey{'\x01', '\x02'};
+
+void NormalMessageKeyEnforce(std::string_view k) {
+  YACL_ENFORCE(!k.empty(), "do not use empty key");
+  YACL_ENFORCE(k.find(kSeqKey) == k.npos,
+               "For developer: pls use another key for normal message.");
+}
+
+template <class View>
+size_t ViewToSizeT(View v) {
+  size_t ret = 0;
+  YACL_ENFORCE(absl::SimpleAtoi(
+      absl::string_view(reinterpret_cast<const char*>(v.data()), v.size()),
+      &ret));
+  return ret;
+}
+
+std::string BuildChannelKey(std::string_view msg_key, size_t seq_id) {
+  return std::string(msg_key) + kSeqKey + std::to_string(seq_id);
+}
+
+std::pair<std::string, size_t> SplitChannelKey(std::string_view key) {
+  auto pos = key.find(kSeqKey);
+
+  std::pair<std::string, size_t> ret;
+  ret.first = key.substr(0, pos);
+  ret.second = ViewToSizeT(key.substr(pos + kSeqKey.size()));
+
+  return ret;
+}
+
+}  // namespace
 
 class ChunkedMessage {
  public:
@@ -60,19 +94,19 @@ class ChunkedMessage {
   Buffer message_;
 };
 
-Buffer ChannelBase::Recv(const std::string& key) {
-  YACL_ENFORCE(key != kAckKey && key != kFinKey,
-               "For developer: pls use another key for normal message.");
+Buffer ChannelBase::Recv(const std::string& msg_key) {
+  NormalMessageKeyEnforce(msg_key);
 
   Buffer value;
+  size_t seq_id = 0;
   {
     std::unique_lock<bthread::Mutex> lock(msg_mutex_);
     auto stop_waiting = [&] {
-      auto itr = this->msg_db_.find(key);
+      auto itr = this->msg_db_.find(msg_key);
       if (itr == this->msg_db_.end()) {
         return false;
       } else {
-        value = std::move(itr->second);
+        std::tie(value, seq_id) = std::move(itr->second);
         this->msg_db_.erase(itr);
         return true;
       }
@@ -80,26 +114,48 @@ Buffer ChannelBase::Recv(const std::string& key) {
     while (!stop_waiting()) {
       //                              timeout_us
       if (msg_db_cond_.wait_for(lock, recv_timeout_ms_ * 1000) == ETIMEDOUT) {
-        YACL_THROW_IO_ERROR("Get data timeout, key={}", key);
+        YACL_THROW_IO_ERROR("Get data timeout, key={}", msg_key);
       }
     }
   }
-  SendAsyncImpl(kAckKey, ByteContainerView{});
+  SendAck(seq_id);
 
   return value;
 }
 
+void ChannelBase::SendAck(size_t seq_id) {
+  if (seq_id > 0) {
+    // 0 seq id use for TestSend/TestRecv, no need to send ack.
+    SendAsyncImpl(kAckKey, std::to_string(seq_id));
+  }
+}
+
 template <typename T>
 void ChannelBase::OnNormalMessage(const std::string& key, T&& v) {
-  received_msg_count_++;
-  if (!waiting_finish_) {
-    if (!msg_db_.emplace(key, std::forward<T>(v)).second) {
-      SendAsyncImpl(kAckKey, ByteContainerView{});
-      SPDLOG_WARN("Duplicate key {}", key);
+  std::string msg_key;
+  size_t seq_id = 0;
+  std::tie(msg_key, seq_id) = SplitChannelKey(key);
+
+  if (seq_id > 0 && !received_msg_ids_.Insert(seq_id)) {
+    // 0 seq id use for TestSend/TestRecv, skip duplicate test.
+    // Duplicate seq id found. may cause by rpc retry, ignore
+    SPDLOG_WARN("Duplicate seq_id found, key {} seq_id {}", msg_key, seq_id);
+    return;
+  }
+
+  if (!waiting_finish_.load()) {
+    auto pair =
+        msg_db_.emplace(msg_key, std::make_pair(std::forward<T>(v), seq_id));
+    if (seq_id > 0 && !pair.second) {
+      YACL_THROW(
+          "For developer: BUG! PLS do not use same key for multiple msg, "
+          "Duplicate key {} with new seq_id {}, old seq_id {}.",
+          msg_key, seq_id, pair.first->second.second);
     }
   } else {
-    SendAsyncImpl(kAckKey, ByteContainerView{});
-    SPDLOG_WARN("Asymmetric logic exist, auto ack key {}", key);
+    SendAck(seq_id);
+    SPDLOG_WARN("Asymmetric logic exist, auto ack key {} seq_id {}", msg_key,
+                seq_id);
   }
   msg_db_cond_.notify_all();
 }
@@ -108,13 +164,19 @@ void ChannelBase::OnMessage(const std::string& key, ByteContainerView value) {
   std::unique_lock<bthread::Mutex> lock(msg_mutex_);
   if (key == kAckKey) {
     ack_msg_count_++;
-    ack_fin_cond_.notify_all();
+    size_t seq_id = ViewToSizeT(value);
+    if (received_ack_ids_.Insert(seq_id)) {
+      ack_fin_cond_.notify_all();
+    } else {
+      SPDLOG_WARN("Duplicate ACK id {}", seq_id);
+    }
   } else if (key == kFinKey) {
-    YACL_ENFORCE(value.size() == sizeof(size_t));
     if (!received_fin_) {
       received_fin_ = true;
-      std::memcpy(&peer_sent_msg_count_, value.data(), sizeof(size_t));
+      peer_sent_msg_count_ = ViewToSizeT(value);
       ack_fin_cond_.notify_all();
+    } else {
+      SPDLOG_WARN("Duplicate FIN");
     }
   } else {
     OnNormalMessage(key, value);
@@ -124,8 +186,6 @@ void ChannelBase::OnMessage(const std::string& key, ByteContainerView value) {
 void ChannelBase::OnChunkedMessage(const std::string& key,
                                    ByteContainerView value, size_t offset,
                                    size_t total_length) {
-  YACL_ENFORCE(key != kAckKey && key != kFinKey,
-               "For developer: pls use another key for normal message.");
   if (offset + value.size() > total_length) {
     YACL_THROW_LOGIC_ERROR(
         "invalid chunk info, offset={}, chun size = {}, total_length={}",
@@ -167,33 +227,48 @@ void ChannelBase::SetRecvTimeout(uint32_t recv_timeout_ms) {
 
 uint32_t ChannelBase::GetRecvTimeout() const { return recv_timeout_ms_; }
 
-void ChannelBase::SendAsync(const std::string& key, ByteContainerView value) {
-  YACL_ENFORCE(key != kAckKey && key != kFinKey,
-               "For developer: pls use another key for normal message.");
+void ChannelBase::SendAsync(const std::string& msg_key,
+                            ByteContainerView value) {
+  YACL_ENFORCE(!waiting_finish_.load(),
+               "SendAsync is not allowed when channel is closing");
+  NormalMessageKeyEnforce(msg_key);
+  size_t seq_id = sent_msg_seq_id_.fetch_add(1) + 1;
+  const auto key = BuildChannelKey(msg_key, seq_id);
   SendAsyncImpl(key, value);
-  ThrottleWindowWait(sent_msg_count_.fetch_add(1) + 1);
+  ThrottleWindowWait(seq_id);
 }
 
-void ChannelBase::SendAsync(const std::string& key, Buffer&& value) {
-  YACL_ENFORCE(key != kAckKey && key != kFinKey,
-               "For developer: pls use another key for normal message.");
+void ChannelBase::SendAsync(const std::string& msg_key, Buffer&& value) {
+  YACL_ENFORCE(!waiting_finish_.load(),
+               "SendAsync is not allowed when channel is closing");
+  NormalMessageKeyEnforce(msg_key);
+  size_t seq_id = sent_msg_seq_id_.fetch_add(1) + 1;
+  const auto key = BuildChannelKey(msg_key, seq_id);
   SendAsyncImpl(key, std::move(value));
-  ThrottleWindowWait(sent_msg_count_.fetch_add(1) + 1);
+  ThrottleWindowWait(seq_id);
 }
 
-void ChannelBase::Send(const std::string& key, ByteContainerView value) {
-  YACL_ENFORCE(key != kAckKey && key != kFinKey,
-               "For developer: pls use another key for normal message.");
+void ChannelBase::Send(const std::string& msg_key, ByteContainerView value) {
+  YACL_ENFORCE(!waiting_finish_.load(),
+               "Send is not allowed when channel is closing");
+  NormalMessageKeyEnforce(msg_key);
+  size_t seq_id = sent_msg_seq_id_.fetch_add(1) + 1;
+  const auto key = BuildChannelKey(msg_key, seq_id);
   SendImpl(key, value);
-  ThrottleWindowWait(sent_msg_count_.fetch_add(1) + 1);
+  ThrottleWindowWait(seq_id);
 }
 
-void ChannelBase::Send(const std::string& key, ByteContainerView value,
-                       uint32_t timeout) {
-  YACL_ENFORCE(key != kAckKey && key != kFinKey,
-               "For developer: pls use another key for normal message.");
-  SendImpl(key, value, timeout);
-  ThrottleWindowWait(sent_msg_count_.fetch_add(1) + 1);
+void ChannelBase::TestSend(uint32_t timeout) {
+  YACL_ENFORCE(!waiting_finish_.load(),
+               "TestSend is not allowed when channel is closing");
+  const auto msg_key = fmt::format("connect_{}", self_rank_);
+  const auto key = BuildChannelKey(msg_key, 0);
+  SendImpl(key, "", timeout);
+}
+
+void ChannelBase::TestRecv() {
+  const auto msg_key = fmt::format("connect_{}", peer_rank_);
+  Recv(msg_key);
 }
 
 // all sender thread wait on it's send order.
@@ -202,8 +277,8 @@ void ChannelBase::ThrottleWindowWait(size_t wait_count) {
     return;
   }
   std::unique_lock<bthread::Mutex> lock(msg_mutex_);
-  while (!((throttle_window_size_ == 0) ||
-           (ack_msg_count_ + throttle_window_size_ > wait_count))) {
+  while ((throttle_window_size_ != 0) &&
+         (ack_msg_count_ + throttle_window_size_ <= wait_count)) {
     //                               timeout_us
     if (ack_fin_cond_.wait_for(lock, recv_timeout_ms_ * 1000) == ETIMEDOUT) {
       YACL_THROW_IO_ERROR("Throttle window wait timeout");
@@ -212,10 +287,8 @@ void ChannelBase::ThrottleWindowWait(size_t wait_count) {
 }
 
 void ChannelBase::WaitForFinAndFlyingMsg() {
-  size_t sent_msg_count = sent_msg_count_;
-  SendAsyncImpl(
-      kFinKey, ByteContainerView{reinterpret_cast<const char*>(&sent_msg_count),
-                                 sizeof(size_t)});
+  size_t sent_msg_count = sent_msg_seq_id_;
+  SendAsyncImpl(kFinKey, std::to_string(sent_msg_count));
   {
     std::unique_lock<bthread::Mutex> lock(msg_mutex_);
     while (!received_fin_) {
@@ -224,41 +297,44 @@ void ChannelBase::WaitForFinAndFlyingMsg() {
   }
   {
     std::unique_lock<bthread::Mutex> lock(msg_mutex_);
-    while (received_msg_count_ < peer_sent_msg_count_) {
-      msg_db_cond_.wait(lock);
+    if (peer_sent_msg_count_ == 0) {
+      // peer send no thing, no need waiting.
+      return;
     }
-    if (received_msg_count_ > peer_sent_msg_count_) {
-      // brpc will reply msg if connection is break (not timeout!), may cause
-      // duplicate msg. e.g. alice's gateway pod is migrated before revice bob's
-      // responce. in this rare case we may revice one msg more than once.
-      // received msg count will greater then expected count.
-      SPDLOG_WARN("duplicated msg exist during running");
+    // wait until recv all msg from 1 to peer_sent_msg_count_
+    while (received_msg_ids_.SegmentsCount() > 1 ||
+           !received_msg_ids_.Contains(1) ||
+           !received_msg_ids_.Contains(peer_sent_msg_count_)) {
+      msg_db_cond_.wait(lock);
     }
   }
 }
 
 void ChannelBase::StopReceivingAndAckUnreadMsgs() {
   std::unique_lock<bthread::Mutex> lock(msg_mutex_);
-  waiting_finish_ = true;
+  waiting_finish_.store(true);
   for (auto& msg : msg_db_) {
-    SPDLOG_WARN("Asymmetric logic exist, clear unread key {}", msg.first);
-    SendAsyncImpl(kAckKey, ByteContainerView{});
+    auto seq_id = msg.second.second;
+    SPDLOG_WARN("Asymmetric logic exist, clear unread key {}, seq_id {}",
+                msg.first, seq_id);
+    SendAck(seq_id);
   }
   msg_db_.clear();
 }
 
 void ChannelBase::WaitForFlyingAck() {
+  size_t sent_msg_count = sent_msg_seq_id_;
   std::unique_lock<bthread::Mutex> lock(msg_mutex_);
-  while (ack_msg_count_ < sent_msg_count_) {
-    ack_fin_cond_.wait(lock);
+  if (sent_msg_count == 0) {
+    // send no thing, no need waiting.
+    return;
   }
 
-  if (ack_msg_count_ > sent_msg_count_) {
-    // brpc will reply msg if connection is break (not timeout!), may cause
-    // duplicate msg. e.g. alice's gateway pod is migrated before revice bob's
-    // responce. in this rare case we may revice one msg more than once.
-    // received msg count will greater then expected count.
-    SPDLOG_WARN("duplicated msg exist during running");
+  // wait until recv all ack from 1 to sent_msg_count
+  while (received_ack_ids_.SegmentsCount() > 1 ||
+         !received_ack_ids_.Contains(1) ||
+         !received_ack_ids_.Contains(sent_msg_count)) {
+    ack_fin_cond_.wait(lock);
   }
 }
 

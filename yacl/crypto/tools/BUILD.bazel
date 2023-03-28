@@ -73,6 +73,7 @@ yacl_cc_binary(
 
 yacl_cc_library(
     name = "random_permutation",
+    srcs = ["random_permutation.cc"],
     hdrs = ["random_permutation.h"],
     deps = [
         "//yacl/crypto/base:symmetric_crypto",

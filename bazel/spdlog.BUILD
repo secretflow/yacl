@@ -28,6 +28,7 @@ yacl_cmake_external(
         "SPDLOG_FMT_EXTERNAL": "ON",
         "SPDLOG_NO_TLS": "ON",
         "CMAKE_INSTALL_LIBDIR": "lib",
+        "SPDLOG_BUILD_PIC": "ON",
     },
     defines = [
         "SPDLOG_FMT_EXTERNAL",

@@ -28,9 +28,11 @@ yacl_cc_library(
     name = "spi",
     srcs = [
         "ecc_spi.cc",
+        "group_sketch.cc",
     ],
     hdrs = [
         "ecc_spi.h",
+        "group_sketch.h",
     ],
     deps = [
         ":curve_meta",

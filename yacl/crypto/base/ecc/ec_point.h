@@ -65,6 +65,10 @@ struct AffinePoint {
   [[nodiscard]] Buffer Serialize() const;
   void Deserialize(ByteContainerView in);
 
+  // Get the hash code of this point so that you can store AffinePoint in
+  // associative containers such as std::unordered_map, std::unordered_set, etc.
+  std::size_t HashCode() const;
+
   friend std::ostream &operator<<(std::ostream &os, const AffinePoint &point);
 };
 

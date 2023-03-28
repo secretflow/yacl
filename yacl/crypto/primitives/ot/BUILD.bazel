@@ -80,6 +80,7 @@ yacl_cc_library(
     deps = [
         "//yacl/base:exception",
         "//yacl/link",
+        "//yacl/crypto/primitives/ot:ot_store",
         "@com_google_absl//absl/types:span",
         ":portable_ot_interface",
     ] + select({

@@ -95,9 +95,9 @@ void IknpOtExtSend(const std::shared_ptr<link::Context>& ctx,
     batch1 = XorBatchedBlock(absl::MakeSpan(batch0),
                              static_cast<uint128_t>(*tmp_choice.data()));
 
-    if (cot) {
-      ParaCrHash_128(absl::MakeSpan(batch0), absl::MakeSpan(batch0));
-      ParaCrHash_128(absl::MakeSpan(batch1), absl::MakeSpan(batch1));
+    if (!cot) {
+      ParaCrHashInplace_128(absl::MakeSpan(batch0));
+      ParaCrHashInplace_128(absl::MakeSpan(batch1));
     }
 
     // Build Q & Q^S
@@ -176,8 +176,8 @@ void IknpOtExtRecv(const std::shared_ptr<link::Context>& ctx,
     const size_t limit =
         std::min(kBatchSize, recv_blocks.size() - i * kBatchSize);
 
-    if (cot) {
-      ParaCrHash_128(absl::MakeSpan(batch), absl::MakeSpan(batch));
+    if (!cot) {
+      ParaCrHashInplace_128(absl::MakeSpan(batch));
     }
     for (size_t j = 0; j < limit; ++j) {
       recv_blocks[i * kBatchSize + j] = batch[j];

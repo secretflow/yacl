@@ -25,6 +25,8 @@ class LeveldbKVStore : public KVStore {
 
   bool Get(absl::string_view key, Buffer *value) const override;
 
+  size_t Count() const override;
+
  private:
   std::string path_;
 
