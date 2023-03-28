@@ -320,8 +320,8 @@ def _com_github_emptoolkit_emp_tool():
         type = "tar.gz",
         patch_args = ["-p1"],
         patches = [
-            "@yacl//bazel:patches/emp-tool.patch"
-            "@yacl//bazel:patches/emp-tool-1.patch"
+            "@yacl//bazel:patches/emp-tool.patch",
+            "@yacl//bazel:patches/emp-tool-1.patch",
         ],
         urls = [
             "https://github.com/emp-toolkit/emp-tool/archive/refs/tags/0.2.3.tar.gz",
