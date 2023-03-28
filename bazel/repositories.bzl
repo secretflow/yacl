@@ -319,7 +319,11 @@ def _com_github_emptoolkit_emp_tool():
         strip_prefix = "emp-tool-0.2.3",
         type = "tar.gz",
         patch_args = ["-p1"],
-        patches = ["@yacl//bazel:patches/emp-tool.patch"],
+        patches = [
+            "@yacl//bazel:patches/emp-tool.patch",
+            "@yacl//bazel:patches/emp-tool-1.patch",
+            "@yacl//bazel:patches/emp-tool-sse2neon.patch",
+        ],
         urls = [
             "https://github.com/emp-toolkit/emp-tool/archive/refs/tags/0.2.3.tar.gz",
         ],
