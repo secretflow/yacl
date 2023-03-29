@@ -87,7 +87,6 @@ static inline void AES_opt_key_schedule(__m128i *user_key, AES_KEY *keys) {
 /*
  * With numKeys keys, use each key to encrypt numEncs blocks.
  */
-#ifdef __x86_64__
 template <int numKeys, int numEncs>
 static inline void ParaEnc(__m128i *blks, const AES_KEY *keys) {
   __m128i *first = blks;
@@ -119,34 +118,10 @@ static inline void ParaEnc(__m128i *blks, const AES_KEY *keys) {
     }
   }
 }
-#elif __aarch64__
-template <int numKeys, int numEncs>
-static inline void ParaEnc(__m128i *_blks, const AES_KEY *keys) {
-  uint8x16_t *first = (uint8x16_t *)(_blks);
-
-  for (unsigned int r = 0; r < 9; ++r) {
-    auto blks = first;
-    for (size_t i = 0; i < numKeys; ++i) {
-      uint8x16_t K = vreinterpretq_u8_m128i(keys[i].rd_key[r]);
-      for (size_t j = 0; j < numEncs; ++j, ++blks)
-        *blks = vaesmcq_u8(vaeseq_u8(*blks, K));
-    }
-  }
-
-  auto blks = first;
-  for (size_t i = 0; i < numKeys; ++i) {
-    uint8x16_t K = vreinterpretq_u8_m128i(keys[i].rd_key[9]);
-    uint8x16_t K2 = vreinterpretq_u8_m128i(keys[i].rd_key[10]);
-    for (size_t j = 0; j < numEncs; ++j, ++blks)
-      *blks = vaeseq_u8(*blks, K) ^ K2;
-  }
-}
-#endif
 
 /*
  * With numKeys keys, use each key to encrypt numEncs blocks.
  */
-#ifdef __x86_64__
 template <int numKeys>
 static inline void ParaEnc(__m128i *blks, const AES_KEY *keys,
                            size_t num_encs) {
@@ -177,28 +152,6 @@ static inline void ParaEnc(__m128i *blks, const AES_KEY *keys,
     }
   }
 }
-#elif __aarch64__
-template <int numKeys>
-static inline void ParaEnc(__m128i *_blks, const AES_KEY *keys,
-                           size_t num_encs) {
-  uint8x16_t *first = (uint8x16_t *)(_blks);
-  for (unsigned int r = 0; r < 9; ++r) {
-    auto blks = first;
-    for (size_t i = 0; i < numKeys; ++i) {
-      uint8x16_t K = vreinterpretq_u8_m128i(keys[i].rd_key[r]);
-      for (size_t j = 0; j < num_encs; ++j, ++blks)
-        *blks = vaesmcq_u8(vaeseq_u8(*blks, K));
-    }
-  }
-  auto blks = first;
-  for (size_t i = 0; i < numKeys; ++i) {
-    uint8x16_t K = vreinterpretq_u8_m128i(keys[i].rd_key[9]);
-    uint8x16_t K2 = vreinterpretq_u8_m128i(keys[i].rd_key[10]);
-    for (size_t j = 0; j < num_encs; ++j, ++blks)
-      *blks = vaeseq_u8(*blks, K) ^ K2;
-  }
-}
-#endif
 
 ///////////////////////////////////////////////////////////////////
 //                      uint128_t support                        //

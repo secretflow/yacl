@@ -134,8 +134,11 @@ inline void
 }
 
 // encrypt blocks with given key
+inline void
 #ifdef __x86_64__
-__attribute__((target("aes,sse2"))) inline void AES_ecb_encrypt_blks(
+__attribute__((target("aes,sse2")))
+#endif
+AES_ecb_encrypt_blks(
     const __m128i *in_blks, __m128i *out_blks, size_t nblks,
     const AES_KEY *key) {
   for (size_t i = 0; i < nblks; ++i) {
@@ -146,33 +149,6 @@ __attribute__((target("aes,sse2"))) inline void AES_ecb_encrypt_blks(
     out_blks[i] = _mm_aesenclast_si128(out_blks[i], key->rd_key[key->rounds]);
   }
 }
-#elif __aarch64__
-inline void AES_ecb_encrypt_blks(const __m128i *_in_blks, __m128i *_out_blks,
-                                 unsigned int nblks, const AES_KEY *key) {
-  uint8x16_t *in_first = (uint8x16_t *)(_in_blks);
-  uint8x16_t *out_first = (uint8x16_t *)(_out_blks);
-  uint8x16_t *keys = (uint8x16_t *)(key->rd_key);
-
-  uint8x16_t *in_iter = in_first;
-  uint8x16_t *out_iter = out_first;
-  for (unsigned int i = 0; i < nblks; ++i, ++in_iter, ++out_iter) {
-    *out_iter = vaesmcq_u8(vaeseq_u8(*in_iter, (uint8x16_t)keys[0]));
-  }
-
-  for (unsigned int j = 1; j < key->rounds - 1; ++j) {
-    uint8x16_t key_j = (uint8x16_t)keys[j];
-    uint8x16_t *iter = out_first;
-    for (unsigned int i = 0; i < nblks; ++i, ++iter) {
-      *iter = vaesmcq_u8(vaeseq_u8(*iter, key_j));
-    }
-  }
-  uint8x16_t last_key = (uint8x16_t)keys[key->rounds - 1];
-  uint8x16_t *iter = out_first;
-  for (unsigned int i = 0; i < nblks; ++i, ++iter) {
-    *iter = vaeseq_u8(*iter, last_key) ^ (uint8x16_t)keys[key->rounds];
-  }
-}
-#endif
 
 // (inplace) encrypt blocks with given key
 #ifdef __GNUC__
