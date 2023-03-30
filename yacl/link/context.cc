@@ -141,10 +141,9 @@ void Context::ConnectToMesh(spdlog::level::level_enum connect_log_level) {
       continue;
     }
     bool succeed = false;
-    const uint32_t send_attempt = 10;
-    const uint32_t retry_time_add = 1000;
-    for (uint32_t attempt = 0, send_timeout = 2000; attempt < send_attempt;
-         attempt++, send_timeout += retry_time_add) {
+    const uint32_t send_attempt = desc_.connect_retry_times;
+    const uint32_t http_timeout_ms_base = 1000;
+    for (uint32_t attempt = 0; attempt < send_attempt; attempt++) {
       if (attempt != 0) {
         // sleep and retry.
         SPDLOG_COND(
@@ -155,7 +154,8 @@ void Context::ConnectToMesh(spdlog::level::level_enum connect_log_level) {
         std::this_thread::sleep_for(
             std::chrono::milliseconds(desc_.connect_retry_interval_ms));
       }
-      if (try_connect(idx, send_timeout)) {
+      // Cyclically trying [2, 12]s *http* timeout
+      if (try_connect(idx, ((attempt % 11) + 2) * http_timeout_ms_base)) {
         succeed = true;
         break;
       }
