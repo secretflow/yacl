@@ -22,13 +22,13 @@ Replace the international cryptographic algorithm with the national encryption a
 
 ## 2.1 Proxy re encryption
 
-Proxy re encryption is a type of public key cryptography that allows the proxy to convert one public key related ciphertext to another, while the proxy cannot understand any information about the original message; To achieve this, the agent must have a re encryption key. A proxy re encryption algorithm typically consists of three roles: data owner Alice, data receiver Bob, and proxy computing proxy. Assuming that the data $m$has been encrypted into ciphertext $c$ by Alice using her own public key and stored in Proxy, the specific steps of the algorithm are as follows:
+Proxy re encryption is a type of public key cryptography that allows the proxy to convert one public key related ciphertext to another, while the proxy cannot understand any information about the original message; To achieve this, the agent must have a re encryption key. A proxy re encryption algorithm typically consists of three roles: data owner Alice, data receiver Bob, and proxy computing proxy. Assuming that the data $m$ has been encrypted into ciphertext $c$ by Alice using her own public key and stored in Proxy, the specific steps of the algorithm are as follows:
 
 1. As the data owner, Alice wants to authorize Bob to use the data m, and generates a re encryption key $rk$ for the proxy.
 
-2. After receiving $rk$, the proxy re encrypts the ciphertext $c$ to obtain a new ciphertext $c'$. And send $c'$to Bob.
+2. After receiving $rk$, the proxy re encrypts the ciphertext $c$ to obtain a new ciphertext $c'$ . And send $c'$ to Bob.
 
-3. Bob decrypts $c'$ using his own private key to obtain plaintext data $m$.
+3. Bob decrypts $c'$ using his own private key to obtain plaintext data $m$ .
 
 ## 2.2 Distributed threshold proxy re encryption
 
@@ -56,7 +56,7 @@ g_ y = BC3736A2 F4F6779C 59BDCEE3 6B692153 D0A9877C C62A4740 02DF32E5 2139F0A0
 
 ## 2.3  hash function
 
-Using the hash algorithm, construct the following, where $n$is the order of the elliptic curve and $x$is the input to the function:
+Using the hash algorithm, construct the following, where $n$ is the order of the elliptic curve and $x$ is the input to the function:
 
 $$h_ x = 1 + \text{Bignum(SM3}(x)||\text{SM3(SM3(}x))) \bmod n-1$$
 
@@ -77,9 +77,9 @@ TPRELib consists of 6 algorithms, namely key pair generation algorithm $\rm Gene
 - ${ \rm GenerateTpreKeyPair} ( lambda)  to (pk_A, sk_A) $: Enter the security parameter $\lambda$ to generate a public private key pair $(pk_A, sk_A)$.
 - ${ \rm GenerateReKey} (sk_A, pk_B, N, t)  to ( {rk_i }, i  in [1, N]) $: Enter the private key of the data holder $sk_ A$, recipient public key $pk_ B$, number of all proxy nodes $N$ and threshold $t$, output re encrypted key set ${rk_i }, i  \in [1, N]$. Here, it refers to the $id$ of the proxy node.
 - ${ \rm Encrypt} (pk_A, m)  \to c $: Enter public key $pk_ A$ and plaintext $m$, output ciphertext $c$, not directly using $pk_ A$ encrypts plaintext because it can cause low performance issues. In the underlying encryption, a symmetric encryption algorithm is used. In this library, the symmetric encryption algorithm is implemented by SM4, and its symmetric key is randomly generated during the encryption process. The symmetric encryption key is protected by public key encryption. When generating symmetric encryption, we need to use the cryptographic hash function to build the KDF (Key derivation function) function. This library uses SM3 instead of SHA-2 and other international algorithms to implement the KDF function.
-- ${ \rm Decrypt} (sk_A, c)  \to m$: Enter private key $sk_ A$and ciphertext $c$, output plaintext $m$. This is the inverse process of the encryption algorithm.
+- ${ \rm Decrypt} (sk_A, c)  \to m$: Enter private key $sk_ A$ and ciphertext $c$, output plaintext $m$. This is the inverse process of the encryption algorithm.
 
-- ${\rm ReEncrypt}(rk_i,c)\to c_i '$: Proxy node input re encryption key $rk_ i$and ciphertext $c$, output new ciphertext $c_ i'$。 This refers to the $id$ of the proxy node.
+- ${\rm ReEncrypt}(rk_i,c)\to c_i'$: Proxy node input re encryption key $rk_ i$and ciphertext $c$, output new ciphertext $c_ i'$. This refers to the $id$ of the proxy node.
 - ${\rm DecryptFrags}({{c_i'}(\text{where},i\in[t,N]),sk_ B} )  to m $: The input is the new ciphertext set ${c_i '} ( \text {where}, i  \in [t, N])$ with a threshold number and the recipient's private key $sk$, and the output is plaintext $m$.
 
 ## 3.2 Code Structure
