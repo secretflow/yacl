@@ -1,4 +1,18 @@
-#include "tpre.h"
+// Copyright 2023 Chengfang Financial Technology Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "yacl/crypto/primitives/tpre/tpre.h"
 
 #include "absl/strings/escaping.h"
 #include "gtest/gtest.h"
@@ -24,8 +38,7 @@ TEST_F(TpreTest, Test1) {
 
   ecc_group = EcGroupFactory::Create("sm2");
   std::unique_ptr<Keys::PublicKey> pk_A_0(
-      new Keys::PublicKey{std::move(ecc_group->Mul(pk_A->g, MPInt(1))),
-                          std::move(ecc_group->Mul(pk_A->y, MPInt(1)))});
+      new Keys::PublicKey{pk_A->g, pk_A->y});
 
   // test tpre.Encrypt
   std::string message = "hellooooooooooooo, I'am 63, who are you?";
@@ -58,8 +71,7 @@ TEST_F(TpreTest, Test1) {
 
   ecc_group = EcGroupFactory::Create("sm2");
   std::unique_ptr<Keys::PublicKey> pk_A_1(
-      new Keys::PublicKey{std::move(ecc_group->Mul(pk_A->g, MPInt(1))),
-                          std::move(ecc_group->Mul(pk_A->y, MPInt(1)))});
+      new Keys::PublicKey{pk_A->g, pk_A->y});
   std::pair<std::unique_ptr<Capsule::CapsuleStruct>, std::vector<uint8_t>>
       ct_2 =
           tpre.Encrypt(std::move(ecc_group), std::move(pk_A_1), iv, message_2);
@@ -68,18 +80,17 @@ TEST_F(TpreTest, Test1) {
   // test keys->GenerateReKey
   std::unique_ptr<Keys::PrivateKey> sk_A_2(new Keys::PrivateKey{sk_A->x});
   std::unique_ptr<Keys::PublicKey> pk_A_2(
-      new Keys::PublicKey{std::move(ecc_group->Mul(pk_A->g, MPInt(1))),
-                          std::move(ecc_group->Mul(pk_A->y, MPInt(1)))});
+      new Keys::PublicKey{pk_A->g, pk_A->y});
 
   std::pair<std::unique_ptr<Keys::PublicKey>, std::unique_ptr<Keys::PrivateKey>>
       key_pair_B = keys.GenerateKeyPair(std::move(ecc_group));
 
   ecc_group = EcGroupFactory::Create("sm2");
-  Keys::PublicKey* pk_B = key_pair_B.first.get();
   Keys::PrivateKey* sk_B = key_pair_B.second.get();
+  Keys::PublicKey* pk_B = key_pair_B.first.get();
+
   std::unique_ptr<Keys::PublicKey> pk_B_1(
-      new Keys::PublicKey{std::move(ecc_group->Mul(pk_B->g, MPInt(1))),
-                          std::move(ecc_group->Mul(pk_B->y, MPInt(1)))});
+      new Keys::PublicKey{pk_B->g, pk_B->y});
 
   int N = 5;  // Number of all participants
   int t = 4;  // Threshold
@@ -97,23 +108,17 @@ TEST_F(TpreTest, Test1) {
   // You need to meet the number of participants to successfully decrypt,
   // otherwise decryption will not be successful
   for (int i = 0; i < t; i++) {
-    Capsule::CapsuleStruct* capsule_struct_i = new Capsule::CapsuleStruct{
-        ecc_group->Mul(ct_2.first->E, MPInt(1)),
-        ecc_group->Mul(ct_2.first->V, MPInt(1)), ct_2.first->s};
+    Capsule::CapsuleStruct* capsule_struct_i =
+        new Capsule::CapsuleStruct{ct_2.first->E, ct_2.first->V, ct_2.first->s};
 
     std::unique_ptr<Capsule::CapsuleStruct> capsule_struct_i_up(
         capsule_struct_i);
     std::pair<std::unique_ptr<Capsule::CapsuleStruct>, std::vector<uint8_t>>
         ct_2_i = {std::move(capsule_struct_i_up), ct_2.second};
 
-    Keys::KFrag* kfrag_i =
-        new Keys::KFrag{kfrags[i].id,
-                        kfrags[i].rk,
-                        std::move(ecc_group->Mul(kfrags[i].X_A, MPInt(1))),
-                        std::move(ecc_group->Mul(kfrags[i].U, MPInt(1))),
-                        std::move(ecc_group->Mul(kfrags[i].U_1, MPInt(1))),
-                        kfrags[i].z_1,
-                        kfrags[i].z_2};
+    Keys::KFrag* kfrag_i = new Keys::KFrag{
+        kfrags[i].id,  kfrags[i].rk,  kfrags[i].X_A, kfrags[i].U,
+        kfrags[i].U_1, kfrags[i].z_1, kfrags[i].z_2};
 
     std::unique_ptr<Keys::KFrag> kfrag_up(kfrag_i);
 
@@ -131,11 +136,10 @@ TEST_F(TpreTest, Test1) {
   // test tpre.DecryptFrags
   std::unique_ptr<Keys::PrivateKey> sk_B_1(new Keys::PrivateKey{sk_B->x});
   std::unique_ptr<Keys::PublicKey> pk_A_3(
-      new Keys::PublicKey{std::move(ecc_group->Mul(pk_A->g, MPInt(1))),
-                          std::move(ecc_group->Mul(pk_A->y, MPInt(1)))});
+      new Keys::PublicKey{pk_A->g, pk_A->y});
+
   std::unique_ptr<Keys::PublicKey> pk_B_2(
-      new Keys::PublicKey{std::move(ecc_group->Mul(pk_B->g, MPInt(1))),
-                          std::move(ecc_group->Mul(pk_B->y, MPInt(1)))});
+      new Keys::PublicKey{pk_B->g, pk_B->y});
 
   ecc_group = EcGroupFactory::Create("sm2");
   std::string message_3 = tpre.DecryptFrags(

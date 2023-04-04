@@ -1,9 +1,24 @@
-#include "capsule.h"
+// Copyright 2023 Chengfang Financial Technology Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "yacl/crypto/primitives/tpre/capsule.h"
 
 #include "absl/strings/escaping.h"
 #include "absl/strings/string_view.h"
 #include "gtest/gtest.h"
-#include "keys.h"
+
+#include "yacl/crypto/primitives/tpre/keys.h"
 
 namespace yacl::crypto::test {
 
@@ -21,21 +36,18 @@ TEST_F(CapsuleTest, Test1) {
       key_pair_bob = keys.GenerateKeyPair(std::move(ecc_group));
 
   ecc_group = EcGroupFactory::Create("sm2");
-  std::unique_ptr<Keys::PublicKey> public_key_alice_dup(new Keys::PublicKey{
-      std::move(ecc_group->Mul(key_pair_alice.first->g, MPInt(1))),
-      std::move(ecc_group->Mul(key_pair_alice.first->y, MPInt(1)))});
+  std::unique_ptr<Keys::PublicKey> public_key_alice_dup(
+      new Keys::PublicKey{key_pair_alice.first->g, key_pair_alice.first->y});
   std::unique_ptr<Keys::PrivateKey> private_key_alice_dup(
       new Keys::PrivateKey{key_pair_alice.second->x});
 
-  std::unique_ptr<Keys::PublicKey> public_key_alice_dup_dup(new Keys::PublicKey{
-      std::move(ecc_group->Mul(key_pair_alice.first->g, MPInt(1))),
-      std::move(ecc_group->Mul(key_pair_alice.first->y, MPInt(1)))});
+  std::unique_ptr<Keys::PublicKey> public_key_alice_dup_dup(
+      new Keys::PublicKey{key_pair_alice.first->g, key_pair_alice.first->y});
   std::unique_ptr<Keys::PrivateKey> private_key_alice_dup_dup(
       new Keys::PrivateKey{key_pair_alice.second->x});
 
-  std::unique_ptr<Keys::PublicKey> public_key_bob_dup(new Keys::PublicKey{
-      std::move(ecc_group->Mul(key_pair_bob.first->g, MPInt(1))),
-      std::move(ecc_group->Mul(key_pair_bob.first->y, MPInt(1)))});
+  std::unique_ptr<Keys::PublicKey> public_key_bob_dup(
+      new Keys::PublicKey{key_pair_bob.first->g, key_pair_bob.first->y});
   std::unique_ptr<Keys::PrivateKey> private_key_bob_dup(
       new Keys::PrivateKey{key_pair_bob.second->x});
 
@@ -58,18 +70,12 @@ TEST_F(CapsuleTest, Test1) {
   auto capsule_pair_first = capsule_pair.first.get();
   for (int i = 0; i < 4; i++) {
     Capsule::CapsuleStruct* capsule_struct_i = new Capsule::CapsuleStruct{
-        ecc_group->Mul(capsule_pair_first->E, MPInt(1)),
-        ecc_group->Mul(capsule_pair_first->V, MPInt(1)), capsule_pair_first->s};
+        capsule_pair_first->E, capsule_pair_first->V, capsule_pair_first->s};
     std::unique_ptr<Capsule::CapsuleStruct> capsule_struct_i_up(
         capsule_struct_i);
-    Keys::KFrag* kfrag_i =
-        new Keys::KFrag{kfrags[i].id,
-                        kfrags[i].rk,
-                        std::move(ecc_group->Mul(kfrags[i].X_A, MPInt(1))),
-                        std::move(ecc_group->Mul(kfrags[i].U, MPInt(1))),
-                        std::move(ecc_group->Mul(kfrags[i].U_1, MPInt(1))),
-                        kfrags[i].z_1,
-                        kfrags[i].z_2};
+    Keys::KFrag* kfrag_i = new Keys::KFrag{
+        kfrags[i].id,  kfrags[i].rk,  kfrags[i].X_A, kfrags[i].U,
+        kfrags[i].U_1, kfrags[i].z_1, kfrags[i].z_2};
 
     std::unique_ptr<Keys::KFrag> kfrag_up(kfrag_i);
 

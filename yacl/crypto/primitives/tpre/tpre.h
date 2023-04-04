@@ -1,13 +1,28 @@
-#ifndef TPRE_TPRE_H_
-#define TPRE_TPRE_H_
+// Copyright 2023 Chengfang Financial Technology Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef YACL_CRYPTO_PRIMITIVES_TPRE_TPRE_H_
+#define YACL_CRYPTO_PRIMITIVES_TPRE_TPRE_H_
 
 #include <iostream>
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
-#include "capsule.h"
-#include "keys.h"
+#include "yacl/crypto/primitives/tpre/capsule.h"
+#include "yacl/crypto/primitives/tpre/keys.h"
 
 namespace yacl::crypto {
 /**
@@ -60,8 +75,8 @@ class TPRE {
   /// @return capsule and encrypted data
   std::pair<std::unique_ptr<Capsule::CapsuleStruct>, std::vector<uint8_t>>
   Encrypt(std::unique_ptr<EcGroup> ecc_group,
-          std::unique_ptr<Keys::PublicKey> pk_A, std::string& iv,
-          std::string& plaintext);
+          std::unique_ptr<Keys::PublicKey> pk_A, const std::string& iv,
+          const std::string& plaintext);
 
   /// @brief TPRE decryption algorithm
   /// @param ecc_group, Algebraic operations are on elliptic curves
@@ -72,7 +87,7 @@ class TPRE {
   /// @return plaintext
   std::string Decrypt(std::unique_ptr<EcGroup> ecc_group,
                       std::unique_ptr<Capsule::CapsuleStruct> capsule_struct,
-                      std::string& iv, std::vector<uint8_t> enc_data,
+                      const std::string& iv, std::vector<uint8_t> enc_data,
                       std::unique_ptr<Keys::PrivateKey> sk_A);
 
   /// @brief TPRE threshold proxy re-encryption algorithm
@@ -97,7 +112,7 @@ class TPRE {
       std::unique_ptr<EcGroup> ecc_group,
       std::unique_ptr<Keys::PrivateKey> sk_B,
       std::unique_ptr<Keys::PublicKey> pk_A,
-      std::unique_ptr<Keys::PublicKey> pk_B, std::string& iv,
+      std::unique_ptr<Keys::PublicKey> pk_B, const std::string& iv,
       std::pair<std::vector<std::unique_ptr<Capsule::CFrag>>,
                 std::vector<uint8_t>>
           C_prime_set);
@@ -107,4 +122,4 @@ class TPRE {
 };
 }  // namespace yacl::crypto
 
-#endif  // TPRE_TPRE_H_
+#endif  // YACL_CRYPTO_PRIMITIVES_TPRE_TPRE_H_

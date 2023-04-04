@@ -1,10 +1,23 @@
-#include "capsule.h"
+// Copyright 2023 Chengfang Financial Technology Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-#include "hash.h"
-#include "kdf.h"
+#include "yacl/crypto/primitives/tpre/capsule.h"
 
 #include "yacl/base/exception.h"
 #include "yacl/crypto/base/hash/hash_utils.h"
+#include "yacl/crypto/primitives/tpre/hash.h"
+#include "yacl/crypto/primitives/tpre/kdf.h"
 #include "yacl/utils/scope_guard.h"
 
 namespace yacl::crypto {
@@ -157,7 +170,7 @@ std::vector<uint8_t> Capsule::DeCapsulateFrags(
     std::string id_i_str = (cfrags)[i]->id.ToString();
     MPInt s_x_i = CipherHash(id_i_str + D_str, ecc_group->GetCurveName());
     S.push_back(s_x_i);
-  };
+  }
 
   // 2.2 Compute lambda_{i,S}
 

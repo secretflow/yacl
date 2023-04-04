@@ -1,11 +1,25 @@
-#include "keys.h"
+// Copyright 2023 Chengfang Financial Technology Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "yacl/crypto/primitives/tpre/keys.h"
 
 #include <vector>
 
 #include "gtest/gtest.h"
 
 #include "yacl/base/exception.h"
-#include "yacl/crypto/base/mpint/mp_int.h"  //yacl big number
+#include "yacl/crypto/base/mpint/mp_int.h"
 
 namespace yacl::crypto::test {
 class KeyTest : public testing::Test {};
@@ -28,8 +42,10 @@ TEST_F(KeyTest, Test1) {
   // 2139F0A0
 
   // When converting it to decimal, we have :
-  //"(22963146547237050559479531362550074578802567295341616970375194840604139615431,
-  //"85132369209828568825618990617112496413088388631904505083283536607588877201568)";
+  // "(2296314654723705055947953136255007457880
+  // 2567295341616970375194840604139615431,
+  // "85132369209828568825618990617112496413088
+  // 388631904505083283536607588877201568)";
 
   std::string generator_str =
       "(2296314654723705055947953136255007457880256729534161697037519"

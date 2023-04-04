@@ -1,15 +1,28 @@
-#ifndef TPRE_CAPSULE_H_
-#define TPRE_CAPSULE_H_
+// Copyright 2023 Chengfang Financial Technology Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef YACL_CRYPTO_PRIMITIVES_TPRE_CAPSULE_H_
+#define YACL_CRYPTO_PRIMITIVES_TPRE_CAPSULE_H_
 #include <iostream>
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "keys.h"
-
-#include "yacl/crypto/base/ecc/ec_point.h"  //yacl ec_point
-#include "yacl/crypto/base/mpint/mp_int.h"  //yacl big number
+#include "yacl/crypto/base/ecc/ec_point.h"
+#include "yacl/crypto/base/mpint/mp_int.h"
+#include "yacl/crypto/primitives/tpre/keys.h"
 
 namespace yacl::crypto {
 
@@ -23,8 +36,8 @@ namespace yacl::crypto {
  */
 class Capsule {
  public:
-  Capsule(){};
-  ~Capsule(){};
+  Capsule() {}
+  ~Capsule() {}
 
   /// @brief Capsule for encapsulating data keys, Capsule struct includes 2
   ///        elliptic curve point and a big number
@@ -95,4 +108,4 @@ class Capsule {
   std::unique_ptr<CapsuleStruct> capsule_struct_;  // capsule struct
 };
 }  // namespace yacl::crypto
-#endif  // TPRE_CAPSULE_H_
+#endif  // YACL_CRYPTO_PRIMITIVES_TPRE_CAPSULE_H_
