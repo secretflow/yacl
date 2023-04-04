@@ -18,7 +18,7 @@ Adapted to distributed computing and data security sharing scenarios in blockcha
 
 Replace the international cryptographic algorithm with the national encryption algorithms SM2, SM3, and SM4.
 
->TPRE is a substitute of (umbral)[https://github.com/nucypher/umbral-doc/blob/master/umbral-doc.pdf]. It is implemented using C++, and in addition, it replaces algorithms such as ECC and AES with SM2, SM3, and SM4
+>TPRE is a substitute of [umbral](https://github.com/nucypher/umbral-doc/blob/master/umbral-doc.pdf). It is implemented using C++, and in addition, it replaces algorithms such as ECC and AES with SM2, SM3, and SM4
 
 # 2. Background knowledge
 
