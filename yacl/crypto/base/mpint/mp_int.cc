@@ -315,6 +315,14 @@ void MPInt::Set(int64_t value) {
   mp_set_i64(&n_, value);
 }
 
+#ifdef __APPLE__
+template <>
+void MPInt::Set(long value) {  // NOLINT: macOS int64_t is ll
+  static_assert(sizeof(long) == 8);
+  mp_set_i64(&n_, value);
+}
+#endif
+
 template <>
 void MPInt::Set(int128_t value) {
   MPINT_ENFORCE_OK(mp_grow(&n_, 3));
@@ -341,6 +349,14 @@ void MPInt::Set(uint64_t value) {
   MPINT_ENFORCE_OK(mp_grow(&n_, 2));
   mp_set_u64(&n_, value);
 }
+  
+#ifdef __APPLE__
+template <>
+void MPInt::Set(unsigned long value) {  // NOLINT: macOS uint64_t is ull
+  static_assert(sizeof(unsigned long) == 8);
+  mp_set_u64(&n_, value);
+}
+#endif
 
 template <>
 void MPInt::Set(uint128_t value) {
