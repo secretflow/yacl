@@ -95,7 +95,6 @@ TEST_F(CapsuleTest, Test1) {
 
   std::string dek_str1 = absl::BytesToHexString(
       absl::string_view((const char*)dek.data(), dek.size()));
-  //   std::cout << "DEK1 = " << dek_str1 << std::endl;
 
   EXPECT_EQ(dek_str, dek_str1);
 }

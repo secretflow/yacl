@@ -55,7 +55,6 @@ namespace yacl::crypto {
  */
 class TPRE {
  public:
-  //   TPRE(int curve_id);
   TPRE(){};
   ~TPRE(){};
 

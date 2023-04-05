@@ -1,48 +1,45 @@
+# Copyright 2023 Chengfang Financial Technology Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 load("//bazel:yacl.bzl", "AES_COPT_FLAGS", "yacl_cc_binary", "yacl_cc_library", "yacl_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
 yacl_cc_library(
     name = "kdf",
-    srcs = [
-        "kdf.cc",
-    ],
-    hdrs = [
-        "kdf.h",
-    ],
+    srcs = ["kdf.cc"],
+    hdrs = ["kdf.h"],
     linkopts = ["-ldl"],
-    deps = [
-        "//yacl/crypto/base/hash:hash_utils"
-    ],
-    visibility = ["//visibility:public"],  
+    deps = ["//yacl/crypto/base/hash:hash_utils"],
 )
 
 yacl_cc_test(
     name = "kdf_test",
-    srcs = [
-        "kdf_test.cc",
-    ],
-    deps = [
-        ":kdf",
-    ],
-    visibility = ["//visibility:public"],  
+    srcs = ["kdf_test.cc"],
+    deps = [":kdf"],
 )
 
 yacl_cc_library(
     name = "hash",
-    srcs = [
-        "hash.cc",
-    ],
-    hdrs = [
-        "hash.h",
-    ],
+    srcs = ["hash.cc"],
+    hdrs = ["hash.h"],
     deps = [
-        "//yacl/crypto/base/mpint:mpint",
-        "//yacl/crypto/base/ecc:spi",
         ":kdf",
-        "//yacl/crypto/base/hash:hash_utils"
+        "//yacl/crypto/base/ecc:spi",
+        "//yacl/crypto/base/hash:hash_utils",
+        "//yacl/crypto/base/mpint",
     ],
-    visibility = ["//visibility:public"],  
 )
 
 yacl_cc_test(
@@ -50,122 +47,89 @@ yacl_cc_test(
     srcs = ["hash_test.cc"],
     deps = [
         ":hash",
-        "//yacl/crypto/base/ecc:ecc",
-        "//yacl/crypto/base/mpint:mpint",
+        "//yacl/crypto/base/ecc",
+        "//yacl/crypto/base/mpint",
     ],
 )
 
-
-
-
 yacl_cc_library(
     name = "keys",
-    srcs = [
-        "keys.cc",
-    ],
-    hdrs = [
-        "keys.h",
-    ],
+    srcs = ["keys.cc"],
+    hdrs = ["keys.h"],
     deps = [
         ":hash",
-        "//yacl/crypto/base/mpint:mpint",
         "//yacl/crypto/base/ecc:spi",
-   
+        "//yacl/crypto/base/mpint",
     ],
-    visibility = ["//visibility:public"],  
 )
 
 yacl_cc_test(
     name = "keys_test",
-    srcs = [
-        "keys_test.cc",
-    ],
+    srcs = ["keys_test.cc"],
     deps = [
         ":keys",
-        "//yacl/crypto/base/mpint:mpint",
+        "//yacl/crypto/base/ecc",
         "//yacl/crypto/base/ecc:spi",
-        "//yacl/crypto/base/ecc:ecc",
-   
+        "//yacl/crypto/base/mpint",
     ],
-    visibility = ["//visibility:public"],  
 )
 
 yacl_cc_library(
     name = "capsule",
-    srcs = [
-        "capsule.cc",
-    ],
+    srcs = ["capsule.cc"],
     hdrs = [
-        "keys.h",
         "capsule.h",
+        "keys.h",
     ],
-    deps = [    
-        ":kdf",
+    deps = [
         ":hash",
-        "//yacl/crypto/base/mpint:mpint",
+        ":kdf",
         "//yacl/crypto/base/ecc:spi",
-        "//yacl/crypto/base/hash:hash_utils"
-
+        "//yacl/crypto/base/hash:hash_utils",
+        "//yacl/crypto/base/mpint",
     ],
-    visibility = ["//visibility:public"],  
 )
 
 yacl_cc_test(
     name = "capsule_test",
-    srcs = [
-        "capsule_test.cc",
-    ],
+    srcs = ["capsule_test.cc"],
     deps = [
         ":capsule",
         ":keys",
-        "//yacl/crypto/base/mpint:mpint",
-        "//yacl/crypto/base/ecc:spi",
-        "@com_google_absl//absl/strings",
         "//yacl/base:exception",
+        "//yacl/crypto/base/ecc",
+        "//yacl/crypto/base/ecc:spi",
+        "//yacl/crypto/base/mpint",
         "//yacl/utils:scope_guard",
-        "//yacl/crypto/base/ecc:ecc",
-
+        "@com_google_absl//absl/strings",
     ],
-    visibility = ["//visibility:public"],  
 )
 
 yacl_cc_library(
     name = "tpre",
-    srcs = [
-        "tpre.cc",
-    ],
+    srcs = ["tpre.cc"],
     hdrs = [
-        "tpre.h",
         "capsule.h",
         "keys.h",
+        "tpre.h",
     ],
     deps = [
         ":capsule",
         ":keys",
         "//yacl/crypto/base/aead:sm4_mac",
         "//yacl/crypto/base/ecc:spi",
-
     ],
-    visibility = ["//visibility:public"],  
 )
 
 yacl_cc_test(
     name = "tpre_test",
-    srcs = [
-        "tpre_test.cc",
-    ],
+    srcs = ["tpre_test.cc"],
     deps = [
-        ":tpre",
-        ":keys",
         ":capsule",
+        ":keys",
+        ":tpre",
+        "//yacl/crypto/base/ecc",
         "//yacl/crypto/base/ecc:spi",
-        "//yacl/crypto/base/ecc:ecc",
-         "@com_google_absl//absl/strings",
-   
+        "@com_google_absl//absl/strings",
     ],
-    visibility = ["//visibility:public"],  
 )
-
-
-
-
