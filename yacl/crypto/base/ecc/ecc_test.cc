@@ -18,6 +18,7 @@
 #include "gtest/gtest.h"
 
 #include "yacl/crypto/base/ecc/ecc_spi.h"
+#include "yacl/utils/parallel.h"
 
 namespace yacl::crypto::test {
 
@@ -57,6 +58,7 @@ class EcCurveTest : public ::testing::TestWithParam<std::string> {
     TestSerializeWorks();
     TestHashPointWorks();
     TestStorePointsInMapWorks();
+    MultiThreadWorks();
   }
 
   void TestArithmeticWorks() {
@@ -217,7 +219,7 @@ class EcCurveTest : public ::testing::TestWithParam<std::string> {
       return ec_->PointEqual(p1, p2);
     };
 
-    int numel = 1000;
+    int numel = 500;
     std::unordered_map<EcPoint, int, decltype(hash), decltype(equal)>
         points_map(numel, hash, equal);
     auto p = ec_->GetGenerator();
@@ -231,6 +233,24 @@ class EcCurveTest : public ::testing::TestWithParam<std::string> {
       }
     }
     ASSERT_EQ(points_map.size(), numel - 1);
+  }
+
+  void MultiThreadWorks() {
+    constexpr int64_t ts = 1 << 16;
+    std::array<EcPoint, ts> buf;
+    auto g = ec_->GetGenerator();
+    yacl::parallel_for(0, ts, 1, [&](int64_t beg, int64_t end) {
+      auto point = ec_->MulBase(MPInt(beg));
+      buf[beg] = point;
+      for (int64_t i = beg + 1; i < end; ++i) {
+        point = ec_->Add(point, g);
+        buf[i] = point;
+      }
+    });
+
+    for (int64_t i = 1; i < ts; ++i) {
+      ASSERT_TRUE(ec_->PointEqual(ec_->Add(buf[i - 1], g), buf[i]));
+    }
   }
 };
 

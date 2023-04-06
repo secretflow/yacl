@@ -40,7 +40,7 @@ BIGNUM_PTR Mp2Bn(const MPInt &mp) {
   BIGNUM_PTR res;
   if (mpp->BitCount() <= sizeof(BN_ULONG) * 8) {
     res = BIGNUM_PTR(BN_new());
-    BN_set_word(res.get(), mpp->Get<BN_ULONG>());
+    SSL_RET_1(BN_set_word(res.get(), mpp->Get<BN_ULONG>()));
   } else {
     constexpr int MAX_NUM_BYTE = 1024;
     unsigned char buf[MAX_NUM_BYTE];
@@ -88,21 +88,15 @@ EC_POINT *Cast(EcPoint *p) {
 EC_POINT *Cast(AnyPointPtr &ptr) { return ptr.get<EC_POINT>(); }
 
 AnyPointPtr WrapOpensslPoint(EC_POINT *point) {
-  static auto point_deleter = [](void *p) {
-    if (p == nullptr) {
-      return;
-    }
-
-    EC_POINT_free(reinterpret_cast<EC_POINT *>(p));
-  };
-
-  return AnyPointPtr(point, point_deleter);
+  return {point,
+          [](void *p) { EC_POINT_free(reinterpret_cast<EC_POINT *>(p)); }};
 }
 
 OpensslGroup::OpensslGroup(const CurveMeta &meta, EC_GROUP_PTR group)
     : EcGroupSketch(meta), group_(std::move(group)), field_p_(BN_new()) {
   SSL_RET_1(EC_GROUP_get_curve(group_.get(), field_p_.get(), nullptr, nullptr,
                                ctx_.get()));
+  SSL_RET_1(EC_GROUP_precompute_mult(group_.get(), ctx_.get()));
 }
 
 AnyPointPtr OpensslGroup::MakeOpensslPoint() const {

@@ -48,9 +48,8 @@ states from the current thread to the worker threads.
 This means for example that Tensor operations CANNOT be used in the
 body of your function, only data pointers.
 */
-template <class F>
 inline void parallel_for(int64_t begin, int64_t end, int64_t grain_size,
-                         const F& f);
+                         const std::function<void(int64_t, int64_t)>& f);
 
 /*
 parallel_reduce
