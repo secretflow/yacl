@@ -31,7 +31,7 @@ ThreadPool::ThreadPool(size_t num_threads) : stop_(false) {
   YACL_ENFORCE(num_threads > 0, "num_threads must > 0");
 
   for (size_t i = 0; i < num_threads; ++i) {
-    threads_.emplace_back(std::thread(&ThreadPool::WorkLoop, this));
+    threads_.emplace_back(&ThreadPool::WorkLoop, this);
   }
 }
 
@@ -58,9 +58,10 @@ void ThreadPool::WorkLoop() {
 
 // the destructor joins all threads
 ThreadPool::~ThreadPool() {
-  std::unique_lock<std::mutex> lock(queue_mutex_);
-  stop_ = true;
-  lock.unlock();
+  {
+    std::unique_lock<std::mutex> lock(queue_mutex_);
+    stop_ = true;
+  }
 
   condition_.notify_all();
   for (std::thread& worker : threads_) {

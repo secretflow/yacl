@@ -256,7 +256,7 @@ std::shared_ptr<OtSendStore> OtSendStore::NextSlice(uint64_t num) {
 
   auto out = std::make_shared<OtSendStore>(blk_buf_, delta_, slice_use_ctr,
                                            slice_use_size, slice_buf_ctr,
-                                           slice_buf_size);
+                                           slice_buf_size, compact_mode_);
 
   // where who slice this buffer looks like the following:
   //

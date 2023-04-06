@@ -74,6 +74,7 @@ def _com_github_brpc_brpc():
         patch_args = ["-p1"],
         patches = [
             "@yacl//bazel:patches/brpc.patch",
+            "@yacl//bazel:patches/brpc_ssl.patch",
         ],
         urls = [
             "https://github.com/apache/brpc/archive/refs/tags/1.4.0.tar.gz",
@@ -270,16 +271,15 @@ def _com_github_intel_ipp():
     maybe(
         http_archive,
         name = "com_github_intel_ipp",
-        sha256 = "23e250dcf281aa00d186be8dc4e34fa8fc5c95a0895694cd00b33f18af5d60c7",
-        strip_prefix = "ipp-crypto-ippcp_2021.4",
+        sha256 = "120c5e0ac5d2a9150c0b500f170bbf1542abdbb810c03cd61326ca40b9b23e95",
+        strip_prefix = "ipp-crypto-ippcp_2021.7.1",
         build_file = "@yacl//bazel:ipp.BUILD",
         patch_args = ["-p1"],
         patches = [
-            "@yacl//bazel:patches/ippcp.patch", 
-            "@yacl//bazel:patches/ippcp-56.patch"
+            "@yacl//bazel:patches/ippcp.patch",
         ],
         urls = [
-            "https://github.com/intel/ipp-crypto/archive/refs/tags/ippcp_2021.4.tar.gz",
+            "https://github.com/intel/ipp-crypto/archive/refs/tags/ippcp_2021.7.1.tar.gz",
         ],
     )
 

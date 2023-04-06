@@ -30,9 +30,8 @@ void _parallel_run(int64_t begin, int64_t end, int64_t grain_size,
 
 }  // namespace internal
 
-template <class F>
-inline void parallel_for(const int64_t begin, const int64_t end,
-                         const int64_t grain_size, const F& f) {
+inline void parallel_for(int64_t begin, int64_t end, int64_t grain_size,
+                         const std::function<void(int64_t, int64_t)>& f) {
   YACL_ENFORCE(grain_size > 0);
   if (begin >= end) {
     return;
@@ -48,7 +47,7 @@ inline void parallel_for(const int64_t begin, const int64_t end,
 
 template <class RES_T>
 inline RES_T parallel_reduce(
-    const int64_t begin, const int64_t end, const int64_t grain_size,
+    int64_t begin, int64_t end, int64_t grain_size,
     const std::function<RES_T(int64_t, int64_t)>& reduce_f,
     const std::function<RES_T(const RES_T&, const RES_T&)>& combine_f) {
   YACL_ENFORCE(grain_size > 0);

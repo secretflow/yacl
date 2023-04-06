@@ -58,8 +58,6 @@ crypto::EcGroupFactory::Registration::Registration(const std::string& lib_name,
   GStore::PerformanceMap().insert({performance, lib_key});
   GStore::CheckerMap().insert({lib_key, checker});
   GStore::CreatorMap().insert({lib_key, creator});
-
-  SPDLOG_INFO("Ec lib {} registered.", lib_name);
 }
 
 std::vector<std::string> EcGroupFactory::ListEcLibraries() {

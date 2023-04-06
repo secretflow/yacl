@@ -329,10 +329,10 @@ class MPInt {
   friend class MontgomerySpace;
 };
 
-MPInt operator""_mp(const char *sz, size_t n);
-MPInt operator""_mp(unsigned long long num);
-
 }  // namespace yacl::crypto
+
+yacl::crypto::MPInt operator""_mp(const char *sz, size_t n);
+yacl::crypto::MPInt operator""_mp(unsigned long long num);
 
 namespace msgpack {
 MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS) {

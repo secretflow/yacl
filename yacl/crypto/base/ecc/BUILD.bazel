@@ -77,5 +77,6 @@ yacl_cc_test(
     deps = [
         ":ecc",
         "@com_github_fmtlib_fmt//:fmtlib",
+        "@yacl//yacl/utils:parallel",
     ],
 )

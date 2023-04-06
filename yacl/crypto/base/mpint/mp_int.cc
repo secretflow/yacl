@@ -17,18 +17,18 @@
 #include "yacl/crypto/base/mpint/tommath_ext_features.h"
 #include "yacl/crypto/base/mpint/tommath_ext_types.h"
 
+yacl::crypto::MPInt operator""_mp(const char *sz, size_t n) {
+  return yacl::crypto::MPInt(std::string(sz, n));
+}
+
+yacl::crypto::MPInt operator""_mp(unsigned long long num) {
+  return yacl::crypto::MPInt(static_cast<uint64_t>(num));
+}
+
 namespace yacl::crypto {
 
 const MPInt MPInt::_1_(1);
 const MPInt MPInt::_2_(2);
-
-MPInt operator""_mp(const char *sz, size_t n) {
-  return MPInt(std::string(sz, n));
-}
-
-MPInt operator""_mp(unsigned long long num) {
-  return MPInt(static_cast<uint64_t>(num));
-}
 
 MPInt::MPInt() { MPINT_ENFORCE_OK(mp_init(&n_)); }
 
