@@ -66,40 +66,42 @@ class TPRE {
   //       std::pair<std::vector<std::unique_ptr<Capsule::CFrag>>,
   //                     std::vector<uint8_t>>;
 
-  /// @brief TPRE encryption algorithm
+  /// @brief TPRE's encryption algorithm
   /// @param ecc_group, Algebraic operations are on elliptic curves
   /// @param pk_A, the public key of Alice, Alice refers to the authorizer
   /// @param iv, random value
   /// @param plaintext
   /// @return capsule and encrypted data
-  std::pair<std::unique_ptr<Capsule::CapsuleStruct>, std::vector<uint8_t>>
-  Encrypt(std::unique_ptr<EcGroup> ecc_group,
-          std::unique_ptr<Keys::PublicKey> pk_A, const std::string& iv,
-          const std::string& plaintext);
+  std::pair<Capsule::CapsuleStruct, std::vector<uint8_t>> Encrypt(
+      std::unique_ptr<EcGroup> ecc_group, std::unique_ptr<Keys::PublicKey> pk_A,
+      const std::string& iv, const std::string& plaintext);
 
-  /// @brief TPRE decryption algorithm
+  /// @brief TPRE's decryption algorithm
   /// @param ecc_group, Algebraic operations are on elliptic curves
   /// @param capsule_struct, reference Capsule class.
   /// @param iv, random value
   /// @param enc_data, decrypted data
   /// @param sk_A, the secret key of Alice, Alice refers to the authorizer
   /// @return plaintext
-  std::string Decrypt(std::unique_ptr<EcGroup> ecc_group,
-                      std::unique_ptr<Capsule::CapsuleStruct> capsule_struct,
-                      const std::string& iv, std::vector<uint8_t> enc_data,
-                      std::unique_ptr<Keys::PrivateKey> sk_A);
+  std::string Decrypt(
+      const std::unique_ptr<EcGroup>& ecc_group,
+      const std::unique_ptr<Capsule::CapsuleStruct>& capsule_struct,
+      const std::string& iv, const std::vector<uint8_t>& enc_data,
+      const std::unique_ptr<Keys::PrivateKey>& sk_A) const;
 
-  /// @brief TPRE threshold proxy re-encryption algorithm
+  /// @brief TPRE's threshold proxy re-encryption algorithm
   /// @param ecc_group, Algebraic operations are on elliptic curves
   /// @param kfrag, the re-encryption key of proxy
   /// @param ciphertext, capsule and encrypted data
   /// @return ciphertext fragments
-  std::pair<std::unique_ptr<Capsule::CFrag>, std::vector<uint8_t>> ReEncrypt(
-      std::unique_ptr<EcGroup> ecc_group, std::unique_ptr<Keys::KFrag> kfrag,
-      std::pair<std::unique_ptr<Capsule::CapsuleStruct>, std::vector<uint8_t>>
-          ciphertext);
+  std::pair<Capsule::CFrag, std::vector<uint8_t>> ReEncrypt(
+      const std::unique_ptr<EcGroup>& ecc_group,
+      const std::unique_ptr<Keys::KFrag>& kfrag,
+      std::pair<const std::unique_ptr<Capsule::CapsuleStruct>&,
+                const std::vector<uint8_t>&>
+          ciphertext) const;
 
-  /// @brief TPRE threshold decryption algorithm
+  /// @brief TPRE's threshold decryption algorithm
   /// @param ecc_group, Algebraic operations are on elliptic curves
   /// @param sk_B, the secret key of Bob
   /// @param pk_A, the public key of Alice
@@ -108,13 +110,13 @@ class TPRE {
   /// @param C_prime_set, ciphertext fragments set
   /// @return plaintext
   std::string DecryptFrags(
-      std::unique_ptr<EcGroup> ecc_group,
-      std::unique_ptr<Keys::PrivateKey> sk_B,
-      std::unique_ptr<Keys::PublicKey> pk_A,
-      std::unique_ptr<Keys::PublicKey> pk_B, const std::string& iv,
-      std::pair<std::vector<std::unique_ptr<Capsule::CFrag>>,
-                std::vector<uint8_t>>
-          C_prime_set);
+      const std::unique_ptr<EcGroup>& ecc_group,
+      const std::unique_ptr<Keys::PrivateKey>& sk_B,
+      const std::unique_ptr<Keys::PublicKey>& pk_A,
+      const std::unique_ptr<Keys::PublicKey>& pk_B, const std::string& iv,
+      std::pair<const std::vector<std::unique_ptr<Capsule::CFrag>>&,
+                const std::vector<uint8_t>&>
+          C_prime_set) const;
 
  private:
   //   int curve_id_;  // ID of elliptic curve type in openssl

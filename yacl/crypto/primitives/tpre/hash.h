@@ -14,8 +14,6 @@
 
 #ifndef YACL_CRYPTO_PRIMITIVES_TPRE_HASH_H_
 #define YACL_CRYPTO_PRIMITIVES_TPRE_HASH_H_
-#include <stdint.h>
-#include <string.h>
 
 #include <string>
 
@@ -30,6 +28,6 @@ namespace yacl::crypto {
 /// @param input
 /// @param curve_id, elliptic curve type
 /// @return hash value
-MPInt CipherHash(absl::string_view input, std::string curve_type);
+MPInt CipherHash(absl::string_view input, const std::string& curve_type);
 }  // namespace yacl::crypto
 #endif  // YACL_CRYPTO_PRIMITIVES_TPRE_HASH_H_

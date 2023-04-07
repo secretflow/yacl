@@ -22,15 +22,14 @@
 #include "yacl/crypto/base/mpint/mp_int.h"
 
 namespace yacl::crypto::test {
-class KeyTest : public testing::Test {};
 
-TEST_F(KeyTest, Test1) {
+TEST(KeyTest, Test1) {
   MPInt zero(0);
   std::unique_ptr<EcGroup> ecc_group = EcGroupFactory::Create("sm2");
 
   Keys keys;
-  std::pair<std::unique_ptr<Keys::PublicKey>, std::unique_ptr<Keys::PrivateKey>>
-      key_pair_alice = keys.GenerateKeyPair(std::move(ecc_group));
+  std::pair<Keys::PublicKey, Keys::PrivateKey> key_pair_alice =
+      keys.GenerateKeyPair(std::move(ecc_group));
 
   ecc_group = EcGroupFactory::Create("sm2");
 
@@ -54,17 +53,25 @@ TEST_F(KeyTest, Test1) {
       "85132369209828568825618990617112496413088388631904505083283536"
       "6075888772"
       "01568)";
-  EXPECT_EQ(ecc_group->GetAffinePoint(key_pair_alice.first->g).ToString(),
+  EXPECT_EQ(ecc_group->GetAffinePoint(key_pair_alice.first.g).ToString(),
             generator_str);
 
   ecc_group = EcGroupFactory::Create("sm2");
-  std::pair<std::unique_ptr<Keys::PublicKey>, std::unique_ptr<Keys::PrivateKey>>
-      key_pair_bob = keys.GenerateKeyPair(std::move(ecc_group));
+  std::pair<Keys::PublicKey, Keys::PrivateKey> key_pair_bob =
+      keys.GenerateKeyPair(std::move(ecc_group));
 
   ecc_group = EcGroupFactory::Create("sm2");
+
+  std::unique_ptr<Keys::PublicKey> public_key_alice_up(
+      new Keys::PublicKey(key_pair_alice.first));
+  std::unique_ptr<Keys::PrivateKey> private_key_alice_up(
+      new Keys::PrivateKey(key_pair_alice.second));
+  std::unique_ptr<Keys::PublicKey> public_key_bob_up(
+      new Keys::PublicKey(key_pair_bob.first));
+
   std::vector<Keys::KFrag> kfrags = keys.GenerateReKey(
-      std::move(ecc_group), std::move(key_pair_alice.second),
-      std::move(key_pair_alice.first), std::move(key_pair_bob.first), 5, 4);
+      std::move(ecc_group), std::move(private_key_alice_up),
+      std::move(public_key_alice_up), std::move(public_key_bob_up), 5, 4);
 
   for (int i = 0; i < 5; i++) {
     EXPECT_TRUE(kfrags[i].id > zero);

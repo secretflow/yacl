@@ -23,11 +23,9 @@
 namespace yacl::crypto {
 
 // Encapsulate(pkA)->(K,capsule)
-std::pair<std::unique_ptr<Capsule::CapsuleStruct>, std::vector<uint8_t>>
-Capsule::EnCapsulate(std::unique_ptr<EcGroup> ecc_group,
-                     std::unique_ptr<Keys::PublicKey> delegating_public_key) {
-  EcPoint g = ecc_group->GetGenerator();
-
+std::pair<Capsule::CapsuleStruct, std::vector<uint8_t>> Capsule::EnCapsulate(
+    const std::unique_ptr<EcGroup>& ecc_group,
+    const std::unique_ptr<Keys::PublicKey>& delegating_public_key) const {
   MPInt zero_bn(0);
   MPInt order = ecc_group->GetOrder();
   MPInt r;
@@ -35,8 +33,8 @@ Capsule::EnCapsulate(std::unique_ptr<EcGroup> ecc_group,
   MPInt u;
   MPInt::RandomLtN(order, &u);
 
-  EcPoint E = ecc_group->Mul(g, r);
-  EcPoint V = ecc_group->Mul(g, u);
+  EcPoint E = ecc_group->MulBase(r);
+  EcPoint V = ecc_group->MulBase(u);
   std::string E_string_join_V_sting = ecc_group->GetAffinePoint(E).ToString() +
                                       ecc_group->GetAffinePoint(V).ToString();
 
@@ -50,14 +48,12 @@ Capsule::EnCapsulate(std::unique_ptr<EcGroup> ecc_group,
 
   std::string K_string = ecc_group->GetAffinePoint(K_point).ToString();
 
-  std::unique_ptr<Capsule::CapsuleStruct> capsule_struct(
-      new Capsule::CapsuleStruct({std::move(E), std::move(V), std::move(s)}));
-
+  Capsule::CapsuleStruct capsule_struct = {E, V, s};
   std::vector<uint8_t> K = KDF(K_string, 16);
 
   // auto res = make_pair(std::move(capsule_struct), K);
-  std::pair<std::unique_ptr<CapsuleStruct>, std::vector<uint8_t>> capsule_pair;
-  capsule_pair.first = std::move(capsule_struct);
+  std::pair<Capsule::CapsuleStruct, std::vector<uint8_t>> capsule_pair;
+  capsule_pair.first = capsule_struct;
   capsule_pair.second = K;
 
   return capsule_pair;
@@ -65,12 +61,11 @@ Capsule::EnCapsulate(std::unique_ptr<EcGroup> ecc_group,
 
 // Decapsulate(skA,capsule)->(K)
 std::vector<uint8_t> Capsule::DeCapsulate(
-    std::unique_ptr<EcGroup> ecc_group,
-    std::unique_ptr<Keys::PrivateKey> private_key,
-    std::unique_ptr<CapsuleStruct> capsule_struct) {
-  EcPoint K_point = ecc_group->Mul(ecc_group->Add(std::move(capsule_struct->E),
-                                                  std::move(capsule_struct->V)),
-                                   private_key->x);
+    const std::unique_ptr<EcGroup>& ecc_group,
+    const std::unique_ptr<Keys::PrivateKey>& private_key,
+    const std::unique_ptr<CapsuleStruct>& capsule_struct) const {
+  EcPoint K_point = ecc_group->Mul(
+      ecc_group->Add(capsule_struct->E, capsule_struct->V), private_key->x);
   std::string K_string = ecc_group->GetAffinePoint(K_point).ToString();
 
   std::vector<uint8_t> K = KDF(K_string, 16);
@@ -78,12 +73,10 @@ std::vector<uint8_t> Capsule::DeCapsulate(
   return K;
 }
 
-std::pair<std::unique_ptr<Capsule::CapsuleStruct>, int> Capsule::CheckCapsule(
-    std::unique_ptr<EcGroup> ecc_group,
-    std::unique_ptr<Capsule::CapsuleStruct> capsule_struct) {
-  EcPoint g = ecc_group->GetGenerator();
-
-  EcPoint tmp0 = ecc_group->Mul(g, capsule_struct->s);
+std::pair<Capsule::CapsuleStruct, int> Capsule::CheckCapsule(
+    const std::unique_ptr<EcGroup>& ecc_group,
+    const std::unique_ptr<CapsuleStruct>& capsule_struct) const {
+  EcPoint tmp0 = ecc_group->MulBase(capsule_struct->s);
 
   // compute H_2(E,V)
   std::string E_string_join_V_sting =
@@ -104,8 +97,11 @@ std::pair<std::unique_ptr<Capsule::CapsuleStruct>, int> Capsule::CheckCapsule(
     signal = 0;
   }
 
-  std::pair<std::unique_ptr<Capsule::CapsuleStruct>, int> capsule_check_result =
-      {std::move(capsule_struct), signal};
+  // std::unique_ptr<Capsule::CapsuleStruct> dup_capsule_struct =
+  //     std::make_unique<Capsule::CapsuleStruct>(*capsule_struct);
+
+  std::pair<Capsule::CapsuleStruct, int> capsule_check_result = {
+      *capsule_struct, signal};
 
   return capsule_check_result;
 }
@@ -113,9 +109,10 @@ std::pair<std::unique_ptr<Capsule::CapsuleStruct>, int> Capsule::CheckCapsule(
 // /**
 //  * Each Re-encryptor generates the ciphertext fragment, i.e., cfrag
 //  * */
-std::unique_ptr<Capsule::CFrag> Capsule::ReEncapsulate(
-    std::unique_ptr<EcGroup> ecc_group, std::unique_ptr<Keys::KFrag> kfrag,
-    std::unique_ptr<CapsuleStruct> capsule) {
+Capsule::CFrag Capsule::ReEncapsulate(
+    const std::unique_ptr<EcGroup>& ecc_group,
+    const std::unique_ptr<Keys::KFrag>& kfrag,
+    std::unique_ptr<CapsuleStruct> capsule) const {
   //  First checks the validity of the capsule with CheckCapsule and outputs ⊥
   //  if the check fails.
 
@@ -129,26 +126,26 @@ std::unique_ptr<Capsule::CFrag> Capsule::ReEncapsulate(
                "check_result: The capsule is damaged or has problems ");
 
   // Compute E_1 = E^rk
-  EcPoint E_1 = ecc_group->Mul(capsule_check_result.first->E, kfrag->rk);
+  EcPoint E_1 = ecc_group->Mul(capsule_check_result.first.E, kfrag->rk);
 
   // Compute V_1 = V^rk
-  EcPoint V_1 = ecc_group->Mul(capsule_check_result.first->V, kfrag->rk);
+  EcPoint V_1 = ecc_group->Mul(capsule_check_result.first.V, kfrag->rk);
 
   // Clone X_A
   EcPoint X_A_clone = ecc_group->Mul(kfrag->X_A, MPInt(1));
 
   // Construct the re-encryption ciphertext fragment, i.e., cfrag
-  std::unique_ptr<CFrag> cfrag(new CFrag(
-      {std::move(E_1), std::move(V_1), kfrag->id, std::move(X_A_clone)}));
+  CFrag cfrag = {E_1, V_1, kfrag->id, X_A_clone};
 
   return cfrag;
 }
 
 std::vector<uint8_t> Capsule::DeCapsulateFrags(
-    std::unique_ptr<EcGroup> ecc_group, std::unique_ptr<Keys::PrivateKey> sk_B,
-    std::unique_ptr<Keys::PublicKey> pk_A,
-    std::unique_ptr<Keys::PublicKey> pk_B,
-    std::vector<std::unique_ptr<CFrag>> cfrags) {
+    const std::unique_ptr<EcGroup>& ecc_group,
+    const std::unique_ptr<Keys::PrivateKey>& sk_B,
+    const std::unique_ptr<Keys::PublicKey>& pk_A,
+    const std::unique_ptr<Keys::PublicKey>& pk_B,
+    const std::vector<std::unique_ptr<CFrag>>& cfrags) const {
   MPInt one_bn(1);
 
   // Compute (pk_B)^a

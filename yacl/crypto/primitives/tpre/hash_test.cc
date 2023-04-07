@@ -22,7 +22,7 @@
 namespace yacl::crypto::test {
 class HashTest : public testing::Test {};
 
-TEST_F(HashTest, Test1) {
+TEST(HashTest, Test1) {
   MPInt zero(0);
   auto hash_value = CipherHash("tpre", "sm2");
 

@@ -27,7 +27,7 @@
 namespace yacl::crypto {
 // h_x = 1 + Bignum(sm3(x)||sm3(sm3(x))) mod n-1
 // where n is the degree of EC Group, and x is input
-MPInt CipherHash(absl::string_view input, std::string curve_type) {
+MPInt CipherHash(absl::string_view input, const std::string& curve_type) {
   std::array<unsigned char, 32> hash_value_0 = Sm3(input);
   absl::string_view hash_value_0_view(
       reinterpret_cast<const char*>(hash_value_0.data()), hash_value_0.size());

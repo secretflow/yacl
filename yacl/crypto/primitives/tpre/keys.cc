@@ -18,8 +18,8 @@
 
 namespace yacl::crypto {
 
-std::pair<std::unique_ptr<Keys::PublicKey>, std::unique_ptr<Keys::PrivateKey>>
-Keys::GenerateKeyPair(std::unique_ptr<EcGroup> ecc_group) {
+std::pair<Keys::PublicKey, Keys::PrivateKey> Keys::GenerateKeyPair(
+    const std::unique_ptr<EcGroup> ecc_group) const {
   EcPoint g = ecc_group->GetGenerator();
 
   // sample random from ecc group
@@ -28,37 +28,34 @@ Keys::GenerateKeyPair(std::unique_ptr<EcGroup> ecc_group) {
   MPInt::RandomLtN(max, &x);
 
   // compute y = g^x
-  EcPoint y = ecc_group->Mul(g, x);
+  EcPoint y = ecc_group->MulBase(x);
   // Assign private key
-  std::unique_ptr<Keys::PrivateKey> private_key(new Keys::PrivateKey({x}));
+  Keys::PrivateKey private_key = {x};
   // Assign public key
-  std::unique_ptr<Keys::PublicKey> public_key(
-      new Keys::PublicKey({std::move(g), std::move(y)}));
+  Keys::PublicKey public_key = {g, y};
 
-  std::pair<std::unique_ptr<Keys::PublicKey>, std::unique_ptr<Keys::PrivateKey>>
-      key_pair;
-  key_pair.first = std::move(public_key);
-  key_pair.second = std::move(private_key);
+  std::pair<Keys::PublicKey, Keys::PrivateKey> key_pair;
+  key_pair.first = public_key;
+  key_pair.second = private_key;
   return key_pair;
 }
 
 // // Generates re-ecnryption key
 std::vector<Keys::KFrag> Keys::GenerateReKey(
-    std::unique_ptr<EcGroup> ecc_group, std::unique_ptr<Keys::PrivateKey> sk_A,
-    std::unique_ptr<Keys::PublicKey> pk_A,
-    std::unique_ptr<Keys::PublicKey> pk_B, int N, int t) {
+    const std::unique_ptr<EcGroup>& ecc_group,
+    const std::unique_ptr<PrivateKey>& sk_A,
+    const std::unique_ptr<PublicKey>& pk_A,
+    const std::unique_ptr<PublicKey>& pk_B, int N, int t) const {
   MPInt zero_bn(0);
   MPInt one_bn(1);
   MPInt ecc_group_order = ecc_group->GetOrder();
-
-  EcPoint g = ecc_group->GetGenerator();  // obtain generator g of group
 
   // 1. Select x_A randomly and calculation X_ A=g^{x_A}
   MPInt max = ecc_group_order;
   MPInt x_A;
   MPInt::RandomLtN(ecc_group_order, &x_A);
 
-  EcPoint X_A = ecc_group->Mul(g, x_A);
+  EcPoint X_A = ecc_group->MulBase(x_A);
 
   // 2. Compute d = H_3(X_A, pk_B, (pk_B)^{X_A}), where d is the result of a
   // non-interactive Diffie-Hellman key exchange between B's keypair and the
@@ -112,7 +109,7 @@ std::vector<Keys::KFrag> Keys::GenerateReKey(
 
   MPInt r_tmp_0;
   MPInt::RandomLtN(max, &r_tmp_0);
-  EcPoint U = ecc_group->Mul(g, r_tmp_0);
+  EcPoint U = ecc_group->MulBase(r_tmp_0);
   // Cycle to generate each element of kfrags
   for (int i = 0; i <= N - 1; i++) {
     MPInt r_tmp_1;
@@ -126,7 +123,7 @@ std::vector<Keys::KFrag> Keys::GenerateReKey(
     s_x.push_back(
         CipherHash(id[i].ToString() + D.ToString(), ecc_group->GetCurveName()));
 
-    Y.push_back(ecc_group->Mul(g, y[i]));
+    Y.push_back(ecc_group->MulBase(y[i]));
 
     // Compute polynomial to obtain rk[i]
     MPInt rk_tmp = coefficients[0];

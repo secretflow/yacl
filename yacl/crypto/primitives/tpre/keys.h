@@ -72,8 +72,8 @@ class Keys {
   /// @brief Generate the key pair
   /// @param ecc_group
   /// @return key pair, which includes public key and secret key
-  std::pair<std::unique_ptr<PublicKey>, std::unique_ptr<PrivateKey>>
-  GenerateKeyPair(std::unique_ptr<EcGroup> ecc_group);
+  std::pair<PublicKey, PrivateKey> GenerateKeyPair(
+      const std::unique_ptr<EcGroup> ecc_group) const;
 
   /// @brief Generates re-ecnryption key
   /// @param ecc_group
@@ -83,11 +83,11 @@ class Keys {
   /// @param N, Total number of proxys
   /// @param t, Capsule fragment threshold required for decryption
   /// @return re-encryption key fragment
-  std::vector<KFrag> GenerateReKey(std::unique_ptr<EcGroup> ecc_group,
-                                   std::unique_ptr<PrivateKey> sk_A,
-                                   std::unique_ptr<PublicKey> pk_A,
-                                   std::unique_ptr<PublicKey> pk_B, int N,
-                                   int t);
+  std::vector<KFrag> GenerateReKey(const std::unique_ptr<EcGroup>& ecc_group,
+                                   const std::unique_ptr<PrivateKey>& sk_A,
+                                   const std::unique_ptr<PublicKey>& pk_A,
+                                   const std::unique_ptr<PublicKey>& pk_B,
+                                   int N, int t) const;
 
  private:
 };

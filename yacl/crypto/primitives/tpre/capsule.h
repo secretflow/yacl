@@ -60,35 +60,36 @@ class Capsule {
   /// @param ecc_group
   /// @param delegating_public_key
   /// @return capsule and data ecnryption key
-  std::pair<std::unique_ptr<CapsuleStruct>, std::vector<uint8_t>> EnCapsulate(
-      std::unique_ptr<EcGroup> ecc_group,
-      std::unique_ptr<Keys::PublicKey> delegating_public_key);
+
+  std::pair<CapsuleStruct, std::vector<uint8_t>> EnCapsulate(
+      const std::unique_ptr<EcGroup>& ecc_group,
+      const std::unique_ptr<Keys::PublicKey>& delegating_public_key) const;
 
   /// @brief DeCapsulate algorithm, to obtain the data encryption key
   /// @param private_key
   /// @param capsule_struct
   /// @return data encryption key
   std::vector<uint8_t> DeCapsulate(
-      std::unique_ptr<EcGroup> ecc_group,
-      std::unique_ptr<Keys::PrivateKey> private_key,
-      std::unique_ptr<CapsuleStruct> capsule_struct);
+      const std::unique_ptr<EcGroup>& ecc_group,
+      const std::unique_ptr<Keys::PrivateKey>& private_key,
+      const std::unique_ptr<CapsuleStruct>& capsule_struct) const;
 
   /// @brief Capsule check algorithm
   /// @param ecc_group
   /// @param capsule_struct
   /// @return 0 (check fail) or 1 (check success)
-  std::pair<std::unique_ptr<CapsuleStruct>, int> CheckCapsule(
-      std::unique_ptr<EcGroup> ecc_group,
-      std::unique_ptr<CapsuleStruct> capsule_struct);
+  std::pair<CapsuleStruct, int> CheckCapsule(
+      const std::unique_ptr<EcGroup>& ecc_group,
+      const std::unique_ptr<CapsuleStruct>& capsule_struct) const;
 
   /// @brief Re-encapsulate capsule
   /// @param ecc_group
   /// @param kfrag, re-encryption key fragment
   /// @param capsule
   /// @return Re-encapsulated capsule
-  std::unique_ptr<CFrag> ReEncapsulate(std::unique_ptr<EcGroup> ecc_group,
-                                       std::unique_ptr<Keys::KFrag> kfrag,
-                                       std::unique_ptr<CapsuleStruct> capsule);
+  CFrag ReEncapsulate(const std::unique_ptr<EcGroup>& ecc_group,
+                      const std::unique_ptr<Keys::KFrag>& kfrag,
+                      const std::unique_ptr<CapsuleStruct> capsule) const;
 
   /// @brief Restore the re-encapsulated capsule set to data encryption key
   /// @param ecc_group
@@ -98,11 +99,11 @@ class Capsule {
   /// @param cfrags, re-encapsulated capsule set
   /// @return Data encryption key
   std::vector<uint8_t> DeCapsulateFrags(
-      std::unique_ptr<EcGroup> ecc_group,
-      std::unique_ptr<Keys::PrivateKey> sk_B,
-      std::unique_ptr<Keys::PublicKey> pk_A,
-      std::unique_ptr<Keys::PublicKey> pk_B,
-      std::vector<std::unique_ptr<CFrag>> cfrags);
+      const std::unique_ptr<EcGroup>& ecc_group,
+      const std::unique_ptr<Keys::PrivateKey>& sk_B,
+      const std::unique_ptr<Keys::PublicKey>& pk_A,
+      const std::unique_ptr<Keys::PublicKey>& pk_B,
+      const std::vector<std::unique_ptr<CFrag>>& cfrags) const;
 
  private:
   std::unique_ptr<CapsuleStruct> capsule_struct_;  // capsule struct

@@ -19,9 +19,7 @@
 
 namespace yacl::crypto::test {
 
-class TpreTest : public testing::Test {};
-
-TEST_F(TpreTest, Test1) {
+TEST(TpreTest, Test1) {
   std::string iv = "123456789";
   TPRE tpre;
   Keys keys;
@@ -30,29 +28,35 @@ TEST_F(TpreTest, Test1) {
   // Start testing encryption and decryption functions
   std::unique_ptr<EcGroup> ecc_group = EcGroupFactory::Create("sm2");
 
-  std::pair<std::unique_ptr<Keys::PublicKey>, std::unique_ptr<Keys::PrivateKey>>
-      key_pair_A = keys.GenerateKeyPair(std::move(ecc_group));
+  std::pair<Keys::PublicKey, Keys::PrivateKey> key_pair_A =
+      keys.GenerateKeyPair(std::move(ecc_group));
 
-  Keys::PublicKey* pk_A = key_pair_A.first.get();
-  Keys::PrivateKey* sk_A = key_pair_A.second.get();
+  //   std::unique_ptr<Keys::PublicKey> pk_A(new
+  //   Keys::PublicKey(key_pair_A.first)); std::unique_ptr<Keys::PrivateKey>
+  //   sk_A(
+  //       new Keys::PrivateKey(key_pair_A.second));
 
   ecc_group = EcGroupFactory::Create("sm2");
   std::unique_ptr<Keys::PublicKey> pk_A_0(
-      new Keys::PublicKey{pk_A->g, pk_A->y});
+      new Keys::PublicKey{key_pair_A.first.g, key_pair_A.first.y});
 
   // test tpre.Encrypt
   std::string message = "hellooooooooooooo, I'am 63, who are you?";
 
   ecc_group = EcGroupFactory::Create("sm2");
-  std::pair<std::unique_ptr<Capsule::CapsuleStruct>, std::vector<uint8_t>>
-      ct_1 = tpre.Encrypt(std::move(ecc_group), std::move(pk_A_0), iv, message);
+  std::pair<Capsule::CapsuleStruct, std::vector<uint8_t>> ct_1 =
+      tpre.Encrypt(std::move(ecc_group), std::move(pk_A_0), iv, message);
 
   // test tpre.Decrypt
-  std::unique_ptr<Keys::PrivateKey> sk_A_1(new Keys::PrivateKey{sk_A->x});
+  std::unique_ptr<Keys::PrivateKey> sk_A_1(
+      new Keys::PrivateKey{key_pair_A.second.x});
 
   ecc_group = EcGroupFactory::Create("sm2");
+
+  std::unique_ptr<Capsule::CapsuleStruct> ct_1_first(
+      new Capsule::CapsuleStruct(ct_1.first));
   std::string message_1 =
-      tpre.Decrypt(std::move(ecc_group), std::move(ct_1.first), iv, ct_1.second,
+      tpre.Decrypt(std::move(ecc_group), std::move(ct_1_first), iv, ct_1.second,
                    std::move(sk_A_1));
 
   // Determine if decryption was successful
@@ -61,7 +65,7 @@ TEST_F(TpreTest, Test1) {
   // End testing encryption and decryption functions
 
   /************************* Phase 2 *************************/
-  // Start testing encryption, re encryption, and decryption functions
+  // Start testing encryption, re-encryption, and decryption functions
 
   // Second test tpre.Encrypt
   std::string message_2 =
@@ -71,26 +75,24 @@ TEST_F(TpreTest, Test1) {
 
   ecc_group = EcGroupFactory::Create("sm2");
   std::unique_ptr<Keys::PublicKey> pk_A_1(
-      new Keys::PublicKey{pk_A->g, pk_A->y});
-  std::pair<std::unique_ptr<Capsule::CapsuleStruct>, std::vector<uint8_t>>
-      ct_2 =
-          tpre.Encrypt(std::move(ecc_group), std::move(pk_A_1), iv, message_2);
+      new Keys::PublicKey{key_pair_A.first.g, key_pair_A.first.y});
+  std::pair<Capsule::CapsuleStruct, std::vector<uint8_t>> ct_2 =
+      tpre.Encrypt(std::move(ecc_group), std::move(pk_A_1), iv, message_2);
 
   ecc_group = EcGroupFactory::Create("sm2");
   // test keys->GenerateReKey
-  std::unique_ptr<Keys::PrivateKey> sk_A_2(new Keys::PrivateKey{sk_A->x});
+  std::unique_ptr<Keys::PrivateKey> sk_A_2(
+      new Keys::PrivateKey{key_pair_A.second.x});
   std::unique_ptr<Keys::PublicKey> pk_A_2(
-      new Keys::PublicKey{pk_A->g, pk_A->y});
+      new Keys::PublicKey{key_pair_A.first.g, key_pair_A.first.y});
 
-  std::pair<std::unique_ptr<Keys::PublicKey>, std::unique_ptr<Keys::PrivateKey>>
-      key_pair_B = keys.GenerateKeyPair(std::move(ecc_group));
+  std::pair<Keys::PublicKey, Keys::PrivateKey> key_pair_B =
+      keys.GenerateKeyPair(std::move(ecc_group));
 
   ecc_group = EcGroupFactory::Create("sm2");
-  Keys::PrivateKey* sk_B = key_pair_B.second.get();
-  Keys::PublicKey* pk_B = key_pair_B.first.get();
 
   std::unique_ptr<Keys::PublicKey> pk_B_1(
-      new Keys::PublicKey{pk_B->g, pk_B->y});
+      new Keys::PublicKey{key_pair_B.first.g, key_pair_B.first.y});
 
   int N = 5;  // Number of all participants
   int t = 4;  // Threshold
@@ -109,7 +111,7 @@ TEST_F(TpreTest, Test1) {
   // otherwise decryption will not be successful
   for (int i = 0; i < t; i++) {
     Capsule::CapsuleStruct* capsule_struct_i =
-        new Capsule::CapsuleStruct{ct_2.first->E, ct_2.first->V, ct_2.first->s};
+        new Capsule::CapsuleStruct{ct_2.first.E, ct_2.first.V, ct_2.first.s};
 
     std::unique_ptr<Capsule::CapsuleStruct> capsule_struct_i_up(
         capsule_struct_i);
@@ -123,23 +125,26 @@ TEST_F(TpreTest, Test1) {
     std::unique_ptr<Keys::KFrag> kfrag_up(kfrag_i);
 
     ecc_group = EcGroupFactory::Create("sm2");
-    std::pair<std::unique_ptr<Capsule::CFrag>, std::vector<uint8_t>> re_ct_i =
-        tpre.ReEncrypt(std::move(ecc_group), std::move(kfrag_up),
-                       std::move(ct_2_i));
+    std::pair<Capsule::CFrag, std::vector<uint8_t>> re_ct_i = tpre.ReEncrypt(
+        std::move(ecc_group), std::move(kfrag_up), std::move(ct_2_i));
 
-    re_ct_set.first.push_back(std::move(re_ct_i.first));
+    std::unique_ptr<Capsule::CFrag> cfrag_i_up(
+        new Capsule::CFrag(re_ct_i.first));
+
+    re_ct_set.first.push_back(std::move(cfrag_i_up));
     re_ct_set.second = re_ct_i.second;
 
     ecc_group = EcGroupFactory::Create("sm2");
   }
 
   // test tpre.DecryptFrags
-  std::unique_ptr<Keys::PrivateKey> sk_B_1(new Keys::PrivateKey{sk_B->x});
+  std::unique_ptr<Keys::PrivateKey> sk_B_1(
+      new Keys::PrivateKey{key_pair_B.second.x});
   std::unique_ptr<Keys::PublicKey> pk_A_3(
-      new Keys::PublicKey{pk_A->g, pk_A->y});
+      new Keys::PublicKey{key_pair_A.first.g, key_pair_A.first.y});
 
   std::unique_ptr<Keys::PublicKey> pk_B_2(
-      new Keys::PublicKey{pk_B->g, pk_B->y});
+      new Keys::PublicKey{key_pair_B.first.g, key_pair_B.first.y});
 
   ecc_group = EcGroupFactory::Create("sm2");
   std::string message_3 = tpre.DecryptFrags(
@@ -147,6 +152,10 @@ TEST_F(TpreTest, Test1) {
       std::move(pk_B_2), iv, std::move(re_ct_set));
 
   // Determine whether decryption was successful after performing re-encryption
+
+  //   std::cout << "message_2 = " << message_2 << std::endl;
+  //   std::cout << "message_3 = " << message_3 << std::endl;
+
   EXPECT_EQ(message_2, message_3);
 }
 }  // namespace yacl::crypto::test
