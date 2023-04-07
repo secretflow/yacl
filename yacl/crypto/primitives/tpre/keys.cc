@@ -19,7 +19,7 @@
 namespace yacl::crypto {
 
 std::pair<Keys::PublicKey, Keys::PrivateKey> Keys::GenerateKeyPair(
-    const std::unique_ptr<EcGroup> ecc_group) const {
+    const std::unique_ptr<EcGroup>& ecc_group) const {
   EcPoint g = ecc_group->GetGenerator();
 
   // sample random from ecc group
@@ -66,8 +66,7 @@ std::vector<Keys::KFrag> Keys::GenerateReKey(
       ecc_group->GetAffinePoint(ecc_group->Mul(pk_B->y, x_A)).ToString();
   std::string X_A_str = ecc_group->GetAffinePoint(X_A).ToString();
 
-  MPInt d = CipherHash(X_A_str + pk_B_str + pk_B_mul_x_A_str,
-                       ecc_group->GetCurveName());
+  MPInt d = CipherHash(X_A_str + pk_B_str + pk_B_mul_x_A_str, ecc_group);
 
   // 3. Generate random polynomial coefficients {f_1,...,f_{t-1}} and calculate
   // coefficients f_ 0
@@ -92,8 +91,7 @@ std::vector<Keys::KFrag> Keys::GenerateReKey(
   std::string pk_B_mul_a_str =
       ecc_group->GetAffinePoint(ecc_group->Mul(pk_B->y, sk_A->x)).ToString();
 
-  MPInt D = CipherHash(pk_A_str + pk_B_str + pk_B_mul_a_str,
-                       ecc_group->GetCurveName());
+  MPInt D = CipherHash(pk_A_str + pk_B_str + pk_B_mul_a_str, ecc_group);
 
   // 6. Compute KFrags
 
@@ -120,8 +118,7 @@ std::vector<Keys::KFrag> Keys::GenerateReKey(
     MPInt::RandomLtN(max, &r_tmp_2);
     id.push_back(r_tmp_2);
 
-    s_x.push_back(
-        CipherHash(id[i].ToString() + D.ToString(), ecc_group->GetCurveName()));
+    s_x.push_back(CipherHash(id[i].ToString() + D.ToString(), ecc_group));
 
     Y.push_back(ecc_group->MulBase(y[i]));
 
@@ -140,7 +137,7 @@ std::vector<Keys::KFrag> Keys::GenerateReKey(
     rk.push_back(rk_tmp);
 
     EcPoint U_mul_rk = ecc_group->Mul(U, rk_tmp);
-    U_1.push_back(std::move(U_mul_rk));
+    U_1.push_back(U_mul_rk);
 
     z_1.push_back(CipherHash(ecc_group->GetAffinePoint(Y[i]).ToString() +
                                  id[i].ToString() +
@@ -148,7 +145,7 @@ std::vector<Keys::KFrag> Keys::GenerateReKey(
                                  ecc_group->GetAffinePoint(pk_B->y).ToString() +
                                  ecc_group->GetAffinePoint(U_1[i]).ToString() +
                                  ecc_group->GetAffinePoint(X_A).ToString(),
-                             ecc_group->GetCurveName()));
+                             ecc_group));
 
     MPInt y_tmp = y[i];
     MPInt x_mul_z_1 = sk_A->x.MulMod(z_1[i], ecc_group_order);
@@ -158,15 +155,10 @@ std::vector<Keys::KFrag> Keys::GenerateReKey(
     EcPoint X_A_clone = ecc_group->Mul(X_A, one_bn);
     EcPoint U_clone = ecc_group->Mul(U, one_bn);
 
-    Keys::KFrag kfrag = {id[i],
-                         rk[i],
-                         std::move(X_A_clone),
-                         std::move(U_clone),
-                         std::move(U_1[i]),
-                         z_1[i],
-                         z_2[i]};
+    Keys::KFrag kfrag = {id[i],  rk[i],  X_A_clone, U_clone,
+                         U_1[i], z_1[i], z_2[i]};
 
-    kfrags.push_back(std::move(kfrag));
+    kfrags.push_back(kfrag);
   }
 
   return kfrags;

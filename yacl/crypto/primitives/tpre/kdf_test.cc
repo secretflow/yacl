@@ -22,8 +22,6 @@
 
 namespace yacl::crypto::test {
 
-class KDFTest : public testing::Test {};
-
 TEST(KDFTest, Test1) {
   std::vector<uint8_t> key = KDF("key_str", 16);
   std::string key_str = absl::BytesToHexString(

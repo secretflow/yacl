@@ -22,45 +22,34 @@
 
 namespace yacl::crypto::test {
 
-class CapsuleTest : public testing::Test {};
-
 TEST(CapsuleTest, Test1) {
   std::unique_ptr<EcGroup> ecc_group = EcGroupFactory::Create("sm2");
   Keys keys;
 
   std::pair<Keys::PublicKey, Keys::PrivateKey> key_pair_alice =
-      keys.GenerateKeyPair(std::move(ecc_group));
+      keys.GenerateKeyPair(ecc_group);
+  std::unique_ptr<Keys::PublicKey> pk_A(
+      new Keys::PublicKey(key_pair_alice.first));
+  std::unique_ptr<Keys::PrivateKey> sk_A(
+      new Keys::PrivateKey(key_pair_alice.second));
 
-  ecc_group = EcGroupFactory::Create("sm2");
   std::pair<Keys::PublicKey, Keys::PrivateKey> key_pair_bob =
-      keys.GenerateKeyPair(std::move(ecc_group));
-
-  ecc_group = EcGroupFactory::Create("sm2");
-
-  std::unique_ptr<Keys::PublicKey> public_key_alice_0(
-      new Keys::PublicKey{key_pair_alice.first.g, key_pair_alice.first.y});
-
-  std::unique_ptr<Keys::PublicKey> public_key_alice_1(
-      new Keys::PublicKey{key_pair_alice.first.g, key_pair_alice.first.y});
-  std::unique_ptr<Keys::PrivateKey> private_key_alice_1(
-      new Keys::PrivateKey{key_pair_alice.second.x});
-
-  std::unique_ptr<Keys::PublicKey> public_key_bob_1(
-      new Keys::PublicKey{key_pair_bob.first.g, key_pair_bob.first.y});
+      keys.GenerateKeyPair(ecc_group);
+  std::unique_ptr<Keys::PublicKey> pk_B(
+      new Keys::PublicKey(key_pair_bob.first));
+  std::unique_ptr<Keys::PrivateKey> sk_B(
+      new Keys::PrivateKey(key_pair_bob.second));
 
   Capsule cs;
   std::pair<Capsule::CapsuleStruct, std::vector<uint8_t>> capsule_pair =
-      cs.EnCapsulate(std::move(ecc_group), std::move(public_key_alice_0));
+      cs.EnCapsulate(ecc_group, pk_A);
 
   std::string dek_str = absl::BytesToHexString(absl::string_view(
       (const char*)capsule_pair.second.data(), capsule_pair.second.size()));
 
-  ecc_group = EcGroupFactory::Create("sm2");
-  std::vector<Keys::KFrag> kfrags = keys.GenerateReKey(
-      std::move(ecc_group), std::move(private_key_alice_1),
-      std::move(public_key_alice_1), std::move(public_key_bob_1), 5, 4);
+  std::vector<Keys::KFrag> kfrags =
+      keys.GenerateReKey(ecc_group, sk_A, pk_A, pk_B, 5, 4);
 
-  ecc_group = EcGroupFactory::Create("sm2");
   std::vector<std::unique_ptr<Capsule::CFrag>> cfrags;
   auto capsule_pair_first = capsule_pair.first;
   for (int i = 0; i < 4; i++) {
@@ -75,27 +64,12 @@ TEST(CapsuleTest, Test1) {
     std::unique_ptr<Keys::KFrag> kfrag_up(kfrag_i);
 
     Capsule::CFrag cfrag_i =
-        cs.ReEncapsulate(std::move(ecc_group), std::move(kfrag_up),
-                         std::move(capsule_struct_i_up));
+        cs.ReEncapsulate(ecc_group, kfrag_up, capsule_struct_i_up);
     std::unique_ptr<Capsule::CFrag> cfrag_i_up(new Capsule::CFrag(cfrag_i));
     cfrags.push_back(std::move(cfrag_i_up));
-    ecc_group = EcGroupFactory::Create("sm2");
   }
 
-  ecc_group = EcGroupFactory::Create("sm2");
-
-  std::unique_ptr<Keys::PublicKey> public_key_alice_2(
-      new Keys::PublicKey{key_pair_alice.first.g, key_pair_alice.first.y});
-
-  std::unique_ptr<Keys::PublicKey> public_key_bob_0(
-      new Keys::PublicKey{key_pair_bob.first.g, key_pair_bob.first.y});
-  std::unique_ptr<Keys::PrivateKey> private_key_bob_0(
-      new Keys::PrivateKey{key_pair_bob.second.x});
-
-  auto dek =
-      cs.DeCapsulateFrags(std::move(ecc_group), std::move(private_key_bob_0),
-                          std::move(public_key_alice_2),
-                          std::move(public_key_bob_0), std::move(cfrags));
+  auto dek = cs.DeCapsulateFrags(ecc_group, sk_B, pk_A, pk_B, cfrags);
 
   std::string dek_str1 = absl::BytesToHexString(
       absl::string_view((const char*)dek.data(), dek.size()));

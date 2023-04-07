@@ -29,9 +29,7 @@ TEST(KeyTest, Test1) {
 
   Keys keys;
   std::pair<Keys::PublicKey, Keys::PrivateKey> key_pair_alice =
-      keys.GenerateKeyPair(std::move(ecc_group));
-
-  ecc_group = EcGroupFactory::Create("sm2");
+      keys.GenerateKeyPair(ecc_group);
 
   // According to the official SM2 document
   // The hexadecimal of generator is:
@@ -56,22 +54,18 @@ TEST(KeyTest, Test1) {
   EXPECT_EQ(ecc_group->GetAffinePoint(key_pair_alice.first.g).ToString(),
             generator_str);
 
-  ecc_group = EcGroupFactory::Create("sm2");
   std::pair<Keys::PublicKey, Keys::PrivateKey> key_pair_bob =
-      keys.GenerateKeyPair(std::move(ecc_group));
+      keys.GenerateKeyPair(ecc_group);
 
-  ecc_group = EcGroupFactory::Create("sm2");
-
-  std::unique_ptr<Keys::PublicKey> public_key_alice_up(
+  std::unique_ptr<Keys::PublicKey> pk_A(
       new Keys::PublicKey(key_pair_alice.first));
-  std::unique_ptr<Keys::PrivateKey> private_key_alice_up(
+  std::unique_ptr<Keys::PrivateKey> sk_A(
       new Keys::PrivateKey(key_pair_alice.second));
-  std::unique_ptr<Keys::PublicKey> public_key_bob_up(
+  std::unique_ptr<Keys::PublicKey> pk_B(
       new Keys::PublicKey(key_pair_bob.first));
 
-  std::vector<Keys::KFrag> kfrags = keys.GenerateReKey(
-      std::move(ecc_group), std::move(private_key_alice_up),
-      std::move(public_key_alice_up), std::move(public_key_bob_up), 5, 4);
+  std::vector<Keys::KFrag> kfrags =
+      keys.GenerateReKey(ecc_group, sk_A, pk_A, pk_B, 5, 4);
 
   for (int i = 0; i < 5; i++) {
     EXPECT_TRUE(kfrags[i].id > zero);

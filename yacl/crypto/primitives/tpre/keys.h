@@ -73,7 +73,7 @@ class Keys {
   /// @param ecc_group
   /// @return key pair, which includes public key and secret key
   std::pair<PublicKey, PrivateKey> GenerateKeyPair(
-      const std::unique_ptr<EcGroup> ecc_group) const;
+      const std::unique_ptr<EcGroup>& ecc_group) const;
 
   /// @brief Generates re-ecnryption key
   /// @param ecc_group
@@ -88,8 +88,6 @@ class Keys {
                                    const std::unique_ptr<PublicKey>& pk_A,
                                    const std::unique_ptr<PublicKey>& pk_B,
                                    int N, int t) const;
-
- private:
 };
 }  // namespace yacl::crypto
 

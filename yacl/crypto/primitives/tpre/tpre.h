@@ -73,8 +73,9 @@ class TPRE {
   /// @param plaintext
   /// @return capsule and encrypted data
   std::pair<Capsule::CapsuleStruct, std::vector<uint8_t>> Encrypt(
-      std::unique_ptr<EcGroup> ecc_group, std::unique_ptr<Keys::PublicKey> pk_A,
-      const std::string& iv, const std::string& plaintext);
+      const std::unique_ptr<EcGroup>& ecc_group,
+      const std::unique_ptr<Keys::PublicKey>& pk_A, const std::string& iv,
+      const std::string& plaintext);
 
   /// @brief TPRE's decryption algorithm
   /// @param ecc_group, Algebraic operations are on elliptic curves
@@ -97,9 +98,8 @@ class TPRE {
   std::pair<Capsule::CFrag, std::vector<uint8_t>> ReEncrypt(
       const std::unique_ptr<EcGroup>& ecc_group,
       const std::unique_ptr<Keys::KFrag>& kfrag,
-      std::pair<const std::unique_ptr<Capsule::CapsuleStruct>&,
-                const std::vector<uint8_t>&>
-          ciphertext) const;
+      const std::pair<std::unique_ptr<Capsule::CapsuleStruct>,
+                      std::vector<uint8_t>>& ciphertext) const;
 
   /// @brief TPRE's threshold decryption algorithm
   /// @param ecc_group, Algebraic operations are on elliptic curves
@@ -114,12 +114,8 @@ class TPRE {
       const std::unique_ptr<Keys::PrivateKey>& sk_B,
       const std::unique_ptr<Keys::PublicKey>& pk_A,
       const std::unique_ptr<Keys::PublicKey>& pk_B, const std::string& iv,
-      std::pair<const std::vector<std::unique_ptr<Capsule::CFrag>>&,
-                const std::vector<uint8_t>&>
-          C_prime_set) const;
-
- private:
-  //   int curve_id_;  // ID of elliptic curve type in openssl
+      const std::pair<std::vector<std::unique_ptr<Capsule::CFrag>>,
+                      std::vector<uint8_t>>& C_prime_set) const;
 };
 }  // namespace yacl::crypto
 

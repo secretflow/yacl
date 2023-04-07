@@ -39,9 +39,7 @@ std::pair<Capsule::CapsuleStruct, std::vector<uint8_t>> Capsule::EnCapsulate(
                                       ecc_group->GetAffinePoint(V).ToString();
 
   MPInt s = u.AddMod(
-      r.MulMod(CipherHash(E_string_join_V_sting, ecc_group->GetCurveName()),
-               order),
-      order);
+      r.MulMod(CipherHash(E_string_join_V_sting, ecc_group), order), order);
 
   EcPoint K_point =
       ecc_group->Mul(delegating_public_key->y, u.AddMod(r, order));
@@ -51,7 +49,6 @@ std::pair<Capsule::CapsuleStruct, std::vector<uint8_t>> Capsule::EnCapsulate(
   Capsule::CapsuleStruct capsule_struct = {E, V, s};
   std::vector<uint8_t> K = KDF(K_string, 16);
 
-  // auto res = make_pair(std::move(capsule_struct), K);
   std::pair<Capsule::CapsuleStruct, std::vector<uint8_t>> capsule_pair;
   capsule_pair.first = capsule_struct;
   capsule_pair.second = K;
@@ -82,7 +79,7 @@ std::pair<Capsule::CapsuleStruct, int> Capsule::CheckCapsule(
   std::string E_string_join_V_sting =
       ecc_group->GetAffinePoint(capsule_struct->E).ToString() +
       ecc_group->GetAffinePoint(capsule_struct->V).ToString();
-  MPInt hev = CipherHash(E_string_join_V_sting, ecc_group->GetCurveName());
+  MPInt hev = CipherHash(E_string_join_V_sting, ecc_group);
 
   EcPoint e_exp_hev = ecc_group->Mul(capsule_struct->E, hev);
   EcPoint tmp1 = ecc_group->Add(capsule_struct->V, e_exp_hev);
@@ -112,15 +109,11 @@ std::pair<Capsule::CapsuleStruct, int> Capsule::CheckCapsule(
 Capsule::CFrag Capsule::ReEncapsulate(
     const std::unique_ptr<EcGroup>& ecc_group,
     const std::unique_ptr<Keys::KFrag>& kfrag,
-    std::unique_ptr<CapsuleStruct> capsule) const {
+    const std::unique_ptr<CapsuleStruct>& capsule) const {
   //  First checks the validity of the capsule with CheckCapsule and outputs ⊥
   //  if the check fails.
 
-  std::unique_ptr<EcGroup> dup_ecc_group =
-      EcGroupFactory::Create(ecc_group->GetCurveName());
-
-  auto capsule_check_result =
-      CheckCapsule(std::move(dup_ecc_group), std::move(capsule));
+  auto capsule_check_result = CheckCapsule(ecc_group, capsule);
 
   YACL_ENFORCE(capsule_check_result.second == 1,
                "check_result: The capsule is damaged or has problems ");
@@ -156,8 +149,7 @@ std::vector<uint8_t> Capsule::DeCapsulateFrags(
 
   // 1. Compute D = H_6(pk_A, pk_B, (pk_A)^b)
 
-  MPInt D = CipherHash(pk_A_str + pk_B_str + pk_A_mul_b_str,
-                       ecc_group->GetCurveName());
+  MPInt D = CipherHash(pk_A_str + pk_B_str + pk_A_mul_b_str, ecc_group);
 
   // 2. Compute s_{x,i} and lambda_{i,S}
   // 2.1 Compute s_{x,i} = H_5(id_i, D)
@@ -165,7 +157,7 @@ std::vector<uint8_t> Capsule::DeCapsulateFrags(
   std::string D_str = D.ToString();
   for (size_t i = 0; i < cfrags.size(); i++) {
     std::string id_i_str = (cfrags)[i]->id.ToString();
-    MPInt s_x_i = CipherHash(id_i_str + D_str, ecc_group->GetCurveName());
+    MPInt s_x_i = CipherHash(id_i_str + D_str, ecc_group);
     S.push_back(s_x_i);
   }
 
@@ -209,8 +201,7 @@ std::vector<uint8_t> Capsule::DeCapsulateFrags(
   EcPoint X_A_mul_b = ecc_group->Mul(cfrags[0]->X_A, sk_B->x);
   std::string X_A_mul_b_str = ecc_group->GetAffinePoint(X_A_mul_b).ToString();
 
-  MPInt d =
-      CipherHash(X_A_str + pk_B_str + X_A_mul_b_str, ecc_group->GetCurveName());
+  MPInt d = CipherHash(X_A_str + pk_B_str + X_A_mul_b_str, ecc_group);
 
   // 5. Compute DEK, i.e., K=KDF((E'· V')^d)
 

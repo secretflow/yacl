@@ -89,7 +89,7 @@ class Capsule {
   /// @return Re-encapsulated capsule
   CFrag ReEncapsulate(const std::unique_ptr<EcGroup>& ecc_group,
                       const std::unique_ptr<Keys::KFrag>& kfrag,
-                      const std::unique_ptr<CapsuleStruct> capsule) const;
+                      const std::unique_ptr<CapsuleStruct>& capsule) const;
 
   /// @brief Restore the re-encapsulated capsule set to data encryption key
   /// @param ecc_group
@@ -104,9 +104,6 @@ class Capsule {
       const std::unique_ptr<Keys::PublicKey>& pk_A,
       const std::unique_ptr<Keys::PublicKey>& pk_B,
       const std::vector<std::unique_ptr<CFrag>>& cfrags) const;
-
- private:
-  std::unique_ptr<CapsuleStruct> capsule_struct_;  // capsule struct
 };
 }  // namespace yacl::crypto
 #endif  // YACL_CRYPTO_PRIMITIVES_TPRE_CAPSULE_H_
