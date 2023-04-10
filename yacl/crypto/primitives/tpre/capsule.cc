@@ -120,11 +120,8 @@ Capsule::CFrag Capsule::ReEncapsulate(const std::unique_ptr<EcGroup>& ecc_group,
   // Compute V_1 = V^rk
   EcPoint V_1 = ecc_group->Mul(capsule_check_result.first.V, kfrag.rk);
 
-  // Clone X_A
-  EcPoint X_A_clone = ecc_group->Mul(kfrag.X_A, MPInt(1));
-
   // Construct the re-encryption ciphertext fragment, i.e., cfrag
-  CFrag cfrag = {E_1, V_1, kfrag.id, X_A_clone};
+  CFrag cfrag = {E_1, V_1, kfrag.id, kfrag.X_A};
 
   return cfrag;
 }

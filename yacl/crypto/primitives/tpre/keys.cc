@@ -149,12 +149,7 @@ std::vector<Keys::KFrag> Keys::GenerateReKey(
     MPInt x_mul_z_1 = sk_A.x.MulMod(z_1[i], ecc_group_order);
     z_2.push_back(y_tmp.SubMod(x_mul_z_1, ecc_group_order));
 
-    // ECPoint is shallow copyable. Use Clone to copy, instead.
-    EcPoint X_A_clone = ecc_group->Mul(X_A, one_bn);
-    EcPoint U_clone = ecc_group->Mul(U, one_bn);
-
-    Keys::KFrag kfrag = {id[i],  rk[i],  X_A_clone, U_clone,
-                         U_1[i], z_1[i], z_2[i]};
+    Keys::KFrag kfrag = {id[i], rk[i], X_A, U, U_1[i], z_1[i], z_2[i]};
 
     kfrags.push_back(kfrag);
   }
