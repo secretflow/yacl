@@ -22,9 +22,8 @@
 namespace yacl::crypto {
 
 std::pair<Capsule::CapsuleStruct, std::vector<uint8_t>> TPRE::Encrypt(
-    const std::unique_ptr<EcGroup>& ecc_group,
-    const std::unique_ptr<Keys::PublicKey>& pk_A, const std::string& iv,
-    const std::string& plaintext) {
+    const std::unique_ptr<EcGroup>& ecc_group, const Keys::PublicKey& pk_A,
+    const std::string& iv, const std::string& plaintext) const {
   Capsule capsule;
 
   std::pair<Capsule::CapsuleStruct, std::vector<uint8_t>> capsule_pair =
@@ -36,11 +35,11 @@ std::pair<Capsule::CapsuleStruct, std::vector<uint8_t>> TPRE::Encrypt(
   return {capsule_pair.first, ciphertext};
 }
 
-std::string TPRE::Decrypt(
-    const std::unique_ptr<EcGroup>& ecc_group,
-    const std::unique_ptr<Capsule::CapsuleStruct>& capsule_struct,
-    const std::string& iv, const std::vector<uint8_t>& enc_data,
-    const std::unique_ptr<Keys::PrivateKey>& sk_A) const {
+std::string TPRE::Decrypt(const std::unique_ptr<EcGroup>& ecc_group,
+                          const Capsule::CapsuleStruct& capsule_struct,
+                          const std::string& iv,
+                          const std::vector<uint8_t>& enc_data,
+                          const Keys::PrivateKey& sk_A) const {
   Capsule capsule;
   std::vector<uint8_t> dek =
       capsule.DeCapsulate(ecc_group, sk_A, capsule_struct);
@@ -54,10 +53,9 @@ std::string TPRE::Decrypt(
 }
 
 std::pair<Capsule::CFrag, std::vector<uint8_t>> TPRE::ReEncrypt(
-    const std::unique_ptr<EcGroup>& ecc_group,
-    const std::unique_ptr<Keys::KFrag>& kfrag,
-    const std::pair<std::unique_ptr<Capsule::CapsuleStruct>,
-                    std::vector<uint8_t>>& ciphertext) const {
+    const std::unique_ptr<EcGroup>& ecc_group, const Keys::KFrag& kfrag,
+    const std::pair<Capsule::CapsuleStruct, std::vector<uint8_t>>& ciphertext)
+    const {
   // New a capsule
   Capsule capsule;
 
@@ -73,12 +71,11 @@ std::pair<Capsule::CFrag, std::vector<uint8_t>> TPRE::ReEncrypt(
 }
 
 std::string TPRE::DecryptFrags(
-    const std::unique_ptr<EcGroup>& ecc_group,
-    const std::unique_ptr<Keys::PrivateKey>& sk_B,
-    const std::unique_ptr<Keys::PublicKey>& pk_A,
-    const std::unique_ptr<Keys::PublicKey>& pk_B, const std::string& iv,
-    const std::pair<std::vector<std::unique_ptr<Capsule::CFrag>>,
-                    std::vector<uint8_t>>& C_prime_set) const {
+    const std::unique_ptr<EcGroup>& ecc_group, const Keys::PrivateKey& sk_B,
+    const Keys::PublicKey& pk_A, const Keys::PublicKey& pk_B,
+    const std::string& iv,
+    const std::pair<std::vector<Capsule::CFrag>, std::vector<uint8_t>>&
+        C_prime_set) const {
   // New a capsule
   Capsule capsule;
 

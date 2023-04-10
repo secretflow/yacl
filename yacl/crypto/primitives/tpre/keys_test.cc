@@ -57,15 +57,9 @@ TEST(KeyTest, Test1) {
   std::pair<Keys::PublicKey, Keys::PrivateKey> key_pair_bob =
       keys.GenerateKeyPair(ecc_group);
 
-  std::unique_ptr<Keys::PublicKey> pk_A(
-      new Keys::PublicKey(key_pair_alice.first));
-  std::unique_ptr<Keys::PrivateKey> sk_A(
-      new Keys::PrivateKey(key_pair_alice.second));
-  std::unique_ptr<Keys::PublicKey> pk_B(
-      new Keys::PublicKey(key_pair_bob.first));
-
   std::vector<Keys::KFrag> kfrags =
-      keys.GenerateReKey(ecc_group, sk_A, pk_A, pk_B, 5, 4);
+      keys.GenerateReKey(ecc_group, key_pair_alice.second, key_pair_alice.first,
+                         key_pair_bob.first, 5, 4);
 
   for (int i = 0; i < 5; i++) {
     EXPECT_TRUE(kfrags[i].id > zero);

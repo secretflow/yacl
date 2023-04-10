@@ -63,16 +63,15 @@ class Capsule {
 
   std::pair<CapsuleStruct, std::vector<uint8_t>> EnCapsulate(
       const std::unique_ptr<EcGroup>& ecc_group,
-      const std::unique_ptr<Keys::PublicKey>& delegating_public_key) const;
+      const Keys::PublicKey& delegating_public_key) const;
 
   /// @brief DeCapsulate algorithm, to obtain the data encryption key
   /// @param private_key
   /// @param capsule_struct
   /// @return data encryption key
-  std::vector<uint8_t> DeCapsulate(
-      const std::unique_ptr<EcGroup>& ecc_group,
-      const std::unique_ptr<Keys::PrivateKey>& private_key,
-      const std::unique_ptr<CapsuleStruct>& capsule_struct) const;
+  std::vector<uint8_t> DeCapsulate(const std::unique_ptr<EcGroup>& ecc_group,
+                                   const Keys::PrivateKey& private_key,
+                                   const CapsuleStruct& capsule_struct) const;
 
   /// @brief Capsule check algorithm
   /// @param ecc_group
@@ -80,7 +79,7 @@ class Capsule {
   /// @return 0 (check fail) or 1 (check success)
   std::pair<CapsuleStruct, int> CheckCapsule(
       const std::unique_ptr<EcGroup>& ecc_group,
-      const std::unique_ptr<CapsuleStruct>& capsule_struct) const;
+      const CapsuleStruct& capsule_struct) const;
 
   /// @brief Re-encapsulate capsule
   /// @param ecc_group
@@ -88,8 +87,8 @@ class Capsule {
   /// @param capsule
   /// @return Re-encapsulated capsule
   CFrag ReEncapsulate(const std::unique_ptr<EcGroup>& ecc_group,
-                      const std::unique_ptr<Keys::KFrag>& kfrag,
-                      const std::unique_ptr<CapsuleStruct>& capsule) const;
+                      const Keys::KFrag& kfrag,
+                      const CapsuleStruct& capsule) const;
 
   /// @brief Restore the re-encapsulated capsule set to data encryption key
   /// @param ecc_group
@@ -99,11 +98,9 @@ class Capsule {
   /// @param cfrags, re-encapsulated capsule set
   /// @return Data encryption key
   std::vector<uint8_t> DeCapsulateFrags(
-      const std::unique_ptr<EcGroup>& ecc_group,
-      const std::unique_ptr<Keys::PrivateKey>& sk_B,
-      const std::unique_ptr<Keys::PublicKey>& pk_A,
-      const std::unique_ptr<Keys::PublicKey>& pk_B,
-      const std::vector<std::unique_ptr<CFrag>>& cfrags) const;
+      const std::unique_ptr<EcGroup>& ecc_group, const Keys::PrivateKey& sk_B,
+      const Keys::PublicKey& pk_A, const Keys::PublicKey& pk_B,
+      const std::vector<CFrag>& cfrags) const;
 };
 }  // namespace yacl::crypto
 #endif  // YACL_CRYPTO_PRIMITIVES_TPRE_CAPSULE_H_

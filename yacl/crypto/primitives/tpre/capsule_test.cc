@@ -28,48 +28,51 @@ TEST(CapsuleTest, Test1) {
 
   std::pair<Keys::PublicKey, Keys::PrivateKey> key_pair_alice =
       keys.GenerateKeyPair(ecc_group);
-  std::unique_ptr<Keys::PublicKey> pk_A(
-      new Keys::PublicKey(key_pair_alice.first));
-  std::unique_ptr<Keys::PrivateKey> sk_A(
-      new Keys::PrivateKey(key_pair_alice.second));
+  //   std::unique_ptr<Keys::PublicKey> key_pair_alice.first(
+  //       new Keys::PublicKey(key_pair_alice.first));
+  //   std::unique_ptr<Keys::PrivateKey> key_pair_alice.second(
+  //       new Keys::PrivateKey(key_pair_alice.second));
 
   std::pair<Keys::PublicKey, Keys::PrivateKey> key_pair_bob =
       keys.GenerateKeyPair(ecc_group);
-  std::unique_ptr<Keys::PublicKey> pk_B(
-      new Keys::PublicKey(key_pair_bob.first));
-  std::unique_ptr<Keys::PrivateKey> sk_B(
-      new Keys::PrivateKey(key_pair_bob.second));
+  //   std::unique_ptr<Keys::PublicKey> key_pair_bob.first(
+  //       new Keys::PublicKey(key_pair_bob.first));
+  //   std::unique_ptr<Keys::PrivateKey> key_pair_bob.second(
+  //       new Keys::PrivateKey(key_pair_bob.second));
 
   Capsule cs;
   std::pair<Capsule::CapsuleStruct, std::vector<uint8_t>> capsule_pair =
-      cs.EnCapsulate(ecc_group, pk_A);
+      cs.EnCapsulate(ecc_group, key_pair_alice.first);
 
   std::string dek_str = absl::BytesToHexString(absl::string_view(
       (const char*)capsule_pair.second.data(), capsule_pair.second.size()));
 
   std::vector<Keys::KFrag> kfrags =
-      keys.GenerateReKey(ecc_group, sk_A, pk_A, pk_B, 5, 4);
+      keys.GenerateReKey(ecc_group, key_pair_alice.second, key_pair_alice.first,
+                         key_pair_bob.first, 5, 4);
 
-  std::vector<std::unique_ptr<Capsule::CFrag>> cfrags;
-  auto capsule_pair_first = capsule_pair.first;
+  std::vector<Capsule::CFrag> cfrags;
+  //   auto capsule_pair_first = capsule_pair.first;
   for (int i = 0; i < 4; i++) {
-    Capsule::CapsuleStruct* capsule_struct_i = new Capsule::CapsuleStruct{
-        capsule_pair_first.E, capsule_pair_first.V, capsule_pair_first.s};
-    std::unique_ptr<Capsule::CapsuleStruct> capsule_struct_i_up(
-        capsule_struct_i);
-    Keys::KFrag* kfrag_i = new Keys::KFrag{
-        kfrags[i].id,  kfrags[i].rk,  kfrags[i].X_A, kfrags[i].U,
-        kfrags[i].U_1, kfrags[i].z_1, kfrags[i].z_2};
+    // Capsule::CapsuleStruct* capsule_struct_i = new Capsule::CapsuleStruct{
+    //     capsule_pair_first.E, capsule_pair_first.V, capsule_pair_first.s};
+    // std::unique_ptr<Capsule::CapsuleStruct> capsule_struct_i_up(
+    //     capsule_struct_i);
+    // Keys::KFrag* kfrag_i = new Keys::KFrag{
+    //     kfrags[i].id,  kfrags[i].rk,  kfrags[i].X_A, kfrags[i].U,
+    //     kfrags[i].U_1, kfrags[i].z_1, kfrags[i].z_2};
 
-    std::unique_ptr<Keys::KFrag> kfrag_up(kfrag_i);
+    // std::unique_ptr<Keys::KFrag> kfrag_up(kfrag_i);
 
     Capsule::CFrag cfrag_i =
-        cs.ReEncapsulate(ecc_group, kfrag_up, capsule_struct_i_up);
-    std::unique_ptr<Capsule::CFrag> cfrag_i_up(new Capsule::CFrag(cfrag_i));
-    cfrags.push_back(std::move(cfrag_i_up));
+        cs.ReEncapsulate(ecc_group, kfrags[i], capsule_pair.first);
+    // std::unique_ptr<Capsule::CFrag> cfrag_i_up(new Capsule::CFrag(cfrag_i));
+    cfrags.push_back(cfrag_i);
   }
 
-  auto dek = cs.DeCapsulateFrags(ecc_group, sk_B, pk_A, pk_B, cfrags);
+  auto dek =
+      cs.DeCapsulateFrags(ecc_group, key_pair_bob.second, key_pair_alice.first,
+                          key_pair_bob.first, cfrags);
 
   std::string dek_str1 = absl::BytesToHexString(
       absl::string_view((const char*)dek.data(), dek.size()));

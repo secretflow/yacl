@@ -73,9 +73,8 @@ class TPRE {
   /// @param plaintext
   /// @return capsule and encrypted data
   std::pair<Capsule::CapsuleStruct, std::vector<uint8_t>> Encrypt(
-      const std::unique_ptr<EcGroup>& ecc_group,
-      const std::unique_ptr<Keys::PublicKey>& pk_A, const std::string& iv,
-      const std::string& plaintext);
+      const std::unique_ptr<EcGroup>& ecc_group, const Keys::PublicKey& pk_A,
+      const std::string& iv, const std::string& plaintext) const;
 
   /// @brief TPRE's decryption algorithm
   /// @param ecc_group, Algebraic operations are on elliptic curves
@@ -84,11 +83,11 @@ class TPRE {
   /// @param enc_data, decrypted data
   /// @param sk_A, the secret key of Alice, Alice refers to the authorizer
   /// @return plaintext
-  std::string Decrypt(
-      const std::unique_ptr<EcGroup>& ecc_group,
-      const std::unique_ptr<Capsule::CapsuleStruct>& capsule_struct,
-      const std::string& iv, const std::vector<uint8_t>& enc_data,
-      const std::unique_ptr<Keys::PrivateKey>& sk_A) const;
+  std::string Decrypt(const std::unique_ptr<EcGroup>& ecc_group,
+                      const Capsule::CapsuleStruct& capsule_struct,
+                      const std::string& iv,
+                      const std::vector<uint8_t>& enc_data,
+                      const Keys::PrivateKey& sk_A) const;
 
   /// @brief TPRE's threshold proxy re-encryption algorithm
   /// @param ecc_group, Algebraic operations are on elliptic curves
@@ -96,10 +95,9 @@ class TPRE {
   /// @param ciphertext, capsule and encrypted data
   /// @return ciphertext fragments
   std::pair<Capsule::CFrag, std::vector<uint8_t>> ReEncrypt(
-      const std::unique_ptr<EcGroup>& ecc_group,
-      const std::unique_ptr<Keys::KFrag>& kfrag,
-      const std::pair<std::unique_ptr<Capsule::CapsuleStruct>,
-                      std::vector<uint8_t>>& ciphertext) const;
+      const std::unique_ptr<EcGroup>& ecc_group, const Keys::KFrag& kfrag,
+      const std::pair<Capsule::CapsuleStruct, std::vector<uint8_t>>& ciphertext)
+      const;
 
   /// @brief TPRE's threshold decryption algorithm
   /// @param ecc_group, Algebraic operations are on elliptic curves
@@ -110,12 +108,11 @@ class TPRE {
   /// @param C_prime_set, ciphertext fragments set
   /// @return plaintext
   std::string DecryptFrags(
-      const std::unique_ptr<EcGroup>& ecc_group,
-      const std::unique_ptr<Keys::PrivateKey>& sk_B,
-      const std::unique_ptr<Keys::PublicKey>& pk_A,
-      const std::unique_ptr<Keys::PublicKey>& pk_B, const std::string& iv,
-      const std::pair<std::vector<std::unique_ptr<Capsule::CFrag>>,
-                      std::vector<uint8_t>>& C_prime_set) const;
+      const std::unique_ptr<EcGroup>& ecc_group, const Keys::PrivateKey& sk_B,
+      const Keys::PublicKey& pk_A, const Keys::PublicKey& pk_B,
+      const std::string& iv,
+      const std::pair<std::vector<Capsule::CFrag>, std::vector<uint8_t>>&
+          C_prime_set) const;
 };
 }  // namespace yacl::crypto
 

@@ -84,9 +84,8 @@ class Keys {
   /// @param t, Capsule fragment threshold required for decryption
   /// @return re-encryption key fragment
   std::vector<KFrag> GenerateReKey(const std::unique_ptr<EcGroup>& ecc_group,
-                                   const std::unique_ptr<PrivateKey>& sk_A,
-                                   const std::unique_ptr<PublicKey>& pk_A,
-                                   const std::unique_ptr<PublicKey>& pk_B,
+                                   const PrivateKey& sk_A,
+                                   const PublicKey& pk_A, const PublicKey& pk_B,
                                    int N, int t) const;
 };
 }  // namespace yacl::crypto

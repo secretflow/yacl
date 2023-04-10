@@ -42,10 +42,8 @@ std::pair<Keys::PublicKey, Keys::PrivateKey> Keys::GenerateKeyPair(
 
 // // Generates re-ecnryption key
 std::vector<Keys::KFrag> Keys::GenerateReKey(
-    const std::unique_ptr<EcGroup>& ecc_group,
-    const std::unique_ptr<PrivateKey>& sk_A,
-    const std::unique_ptr<PublicKey>& pk_A,
-    const std::unique_ptr<PublicKey>& pk_B, int N, int t) const {
+    const std::unique_ptr<EcGroup>& ecc_group, const PrivateKey& sk_A,
+    const PublicKey& pk_A, const PublicKey& pk_B, int N, int t) const {
   MPInt zero_bn(0);
   MPInt one_bn(1);
   MPInt ecc_group_order = ecc_group->GetOrder();
@@ -61,9 +59,9 @@ std::vector<Keys::KFrag> Keys::GenerateReKey(
   // non-interactive Diffie-Hellman key exchange between B's keypair and the
   // ephemeral key pair (x_A, X_A).
 
-  std::string pk_B_str = ecc_group->GetAffinePoint(pk_B->y).ToString();
+  std::string pk_B_str = ecc_group->GetAffinePoint(pk_B.y).ToString();
   std::string pk_B_mul_x_A_str =
-      ecc_group->GetAffinePoint(ecc_group->Mul(pk_B->y, x_A)).ToString();
+      ecc_group->GetAffinePoint(ecc_group->Mul(pk_B.y, x_A)).ToString();
   std::string X_A_str = ecc_group->GetAffinePoint(X_A).ToString();
 
   MPInt d = CipherHash(X_A_str + pk_B_str + pk_B_mul_x_A_str, ecc_group);
@@ -75,7 +73,7 @@ std::vector<Keys::KFrag> Keys::GenerateReKey(
   std::vector<MPInt> coefficients;  // coefficients include {f_0,...,f_{t-1}}
 
   MPInt coefficient_0 =
-      sk_A->x.MulMod(d_inv, ecc_group_order);  // f_0 = a * d^{-1} mod q
+      sk_A.x.MulMod(d_inv, ecc_group_order);  // f_0 = a * d^{-1} mod q
   coefficients.push_back(coefficient_0);
   for (int i = 1; i <= t - 1; i++) {
     // Here, t-1 coefficients f_1,...,f_{t-1} are randomly generated.
@@ -87,9 +85,9 @@ std::vector<Keys::KFrag> Keys::GenerateReKey(
   // 4. Generate a polynomial via coefficient
 
   // 5. Compute D=H_6(pk_A, pk_B, pk^{a}_{B}), where a is the secret key of A
-  std::string pk_A_str = ecc_group->GetAffinePoint(pk_A->y).ToString();
+  std::string pk_A_str = ecc_group->GetAffinePoint(pk_A.y).ToString();
   std::string pk_B_mul_a_str =
-      ecc_group->GetAffinePoint(ecc_group->Mul(pk_B->y, sk_A->x)).ToString();
+      ecc_group->GetAffinePoint(ecc_group->Mul(pk_B.y, sk_A.x)).ToString();
 
   MPInt D = CipherHash(pk_A_str + pk_B_str + pk_B_mul_a_str, ecc_group);
 
@@ -141,14 +139,14 @@ std::vector<Keys::KFrag> Keys::GenerateReKey(
 
     z_1.push_back(CipherHash(ecc_group->GetAffinePoint(Y[i]).ToString() +
                                  id[i].ToString() +
-                                 ecc_group->GetAffinePoint(pk_A->y).ToString() +
-                                 ecc_group->GetAffinePoint(pk_B->y).ToString() +
+                                 ecc_group->GetAffinePoint(pk_A.y).ToString() +
+                                 ecc_group->GetAffinePoint(pk_B.y).ToString() +
                                  ecc_group->GetAffinePoint(U_1[i]).ToString() +
                                  ecc_group->GetAffinePoint(X_A).ToString(),
                              ecc_group));
 
     MPInt y_tmp = y[i];
-    MPInt x_mul_z_1 = sk_A->x.MulMod(z_1[i], ecc_group_order);
+    MPInt x_mul_z_1 = sk_A.x.MulMod(z_1[i], ecc_group_order);
     z_2.push_back(y_tmp.SubMod(x_mul_z_1, ecc_group_order));
 
     // ECPoint is not copyable. Use Clone to copy, instead.
