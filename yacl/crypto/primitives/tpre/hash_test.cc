@@ -20,7 +20,6 @@
 #include "yacl/crypto/base/mpint/mp_int.h"
 
 namespace yacl::crypto::test {
-class HashTest : public testing::Test {};
 
 TEST(HashTest, Test1) {
   MPInt zero(0);
@@ -31,7 +30,7 @@ TEST(HashTest, Test1) {
   std::cout << "hash_value = " << hash_value.ToHexString() << std::endl;
   EXPECT_TRUE(hash_value > zero);
   EXPECT_EQ(hash_value.ToHexString(),
-            "B465B279C1693E0C34810B93F8A5095B93F912E3B4DD13265E5157F5B2A25895");
+            "3532674C20DA7E34FE48093538D7E4167E3C39472B19EBACE593579EA6073329");
 }
 
 }  // namespace yacl::crypto::test

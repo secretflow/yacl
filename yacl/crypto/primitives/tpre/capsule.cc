@@ -35,15 +35,16 @@ std::pair<Capsule::CapsuleStruct, std::vector<uint8_t>> Capsule::EnCapsulate(
 
   EcPoint E = ecc_group->MulBase(r);
   EcPoint V = ecc_group->MulBase(u);
-  std::string E_string_join_V_sting = ecc_group->GetAffinePoint(E).ToString() +
-                                      ecc_group->GetAffinePoint(V).ToString();
+  std::string E_string_join_V_sting =
+      std::string(ecc_group->SerializePoint(E)) +
+      std::string(ecc_group->SerializePoint(V));
 
   MPInt s = u.AddMod(
       r.MulMod(CipherHash(E_string_join_V_sting, ecc_group), order), order);
 
   EcPoint K_point = ecc_group->Mul(delegating_public_key.y, u.AddMod(r, order));
 
-  std::string K_string = ecc_group->GetAffinePoint(K_point).ToString();
+  std::string K_string = std::string(ecc_group->SerializePoint(K_point));
 
   Capsule::CapsuleStruct capsule_struct = {E, V, s};
   std::vector<uint8_t> K = KDF(K_string, 16);
@@ -62,7 +63,7 @@ std::vector<uint8_t> Capsule::DeCapsulate(
     const CapsuleStruct& capsule_struct) const {
   EcPoint K_point = ecc_group->Mul(
       ecc_group->Add(capsule_struct.E, capsule_struct.V), private_key.x);
-  std::string K_string = ecc_group->GetAffinePoint(K_point).ToString();
+  std::string K_string = std::string(ecc_group->SerializePoint(K_point));
 
   std::vector<uint8_t> K = KDF(K_string, 16);
 
@@ -76,15 +77,15 @@ std::pair<Capsule::CapsuleStruct, int> Capsule::CheckCapsule(
 
   // compute H_2(E,V)
   std::string E_string_join_V_sting =
-      ecc_group->GetAffinePoint(capsule_struct.E).ToString() +
-      ecc_group->GetAffinePoint(capsule_struct.V).ToString();
+      std::string(ecc_group->SerializePoint(capsule_struct.E)) +
+      std::string(ecc_group->SerializePoint(capsule_struct.V));
   MPInt hev = CipherHash(E_string_join_V_sting, ecc_group);
 
   EcPoint e_exp_hev = ecc_group->Mul(capsule_struct.E, hev);
   EcPoint tmp1 = ecc_group->Add(capsule_struct.V, e_exp_hev);
 
-  std::string tmp0_string = ecc_group->GetAffinePoint(tmp0).ToString();
-  std::string tmp1_string = ecc_group->GetAffinePoint(tmp1).ToString();
+  std::string tmp0_string = std::string(ecc_group->SerializePoint(tmp0));
+  std::string tmp1_string = std::string(ecc_group->SerializePoint(tmp1));
 
   int signal;
   if (tmp0_string == tmp1_string) {
@@ -136,9 +137,10 @@ std::vector<uint8_t> Capsule::DeCapsulateFrags(
 
   // Compute (pk_B)^a
   EcPoint pk_A_mul_b = ecc_group->Mul(pk_A.y, sk_B.x);
-  std::string pk_A_mul_b_str = ecc_group->GetAffinePoint(pk_A_mul_b).ToString();
-  std::string pk_A_str = ecc_group->GetAffinePoint(pk_A.y).ToString();
-  std::string pk_B_str = ecc_group->GetAffinePoint(pk_B.y).ToString();
+  std::string pk_A_mul_b_str =
+      std::string(ecc_group->SerializePoint(pk_A_mul_b));
+  std::string pk_A_str = std::string(ecc_group->SerializePoint(pk_A.y));
+  std::string pk_B_str = std::string(ecc_group->SerializePoint(pk_B.y));
 
   // 1. Compute D = H_6(pk_A, pk_B, (pk_A)^b)
 
@@ -190,9 +192,9 @@ std::vector<uint8_t> Capsule::DeCapsulateFrags(
   }
 
   // 4. Compute d = H_3(X_A,pk_B,(X_A)^b)
-  std::string X_A_str = ecc_group->GetAffinePoint(cfrags[0].X_A).ToString();
+  std::string X_A_str = std::string(ecc_group->SerializePoint(cfrags[0].X_A));
   EcPoint X_A_mul_b = ecc_group->Mul(cfrags[0].X_A, sk_B.x);
-  std::string X_A_mul_b_str = ecc_group->GetAffinePoint(X_A_mul_b).ToString();
+  std::string X_A_mul_b_str = std::string(ecc_group->SerializePoint(X_A_mul_b));
 
   MPInt d = CipherHash(X_A_str + pk_B_str + X_A_mul_b_str, ecc_group);
 
@@ -202,7 +204,7 @@ std::vector<uint8_t> Capsule::DeCapsulateFrags(
   EcPoint E_prime_add_V_prime_mul_d = ecc_group->Mul(E_prime_add_V_prime, d);
 
   std::string K_string =
-      ecc_group->GetAffinePoint(E_prime_add_V_prime_mul_d).ToString();
+      std::string(ecc_group->SerializePoint(E_prime_add_V_prime_mul_d));
 
   std::vector<uint8_t> K = KDF(K_string, 16);
 

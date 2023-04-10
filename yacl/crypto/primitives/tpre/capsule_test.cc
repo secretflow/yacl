@@ -44,11 +44,9 @@ TEST(CapsuleTest, Test1) {
                          key_pair_bob.first, 5, 4);
 
   std::vector<Capsule::CFrag> cfrags;
-  //   auto capsule_pair_first = capsule_pair.first;
   for (int i = 0; i < 4; i++) {
     Capsule::CFrag cfrag_i =
         cs.ReEncapsulate(ecc_group, kfrags[i], capsule_pair.first);
-    // std::unique_ptr<Capsule::CFrag> cfrag_i_up(new Capsule::CFrag(cfrag_i));
     cfrags.push_back(cfrag_i);
   }
 

@@ -59,10 +59,10 @@ std::vector<Keys::KFrag> Keys::GenerateReKey(
   // non-interactive Diffie-Hellman key exchange between B's keypair and the
   // ephemeral key pair (x_A, X_A).
 
-  std::string pk_B_str = ecc_group->GetAffinePoint(pk_B.y).ToString();
+  std::string pk_B_str = std::string(ecc_group->SerializePoint(pk_B.y));
   std::string pk_B_mul_x_A_str =
-      ecc_group->GetAffinePoint(ecc_group->Mul(pk_B.y, x_A)).ToString();
-  std::string X_A_str = ecc_group->GetAffinePoint(X_A).ToString();
+      std::string(ecc_group->SerializePoint(ecc_group->Mul(pk_B.y, x_A)));
+  std::string X_A_str = std::string(ecc_group->SerializePoint(X_A));
 
   MPInt d = CipherHash(X_A_str + pk_B_str + pk_B_mul_x_A_str, ecc_group);
 
@@ -85,9 +85,9 @@ std::vector<Keys::KFrag> Keys::GenerateReKey(
   // 4. Generate a polynomial via coefficient
 
   // 5. Compute D=H_6(pk_A, pk_B, pk^{a}_{B}), where a is the secret key of A
-  std::string pk_A_str = ecc_group->GetAffinePoint(pk_A.y).ToString();
+  std::string pk_A_str = std::string(ecc_group->SerializePoint(pk_A.y));
   std::string pk_B_mul_a_str =
-      ecc_group->GetAffinePoint(ecc_group->Mul(pk_B.y, sk_A.x)).ToString();
+      std::string(ecc_group->SerializePoint(ecc_group->Mul(pk_B.y, sk_A.x)));
 
   MPInt D = CipherHash(pk_A_str + pk_B_str + pk_B_mul_a_str, ecc_group);
 
@@ -137,19 +137,19 @@ std::vector<Keys::KFrag> Keys::GenerateReKey(
     EcPoint U_mul_rk = ecc_group->Mul(U, rk_tmp);
     U_1.push_back(U_mul_rk);
 
-    z_1.push_back(CipherHash(ecc_group->GetAffinePoint(Y[i]).ToString() +
-                                 id[i].ToString() +
-                                 ecc_group->GetAffinePoint(pk_A.y).ToString() +
-                                 ecc_group->GetAffinePoint(pk_B.y).ToString() +
-                                 ecc_group->GetAffinePoint(U_1[i]).ToString() +
-                                 ecc_group->GetAffinePoint(X_A).ToString(),
-                             ecc_group));
+    z_1.push_back(CipherHash(
+        std::string(ecc_group->SerializePoint(Y[i])) + id[i].ToString() +
+            std::string(ecc_group->SerializePoint(pk_A.y)) +
+            std::string(ecc_group->SerializePoint(pk_B.y)) +
+            std::string(ecc_group->SerializePoint(U_1[i])) +
+            std::string(ecc_group->SerializePoint(X_A)),
+        ecc_group));
 
     MPInt y_tmp = y[i];
     MPInt x_mul_z_1 = sk_A.x.MulMod(z_1[i], ecc_group_order);
     z_2.push_back(y_tmp.SubMod(x_mul_z_1, ecc_group_order));
 
-    // ECPoint is not copyable. Use Clone to copy, instead.
+    // ECPoint is shallow copyable. Use Clone to copy, instead.
     EcPoint X_A_clone = ecc_group->Mul(X_A, one_bn);
     EcPoint U_clone = ecc_group->Mul(U, one_bn);
 

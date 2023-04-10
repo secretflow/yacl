@@ -98,9 +98,6 @@ TEST(TpreTest, Test1) {
 
   // Determine whether decryption was successful after performing re-encryption
 
-  //   std::cout << "message_2 = " << message_2 << std::endl;
-  //   std::cout << "message_3 = " << message_3 << std::endl;
-
   EXPECT_EQ(message_2, message_3);
 }
 }  // namespace yacl::crypto::test

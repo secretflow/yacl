@@ -23,30 +23,28 @@ namespace yacl::crypto {
 
 std::pair<Capsule::CapsuleStruct, std::vector<uint8_t>> TPRE::Encrypt(
     const std::unique_ptr<EcGroup>& ecc_group, const Keys::PublicKey& pk_A,
-    const std::string& iv, const std::string& plaintext) const {
+    ByteContainerView iv, ByteContainerView plaintext) const {
   Capsule capsule;
 
   std::pair<Capsule::CapsuleStruct, std::vector<uint8_t>> capsule_pair =
       capsule.EnCapsulate(ecc_group, pk_A);
 
   std::vector<uint8_t> ciphertext =
-      yacl::crypto::Sm4MteEncrypt(capsule_pair.second, iv, plaintext);
+      Sm4MteEncrypt(capsule_pair.second, iv, plaintext);
 
   return {capsule_pair.first, ciphertext};
 }
 
 std::string TPRE::Decrypt(const std::unique_ptr<EcGroup>& ecc_group,
                           const Capsule::CapsuleStruct& capsule_struct,
-                          const std::string& iv,
+                          ByteContainerView iv,
                           const std::vector<uint8_t>& enc_data,
                           const Keys::PrivateKey& sk_A) const {
   Capsule capsule;
   std::vector<uint8_t> dek =
       capsule.DeCapsulate(ecc_group, sk_A, capsule_struct);
 
-  std::string dek_str(dek.begin(), dek.end());
-  std::vector<uint8_t> plaintext =
-      yacl::crypto::Sm4MteDecrypt(dek_str, iv, enc_data);
+  std::vector<uint8_t> plaintext = Sm4MteDecrypt(dek, iv, enc_data);
   std::string plaintext_str(plaintext.begin(), plaintext.end());
 
   return plaintext_str;
@@ -73,7 +71,7 @@ std::pair<Capsule::CFrag, std::vector<uint8_t>> TPRE::ReEncrypt(
 std::string TPRE::DecryptFrags(
     const std::unique_ptr<EcGroup>& ecc_group, const Keys::PrivateKey& sk_B,
     const Keys::PublicKey& pk_A, const Keys::PublicKey& pk_B,
-    const std::string& iv,
+    ByteContainerView iv,
     const std::pair<std::vector<Capsule::CFrag>, std::vector<uint8_t>>&
         C_prime_set) const {
   // New a capsule
@@ -86,9 +84,7 @@ std::string TPRE::DecryptFrags(
       capsule.DeCapsulateFrags(ecc_group, sk_B, pk_A, pk_B, C_prime_set.first);
 
   // Decrypts ciphertext
-  std::string dek_str(dek.begin(), dek.end());
-  std::vector<uint8_t> plaintext =
-      yacl::crypto::Sm4MteDecrypt(dek_str, iv, C_prime_set.second);
+  std::vector<uint8_t> plaintext = Sm4MteDecrypt(dek, iv, C_prime_set.second);
   std::string plaintext_str(plaintext.begin(), plaintext.end());
 
   return plaintext_str;

@@ -28,7 +28,7 @@ namespace yacl::crypto {
 /// @param Z, a random value
 /// @param key_len, the key length
 /// @return key
-std::vector<uint8_t> KDF(absl::string_view Z, size_t key_len);
+std::vector<uint8_t> KDF(ByteContainerView Z, size_t key_len);
 
 }  // namespace yacl::crypto
 

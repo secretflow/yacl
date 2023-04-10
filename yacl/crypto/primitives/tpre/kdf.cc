@@ -18,7 +18,7 @@
 
 namespace yacl::crypto {
 
-std::vector<uint8_t> KDF(absl::string_view Z, size_t key_len) {
+std::vector<uint8_t> KDF(ByteContainerView Z, size_t key_len) {
   unsigned int counter = 1;
   unsigned char C[4] = {0};
   int dgst_len = 32;
@@ -34,8 +34,7 @@ std::vector<uint8_t> KDF(absl::string_view Z, size_t key_len) {
     }
 
     std::string C_str(reinterpret_cast<char*>(C), 4);
-    absl::string_view C_view(C_str);
-    std::string Z_join_C = std::string(Z) + std::string(C_view);
+    std::string Z_join_C = std::string(Z) + C_str;
     std::array<uint8_t, 32> dgst = Sm3(Z_join_C);
 
     if (i == index - 1) {

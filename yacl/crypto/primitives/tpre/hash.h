@@ -28,7 +28,7 @@ namespace yacl::crypto {
 /// @param input
 /// @param curve_id, elliptic curve type
 /// @return hash value
-MPInt CipherHash(absl::string_view input,
+MPInt CipherHash(ByteContainerView input,
                  const std::unique_ptr<EcGroup>& ecc_group);
 }  // namespace yacl::crypto
 #endif  // YACL_CRYPTO_PRIMITIVES_TPRE_HASH_H_

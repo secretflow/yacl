@@ -74,7 +74,7 @@ class TPRE {
   /// @return capsule and encrypted data
   std::pair<Capsule::CapsuleStruct, std::vector<uint8_t>> Encrypt(
       const std::unique_ptr<EcGroup>& ecc_group, const Keys::PublicKey& pk_A,
-      const std::string& iv, const std::string& plaintext) const;
+      ByteContainerView iv, ByteContainerView plaintext) const;
 
   /// @brief TPRE's decryption algorithm
   /// @param ecc_group, Algebraic operations are on elliptic curves
@@ -85,7 +85,7 @@ class TPRE {
   /// @return plaintext
   std::string Decrypt(const std::unique_ptr<EcGroup>& ecc_group,
                       const Capsule::CapsuleStruct& capsule_struct,
-                      const std::string& iv,
+                      ByteContainerView iv,
                       const std::vector<uint8_t>& enc_data,
                       const Keys::PrivateKey& sk_A) const;
 
@@ -110,7 +110,7 @@ class TPRE {
   std::string DecryptFrags(
       const std::unique_ptr<EcGroup>& ecc_group, const Keys::PrivateKey& sk_B,
       const Keys::PublicKey& pk_A, const Keys::PublicKey& pk_B,
-      const std::string& iv,
+      ByteContainerView iv,
       const std::pair<std::vector<Capsule::CFrag>, std::vector<uint8_t>>&
           C_prime_set) const;
 };
