@@ -93,9 +93,6 @@ std::pair<Capsule::CapsuleStruct, int> Capsule::CheckCapsule(
     signal = 0;
   }
 
-  // std::unique_ptr<Capsule::CapsuleStruct> dup_capsule_struct =
-  //     std::make_unique<Capsule::CapsuleStruct>(*capsule_struct);
-
   std::pair<Capsule::CapsuleStruct, int> capsule_check_result = {capsule_struct,
                                                                  signal};
 
