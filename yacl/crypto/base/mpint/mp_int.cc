@@ -447,22 +447,6 @@ MPInt MPInt::Abs() const {
   return result;
 }
 
-#ifdef __APPLE__
-
-template <>
-unsigned long MPInt::Get() const {  // NOLINT: macOS uint64_t is ull
-  static_assert(sizeof(unsigned long) == 8);
-  return mp_get_mag_u64(&n_);
-}
-
-template <>
-void MPInt::Set(long value) {  // NOLINT: macOS int64_t is ll
-  static_assert(sizeof(long) == 8);
-  mp_set_i64(&n_, value);
-}
-
-#endif
-
 void MPInt::Add(const MPInt &a, const MPInt &b, MPInt *c) {
   MPINT_ENFORCE_OK(mp_add(&a.n_, &b.n_, &c->n_));
 }
