@@ -79,7 +79,7 @@ T RandBits(uint64_t len, bool use_secure_rand = false);
 template <typename T = dynamic_bitset<uint128_t>,
           std::enable_if_t<is_supported_bit_vector_type<T>::value, bool> = true>
 inline T SecureRandBits(uint64_t len) {
-  return RandBits(len, true);
+  return RandBits<T>(len, true);
 }
 
 // Fill random type-T

@@ -17,7 +17,9 @@
 #include <algorithm>
 #include <functional>
 
-#include "tommath_private.h"
+extern "C" {
+#include "libtommath/tommath_private.h"
+}
 
 #include "yacl/base/buffer.h"
 #include "yacl/base/exception.h"
@@ -131,7 +133,7 @@ bool is_pocklington_criterion_satisfied(const mp_int *p) {
 void mp_ext_safe_prime_rand(mp_int *p, int t, int psize) {
   uint8_t maskAND, maskOR_msb, maskOR_lsb;
   int maskOR_msb_offset;
-  mp_bool res;
+  bool res;
   mp_int q;
   uint64_t mod;
 
@@ -342,29 +344,23 @@ void mp_ext_to_bytes(const mp_int &num, unsigned char *buf, int64_t byte_len,
   }
 }
 
-size_t mp_ext_serialize_size(const mp_int &num) {
-  auto bits = mp_ext_count_bits_fast(num);
-  return (bits + 7) / 8 + 1;  // we add an extra meta byte
+size_t mp_ext_mag_bytes_size(const mp_int &num) {
+  return (mp_ext_count_bits_fast(num) + CHAR_BIT - 1) / CHAR_BIT;
 }
 
-void mp_ext_serialize(const mp_int &num, uint8_t *buf, size_t buf_len) {
-  YACL_ENFORCE(MP_DIGIT_BIT % 4 == 0, "Unsupported MP_DIGIT_BIT {}",
-               MP_DIGIT_BIT);
-  YACL_ENFORCE_GE(buf_len, mp_ext_serialize_size(num),
-                  "buf is too small to serialize mp_int");
-
-  // buf[0] is meta byte
-  if (mp_isneg(&num)) {
-    buf[0] = 1;
-  } else {
-    buf[0] = 0;
-  }
-
+size_t mp_ext_to_mag_bytes(const mp_int &num, uint8_t *buf, size_t buf_len,
+                           Endian endian) {
+  static_assert(MP_DIGIT_BIT % 4 == 0, "Unsupported MP_DIGIT_BIT");
   if (num.used == 0) {
-    return;
+    return 0;
   }
 
-  int64_t pos = 1;
+  auto min_bytes = mp_ext_mag_bytes_size(num);
+  YACL_ENFORCE_GE(buf_len, min_bytes,
+                  "buf is too small to store mp_int, buf_size={}, required={}",
+                  buf_len, min_bytes);
+
+  int64_t pos = 0;
   mp_digit cache = 0;
   int cache_remain = 0;
   // store num in Little-Endian
@@ -374,7 +370,12 @@ void mp_ext_serialize(const mp_int &num, uint8_t *buf, size_t buf_len) {
     cache_remain += MP_DIGIT_BIT;
 
     for (; cache_remain >= 8; cache_remain -= 8) {
-      buf[pos++] = cache & 255;
+      if (endian == Endian::little) {
+        buf[pos] = cache & 255;
+      } else {
+        buf[min_bytes - 1 - pos] = cache & 255;
+      }
+      ++pos;
       cache >>= 8;
     }
   }
@@ -382,27 +383,36 @@ void mp_ext_serialize(const mp_int &num, uint8_t *buf, size_t buf_len) {
   // process last digit
   cache |= num.dp[num.used - 1] << cache_remain;
   while (cache > 0) {
-    buf[pos++] = cache & 255;
+    if (endian == Endian::little) {
+      buf[pos] = cache & 255;
+    } else {
+      buf[min_bytes - 1 - pos] = cache & 255;
+    }
+    ++pos;
     cache >>= 8;
   }
+
+  return pos;
 }
 
-void mp_ext_deserialize(mp_int *num, const uint8_t *buf, size_t buf_len) {
-  YACL_ENFORCE(buf_len > 0, "mp_int deserialize: empty buffer");
-
-  /* make sure there are at least two digits */
-  int total_digits =
-      ((buf_len - 1) * CHAR_BIT + MP_DIGIT_BIT - 1) / MP_DIGIT_BIT;
-  if (num->alloc < total_digits) {
-    MPINT_ENFORCE_OK(mp_grow(num, total_digits));
+void mp_ext_from_mag_bytes(mp_int *num, const uint8_t *buf, size_t buf_len,
+                           Endian endian) {
+  if (buf_len == 0) {
+    mp_zero(num);
   }
 
-  num->sign = buf[0] == 0 ? MP_ZPOS : MP_NEG;
+  int total_digits = (buf_len * CHAR_BIT + MP_DIGIT_BIT - 1) / MP_DIGIT_BIT;
+  MPINT_ENFORCE_OK(mp_grow(num, total_digits));
+
+  auto old_used = num->used;
   num->used = 0;
+  num->sign = MP_ZPOS;
   mp_digit cache = 0;
   int cache_bits = 0;
-  for (size_t buf_idx = 1; buf_idx < buf_len; ++buf_idx) {
-    cache |= (static_cast<mp_digit>(buf[buf_idx]) << cache_bits);
+  for (size_t buf_idx = 0; buf_idx < buf_len; ++buf_idx) {
+    auto next_byte =
+        endian == Endian::little ? buf[buf_idx] : buf[buf_len - 1 - buf_idx];
+    cache |= (static_cast<mp_digit>(next_byte) << cache_bits);
     cache_bits += 8;
 
     if (cache_bits >= MP_DIGIT_BIT) {
@@ -411,9 +421,41 @@ void mp_ext_deserialize(mp_int *num, const uint8_t *buf, size_t buf_len) {
       cache_bits -= MP_DIGIT_BIT;
     }
   }
+
+  // process last digit
   if (cache > 0) {
     num->dp[num->used++] = cache & MP_MASK;
   }
+
+  // clear bits
+  for (int idx = num->used; idx < old_used; ++idx) {
+    num->dp[idx] = 0;
+  }
+}
+
+size_t mp_ext_serialize_size(const mp_int &num) {
+  return mp_ext_mag_bytes_size(num) + 1;  // we add an extra meta byte
+}
+
+void mp_ext_serialize(const mp_int &num, uint8_t *buf, size_t buf_len) {
+  YACL_ENFORCE(buf_len > 0, "buf_len is zero");
+
+  // buf[0] is meta byte
+  if (mp_isneg(&num)) {
+    buf[0] = 1;
+  } else {
+    buf[0] = 0;
+  }
+
+  // store num in Little-Endian
+  mp_ext_to_mag_bytes(num, buf + 1, buf_len - 1, Endian::little);
+}
+
+void mp_ext_deserialize(mp_int *num, const uint8_t *buf, size_t buf_len) {
+  YACL_ENFORCE(buf_len > 0, "mp_int deserialize: empty buffer");
+
+  mp_ext_from_mag_bytes(num, buf + 1, buf_len - 1, Endian::little);
+  num->sign = buf[0] == 0 ? MP_ZPOS : MP_NEG;
 }
 
 uint8_t mp_ext_get_bit(const mp_int &a, int index) {

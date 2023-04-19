@@ -28,6 +28,7 @@ namespace yacl {
 class Buffer final {
   std::byte* ptr_{nullptr};
   int64_t size_{0};
+  int64_t capacity_{0};
   std::function<void(void*)> deleter_;
 
  public:
@@ -36,7 +37,7 @@ class Buffer final {
 
   // default constructor, create an empty buffer.
   Buffer() = default;
-  explicit Buffer(int64_t size) : size_(size) {
+  explicit Buffer(int64_t size) : size_(size), capacity_(size) {
     YACL_ENFORCE(size >= 0);
     // C++17 ensures alignment of allocated memory is >=
     // __STDCPP_DEFAULT_NEW_ALIGNMENT__ Which should be 16
@@ -63,6 +64,7 @@ class Buffer final {
                  "The input buffer is not aligned");
 
     size_ = size;
+    capacity_ = size;
     ptr_ = static_cast<std::byte*>(ptr);
     deleter_ = deleter;
   }
@@ -81,8 +83,9 @@ class Buffer final {
   Buffer(Buffer&& other) noexcept { *this = std::move(other); };
   Buffer& operator=(Buffer&& other) noexcept {
     if (this != &other) {
-      std::swap(size_, other.size_);
       std::swap(ptr_, other.ptr_);
+      std::swap(size_, other.size_);
+      std::swap(capacity_, other.capacity_);
       std::swap(deleter_, other.deleter_);
     }
     return *this;
@@ -99,6 +102,7 @@ class Buffer final {
 
   // return size of the buffer, in bytes.
   int64_t size() const { return size_; }
+  int64_t capacity() const { return capacity_; }
 
   bool operator==(const Buffer& other) const {
     if (size_ != other.size_) {
@@ -114,7 +118,7 @@ class Buffer final {
   }
 
   void resize(int64_t new_size) {
-    if (new_size <= size_) {
+    if (new_size <= capacity_) {
       size_ = new_size;
       return;
     }
@@ -131,6 +135,7 @@ class Buffer final {
 
     ptr_ = new_ptr;
     size_ = new_size;
+    capacity_ = new_size;
     YACL_ENFORCE(size_ == 0 || ptr_ != nullptr, "new size = {}", new_size);
   }
 
@@ -138,6 +143,7 @@ class Buffer final {
     void* tmp = ptr_;
     ptr_ = nullptr;
     size_ = 0;
+    capacity_ = 0;
     return tmp;
   }
 
@@ -150,6 +156,7 @@ class Buffer final {
     deleter_ = nullptr;
     ptr_ = nullptr;
     size_ = 0;
+    capacity_ = 0;
   }
 };
 

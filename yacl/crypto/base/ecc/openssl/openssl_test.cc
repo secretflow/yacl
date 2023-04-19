@@ -15,6 +15,7 @@
 #include "gtest/gtest.h"
 
 #include "yacl/crypto/base/ecc/openssl/openssl_group.h"
+#include "yacl/utils/parallel.h"
 
 namespace yacl::crypto::openssl {
 // We only need to test these two functions, other functions will be tested by
@@ -91,6 +92,16 @@ TEST(OpensslTest, AddInplaceWorks) {
   auto p2 = curve->MulBase(2000_mp);
   curve->AddInplace(&p1, p2);
   ASSERT_TRUE(curve->PointEqual(p1, curve->MulBase(3000_mp)));
+}
+
+TEST(OpensslMemLeakTest, MulBaseLeaks) {
+  std::shared_ptr<yacl::crypto::EcGroup> ec =
+      yacl::crypto::EcGroupFactory::Create("sm2", "openssl");
+
+  yacl::parallel_for(0, 2, 1, [&](int64_t, int64_t) {
+    // no memory leak here, but the same code in ecc_test.cc leaks.
+    ec->MulBase(0_mp);
+  });
 }
 
 }  // namespace yacl::crypto::openssl::test

@@ -27,6 +27,7 @@ configure_make(
     configure_options = [
         # fixed openssl work dir for deterministic build.
         "--openssldir=/tmp/openssl",
+        "--libdir=lib",
         "no-shared",
         # https://www.openssl.org/docs/man1.1.0/man3/OpenSSL_version.html
         # OPENSSL_ENGINES_DIR point to /tmp path randomly generated.
@@ -35,7 +36,7 @@ configure_make(
     ],
     env = select({
         "@bazel_tools//src/conditions:darwin": {
-            "AR": "",
+            "ARFLAGS": "-static -s -o",
         },
         "//conditions:default": {},
     }),

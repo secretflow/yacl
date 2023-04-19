@@ -14,6 +14,7 @@
 
 #include "yacl/crypto/base/mpint/tommath_ext_types.h"
 
+#include <climits>
 #include <cstring>  // memset
 
 // Following macros are copied from tommath_private.h

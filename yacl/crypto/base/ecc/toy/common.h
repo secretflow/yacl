@@ -42,6 +42,8 @@ class ToyEcGroup : public EcGroupSketch {
   EcPoint GetGenerator() const override;
   std::string GetLibraryName() const override;
 
+  EcPoint CopyPoint(const EcPoint &point) const override;
+
   // Internal functions should not call this function since there is an extra
   // copy on AffinePoint
   AffinePoint GetAffinePoint(const EcPoint &point) const override;

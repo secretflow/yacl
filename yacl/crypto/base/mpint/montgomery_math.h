@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "tommath.h"
+#include "libtommath/tommath.h"
 
 #include "yacl/crypto/base/mpint/mp_int.h"
 

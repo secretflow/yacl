@@ -15,6 +15,7 @@
 #include "yacl/crypto/base/symmetric_crypto.h"
 
 #include <algorithm>
+#include <climits>
 #include <iterator>
 
 #include "openssl/aes.h"
@@ -128,14 +129,26 @@ void SymmetricCrypto::Decrypt(absl::Span<const uint8_t> ciphertext,
 
   EVP_CIPHER_CTX_set_padding(ctx, plaintext.size() % BlockSize());
 
-  int out_length;
-  int rc = EVP_CipherUpdate(ctx, plaintext.data(), &out_length,
-                            ciphertext.data(), ciphertext.size());
-  YACL_ENFORCE(rc, "Fail to decrypt, rc={}", rc);
+  size_t out_length = 0;
+  size_t in_offset = 0;
+
+  while (in_offset < ciphertext.size()) {
+    auto step_length = static_cast<int>(
+        std::min<size_t>(ciphertext.size() - in_offset, INT_MAX));
+    int current_out_length;
+    int rc = EVP_CipherUpdate(ctx, plaintext.data() + out_length,
+                              &current_out_length,
+                              ciphertext.data() + in_offset, step_length);
+    YACL_ENFORCE(rc, "Fail to decrypt, rc={}", rc);
+    in_offset += step_length;
+    out_length += current_out_length;
+  }
 
   // Does not require `Finalize` for aligned inputs.
   if (plaintext.size() % BlockSize() != 0) {
-    rc = EVP_CipherFinal(ctx, plaintext.data() + out_length, &out_length);
+    int current_out_length;
+    int rc = EVP_CipherFinal(ctx, plaintext.data() + out_length,
+                             &current_out_length);
     YACL_ENFORCE(rc, "Fail to finalize decrypt, rc={}", rc);
   }
 
@@ -167,14 +180,26 @@ void SymmetricCrypto::Encrypt(absl::Span<const uint8_t> plaintext,
 
   EVP_CIPHER_CTX_set_padding(ctx, ciphertext.size() % BlockSize());
 
-  int outlen;
-  int rc = EVP_CipherUpdate(ctx, ciphertext.data(), &outlen, plaintext.data(),
-                            plaintext.size());
-  YACL_ENFORCE(rc, "Fail to encrypt, rc={}", rc);
+  size_t out_length = 0;
+  size_t in_offset = 0;
+
+  while (in_offset < plaintext.size()) {
+    int step_length = static_cast<int>(
+        std::min<size_t>(plaintext.size() - in_offset, INT_MAX));
+    int current_out_length;
+    int rc = EVP_CipherUpdate(ctx, ciphertext.data() + out_length,
+                              &current_out_length, plaintext.data() + in_offset,
+                              step_length);
+    YACL_ENFORCE(rc, "Fail to encrypt, rc={}", rc);
+    in_offset += step_length;
+    out_length += current_out_length;
+  }
 
   // Does not require `Finalize` for aligned inputs.
   if (ciphertext.size() % BlockSize() != 0) {
-    rc = EVP_CipherFinal(ctx, ciphertext.data() + outlen, &outlen);
+    int current_out_length;
+    int rc = EVP_CipherFinal(ctx, ciphertext.data() + out_length,
+                             &current_out_length);
     YACL_ENFORCE(rc, "Fail to finalize encrypt, rc={}", rc);
   }
 

@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <mutex>
 #include <random>
 
 #include "fmt/ranges.h"
@@ -281,6 +282,19 @@ TEST_P(Sm2CurveTest, SpiTest) {
 
   // Run Other tests
   RunAllTests();
+}
+
+// The simplest code to reproduce openssl memory leaks
+TEST(OpensslMemLeakTest, DISABLED_MulBaseLeaks) {
+  std::shared_ptr<yacl::crypto::EcGroup> ec =
+      yacl::crypto::EcGroupFactory::Create("sm2", "openssl");
+
+  std::mutex mutex;
+  yacl::parallel_for(0, 2, 1, [&](int64_t, int64_t) {
+    std::lock_guard<std::mutex> guard(mutex);
+    // memory leaks here even with serial calls.
+    ec->MulBase(0_mp);
+  });
 }
 
 }  // namespace yacl::crypto::test

@@ -19,8 +19,8 @@
 #include <string>
 
 #include "fmt/ostream.h"
+#include "libtommath/tommath.h"
 #include "msgpack.hpp"
-#include "tommath.h"
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/int128.h"
@@ -49,7 +49,10 @@ class MPInt {
   static const MPInt _1_;
   static const MPInt _2_;
 
-  // Constructors and functions ...
+  //================================//
+  //          Constructors          //
+  //================================//
+
   MPInt();
 
   // Supported T = (u)int8/16/32/64/128 or float/double
@@ -64,35 +67,87 @@ class MPInt {
     Set(value);
   }
 
+  // if radix == 0, the real radix will be auto-detected:
+  //  - if num is start with 0x, the radix is 16
+  //  - if num is start with 0 , the radix is 8
+  //  - otherwise radix is 10
+  // Plus and minus signs are supported, e.g. MPInt("-0xFF") is -255
   explicit MPInt(const std::string &num, size_t radix = 0);
 
   MPInt(MPInt &&other) noexcept;
   MPInt(const MPInt &other);
 
-  ~MPInt() { mp_clear(&n_); }
-
   MPInt &operator=(const MPInt &other);
   MPInt &operator=(MPInt &&other) noexcept;  // not thread safe
 
-  inline bool operator>=(const MPInt &other) const {
-    return Compare(other) >= 0;
+  ~MPInt() { mp_clear(&n_); }
+
+  //================================//
+  //      Getters and setters       //
+  //================================//
+
+  template <typename T>
+  [[nodiscard]] T Get() const;
+
+  template <typename T>
+  void Set(T value);
+
+  // if radix <= 0, the real radix will be auto-detected:
+  //  - if num is start with 0x, the radix is 16
+  //  - if num is start with 0 , the radix is 8
+  //  - otherwise radix is 10
+  // Plus and minus signs are supported, e.g. "-0xFF" is -255
+  void Set(const std::string &num, int radix = 0);
+
+  void SetZero();
+  [[nodiscard]] bool IsZero() const;
+
+  // Get the i'th bit. Always return 0 or 1
+  uint8_t operator[](int idx) const;
+  uint8_t GetBit(int idx) const;
+  void SetBit(int idx, uint8_t bit);
+
+  [[nodiscard]] size_t BitCount() const;
+
+  [[nodiscard]] bool IsNegative() const { return mp_isneg(&n_); }
+  [[nodiscard]] bool IsPositive() const {
+    return !mp_iszero(&n_) && !mp_isneg(&n_);
   }
 
-  inline bool operator<=(const MPInt &other) const {
-    return Compare(other) <= 0;
-  }
+  [[nodiscard]] bool IsOdd() const { return mp_isodd(&n_); }
+  [[nodiscard]] bool IsEven() const { return mp_iseven(&n_); }
 
-  inline bool operator>(const MPInt &other) const { return Compare(other) > 0; }
+  size_t SizeAllocated() { return n_.alloc * sizeof(mp_digit); }
+  size_t SizeUsed() { return n_.used * sizeof(mp_digit); }
 
-  inline bool operator<(const MPInt &other) const { return Compare(other) < 0; }
+  //================================//
+  //          Comparators           //
+  //================================//
 
-  inline bool operator==(const MPInt &other) const {
-    return Compare(other) == 0;
-  }
+  bool operator>(const MPInt &other) const;
+  bool operator<(const MPInt &other) const;
+  bool operator>=(const MPInt &other) const;
+  bool operator<=(const MPInt &other) const;
+  bool operator==(const MPInt &other) const;
+  bool operator!=(const MPInt &other) const;
 
-  inline bool operator!=(const MPInt &other) const {
-    return Compare(other) != 0;
-  }
+  // compare a to b
+  // Returns:
+  //  > 0:  this > other
+  //  == 0: this == other
+  //  < 0:  this < other
+  [[nodiscard]] int Compare(const MPInt &other) const;
+
+  // compare a to b
+  // Returns:
+  //  > 0:  |this| > |other|
+  //  == 0: |this| == |other|
+  //  < 0:  |this| < |other|
+  [[nodiscard]] int CompareAbs(const MPInt &other) const;
+
+  //================================//
+  //           Operators            //
+  //================================//
 
   MPInt operator+(const MPInt &operand2) const;
   MPInt operator-(const MPInt &operand2) const;
@@ -117,91 +172,12 @@ class MPInt {
   MPInt operator|=(const MPInt &operand2);
   MPInt operator^=(const MPInt &operand2);
 
-  friend std::ostream &operator<<(std::ostream &os, const MPInt &an_int);
-
-  size_t SizeAllocated() { return n_.alloc * sizeof(mp_digit); }
-  size_t SizeUsed() { return n_.used * sizeof(mp_digit); }
-
-  [[nodiscard]] size_t BitCount() const;
-  [[nodiscard]] bool IsZero() const;
-  void SetZero();
   MPInt &DecrOne() &;
   MPInt &IncrOne() &;
   [[nodiscard]] MPInt DecrOne() &&;
   [[nodiscard]] MPInt IncrOne() &&;
 
-  /* a = -a */
-  inline void Negate(MPInt *z) const { MPINT_ENFORCE_OK(mp_neg(&n_, &z->n_)); }
-  inline void NegateInplace() { MPINT_ENFORCE_OK(mp_neg(&n_, &n_)); }
-
-  [[nodiscard]] inline bool IsNegative() const { return mp_isneg(&n_); }
-  [[nodiscard]] inline bool IsPositive() const {
-    return !mp_iszero(&n_) && !mp_isneg(&n_);
-  }
-
-  [[nodiscard]] inline bool IsOdd() const { return mp_isodd(&n_); }
-  [[nodiscard]] inline bool IsEven() const { return mp_iseven(&n_); }
-
   [[nodiscard]] MPInt Abs() const;
-
-  template <typename T>
-  [[nodiscard]] T Get() const;
-
-  template <typename T>
-  void Set(T value);
-
-  void Set(const std::string &num, int radix = 0);
-
-  // compare a to b
-  // Returns:
-  //  > 0:  this > other
-  //  == 0: this == other
-  //  < 0:  this < other
-  [[nodiscard]] int Compare(const MPInt &other) const;
-  // compare a to b
-  // Returns:
-  //  > 0:  |this| > |other|
-  //  == 0: |this| == |other|
-  //  < 0:  |this| < |other|
-  [[nodiscard]] int CompareAbs(const MPInt &other) const;
-
-  [[nodiscard]] yacl::Buffer Serialize() const;
-  void Deserialize(yacl::ByteContainerView buffer);
-  [[nodiscard]] std::string ToString() const;
-  [[nodiscard]] std::string ToHexString() const;
-
-  yacl::Buffer ToBytes(size_t byte_len, Endian endian = Endian::native) const;
-  void ToBytes(unsigned char *buf, size_t buf_len,
-               Endian endian = Endian::native) const;
-
-  // Get the i'th bit. Always return 0 or 1
-  uint8_t operator[](int idx) const;
-  uint8_t GetBit(int idx) const;
-  void SetBit(int idx, uint8_t bit);
-
-  /**
-   * Generate a random prime
-   * *Warning*: You can NOT call this function before main() function
-   * +------------+--------------+-----------------+
-   * |            |  bit length  |   average time  |
-   * +------------+--------------+-----------------+
-   * |            |     1024     |       1 min     |
-   * | safe prime |--------------+-----------------+
-   * |            |     2048     |      30 min     |
-   * +------------+--------------+-----------------+
-   * |   fast     |     1024     |      20 sec     |
-   * |   safe     |--------------+-----------------+
-   * |   prime    |     2048     |       1 min     |
-   * +------------+--------------+-----------------+
-   * You can rerun the benchmark using following command:
-   *    bazel run -c opt heu/library/phe/benchmark:mpint
-   * @param[in] bit_size prime bit size, at least 81 bits
-   * @param[out] out a bit_size prime whose highest bit always one
-   */
-  static void RandPrimeOver(size_t bit_size, MPInt *out,
-                            PrimeType prime_type = PrimeType::BBS);
-
-  [[nodiscard]] bool IsPrime() const;
 
   // (*c) = a + b
   static void Add(const MPInt &a, const MPInt &b, MPInt *c);
@@ -219,6 +195,37 @@ class MPInt {
   MPInt MulMod(const MPInt &b, const MPInt &mod) const;
   static void MulMod(const MPInt &a, const MPInt &b, const MPInt &mod,
                      MPInt *d);
+
+  // *d = (a**b) mod c
+  static void PowMod(const MPInt &a, const MPInt &b, const MPInt &mod,
+                     MPInt *d);
+  static void Pow(const MPInt &a, uint32_t b, MPInt *c);
+  MPInt PowMod(const MPInt &b, const MPInt &mod) const;
+  MPInt Pow(uint32_t b) const;
+  void PowInplace(uint32_t b);
+
+  /* a/b => cb + d == a */
+  static void Div(const MPInt &a, const MPInt &b, MPInt *c, MPInt *d);
+
+  // b = a // 3
+  static void Div3(const MPInt &a, MPInt *b);
+
+  // ac = 1 (mod b)
+  // example: a = 3, b = 10000, output c = 6667
+  //
+  // note:
+  // A necessary and sufficient condition for the existence of c is that a
+  // and b are coprime. If a and b are not coprime, then c does not exist and an
+  // exception is thrown
+  static void InvertMod(const MPInt &a, const MPInt &mod, MPInt *c);
+  MPInt InvertMod(const MPInt &mod) const;
+
+  /* c = a mod b, 0 <= c < b  */
+  static void Mod(const MPInt &a, const MPInt &mod, MPInt *c);
+
+  /* a = -a */
+  inline void Negate(MPInt *z) const { MPINT_ENFORCE_OK(mp_neg(&n_, &z->n_)); }
+  inline void NegateInplace() { MPINT_ENFORCE_OK(mp_neg(&n_, &n_)); }
 
   /**
    * Generate a random number >= 0
@@ -243,42 +250,75 @@ class MPInt {
   static void RandomExactBits(size_t bit_size, MPInt *r);
   static void RandomMonicExactBits(size_t bit_size, MPInt *r);
 
-  /**
-   * select a random 0 < r < n
-   */
+  // select a random r in [0, n)
   static void RandomLtN(const MPInt &n, MPInt *r);
-
-  // *d = (a**b) mod c
-  static void PowMod(const MPInt &a, const MPInt &b, const MPInt &mod,
-                     MPInt *d);
-  static void Pow(const MPInt &a, uint32_t b, MPInt *c);
-  MPInt PowMod(const MPInt &b, const MPInt &mod) const;
-  MPInt Pow(uint32_t b) const;
-  void PowInplace(uint32_t b);
 
   static void Lcm(const MPInt &a, const MPInt &b, MPInt *c);
   static void Gcd(const MPInt &a, const MPInt &b, MPInt *c);
-  /* a/b => cb + d == a */
-  static void Div(const MPInt &a, const MPInt &b, MPInt *c, MPInt *d);
+
+  //================================//
+  //          Prime tools           //
+  //================================//
+
+  [[nodiscard]] bool IsPrime() const;
 
   /**
-   * b = a // 3
+   * Generate a random prime
+   * *Warning*: You can NOT call this function before main() function
+   * +------------+--------------+-----------------+
+   * |            |  bit length  |   average time  |
+   * +------------+--------------+-----------------+
+   * |            |     1024     |       1 min     |
+   * | safe prime |--------------+-----------------+
+   * |            |     2048     |      30 min     |
+   * +------------+--------------+-----------------+
+   * |   fast     |     1024     |      20 sec     |
+   * |   safe     |--------------+-----------------+
+   * |   prime    |     2048     |       1 min     |
+   * +------------+--------------+-----------------+
+   * You can rerun the benchmark using following command:
+   *    bazel run -c opt heu/library/phe/benchmark:mpint
+   * @param[in] bit_size prime bit size, at least 81 bits
+   * @param[out] out a bit_size prime whose highest bit always one
    */
-  static void Div3(const MPInt &a, MPInt *b);
+  static void RandPrimeOver(size_t bit_size, MPInt *out,
+                            PrimeType prime_type = PrimeType::BBS);
 
-  /**
-   * ac = 1 (mod b)
-   * example: a = 3, b = 10000, output c = 6667
-   *
-   * @note A necessary and sufficient condition for the existence of c is that a
-   * and b are coprime. If a and b are not coprime, then c does not exist and an
-   * exception is thrown
-   */
-  static void InvertMod(const MPInt &a, const MPInt &mod, MPInt *c);
-  MPInt InvertMod(const MPInt &mod) const;
+  //================================//
+  //               I/O              //
+  //================================//
 
-  /* c = a mod b, 0 <= c < b  */
-  static void Mod(const MPInt &a, const MPInt &mod, MPInt *c);
+  friend std::ostream &operator<<(std::ostream &os, const MPInt &an_int);
+
+  [[nodiscard]] yacl::Buffer Serialize() const;
+  void Deserialize(yacl::ByteContainerView buffer);
+  [[nodiscard]] std::string ToString() const;
+  [[nodiscard]] std::string ToHexString() const;
+
+  // Convert MPInt to a two's complement byte string.
+  // If byte_len is too small, the value will be truncated.
+  // If byte_len exceeds the actual size, the high bits of the buffer will be
+  // filled with 0 for positive number, otherwise 1.
+  yacl::Buffer ToBytes(size_t byte_len, Endian endian = Endian::native) const;
+  void ToBytes(unsigned char *buf, size_t buf_len,
+               Endian endian = Endian::native) const;
+
+  // Converts the absolute value of MPInt into a byte string.
+  // Equals: this->Abs().ToBytes((this->BitCount() + 7) / 8, endian)
+  yacl::Buffer ToMagBytes(Endian endian = Endian::native) const;
+  // if buf_len is too small, an exception will be thrown.
+  // returns the number of bytes written
+  size_t ToMagBytes(unsigned char *buf, size_t buf_len,
+                    Endian endian = Endian::native) const;
+
+  // Converts the positive integer in buffer to a MPInt.
+  // The previous value and sign in MPInt will be overwritten
+  void FromMagBytes(yacl::ByteContainerView buffer,
+                    Endian endian = Endian::native);
+
+  //================================//
+  //    Other advanced functions    //
+  //================================//
 
   // if combiner is add, output scalar * base
   // if combiner is mul, output scalar ** base

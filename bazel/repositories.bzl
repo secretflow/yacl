@@ -35,7 +35,6 @@ def yacl_deps():
     _com_github_fmtlib_fmt()
     _com_github_gabime_spdlog()
     _com_github_google_benchmark()
-    _com_github_gperftools_gperftools()
     _com_github_google_cpu_features()
     _com_github_dltcollab_sse2neon()
     _com_github_msgpack_msgpack()
@@ -207,19 +206,6 @@ def _com_github_google_benchmark():
         ],
     )
 
-def _com_github_gperftools_gperftools():
-    maybe(
-        http_archive,
-        name = "com_github_gperftools_gperftools",
-        type = "tar.gz",
-        strip_prefix = "gperftools-2.10",
-        sha256 = "83e3bfdd28b8bcf53222c3798d4d395d52dadbbae59e8730c4a6d31a9c3732d8",
-        urls = [
-            "https://github.com/gperftools/gperftools/releases/download/gperftools-2.10/gperftools-2.10.tar.gz",
-        ],
-        build_file = "@yacl//bazel:gperftools.BUILD",
-    )
-
 def _com_github_blake3team_blake3():
     maybe(
         http_archive,
@@ -347,15 +333,15 @@ def _com_github_libtom_libtommath():
     maybe(
         http_archive,
         name = "com_github_libtom_libtommath",
-        sha256 = "f3c20ab5df600d8d89e054d096c116417197827d12732e678525667aa724e30f",
+        sha256 = "60f9955270032bc548b5ba1823ace419f704df280b4570d508c3fb8e73bdf012",
         type = "tar.gz",
-        strip_prefix = "libtommath-1.2.0",
+        strip_prefix = "libtommath-0df542cb70f621bbeec207be1949832fb1442479",
         patch_args = ["-p1"],
         patches = [
-            "@yacl//bazel:patches/libtommath-1.2.0.patch",
+            "@yacl//bazel:patches/libtommath.patch",
         ],
         urls = [
-            "https://github.com/libtom/libtommath/archive/v1.2.0.tar.gz",
+            "https://github.com/libtom/libtommath/archive/0df542cb70f621bbeec207be1949832fb1442479.tar.gz",
         ],
         build_file = "@yacl//bazel:libtommath.BUILD",
     )

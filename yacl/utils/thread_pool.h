@@ -55,8 +55,8 @@ class ThreadPool {
   bool InThreadPool() const;
 
   // get queue length.
-  // don't need to lock mutex here, because length may be changed after the function
-  // returned
+  // don't need to lock mutex here, because length may be changed after the
+  // function returned
   size_t GetQueueLength() const { return tasks_.size(); }
 
  private:

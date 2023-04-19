@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_foreign_cc//foreign_cc:defs.bzl", "cmake", "configure_make")
+load("@yacl//bazel:yacl.bzl", "yacl_cmake_external")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -21,9 +21,8 @@ filegroup(
     srcs = glob(["**"]),
 )
 
-cmake(
+yacl_cmake_external(
     name = "msgpack",
-    build_args = ["-j"],
     cache_entries = {
         "MSGPACK_CXX17": "ON",
         "MSGPACK_BUILD_EXAMPLES": "OFF",

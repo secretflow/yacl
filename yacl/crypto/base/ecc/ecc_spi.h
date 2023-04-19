@@ -194,6 +194,9 @@ class EcGroup {
   //     EcPoint helper tools       //
   //================================//
 
+  // Make a deep copy of EcPoint
+  virtual EcPoint CopyPoint(const EcPoint &point) const = 0;
+
   // Compress and serialize a point
   virtual Buffer SerializePoint(const EcPoint &point,
                                 PointOctetFormat format) const = 0;
