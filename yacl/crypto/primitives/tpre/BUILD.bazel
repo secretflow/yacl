@@ -35,10 +35,10 @@ yacl_cc_library(
     hdrs = ["hash.h"],
     deps = [
         ":kdf",
+        "//yacl/base:dynamic_bitset",
         "//yacl/crypto/base/ecc:spi",
         "//yacl/crypto/base/hash:hash_utils",
         "//yacl/crypto/base/mpint",
-        "//yacl/base:dynamic_bitset",
     ],
 )
 

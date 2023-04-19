@@ -157,6 +157,65 @@ TEST_F(MPIntTest, SerializeWorks) {
   EXPECT_TRUE(x2.Compare(x2_value) == 0);
 }
 
+TEST_F(MPIntTest, MagBytesWorks) {
+  // zero case
+  auto buf = MPInt().ToMagBytes();
+  MPInt x1(-1234567890);
+  x1.FromMagBytes(buf);
+  ASSERT_TRUE(x1.IsZero());
+
+  // simple case
+  MPInt a = -101_mp;
+  a.FromMagBytes(a.ToMagBytes());
+  ASSERT_EQ(a, 101_mp);
+  MPInt b;
+  b.FromMagBytes(a.ToMagBytes());
+  ASSERT_EQ(b, 101_mp);
+
+  // normal case
+  MPInt x2(-1234567890);
+  yacl::Buffer x2_buf = x2.ToMagBytes();
+  ASSERT_TRUE(x2_buf.size() > 0);
+
+  MPInt x2_value;
+  x2_value.FromMagBytes(x2_buf);
+  EXPECT_TRUE(x2_value == -x2);
+
+  x2_value.NegateInplace();
+  x2_value.FromMagBytes(x2_buf);
+  EXPECT_TRUE(x2_value == -x2);
+
+  // check endian
+  a = MPInt(0x1234);
+  buf = a.ToMagBytes(Endian::little);
+  ASSERT_EQ(buf.size(), 2);
+  EXPECT_EQ(buf.data<char>()[0], 0x34);
+  EXPECT_EQ(buf.data<char>()[1], 0x12);
+
+  buf = a.ToMagBytes(Endian::big);
+  ASSERT_EQ(buf.size(), 2);
+  EXPECT_EQ(buf.data<char>()[0], 0x12);
+  EXPECT_EQ(buf.data<char>()[1], 0x34);
+}
+
+TEST_F(MPIntTest, ToBytesWorks) {
+  MPInt a(0x1234);
+  auto buf = a.ToBytes(2, Endian::little);
+  EXPECT_EQ(buf.data<char>()[0], 0x34);
+  EXPECT_EQ(buf.data<char>()[1], 0x12);
+
+  buf = a.ToBytes(2, Endian::big);
+  EXPECT_EQ(buf.data<char>()[0], 0x12);
+  EXPECT_EQ(buf.data<char>()[1], 0x34);
+
+  a = MPInt(0x123456);
+  buf = a.ToBytes(2, Endian::native);
+  EXPECT_EQ(buf.data<uint16_t>()[0], 0x3456);
+
+  a = MPInt(-1);
+  EXPECT_EQ(a.ToBytes(10, Endian::little), a.ToBytes(10, Endian::big));
+}
+
 TEST_F(MPIntTest, MsgpackWorks) {
   MPInt x1(-1234567890);
 
@@ -251,24 +310,6 @@ TEST_F(MPIntTest, RandomWorks) {
       EXPECT_EQ(r.BitCount(), c);
     }
   }
-}
-
-TEST_F(MPIntTest, ToBytesWorks) {
-  MPInt a(0x1234);
-  auto buf = a.ToBytes(2, Endian::little);
-  EXPECT_EQ(buf.data<char>()[0], 0x34);
-  EXPECT_EQ(buf.data<char>()[1], 0x12);
-
-  buf = a.ToBytes(2, Endian::big);
-  EXPECT_EQ(buf.data<char>()[0], 0x12);
-  EXPECT_EQ(buf.data<char>()[1], 0x34);
-
-  a = MPInt(0x123456);
-  buf = a.ToBytes(2, Endian::native);
-  EXPECT_EQ(buf.data<uint16_t>()[0], 0x3456);
-
-  a = MPInt(-1);
-  EXPECT_EQ(a.ToBytes(10, Endian::little), a.ToBytes(10, Endian::big));
 }
 
 TEST_F(MPIntTest, CustomPowWorks) {

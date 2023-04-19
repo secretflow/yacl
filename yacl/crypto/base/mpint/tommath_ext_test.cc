@@ -25,7 +25,7 @@ namespace yacl::crypto::test {
 #define MP_ASSERT_OK(MP_ERR) EXPECT_EQ((MP_ERR), MP_OKAY)
 
 std::string Info(const mp_int& n) {
-  int size = 0;
+  size_t size = 0;
   MP_ASSERT_OK(mp_radix_size(&n, 16, &size));
 
   std::string output;

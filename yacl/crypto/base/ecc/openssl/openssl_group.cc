@@ -30,27 +30,20 @@ thread_local BN_CTX_PTR OpensslGroup::ctx_ = BN_CTX_PTR(BN_CTX_new());
 #define SSL_RET_ZP(MP_ERR, ...) YACL_ENFORCE_GT((MP_ERR), 0, __VA_ARGS__)
 
 BIGNUM_PTR Mp2Bn(const MPInt &mp) {
-  const MPInt *mpp = &mp;
-  MPInt tmp;
-  if (mp.IsNegative()) {
-    mp.Negate(&tmp);
-    mpp = &tmp;
-  }
+  bool is_neg = mp.IsNegative();
 
   BIGNUM_PTR res;
-  if (mpp->BitCount() <= sizeof(BN_ULONG) * 8) {
+  if (mp.BitCount() <= sizeof(BN_ULONG) * CHAR_BIT) {
     res = BIGNUM_PTR(BN_new());
-    SSL_RET_1(BN_set_word(res.get(), mpp->Get<BN_ULONG>()));
+    SSL_RET_1(BN_set_word(res.get(), mp.Get<BN_ULONG>()));
   } else {
     constexpr int MAX_NUM_BYTE = 1024;
     unsigned char buf[MAX_NUM_BYTE];
-    YACL_ENFORCE(mpp->BitCount() < MAX_NUM_BYTE,
-                 "Cannot convert mpint [{}], too big", mp.ToString());
-    mpp->ToBytes(buf, MAX_NUM_BYTE, Endian::little);
-    res = BIGNUM_PTR(BN_lebin2bn(buf, MAX_NUM_BYTE, nullptr));
+    auto buf_len = mp.ToMagBytes(buf, MAX_NUM_BYTE, Endian::little);
+    res = BIGNUM_PTR(BN_lebin2bn(buf, buf_len, nullptr));
   }
 
-  if (mpp == &tmp) {  // mpp is negative
+  if (is_neg) {  // mpp is negative
     BN_set_negative(res.get(), true);
   }
 
@@ -59,10 +52,16 @@ BIGNUM_PTR Mp2Bn(const MPInt &mp) {
 
 MPInt Bn2Mp(const BIGNUM *bn) {
   CheckNotNull(bn);
+  auto buf_len = BN_num_bytes(bn);
+  unsigned char buf[buf_len];
+  SSL_RET_N(BN_bn2lebinpad(bn, buf, buf_len));
+
   MPInt mp;
-  auto *hex_str = BN_bn2hex(bn);
-  ON_SCOPE_EXIT([&] { OPENSSL_free(hex_str); });
-  mp.Set(hex_str, 16);
+  mp.FromMagBytes({buf, static_cast<size_t>(buf_len)}, Endian::little);
+
+  if (BN_is_negative(bn)) {
+    mp.NegateInplace();
+  }
   return mp;
 }
 
@@ -96,7 +95,6 @@ OpensslGroup::OpensslGroup(const CurveMeta &meta, EC_GROUP_PTR group)
     : EcGroupSketch(meta), group_(std::move(group)), field_p_(BN_new()) {
   SSL_RET_1(EC_GROUP_get_curve(group_.get(), field_p_.get(), nullptr, nullptr,
                                ctx_.get()));
-  SSL_RET_1(EC_GROUP_precompute_mult(group_.get(), ctx_.get()));
 }
 
 AnyPointPtr OpensslGroup::MakeOpensslPoint() const {
@@ -151,8 +149,11 @@ void OpensslGroup::DoubleInplace(EcPoint *p) const {
 EcPoint OpensslGroup::MulBase(const MPInt &scalar) const {
   auto res = MakeOpensslPoint();
   auto s = Mp2Bn(scalar);
-  SSL_RET_1(EC_POINTs_mul(group_.get(), Cast(res), s.get(), 0, nullptr, nullptr,
-                          ctx_.get()));
+  // EC_POINT_mul has random memory leaks, be careful.
+  // See UT for demo code.
+  // We tested openssl 3.1.0, it still leaks.
+  SSL_RET_1(EC_POINT_mul(group_.get(), Cast(res), s.get(), nullptr, nullptr,
+                         ctx_.get()));
   return res;
 }
 
@@ -188,6 +189,10 @@ EcPoint OpensslGroup::Negate(const EcPoint &point) const {
 
 void OpensslGroup::NegateInplace(EcPoint *point) const {
   SSL_RET_1(EC_POINT_invert(group_.get(), Cast(point), ctx_.get()));
+}
+
+EcPoint OpensslGroup::CopyPoint(const EcPoint &point) const {
+  return WrapOpensslPoint(EC_POINT_dup(Cast(point), group_.get()));
 }
 
 AffinePoint OpensslGroup::GetAffinePoint(const EcPoint &point) const {

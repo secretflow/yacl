@@ -50,6 +50,12 @@ build:ubsan --copt -g
 build:ubsan --copt -fno-omit-frame-pointer
 build:ubsan --linkopt -fsanitize=undefined
 
+# see https://github.com/bazelbuild/bazel/issues/6932, _FORTIFY_SOURCE=1 is enabled by default
+# on Mac OS, which breaks ASAN. bazel has officially added sanitizer support to Apple Platforms,
+# see commit: https://github.com/bazelbuild/bazel/commit/6ab161e2d5b8ad9cf191be1b362cd4619f3bb956
+build:macos-asan --features=asan
+build:macos-ubsan --features=ubsan
+
 test --keep_going
 test --test_output=errors
 test --test_timeout=180

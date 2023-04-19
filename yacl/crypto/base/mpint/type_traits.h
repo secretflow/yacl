@@ -18,8 +18,11 @@ namespace yacl::crypto {
 
 // borrow from c++20 stl
 enum class Endian {
+  // The high byte of the data is stored in the high address of the memory
   little = __ORDER_LITTLE_ENDIAN__,
+  // The high byte of the data is stored in the low address of the memory
   big = __ORDER_BIG_ENDIAN__,
+  // Auto-detect the endianness of current machine
   native = __BYTE_ORDER__,  // alias for little or big
 };
 

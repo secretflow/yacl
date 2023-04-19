@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "tommath.h"
+#include "libtommath/tommath.h"
 
 #include "yacl/crypto/base/mpint/type_traits.h"
 
@@ -29,6 +29,12 @@ void mp_ext_rand_bits(mp_int *out, int64_t bits);
 // Convert num to bytes and output to buf
 void mp_ext_to_bytes(const mp_int &num, unsigned char *buf, int64_t byte_len,
                      Endian endian = Endian::native);
+
+size_t mp_ext_mag_bytes_size(const mp_int &num);
+size_t mp_ext_to_mag_bytes(const mp_int &num, uint8_t *buf, size_t buf_len,
+                           Endian endian = Endian::native);
+void mp_ext_from_mag_bytes(mp_int *num, const uint8_t *buf, size_t buf_len,
+                           Endian endian = Endian::native);
 
 // returns the number of bits in an int
 // Faster than tommath's native mp_count_bits() method

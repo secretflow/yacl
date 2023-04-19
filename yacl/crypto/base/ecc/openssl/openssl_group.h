@@ -60,6 +60,8 @@ class OpensslGroup : public EcGroupSketch {
   EcPoint Negate(const EcPoint& point) const override;
   void NegateInplace(EcPoint* point) const override;
 
+  EcPoint CopyPoint(const EcPoint& point) const override;
+
   // EcPoint(OpensslPoint) -> AffinePoint
   AffinePoint GetAffinePoint(const EcPoint& point) const override;
   // AffinePoint -> EcPoint(OpensslPoint)

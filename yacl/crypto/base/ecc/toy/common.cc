@@ -29,6 +29,11 @@ MPInt ToyEcGroup::GetOrder() const { return params_.n; }
 
 EcPoint ToyEcGroup::GetGenerator() const { return params_.G; }
 
+EcPoint ToyEcGroup::CopyPoint(const EcPoint &point) const {
+  const auto &ap = std::get<AffinePoint>(point);
+  return AffinePoint(ap.x, ap.y);
+}
+
 AffinePoint ToyEcGroup::GetAffinePoint(const EcPoint &point) const {
   return std::get<AffinePoint>(point);
 }

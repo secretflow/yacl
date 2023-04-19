@@ -17,6 +17,10 @@
 #include "yacl/crypto/base/mpint/tommath_ext_features.h"
 #include "yacl/crypto/base/mpint/tommath_ext_types.h"
 
+extern "C" {
+#include "libtommath/tommath_private.h"
+}
+
 yacl::crypto::MPInt operator""_mp(const char *sz, size_t n) {
   return yacl::crypto::MPInt(std::string(sz, n));
 }
@@ -53,38 +57,6 @@ MPInt::MPInt(const MPInt &other) {
   MPINT_ENFORCE_OK(mp_init_copy(&n_, &other.n_));
 }
 
-size_t MPInt::BitCount() const { return mp_ext_count_bits_fast(n_); }
-
-int MPInt::Compare(const MPInt &other) const { return mp_cmp(&n_, &other.n_); }
-
-int MPInt::CompareAbs(const MPInt &other) const {
-  return mp_cmp_mag(&n_, &other.n_);
-}
-
-bool MPInt::IsZero() const { return mp_iszero(&n_) == MP_YES; }
-
-void MPInt::SetZero() { mp_zero(&n_); }
-
-MPInt &MPInt::DecrOne() & {
-  MPINT_ENFORCE_OK(mp_decr(&n_));
-  return *this;
-}
-
-MPInt &MPInt::IncrOne() & {
-  MPINT_ENFORCE_OK(mp_incr(&n_));
-  return *this;
-}
-
-MPInt MPInt::DecrOne() && {
-  MPINT_ENFORCE_OK(mp_decr(&n_));
-  return *this;
-}
-
-MPInt MPInt::IncrOne() && {
-  MPINT_ENFORCE_OK(mp_incr(&n_));
-  return *this;
-}
-
 MPInt &MPInt::operator=(const MPInt &other) {
   MPINT_ENFORCE_OK(mp_copy(&other.n_, &n_));
   return *this;
@@ -93,132 +65,6 @@ MPInt &MPInt::operator=(const MPInt &other) {
 MPInt &MPInt::operator=(MPInt &&other) noexcept {
   std::swap(n_, other.n_);
   return *this;
-}
-
-MPInt MPInt::operator+(const MPInt &operand2) const {
-  MPInt result;
-  MPINT_ENFORCE_OK(mp_add(&n_, &operand2.n_, &result.n_));
-  return result;
-}
-
-MPInt MPInt::operator-(const MPInt &operand2) const {
-  MPInt result;
-  MPINT_ENFORCE_OK(mp_sub(&n_, &operand2.n_, &result.n_));
-  return result;
-}
-
-MPInt MPInt::operator*(const MPInt &operand2) const {
-  MPInt result;
-  Mul(*this, operand2, &result);
-  return result;
-}
-
-MPInt MPInt::operator/(const MPInt &operand2) const {
-  MPInt result;
-  Div(*this, operand2, &result, nullptr);
-  return result;
-}
-
-MPInt MPInt::operator<<(size_t operand2) const {
-  MPInt result;
-  MPINT_ENFORCE_OK(mp_mul_2d(&this->n_, operand2, &result.n_));
-  return result;
-}
-
-MPInt MPInt::operator>>(size_t operand2) const {
-  MPInt result;
-  MPINT_ENFORCE_OK(mp_div_2d(&this->n_, operand2, &result.n_, nullptr));
-  return result;
-}
-
-MPInt MPInt::operator%(const MPInt &operand2) const {
-  MPInt result;
-  Mod(*this, operand2, &result);
-  return result;
-}
-
-MPInt MPInt::operator-() const {
-  MPInt result;
-  Negate(&result);
-  return result;
-}
-
-MPInt MPInt::operator&(const MPInt &operand2) const {
-  MPInt result;
-  MPINT_ENFORCE_OK(mp_and(&n_, &operand2.n_, &result.n_));
-  return result;
-}
-
-MPInt MPInt::operator|(const MPInt &operand2) const {
-  MPInt result;
-  MPINT_ENFORCE_OK(mp_or(&n_, &operand2.n_, &result.n_));
-  return result;
-}
-
-MPInt MPInt::operator^(const MPInt &operand2) const {
-  MPInt result;
-  MPINT_ENFORCE_OK(mp_xor(&n_, &operand2.n_, &result.n_));
-  return result;
-}
-
-MPInt MPInt::operator+=(const MPInt &operand2) {
-  MPINT_ENFORCE_OK(mp_add(&n_, &operand2.n_, &n_));
-  return *this;
-}
-
-MPInt MPInt::operator-=(const MPInt &operand2) {
-  MPINT_ENFORCE_OK(mp_sub(&n_, &operand2.n_, &n_));
-  return *this;
-}
-
-MPInt MPInt::operator*=(const MPInt &operand2) {
-  MPINT_ENFORCE_OK(mp_mul(&n_, &operand2.n_, &n_));
-  return *this;
-}
-
-MPInt MPInt::operator/=(const MPInt &operand2) {
-  MPINT_ENFORCE_OK(mp_div(&n_, &operand2.n_, &n_, nullptr));
-  return *this;
-}
-
-MPInt MPInt::operator%=(const MPInt &operand2) {
-  MPINT_ENFORCE_OK(mp_mod(&n_, &operand2.n_, &n_));
-  return *this;
-}
-
-MPInt MPInt::operator<<=(size_t operand2) {
-  MPINT_ENFORCE_OK(mp_mul_2d(&this->n_, operand2, &this->n_));
-  return *this;
-}
-
-MPInt MPInt::operator>>=(size_t operand2) {
-  MPINT_ENFORCE_OK(mp_div_2d(&this->n_, operand2, &this->n_, nullptr));
-  return *this;
-}
-
-MPInt MPInt::operator&=(const MPInt &operand2) {
-  MPINT_ENFORCE_OK(mp_and(&n_, &operand2.n_, &n_));
-  return *this;
-}
-
-MPInt MPInt::operator|=(const MPInt &operand2) {
-  MPINT_ENFORCE_OK(mp_or(&n_, &operand2.n_, &n_));
-  return *this;
-}
-
-MPInt MPInt::operator^=(const MPInt &operand2) {
-  MPINT_ENFORCE_OK(mp_xor(&n_, &operand2.n_, &n_));
-  return *this;
-}
-
-std::ostream &operator<<(std::ostream &os, const MPInt &an_int) {
-  return os << an_int.ToString();
-}
-
-MPInt MPInt::Abs() const {
-  MPInt result;
-  MPINT_ENFORCE_OK(mp_abs(&n_, &result.n_));
-  return result;
 }
 
 template <>
@@ -349,7 +195,7 @@ void MPInt::Set(uint64_t value) {
   MPINT_ENFORCE_OK(mp_grow(&n_, 2));
   mp_set_u64(&n_, value);
 }
-  
+
 #ifdef __APPLE__
 template <>
 void MPInt::Set(unsigned long value) {  // NOLINT: macOS uint64_t is ull
@@ -430,43 +276,9 @@ void MPInt::Set(const std::string &num, int radix) {
   }
 }
 
-// todo: this function is very slow.
-std::string MPInt::ToRadixString(int radix) const {
-  int size = 0;
-  MPINT_ENFORCE_OK(mp_radix_size(&n_, radix, &size));
+bool MPInt::IsZero() const { return mp_iszero(&n_); }
 
-  std::string output;
-  output.resize(size);
-  MPINT_ENFORCE_OK(mp_to_radix(&n_, output.data(), size, nullptr, radix));
-  output.pop_back();  // remove tailing '\0'
-  return output;
-}
-
-std::string MPInt::ToHexString() const { return ToRadixString(16); }
-
-std::string MPInt::ToString() const { return ToRadixString(10); }
-
-yacl::Buffer MPInt::Serialize() const {
-  size_t size = mp_ext_serialize_size(n_);
-  yacl::Buffer buffer(size);
-  mp_ext_serialize(n_, buffer.data<uint8_t>(), size);
-  return buffer;
-}
-
-void MPInt::Deserialize(yacl::ByteContainerView buffer) {
-  mp_ext_deserialize(&n_, buffer.data(), buffer.size());
-}
-
-yacl::Buffer MPInt::ToBytes(size_t byte_len, Endian endian) const {
-  yacl::Buffer buf(byte_len);
-  ToBytes(buf.data<unsigned char>(), byte_len, endian);
-  return buf;
-}
-
-void MPInt::ToBytes(unsigned char *buf, size_t buf_len,
-                    yacl::crypto::Endian endian) const {
-  mp_ext_to_bytes(n_, buf, buf_len, endian);
-}
+void MPInt::SetZero() { mp_zero(&n_); }
 
 uint8_t MPInt::operator[](int idx) const { return GetBit(idx); }
 
@@ -474,52 +286,165 @@ uint8_t MPInt::GetBit(int idx) const { return mp_ext_get_bit(n_, idx); }
 
 void MPInt::SetBit(int idx, uint8_t bit) { mp_ext_set_bit(&n_, idx, bit); }
 
-void MPInt::RandPrimeOver(size_t bit_size, MPInt *out, PrimeType prime_type) {
-  YACL_ENFORCE_GT(bit_size, 80u, "bit_size must > 80");
-  int trials = mp_prime_rabin_miller_trials(bit_size);
+size_t MPInt::BitCount() const { return mp_ext_count_bits_fast(n_); }
 
-  if (prime_type == PrimeType::FastSafe) {
-    mp_ext_safe_prime_rand(&out->n_, trials, bit_size);
-  } else {
-    MPINT_ENFORCE_OK(mp_prime_rand(&out->n_, trials, bit_size,
-                                   static_cast<int>(prime_type)));
-  }
+bool MPInt::operator>=(const MPInt &other) const { return Compare(other) >= 0; }
+bool MPInt::operator<=(const MPInt &other) const { return Compare(other) <= 0; }
+bool MPInt::operator>(const MPInt &other) const { return Compare(other) > 0; }
+bool MPInt::operator<(const MPInt &other) const { return Compare(other) < 0; }
+bool MPInt::operator==(const MPInt &other) const { return Compare(other) == 0; }
+bool MPInt::operator!=(const MPInt &other) const { return Compare(other) != 0; }
+
+int MPInt::Compare(const MPInt &other) const { return mp_cmp(&n_, &other.n_); }
+
+int MPInt::CompareAbs(const MPInt &other) const {
+  return mp_cmp_mag(&n_, &other.n_);
 }
 
-bool MPInt::IsPrime() const {
-  int trials = mp_prime_rabin_miller_trials(BitCount());
-  mp_bool result;
-  MPINT_ENFORCE_OK(mp_prime_is_prime(&n_, trials, &result));
-  return result > 0;
+MPInt MPInt::operator+(const MPInt &operand2) const {
+  MPInt result;
+  MPINT_ENFORCE_OK(mp_add(&n_, &operand2.n_, &result.n_));
+  return result;
 }
 
-void MPInt::RandomRoundDown(size_t bit_size, MPInt *r) {
-  // floor (向下取整)
-  mp_int *n = &r->n_;
-  MPINT_ENFORCE_OK(mp_rand(n, bit_size / MP_DIGIT_BIT));
+MPInt MPInt::operator-(const MPInt &operand2) const {
+  MPInt result;
+  MPINT_ENFORCE_OK(mp_sub(&n_, &operand2.n_, &result.n_));
+  return result;
 }
 
-void MPInt::RandomRoundUp(size_t bit_size, MPInt *r) {
-  // ceil (向上取整)
-  mp_int *n = &r->n_;
-  MPINT_ENFORCE_OK(mp_rand(n, (bit_size + MP_DIGIT_BIT - 1) / MP_DIGIT_BIT));
+MPInt MPInt::operator*(const MPInt &operand2) const {
+  MPInt result;
+  Mul(*this, operand2, &result);
+  return result;
 }
 
-void MPInt::RandomExactBits(size_t bit_size, MPInt *r) {
-  mp_ext_rand_bits(&r->n_, bit_size);
+MPInt MPInt::operator/(const MPInt &operand2) const {
+  MPInt result;
+  Div(*this, operand2, &result, nullptr);
+  return result;
 }
 
-void MPInt::RandomMonicExactBits(size_t bit_size, MPInt *r) {
-  YACL_ENFORCE(bit_size > 0, "cannot gen monic random number of size 0");
-  do {
-    RandomExactBits(bit_size, r);
-  } while (r->BitCount() != bit_size);
+MPInt MPInt::operator<<(size_t operand2) const {
+  MPInt result;
+  MPINT_ENFORCE_OK(mp_mul_2d(&this->n_, operand2, &result.n_));
+  return result;
 }
 
-void MPInt::RandomLtN(const MPInt &n, MPInt *r) {
-  do {
-    MPInt::RandomExactBits(n.BitCount(), r);
-  } while (r->IsNegative() || r->Compare(n) >= 0);
+MPInt MPInt::operator>>(size_t operand2) const {
+  MPInt result;
+  MPINT_ENFORCE_OK(mp_div_2d(&this->n_, operand2, &result.n_, nullptr));
+  return result;
+}
+
+MPInt MPInt::operator%(const MPInt &operand2) const {
+  MPInt result;
+  Mod(*this, operand2, &result);
+  return result;
+}
+
+MPInt MPInt::operator-() const {
+  MPInt result;
+  Negate(&result);
+  return result;
+}
+
+MPInt MPInt::operator&(const MPInt &operand2) const {
+  MPInt result;
+  MPINT_ENFORCE_OK(mp_and(&n_, &operand2.n_, &result.n_));
+  return result;
+}
+
+MPInt MPInt::operator|(const MPInt &operand2) const {
+  MPInt result;
+  MPINT_ENFORCE_OK(mp_or(&n_, &operand2.n_, &result.n_));
+  return result;
+}
+
+MPInt MPInt::operator^(const MPInt &operand2) const {
+  MPInt result;
+  MPINT_ENFORCE_OK(mp_xor(&n_, &operand2.n_, &result.n_));
+  return result;
+}
+
+MPInt MPInt::operator+=(const MPInt &operand2) {
+  MPINT_ENFORCE_OK(mp_add(&n_, &operand2.n_, &n_));
+  return *this;
+}
+
+MPInt MPInt::operator-=(const MPInt &operand2) {
+  MPINT_ENFORCE_OK(mp_sub(&n_, &operand2.n_, &n_));
+  return *this;
+}
+
+MPInt MPInt::operator*=(const MPInt &operand2) {
+  MPINT_ENFORCE_OK(mp_mul(&n_, &operand2.n_, &n_));
+  return *this;
+}
+
+MPInt MPInt::operator/=(const MPInt &operand2) {
+  MPINT_ENFORCE_OK(mp_div(&n_, &operand2.n_, &n_, nullptr));
+  return *this;
+}
+
+MPInt MPInt::operator%=(const MPInt &operand2) {
+  MPINT_ENFORCE_OK(mp_mod(&n_, &operand2.n_, &n_));
+  return *this;
+}
+
+MPInt MPInt::operator<<=(size_t operand2) {
+  MPINT_ENFORCE_OK(mp_mul_2d(&this->n_, operand2, &this->n_));
+  return *this;
+}
+
+MPInt MPInt::operator>>=(size_t operand2) {
+  MPINT_ENFORCE_OK(mp_div_2d(&this->n_, operand2, &this->n_, nullptr));
+  return *this;
+}
+
+MPInt MPInt::operator&=(const MPInt &operand2) {
+  MPINT_ENFORCE_OK(mp_and(&n_, &operand2.n_, &n_));
+  return *this;
+}
+
+MPInt MPInt::operator|=(const MPInt &operand2) {
+  MPINT_ENFORCE_OK(mp_or(&n_, &operand2.n_, &n_));
+  return *this;
+}
+
+MPInt MPInt::operator^=(const MPInt &operand2) {
+  MPINT_ENFORCE_OK(mp_xor(&n_, &operand2.n_, &n_));
+  return *this;
+}
+
+std::ostream &operator<<(std::ostream &os, const MPInt &an_int) {
+  return os << an_int.ToString();
+}
+
+MPInt &MPInt::DecrOne() & {
+  MPINT_ENFORCE_OK(mp_decr(&n_));
+  return *this;
+}
+
+MPInt &MPInt::IncrOne() & {
+  MPINT_ENFORCE_OK(mp_incr(&n_));
+  return *this;
+}
+
+MPInt MPInt::DecrOne() && {
+  MPINT_ENFORCE_OK(mp_decr(&n_));
+  return *this;
+}
+
+MPInt MPInt::IncrOne() && {
+  MPINT_ENFORCE_OK(mp_incr(&n_));
+  return *this;
+}
+
+MPInt MPInt::Abs() const {
+  MPInt result;
+  MPINT_ENFORCE_OK(mp_abs(&n_, &result.n_));
+  return result;
 }
 
 void MPInt::Add(const MPInt &a, const MPInt &b, MPInt *c) {
@@ -565,18 +490,16 @@ void MPInt::MulMod(const MPInt &a, const MPInt &b, const MPInt &mod, MPInt *d) {
 }
 
 void MPInt::Pow(const MPInt &a, uint32_t b, MPInt *c) {
-  MPINT_ENFORCE_OK(mp_expt_u32(&a.n_, b, &c->n_));
+  MPINT_ENFORCE_OK(mp_expt_n(&a.n_, b, &c->n_));
 }
 
 MPInt MPInt::Pow(uint32_t b) const {
   MPInt res;
-  MPINT_ENFORCE_OK(mp_expt_u32(&n_, b, &res.n_));
+  MPINT_ENFORCE_OK(mp_expt_n(&n_, b, &res.n_));
   return res;
 }
 
-void MPInt::PowInplace(uint32_t b) {
-  MPINT_ENFORCE_OK(mp_expt_u32(&n_, b, &n_));
-}
+void MPInt::PowInplace(uint32_t b) { MPINT_ENFORCE_OK(mp_expt_n(&n_, b, &n_)); }
 
 MPInt MPInt::PowMod(const MPInt &b, const MPInt &mod) const {
   MPInt res;
@@ -604,7 +527,7 @@ void MPInt::Div(const MPInt &a, const MPInt &b, MPInt *c, MPInt *d) {
 }
 
 void MPInt::Div3(const MPInt &a, MPInt *b) {
-  MPINT_ENFORCE_OK(mp_div_3(&a.n_, &b->n_, nullptr));
+  MPINT_ENFORCE_OK(s_mp_div_3(&a.n_, &b->n_, nullptr));
 }
 
 void MPInt::InvertMod(const MPInt &a, const MPInt &mod, MPInt *c) {
@@ -619,6 +542,108 @@ MPInt MPInt::InvertMod(const MPInt &mod) const {
 
 void MPInt::Mod(const MPInt &a, const MPInt &mod, MPInt *c) {
   MPINT_ENFORCE_OK(mp_mod(&a.n_, &mod.n_, &c->n_));
+}
+
+void MPInt::RandomRoundDown(size_t bit_size, MPInt *r) {
+  // floor (向下取整)
+  mp_int *n = &r->n_;
+  MPINT_ENFORCE_OK(mp_rand(n, bit_size / MP_DIGIT_BIT));
+}
+
+void MPInt::RandomRoundUp(size_t bit_size, MPInt *r) {
+  // ceil (向上取整)
+  mp_int *n = &r->n_;
+  MPINT_ENFORCE_OK(mp_rand(n, (bit_size + MP_DIGIT_BIT - 1) / MP_DIGIT_BIT));
+}
+
+void MPInt::RandomExactBits(size_t bit_size, MPInt *r) {
+  mp_ext_rand_bits(&r->n_, bit_size);
+}
+
+void MPInt::RandomMonicExactBits(size_t bit_size, MPInt *r) {
+  YACL_ENFORCE(bit_size > 0, "cannot gen monic random number of size 0");
+  do {
+    RandomExactBits(bit_size, r);
+  } while (r->BitCount() != bit_size);
+}
+
+void MPInt::RandomLtN(const MPInt &n, MPInt *r) {
+  do {
+    MPInt::RandomExactBits(n.BitCount(), r);
+  } while (r->IsNegative() || r->Compare(n) >= 0);
+}
+
+void MPInt::RandPrimeOver(size_t bit_size, MPInt *out, PrimeType prime_type) {
+  YACL_ENFORCE_GT(bit_size, 80u, "bit_size must > 80");
+  int trials = mp_prime_rabin_miller_trials(bit_size);
+
+  if (prime_type == PrimeType::FastSafe) {
+    mp_ext_safe_prime_rand(&out->n_, trials, bit_size);
+  } else {
+    MPINT_ENFORCE_OK(mp_prime_rand(&out->n_, trials, bit_size,
+                                   static_cast<int>(prime_type)));
+  }
+}
+
+bool MPInt::IsPrime() const {
+  int trials = mp_prime_rabin_miller_trials(BitCount());
+  bool result;
+  MPINT_ENFORCE_OK(mp_prime_is_prime(&n_, trials, &result));
+  return result > 0;
+}
+
+// todo: this function is very slow.
+std::string MPInt::ToRadixString(int radix) const {
+  size_t size = 0;
+  MPINT_ENFORCE_OK(mp_radix_size(&n_, radix, &size));
+
+  std::string output;
+  output.resize(size);
+  MPINT_ENFORCE_OK(mp_to_radix(&n_, output.data(), size, nullptr, radix));
+  output.pop_back();  // remove tailing '\0'
+  return output;
+}
+
+std::string MPInt::ToHexString() const { return ToRadixString(16); }
+
+std::string MPInt::ToString() const { return ToRadixString(10); }
+
+yacl::Buffer MPInt::Serialize() const {
+  size_t size = mp_ext_serialize_size(n_);
+  yacl::Buffer buffer(size);
+  mp_ext_serialize(n_, buffer.data<uint8_t>(), size);
+  return buffer;
+}
+
+void MPInt::Deserialize(yacl::ByteContainerView buffer) {
+  mp_ext_deserialize(&n_, buffer.data(), buffer.size());
+}
+
+yacl::Buffer MPInt::ToBytes(size_t byte_len, Endian endian) const {
+  yacl::Buffer buf(byte_len);
+  ToBytes(buf.data<unsigned char>(), byte_len, endian);
+  return buf;
+}
+
+void MPInt::ToBytes(unsigned char *buf, size_t buf_len,
+                    yacl::crypto::Endian endian) const {
+  mp_ext_to_bytes(n_, buf, buf_len, endian);
+}
+
+yacl::Buffer MPInt::ToMagBytes(yacl::crypto::Endian endian) const {
+  size_t size = mp_ext_mag_bytes_size(n_);
+  yacl::Buffer buffer(size);
+  mp_ext_to_mag_bytes(n_, buffer.data<uint8_t>(), size, endian);
+  return buffer;
+}
+
+size_t MPInt::ToMagBytes(unsigned char *buf, size_t buf_len,
+                         Endian endian) const {
+  return mp_ext_to_mag_bytes(n_, buf, buf_len, endian);
+}
+
+void MPInt::FromMagBytes(yacl::ByteContainerView buffer, Endian endian) {
+  mp_ext_from_mag_bytes(&n_, buffer.data(), buffer.size(), endian);
 }
 
 }  // namespace yacl::crypto

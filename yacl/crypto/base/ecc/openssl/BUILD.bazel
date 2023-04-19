@@ -29,6 +29,7 @@ yacl_cc_library(
         "//yacl/crypto/base/ecc:spi",
         "//yacl/crypto/base/hash:ssl_hash",
         "@com_github_openssl_openssl//:openssl",
+        "@yacl//yacl/utils:parallel",
     ],
     alwayslink = 1,
 )

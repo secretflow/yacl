@@ -40,7 +40,7 @@ static void BM_RandU64Secure(benchmark::State& state) {
     size_t n = state.range(0);
     state.ResumeTiming();
     for (size_t i = 0; i < n; i++) {
-      RandU64(true);
+      SecureRandU64();
     }
   }
 }
@@ -62,7 +62,7 @@ static void BM_RandU128Secure(benchmark::State& state) {
     size_t n = state.range(0);
     state.ResumeTiming();
     for (size_t i = 0; i < n; i++) {
-      RandU128(true);
+      SecureRandU128();
     }
   }
 }
@@ -81,7 +81,7 @@ static void BM_RandBytesSecure(benchmark::State& state) {
     state.PauseTiming();
     size_t n = state.range(0);
     state.ResumeTiming();
-    RandBytes(n, true);
+    SecureRandBytes(n);
   }
 }
 
@@ -90,7 +90,7 @@ static void BM_RandBitsInSecure(benchmark::State& state) {
     state.PauseTiming();
     size_t n = state.range(0);
     state.ResumeTiming();
-    RandBits<dynamic_bitset<uint128_t>>(n, false);
+    SecureRandBits<dynamic_bitset<uint128_t>>(n);
   }
 }
 
@@ -99,7 +99,7 @@ static void BM_RandBitsSecure(benchmark::State& state) {
     state.PauseTiming();
     size_t n = state.range(0);
     state.ResumeTiming();
-    RandBits<std::vector<bool>>(n, true);
+    SecureRandBits<std::vector<bool>>(n);
   }
 }
 

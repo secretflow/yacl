@@ -136,11 +136,10 @@ inline void
 // encrypt blocks with given key
 inline void
 #ifdef __x86_64__
-__attribute__((target("aes,sse2")))
+    __attribute__((target("aes,sse2")))
 #endif
-AES_ecb_encrypt_blks(
-    const __m128i *in_blks, __m128i *out_blks, size_t nblks,
-    const AES_KEY *key) {
+    AES_ecb_encrypt_blks(const __m128i *in_blks, __m128i *out_blks,
+                         size_t nblks, const AES_KEY *key) {
   for (size_t i = 0; i < nblks; ++i) {
     out_blks[i] = _mm_xor_si128(in_blks[i], key->rd_key[0]);
     for (size_t j = 1; j < key->rounds; ++j) {

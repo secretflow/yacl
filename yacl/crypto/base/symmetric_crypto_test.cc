@@ -14,11 +14,15 @@
 
 #include "yacl/crypto/base/symmetric_crypto.h"
 
+#include <cstdint>
+#include <limits>
 #include <memory>
+#include <random>
 
 #include "gtest/gtest.h"
 
 #include "yacl/base/exception.h"
+#include "yacl/base/int128.h"
 #include "yacl/crypto/base/symmetric_crypto.h"
 
 namespace yacl::crypto {
@@ -102,17 +106,31 @@ std::vector<uint8_t> kCtrCipherExample = {
 
 std::vector<uint8_t> MakeVector(size_t len) {
   std::vector<uint8_t> ret(len);
-  for (size_t i = 0; i < len; ++i) {
-    ret[i] = rand() % 256u;
-  }
+
+  using random_bytes_engine =
+      std::independent_bits_engine<std::default_random_engine, CHAR_BIT,
+                                   uint8_t>;
+  random_bytes_engine rbe;
+
+  std::generate(ret.begin(), ret.end(), std::ref(rbe));
   return ret;
 }
 
 std::vector<uint128_t> MakeBlocks(size_t len) {
   std::vector<uint128_t> ret(len);
-  for (size_t i = 0; i < len; ++i) {
-    ret[i] = rand();
-  }
+  using random_bytes_engine =
+      std::independent_bits_engine<std::default_random_engine, CHAR_BIT,
+                                   unsigned char>;
+  random_bytes_engine rbe;
+
+  std::generate(ret.begin(), ret.end(), [&rbe]() {
+    uint128_t v;
+    auto* ptr = reinterpret_cast<unsigned char*>(&v);
+    for (size_t idx = 0; idx < sizeof(uint128_t); ++idx) {
+      ptr[idx] = rbe();
+    }
+    return v;
+  });
   return ret;
 }
 
@@ -162,7 +180,24 @@ TEST_P(SymmetricCryptoTest, WorksUint128) {
 }
 
 INSTANTIATE_TEST_SUITE_P(Cases, SymmetricCryptoTest,
-                         testing::Values(0, 16, 32, 128, 1024, 4096));
+                         testing::Values<size_t>(0, 16, 32, 128, 1024, 4096));
+
+// Large input is kind of slow to iterate through all cryptor kinds...so just
+// use one
+TEST(SymmetricCryptoTest, ExtraLarge) {
+  size_t msg_size =
+      static_cast<size_t>(std::numeric_limits<int32_t>::max()) + 1;
+  SymmetricCrypto crypto(kTestTypes.front(), kKey1, kIv1);
+  auto plaintext = MakeVector(msg_size);
+  std::vector<uint8_t> encrypted(plaintext.size());
+  ASSERT_NO_THROW(crypto.Encrypt(plaintext, absl::MakeSpan(encrypted)));
+
+  std::vector<uint8_t> decrypted(encrypted.size());
+  ASSERT_NO_THROW(crypto.Decrypt(absl::MakeConstSpan(encrypted),
+                                 absl::MakeSpan(decrypted)));
+  EXPECT_EQ(plaintext.size(), decrypted.size());
+  EXPECT_EQ(plaintext, decrypted);
+}
 
 class SymmetricCryptoPerformanceTest : public testing::TestWithParam<size_t> {};
 

@@ -51,13 +51,11 @@ bazel build //... -c opt
 # test
 bazel test //...
 
-# [optional] build & test with ASAN
+# [optional] build & test with ASAN if you're not on MacOS
 bazel build //... -c dbg --config=asan
 bazel test //... --config=asan -c dbg
+
+# [optional] build & test with ASAN on MacOS
+bazel build //... -c dbg --config=macos-asan
+bazel test //... --config=macos-asan -c dbg
 ```
-
-### Bazel build options
-
-- `--define gperf=on` enable gperf
-- `--define tracelog=on` enable link trace log.
-
