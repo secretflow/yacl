@@ -74,6 +74,7 @@ def _com_github_brpc_brpc():
         patches = [
             "@yacl//bazel:patches/brpc.patch",
             "@yacl//bazel:patches/brpc_ssl.patch",
+            "@yacl//bazel:patches/brpc_pr_2156.patch",
         ],
         urls = [
             "https://github.com/apache/brpc/archive/refs/tags/1.4.0.tar.gz",
