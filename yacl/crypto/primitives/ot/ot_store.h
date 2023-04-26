@@ -24,6 +24,8 @@
 
 namespace yacl::crypto {
 
+enum class OtStoreType { Normal, Compact };
+
 class SliceBase {
  public:
   // setters and getters
@@ -46,6 +48,9 @@ class SliceBase {
 
   // manually increase the buffer counter by "size"
   void IncreaseBufCtr(uint64_t size);
+
+  // reset all pointers
+  void Reset();
 
   // An unused slice looks like the follwoing:
   //
@@ -87,24 +92,27 @@ class OtRecvStore : public SliceBase {
   // full constructor for ot receiver store
   OtRecvStore(BitBufPtr bit_ptr, BlkBufPtr blk_ptr, uint64_t use_ctr,
               uint64_t use_size, uint64_t buf_ctr, uint64_t buf_size,
-              bool compact_mode = false);
+              OtStoreType type = OtStoreType::Normal);
 
   // empty constructor
-  explicit OtRecvStore(uint64_t num, bool compact_mode = false);
+  explicit OtRecvStore(uint64_t num, OtStoreType type = OtStoreType::Normal);
 
   // slice the ot store
   std::shared_ptr<OtRecvStore> NextSlice(uint64_t num);
 
-  // whether the ot store is in compact mode
-  bool IsCompact() const { return compact_mode_; }
+  // get ot store type
+  OtStoreType Type() const { return type_; }
 
-  // access the raw pointer of receiver's choices (type: dynamic_bitset)
-  void* choice_data() { return bit_buf_->data(); }
+  // get a buffer copy of choice buf
+  std::unique_ptr<Buffer> GetChoiceBuf();
 
-  // access the raw pointer of receiver's blocks (type: uint128_t array)
-  void* block_data() { return blk_buf_->data(); }
+  // get a buffer copy of block buf
+  std::unique_ptr<Buffer> GetBlockBuf();
 
-  // get the avaliable ot number for this slice
+  // reset ot store
+  void Reset();
+
+  // get the avaliable ot number for this slice1
   uint64_t Size() const { return GetUseSize(); }
 
   // access a choice bit with a given slice index
@@ -135,7 +143,7 @@ class OtRecvStore : public SliceBase {
   // [warning] please don't use compact mode unless you know what you are doing
   // In compact mode, we store one ot block and one choice bit in uint128_t,
   // thus the valid ot length is only 127 bits, which may incur security issues.
-  bool compact_mode_ = false;
+  OtStoreType type_ = OtStoreType::Normal;
 
   // Compact mode for COT (Receiver):
   //
@@ -168,19 +176,23 @@ class OtSendStore : public SliceBase {
   // full constructor for ot receiver store
   OtSendStore(BlkBufPtr blk_ptr, uint128_t delta, uint64_t use_ctr,
               uint64_t use_size, uint64_t buf_ctr, uint64_t buf_size,
-              bool compact_mode = false);
+              OtStoreType type = OtStoreType::Normal);
 
   // empty constructor
-  explicit OtSendStore(uint64_t num, bool compact_mode = false);
+  explicit OtSendStore(uint64_t num, OtStoreType type = OtStoreType::Normal);
 
   // slice the ot store
   std::shared_ptr<OtSendStore> NextSlice(uint64_t num);
 
-  // whether the ot store is in compact mode
-  bool IsCompact() const { return compact_mode_; }
+  // get ot store type
+  OtStoreType Type() const { return type_; }
 
-  // access the raw pointer of chosen block
-  void* data() const;
+  // get the ownership of block buf
+  // note: block pointer will be set to nullptr after the function call
+  std::unique_ptr<Buffer> GetBlockBuf();
+
+  // reset ot store
+  void Reset();
 
   // get the avaliable ot number for this slice
   uint64_t Size() const;
@@ -207,8 +219,9 @@ class OtSendStore : public SliceBase {
   // check the consistency of ot receiver store
   void ConsistencyCheck() const override;
 
-  bool compact_mode_ = false;  // by default, compact mode stores correlated ot
-                               // and normal mode stores random ot
+  // by default, compact mode stores correlated ot
+  // and normal mode stores random ot
+  OtStoreType type_ = OtStoreType::Normal;
 
   uint128_t delta_ = 0;  // store cot's delta
   BlkBufPtr blk_buf_;    // store blocks

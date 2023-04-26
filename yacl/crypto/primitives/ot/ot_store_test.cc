@@ -51,8 +51,8 @@ TEST(OtRecvStoreTest, EmptyConstructorTest) {
   const size_t ot_num = 100;
 
   // WHEN
-  auto ot_normal = std::make_shared<OtRecvStore>(ot_num, false);
-  auto ot_compact = std::make_shared<OtRecvStore>(ot_num, true);
+  auto ot_normal = std::make_shared<OtRecvStore>(ot_num, OtStoreType::Normal);
+  auto ot_compact = std::make_shared<OtRecvStore>(ot_num, OtStoreType::Compact);
 
   // THEN
   EXPECT_EQ(ot_normal->Size(), ot_num);

@@ -129,7 +129,9 @@ void Context::ConnectToMesh(spdlog::level::level_enum connect_log_level) {
       SPDLOG_COND(connect_log_level, "attempt to connect to rank={}", rank);
       channels_[rank]->TestSend(timeout);
     } catch (const NetworkError& e) {
-      SPDLOG_ERROR("connect to rank={} failed with error {}", rank, e.what());
+      SPDLOG_COND(connect_log_level,
+                  "try connect to rank={} failed with error {}", rank,
+                  e.what());
       return false;
     }
     return true;

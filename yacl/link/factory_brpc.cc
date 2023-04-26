@@ -12,9 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "absl/strings/match.h"
+#include "gflags/gflags.h"
+
 #include "yacl/base/exception.h"
 #include "yacl/link/factory.h"
 #include "yacl/link/transport/channel_brpc.h"
+
+namespace brpc::policy {
+DECLARE_int32(h2_client_stream_window_size);
+}
 
 namespace yacl::link {
 
@@ -37,6 +44,21 @@ std::shared_ptr<Context> FactoryBrpc::CreateContext(const ContextDesc& desc,
     opts.http_timeout_ms = desc.http_timeout_ms;
     opts.http_max_payload_size = desc.http_max_payload_size;
     opts.channel_protocol = desc.brpc_channel_protocol;
+
+    if (absl::StartsWith(opts.channel_protocol, "h2")) {
+      YACL_ENFORCE(opts.http_max_payload_size > 4096,
+                   "http_max_payload_size is too small");
+      YACL_ENFORCE(
+          opts.http_max_payload_size < std::numeric_limits<int32_t>::max(),
+          "http_max_payload_size is too large");
+      // if use h2 protocol (h2 or h2:grpc), need to change h2 window size too,
+      // use http_max_payload_size as h2's window size, then reserve 4kb buffer
+      // for protobuf header
+      brpc::policy::FLAGS_h2_client_stream_window_size =
+          static_cast<int32_t>(opts.http_max_payload_size);
+      opts.http_max_payload_size -= 4096;
+    }
+
     if (!desc.brpc_channel_connection_type.empty()) {
       opts.channel_connection_type = desc.brpc_channel_connection_type;
     }
