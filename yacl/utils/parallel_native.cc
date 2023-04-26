@@ -94,14 +94,30 @@ void _parallel_run(const int64_t begin, const int64_t end,
   for (size_t i = 1; i < num_tasks; ++i) {
     futures.push_back(_get_intraop_pool().Submit(task, i));
   }
+
+  std::exception_ptr eptr;
   // Run the first task on the current thread directly.
-  task(0);
+  try {
+    task(0);
+  } catch (...) {
+    eptr = std::current_exception();
+  }
 
   // Wait for all tasks to finish.
   for (auto& future : futures) {
     // wait and throw exception.
     // if the task in thread pool throws an exception, the get() will rethrow it
-    future.get();
+    try {
+      future.get();
+    } catch (...) {
+      // we catch exception here just to make sure all threads are finished
+      // after parallel_for()/parallel_reduce() returned.
+      eptr = std::current_exception();
+    }
+  }
+
+  if (eptr) {
+    std::rethrow_exception(eptr);
   }
 }
 

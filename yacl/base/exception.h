@@ -82,9 +82,9 @@ class Exception : public std::exception {
   explicit Exception(std::string msg, void** stacks, int dep)
       : msg_(std::move(msg)) {
     for (int i = 0; i < dep; ++i) {
-      std::array<char, 1024> tmp;
+      std::array<char, 2048> tmp;
       const char* symbol = "(unknown)";
-      if (absl::Symbolize(stacks[i], tmp.data(), sizeof(tmp))) {
+      if (absl::Symbolize(stacks[i], tmp.data(), tmp.size())) {
         symbol = tmp.data();
       }
       stack_trace_.append(fmt::format("#{} {}+{}\n", i, symbol, stacks[i]));

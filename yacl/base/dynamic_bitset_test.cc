@@ -175,4 +175,23 @@ TYPED_TEST(DynamicBitsetTest, IterateBitTest) {
     ++current_check_bit;
   });
 }
+
+TYPED_TEST(DynamicBitsetTest, BufferTest) {
+  // GIVEN
+  auto bitset = crypto::RandBits<dynamic_bitset<TypeParam>>(3);
+  EXPECT_EQ(bitset.size(), 3);
+
+  // WHEN
+  auto buf = std::make_shared<Buffer>(bitset.data(),
+                                      bitset.num_blocks() * sizeof(TypeParam));
+
+  dynamic_bitset<TypeParam> bitset_check(3);
+  std::memcpy(bitset_check.data(), buf->data(), buf->size());
+
+  // THEN
+  EXPECT_EQ(bitset[0], bitset_check[0]);
+  EXPECT_EQ(bitset[1], bitset_check[1]);
+  EXPECT_EQ(bitset[2], bitset_check[2]);
+}
+
 }  // namespace yacl

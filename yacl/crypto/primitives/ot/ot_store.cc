@@ -62,28 +62,53 @@ void SliceBase::IncreaseBufCtr(uint64_t size) {
   internal_buf_ctr_ += size;
 }
 
+void SliceBase::Reset() {
+  internal_use_ctr_ = 0;
+  internal_use_size_ = 0;
+  internal_buf_ctr_ = 0;
+  internal_buf_size_ = 0;
+  ConsistencyCheck();
+}
+
 //================================//
 //           OtRecvStore          //
 //================================//
 
 OtRecvStore::OtRecvStore(BitBufPtr bit_ptr, BlkBufPtr blk_ptr, uint64_t use_ctr,
                          uint64_t use_size, uint64_t buf_ctr, uint64_t buf_size,
-                         bool compact_mode)
-    : compact_mode_(compact_mode),
-      bit_buf_(std::move(bit_ptr)),
-      blk_buf_(std::move(blk_ptr)) {
+                         OtStoreType type)
+    : type_(type), bit_buf_(std::move(bit_ptr)), blk_buf_(std::move(blk_ptr)) {
   InitCtrs(use_ctr, use_size, buf_ctr, buf_size);
   ConsistencyCheck();
 }
 
-OtRecvStore::OtRecvStore(uint64_t num, bool compact_mode)
-    : compact_mode_(compact_mode) {
-  if (!compact_mode_) {  // in normal mode, we need to init bit_buf_ to store
-                         // choices
+OtRecvStore::OtRecvStore(uint64_t num, OtStoreType type) : type_(type) {
+  // in normal mode, we need to init bit_buf_ to store choices
+  if (type_ == OtStoreType::Normal) {
     bit_buf_ = std::make_shared<dynamic_bitset<uint128_t>>(num);
   }
   blk_buf_ = std::make_shared<std::vector<uint128_t>>(num);
   InitCtrs(0, num, 0, num);
+  ConsistencyCheck();
+}
+
+std::unique_ptr<Buffer> OtRecvStore::GetChoiceBuf() {
+  // Constructs Buffer object by copy
+  return std::make_unique<Buffer>(bit_buf_->data(),
+                                  bit_buf_->num_blocks() * sizeof(uint128_t));
+}
+
+std::unique_ptr<Buffer> OtRecvStore::GetBlockBuf() {
+  // Constructs Buffer object by copy
+  return std::make_unique<Buffer>(blk_buf_->data(),
+                                  blk_buf_->size() * sizeof(uint128_t));
+}
+
+void OtRecvStore::Reset() {
+  SliceBase::Reset();
+  bit_buf_.reset();
+  blk_buf_.reset();
+  type_ = OtStoreType::Compact;
   ConsistencyCheck();
 }
 
@@ -93,7 +118,7 @@ void OtRecvStore::ConsistencyCheck() const {
                "Actual buffer size: {}, but recorded "
                "internal buffer size is: {}",
                blk_buf_->size(), internal_buf_size_);
-  if (!compact_mode_) {
+  if (type_ == OtStoreType::Normal) {
     YACL_ENFORCE_EQ(bit_buf_->size(), blk_buf_->size());
   }
 }
@@ -116,7 +141,7 @@ std::shared_ptr<OtRecvStore> OtRecvStore::NextSlice(uint64_t num) {
 
   auto out = std::make_shared<OtRecvStore>(bit_buf_, blk_buf_, slice_use_ctr,
                                            slice_use_size, slice_buf_ctr,
-                                           slice_buf_size, compact_mode_);
+                                           slice_buf_size, type_);
 
   // where who slice this buffer looks like the following:
   //
@@ -135,7 +160,7 @@ std::shared_ptr<OtRecvStore> OtRecvStore::NextSlice(uint64_t num) {
 }
 
 uint8_t OtRecvStore::GetChoice(uint64_t idx) const {
-  if (compact_mode_) {
+  if (type_ == OtStoreType::Compact) {
     return blk_buf_->operator[](GetBufIdx(idx)) & 0x1;
   } else {
     return bit_buf_->operator[](GetBufIdx(idx));
@@ -147,7 +172,7 @@ uint128_t OtRecvStore::GetBlock(uint64_t idx) const {
 }
 
 void OtRecvStore::SetChoice(uint64_t idx, bool val) {
-  YACL_ENFORCE(!compact_mode_,
+  YACL_ENFORCE(type_ == OtStoreType::Normal,
                "Manipulating choice is currently not allowed in compact mode");
   bit_buf_->operator[](GetBufIdx(idx)) = val;
 }
@@ -157,13 +182,13 @@ void OtRecvStore::SetBlock(uint64_t idx, uint128_t val) {
 }
 
 void OtRecvStore::FlipChoice(uint64_t idx) {
-  YACL_ENFORCE(!compact_mode_,
+  YACL_ENFORCE(type_ == OtStoreType::Normal,
                "Manipulating choice is currently not allowed in compact mode");
   bit_buf_->operator[](GetBufIdx(idx)).flip();
 }
 
 dynamic_bitset<uint128_t> OtRecvStore::CopyChoice() const {
-  YACL_ENFORCE(!compact_mode_,
+  YACL_ENFORCE(type_ == OtStoreType::Normal,
                "Copying choice is currently not allowed in compact mode");
   dynamic_bitset<uint128_t> out(bit_buf_->to_string());  // copy
   out >>= GetUseCtr();
@@ -188,7 +213,7 @@ std::shared_ptr<OtRecvStore> MakeOtRecvStore(
   uint64_t buf_size = tmp1_ptr->size();
 
   return std::make_shared<OtRecvStore>(tmp1_ptr, tmp2_ptr, use_ctr, use_size,
-                                       buf_ctr, buf_size, false);
+                                       buf_ctr, buf_size, OtStoreType::Normal);
 }
 
 std::shared_ptr<OtRecvStore> MakeCompactCotRecvStore(
@@ -201,7 +226,7 @@ std::shared_ptr<OtRecvStore> MakeCompactCotRecvStore(
   uint64_t buf_size = tmp_ptr->size();
 
   return std::make_shared<OtRecvStore>(nullptr, tmp_ptr, use_ctr, use_size,
-                                       buf_ctr, buf_size, true);
+                                       buf_ctr, buf_size, OtStoreType::Compact);
 }
 
 //================================//
@@ -210,21 +235,33 @@ std::shared_ptr<OtRecvStore> MakeCompactCotRecvStore(
 
 OtSendStore::OtSendStore(BlkBufPtr blk_ptr, uint128_t delta, uint64_t use_ctr,
                          uint64_t use_size, uint64_t buf_ctr, uint64_t buf_size,
-                         bool compact_mode)
-    : compact_mode_(compact_mode), delta_(delta), blk_buf_(std::move(blk_ptr)) {
+                         OtStoreType type)
+    : type_(type), delta_(delta), blk_buf_(std::move(blk_ptr)) {
   InitCtrs(use_ctr, use_size, buf_ctr, buf_size);
   ConsistencyCheck();
 }
 
-OtSendStore::OtSendStore(uint64_t num, bool compact_mode)
-    : compact_mode_(compact_mode) {
+OtSendStore::OtSendStore(uint64_t num, OtStoreType type) : type_(type) {
   uint64_t buf_size = num;
-  if (!compact_mode) {
+  if (type_ == OtStoreType::Normal) {
     buf_size = num * 2;
   }
 
   blk_buf_ = std::make_shared<std::vector<uint128_t>>(buf_size);
   InitCtrs(0, buf_size, 0, buf_size);
+  ConsistencyCheck();
+}
+
+std::unique_ptr<Buffer> OtSendStore::GetBlockBuf() {
+  // Constructs Buffer object by copy
+  return std::make_unique<Buffer>(blk_buf_->data(),
+                                  blk_buf_->size() * sizeof(uint128_t));
+}
+
+void OtSendStore::Reset() {
+  SliceBase::Reset();
+  blk_buf_.reset();
+  type_ = OtStoreType::Compact;
   ConsistencyCheck();
 }
 
@@ -237,7 +274,7 @@ void OtSendStore::ConsistencyCheck() const {
 }
 
 std::shared_ptr<OtSendStore> OtSendStore::NextSlice(uint64_t num) {
-  const uint64_t ot_blk_num = IsCompact() ? 1 : 2;
+  const uint64_t ot_blk_num = (type_ == OtStoreType::Compact) ? 1 : 2;
 
   // Recall: A new slice looks like the follwoing:
   //
@@ -256,7 +293,7 @@ std::shared_ptr<OtSendStore> OtSendStore::NextSlice(uint64_t num) {
 
   auto out = std::make_shared<OtSendStore>(blk_buf_, delta_, slice_use_ctr,
                                            slice_use_size, slice_buf_ctr,
-                                           slice_buf_size, compact_mode_);
+                                           slice_buf_size, type_);
 
   // where who slice this buffer looks like the following:
   //
@@ -274,10 +311,8 @@ std::shared_ptr<OtSendStore> OtSendStore::NextSlice(uint64_t num) {
   return out;
 }
 
-void* OtSendStore::data() const { return static_cast<void*>(blk_buf_->data()); }
-
 uint64_t OtSendStore::Size() const {
-  if (compact_mode_) {
+  if (type_ == OtStoreType::Compact) {
     return GetUseSize();
   } else {
     return GetUseSize() / 2;
@@ -293,7 +328,7 @@ uint128_t OtSendStore::GetDelta() const {
 
 uint128_t OtSendStore::GetBlock(uint64_t ot_idx, uint64_t msg_idx) const {
   YACL_ENFORCE(msg_idx == 0 || msg_idx == 1);
-  const uint64_t ot_blk_num = IsCompact() ? 1 : 2;
+  const uint64_t ot_blk_num = (type_ == OtStoreType::Compact) ? 1 : 2;
   if (delta_ == 0) {  // rot must be normal mode
     return blk_buf_->operator[](GetBufIdx(2 * ot_idx) + msg_idx);
   } else {  // cot could be normal mode or compact mode
@@ -309,20 +344,20 @@ void OtSendStore::SetDelta(uint128_t delta) {
 
 void OtSendStore::SetNormalBlock(uint64_t ot_idx, uint64_t msg_idx,
                                  uint128_t val) {
-  YACL_ENFORCE(!compact_mode_,
+  YACL_ENFORCE(type_ == OtStoreType::Normal,
                "Manipulating ot messages is not allowed in compact mode");
   YACL_ENFORCE(msg_idx == 0 || msg_idx == 1);
   blk_buf_->operator[](GetBufIdx(ot_idx * 2 + msg_idx)) = val;
 }
 
 void OtSendStore::SetCompactBlock(uint64_t ot_idx, uint128_t val) {
-  YACL_ENFORCE(compact_mode_,
+  YACL_ENFORCE(type_ == OtStoreType::Compact,
                "SetCompactBlock() is only allowed in compact mode");
   blk_buf_->operator[](GetBufIdx(ot_idx)) = val;
 }
 
 std::vector<uint128_t> OtSendStore::CopyCotBlocks() const {
-  YACL_ENFORCE(compact_mode_,
+  YACL_ENFORCE(type_ == OtStoreType::Compact,
                "CopyCotBlocks() is only allowed in compact mode");
   return {blk_buf_->begin() + internal_buf_ctr_,
           blk_buf_->begin() + internal_use_size_};
@@ -340,7 +375,7 @@ std::shared_ptr<OtSendStore> MakeOtSendStore(
   uint64_t buf_size = blocks.size() * 2;
 
   return std::make_shared<OtSendStore>(buf_ptr, 0, use_ctr, use_size, buf_ctr,
-                                       buf_size);
+                                       buf_size, OtStoreType::Normal);
 }
 
 std::shared_ptr<OtSendStore> MakeCompactCotSendStore(
@@ -354,7 +389,7 @@ std::shared_ptr<OtSendStore> MakeCompactCotSendStore(
   uint64_t buf_size = blocks.size();
 
   return std::make_shared<OtSendStore>(buf_ptr, delta, use_ctr, use_size,
-                                       buf_ctr, buf_size, true);
+                                       buf_ctr, buf_size, OtStoreType::Compact);
 }
 
 MockOtStore MockRots(uint64_t num) {
