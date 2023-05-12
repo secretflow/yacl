@@ -45,7 +45,6 @@ def yacl_deps():
     _com_github_blake3team_blake3()
     _com_github_intel_ipp()
     _com_github_libsodium()
-    _com_github_emptoolkit_emp_tool()
     _com_github_libtom_libtommath()
 
     maybe(
@@ -75,6 +74,7 @@ def _com_github_brpc_brpc():
             "@yacl//bazel:patches/brpc.patch",
             "@yacl//bazel:patches/brpc_ssl.patch",
             "@yacl//bazel:patches/brpc_pr_2156.patch",
+            "@yacl//bazel:patches/brpc_m1.patch",
         ],
         urls = [
             "https://github.com/apache/brpc/archive/refs/tags/1.5.0.tar.gz",
@@ -113,11 +113,11 @@ def _com_github_madler_zlib():
         http_archive,
         name = "zlib",
         build_file = "@yacl//bazel:zlib.BUILD",
-        strip_prefix = "zlib-1.2.12",
-        sha256 = "d8688496ea40fb61787500e863cc63c9afcbc524468cedeb478068924eb54932",
+        strip_prefix = "zlib-1.2.13",
+        sha256 = "1525952a0a567581792613a9723333d7f8cc20b87a81f920fb8bc7e3f2251428",
         type = ".tar.gz",
         urls = [
-            "https://github.com/madler/zlib/archive/refs/tags/v1.2.12.tar.gz",
+            "https://github.com/madler/zlib/archive/refs/tags/v1.2.13.tar.gz",
         ],
     )
 
@@ -137,11 +137,11 @@ def _com_google_absl():
     maybe(
         http_archive,
         name = "com_google_absl",
-        sha256 = "81311c17599b3712069ded20cca09a62ab0bf2a89dfa16993786c8782b7ed145",
+        sha256 = "5366d7e7fa7ba0d915014d387b66d0d002c03236448e1ba9ef98122c13b35c36",
         type = "tar.gz",
-        strip_prefix = "abseil-cpp-20230125.1",
+        strip_prefix = "abseil-cpp-20230125.3",
         urls = [
-            "https://github.com/abseil/abseil-cpp/archive/refs/tags/20230125.1.tar.gz",
+            "https://github.com/abseil/abseil-cpp/archive/refs/tags/20230125.3.tar.gz",
         ],
     )
 
@@ -287,34 +287,15 @@ def _com_github_google_cpu_features():
     maybe(
         http_archive,
         name = "com_github_google_cpu_features",
-        strip_prefix = "cpu_features-0.7.0",
+        strip_prefix = "cpu_features-0.8.0",
         type = "tar.gz",
-        sha256 = "df80d9439abf741c7d2fdcdfd2d26528b136e6c52976be8bd0cd5e45a27262c0",
+        sha256 = "7021729f2db97aa34f218d12727314f23e8b11eaa2d5a907e8426bcb41d7eaac",
         build_file = "@yacl//bazel:cpu_features.BUILD",
         patch_args = ["-p1"],
         patches = ["@yacl//bazel:patches/cpu_features.patch"],
         urls = [
-            "https://github.com/google/cpu_features/archive/refs/tags/v0.7.0.tar.gz",
+            "https://github.com/google/cpu_features/archive/refs/tags/v0.8.0.tar.gz",
         ],
-    )
-
-def _com_github_emptoolkit_emp_tool():
-    maybe(
-        http_archive,
-        name = "com_github_emptoolkit_emp_tool",
-        sha256 = "217a2cc46f1839efe0f23f6e615fd032094fb53695925be4ca18ae6c7c3e643c",
-        strip_prefix = "emp-tool-0.2.3",
-        type = "tar.gz",
-        patch_args = ["-p1"],
-        patches = [
-            "@yacl//bazel:patches/emp-tool.patch",
-            "@yacl//bazel:patches/emp-tool-1.patch",
-            "@yacl//bazel:patches/emp-tool-sse2neon.patch",
-        ],
-        urls = [
-            "https://github.com/emp-toolkit/emp-tool/archive/refs/tags/0.2.3.tar.gz",
-        ],
-        build_file = "@yacl//bazel:emp-tool.BUILD",
     )
 
 def _com_github_dltcollab_sse2neon():

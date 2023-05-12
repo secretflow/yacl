@@ -29,6 +29,7 @@ yacl_cmake_external(
         "BUILD_TESTING": "OFF",
     },
     lib_source = ":all_srcs",
+    out_data_dirs = ["lib/cmake"],
     out_lib_dir = "lib",
     out_static_libs = ["libcpu_features.a"],
 )

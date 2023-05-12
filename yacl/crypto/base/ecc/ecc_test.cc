@@ -21,6 +21,11 @@
 #include "yacl/crypto/base/ecc/ecc_spi.h"
 #include "yacl/utils/parallel.h"
 
+namespace yacl::crypto {
+// For test
+extern std::vector<CurveMeta> kPredefinedCurves;
+}  // namespace yacl::crypto
+
 namespace yacl::crypto::test {
 
 TEST(CurveFactoryTest, FactoryWorks) {
@@ -129,6 +134,30 @@ class EcCurveTest : public ::testing::TestWithParam<std::string> {
     // DivInplace
     ec_->DivInplace(&pt, 2_mp);  // pt = sG
     ASSERT_TRUE(ec_->PointEqual(pt, p1));
+
+    // Big Scalar Test
+    {
+      for (int i = 0; i <= 10; i++) {
+        MPInt s1;
+        MPInt::RandomMonicExactBits(256, &s1);
+        MPInt s2;
+        MPInt::RandomMonicExactBits(256, &s2);
+        auto p1 = ec_->MulBase(s1);
+        auto p2 = ec_->Mul(ec_->GetGenerator(), s2);
+        auto p3 = ec_->MulDoubleBase(s1, s2, ec_->GetGenerator());
+        ASSERT_TRUE(ec_->PointEqual(p3, ec_->Add(p1, p2)));
+      }
+      for (int i = 0; i <= 10; i++) {
+        MPInt s1;
+        MPInt::RandomMonicExactBits(1024, &s1);
+        MPInt s2;
+        MPInt::RandomMonicExactBits(1024, &s2);
+        auto p1 = ec_->MulBase(s1);
+        auto p2 = ec_->Mul(ec_->GetGenerator(), s2);
+        auto p3 = ec_->MulDoubleBase(s1, s2, ec_->GetGenerator());
+        ASSERT_TRUE(ec_->PointEqual(p3, ec_->Add(p1, p2)));
+      }
+    }
   }
 
   void TestMulIsAdd() {
@@ -280,6 +309,13 @@ TEST_P(Sm2CurveTest, SpiTest) {
   EXPECT_EQ(ref_->GetAffinePoint(ref_->GetGenerator()),
             ec_->GetAffinePoint(ec_->GetGenerator()));
 
+  // Multi Curve Instances test
+  auto ec2 = yacl::crypto::EcGroupFactory::Create("secp256k1", "openssl");
+  EXPECT_TRUE(ref_->GetField() != ec2->GetField());
+  EXPECT_TRUE(ref_->GetOrder() != ec2->GetOrder());
+  EXPECT_TRUE(ref_->GetAffinePoint(ref_->GetGenerator()) !=
+              ec2->GetAffinePoint(ec2->GetGenerator()));
+
   // Run Other tests
   RunAllTests();
 }
@@ -295,6 +331,32 @@ TEST(OpensslMemLeakTest, DISABLED_MulBaseLeaks) {
     // memory leaks here even with serial calls.
     ec->MulBase(0_mp);
   });
+}
+
+TEST(AliasNameTest, AliasWorks) {
+  // for (const auto &meta : kPredefinedCurves) {
+  for (const auto name : {"secp256k1", "secp192r1", "secp256r1"}) {
+    auto meta = GetCurveMetaByName(name);
+    auto libs = yacl::crypto::EcGroupFactory::ListEcLibraries(meta.LowerName());
+    if (!libs.empty() && !meta.aliases.empty()) {
+      auto c1 = yacl::crypto::EcGroupFactory::Create(meta.LowerName(), libs[0]);
+      for (const auto &alias : meta.aliases) {
+        auto libs_alias = yacl::crypto::EcGroupFactory::ListEcLibraries(alias);
+        EXPECT_EQ(libs, libs_alias);
+
+        for (uint64_t i = 1; i < libs.size(); i++) {
+          auto curve_alias =
+              yacl::crypto::EcGroupFactory::Create(alias, libs_alias[i]);
+          // check if same curve
+          ASSERT_TRUE(c1->GetCofactor() == curve_alias->GetCofactor());
+          ASSERT_TRUE(c1->GetField() == curve_alias->GetField());
+          ASSERT_TRUE(c1->GetOrder() == curve_alias->GetOrder());
+          ASSERT_TRUE(c1->GetAffinePoint(c1->GetGenerator()) ==
+                      curve_alias->GetAffinePoint(curve_alias->GetGenerator()));
+        }
+      }
+    }
+  }
 }
 
 }  // namespace yacl::crypto::test

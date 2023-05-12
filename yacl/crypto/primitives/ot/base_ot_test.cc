@@ -82,7 +82,7 @@ TEST_P(BaseOtTest, OtStoreWorks) {
   // THEN
   for (unsigned i = 0; i < params.num_ot; ++i) {
     unsigned idx = choices[i] ? 1 : 0;
-    EXPECT_EQ(send_blocks->GetBlock(i, idx), recv_blocks->GetBlock(i));
+    EXPECT_EQ(send_blocks.GetBlock(i, idx), recv_blocks.GetBlock(i));
   }
 }
 

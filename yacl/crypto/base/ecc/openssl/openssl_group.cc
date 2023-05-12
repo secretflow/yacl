@@ -93,6 +93,10 @@ AnyPointPtr WrapOpensslPoint(EC_POINT *point) {
 
 OpensslGroup::OpensslGroup(const CurveMeta &meta, EC_GROUP_PTR group)
     : EcGroupSketch(meta), group_(std::move(group)), field_p_(BN_new()) {
+  generator_ = WrapOpensslPoint(
+      EC_POINT_dup(EC_GROUP_get0_generator(group_.get()), group_.get()));
+  order_ = Bn2Mp(EC_GROUP_get0_order(group_.get()));
+  cofactor_ = Bn2Mp(EC_GROUP_get0_cofactor(group_.get()));
   SSL_RET_1(EC_GROUP_get_curve(group_.get(), field_p_.get(), nullptr, nullptr,
                                ctx_.get()));
 }
@@ -101,28 +105,15 @@ AnyPointPtr OpensslGroup::MakeOpensslPoint() const {
   return WrapOpensslPoint(EC_POINT_new(group_.get()));
 }
 
-MPInt OpensslGroup::GetCofactor() const {
-  static MPInt cache = Bn2Mp(EC_GROUP_get0_cofactor(group_.get()));
-  return cache;
-}
+MPInt OpensslGroup::GetCofactor() const { return cofactor_; }
 
-MPInt OpensslGroup::GetField() const {
-  static MPInt cache = Bn2Mp(field_p_.get());
-  return cache;
-}
+MPInt OpensslGroup::GetField() const { return Bn2Mp(field_p_.get()); }
 
-MPInt OpensslGroup::GetOrder() const {
-  static MPInt cache = Bn2Mp(EC_GROUP_get0_order(group_.get()));
-  return cache;
-}
+MPInt OpensslGroup::GetOrder() const { return order_; }
 
-EcPoint OpensslGroup::GetGenerator() const {
-  static EcPoint cache = WrapOpensslPoint(
-      EC_POINT_dup(EC_GROUP_get0_generator(group_.get()), group_.get()));
-  return cache;
-}
+EcPoint OpensslGroup::GetGenerator() const { return generator_; }
 
-std::string OpensslGroup::ToString() { return GetCurveName(); }
+std::string OpensslGroup::ToString() const { return GetCurveName(); }
 
 EcPoint OpensslGroup::Add(const EcPoint &p1, const EcPoint &p2) const {
   auto res = MakeOpensslPoint();

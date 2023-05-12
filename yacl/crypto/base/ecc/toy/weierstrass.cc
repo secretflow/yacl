@@ -19,7 +19,7 @@ namespace yacl::crypto::toy {
 static const AffinePoint kInfPoint = AffinePoint(MPInt(0), MPInt(0));
 static const EcPoint kInfEcPoint = kInfPoint;
 
-std::string ToyWeierstrassGroup::ToString() {
+std::string ToyWeierstrassGroup::ToString() const {
   return fmt::format("{} ==> y^2 = x^3 + {}x + {} (mod {})", GetCurveName(),
                      params_.A, params_.B, params_.p);
 }

@@ -43,62 +43,106 @@ class EccBencher {
         ->Arg(16)
         ->Arg(256)
         ->Arg(448);
+    benchmark::RegisterBenchmark(
+        fmt::format("{}/BM_MulDoubleBase", prefix).c_str(),
+        [this](benchmark::State& st) { BenchMulDoubleBase(st); })
+        ->Arg(16)
+        ->Arg(256)
+        ->Arg(448);
 
+    // for small func
+    benchmark::IterationCount n = 1000;
     benchmark::RegisterBenchmark(
         fmt::format("{}/BM_HashPoint", prefix).c_str(),
-        [this](benchmark::State& st) { BenchHashPoint(st); });
+        [this](benchmark::State& st) { BenchHashPoint(st); })
+        ->Iterations(n);
     benchmark::RegisterBenchmark(
         fmt::format("{}/BM_PointEqual", prefix).c_str(),
-        [this](benchmark::State& st) { BenchPointEqual(st); });
-    benchmark::RegisterBenchmark(
-        fmt::format("{}/BM_Add", prefix).c_str(),
-        [this](benchmark::State& st) { BenchAdd(st); });
+        [this](benchmark::State& st) { BenchPointEqual(st); })
+        ->Iterations(n);
+    benchmark::RegisterBenchmark(fmt::format("{}/BM_Add", prefix).c_str(),
+                                 [this](benchmark::State& st) { BenchAdd(st); })
+        ->Iterations(n);
+    ;
   }
 
   void BenchMulBase(benchmark::State& state) {
     MPInt s;
-    MPInt::RandomMonicExactBits(state.range(), &s);
     for (auto _ : state) {
+      state.PauseTiming();
+      MPInt::RandomMonicExactBits(state.range(), &s);
+      state.ResumeTiming();
+
       ec_->MulBase(s);
     }
   }
 
   void BenchMul(benchmark::State& state) {
     MPInt p;
-    MPInt::RandomExactBits(256, &p);
-    auto point = ec_->MulBase(p);
     MPInt s;
-    MPInt::RandomMonicExactBits(state.range(), &s);
     for (auto _ : state) {
+      state.PauseTiming();
+      MPInt::RandomExactBits(256, &p);
+      auto point = ec_->MulBase(p);
+      MPInt::RandomMonicExactBits(state.range(), &s);
+      state.ResumeTiming();
+
       ec_->Mul(point, s);
+    }
+  }
+
+  void BenchMulDoubleBase(benchmark::State& state) {
+    MPInt p;
+    MPInt s1;
+    MPInt s2;
+
+    for (auto _ : state) {
+      state.PauseTiming();
+      MPInt::RandomExactBits(256, &p);
+      auto point = ec_->MulBase(p);
+      MPInt::RandomMonicExactBits(state.range(), &s1);
+      MPInt::RandomMonicExactBits(state.range(), &s2);
+      state.ResumeTiming();
+
+      ec_->MulDoubleBase(s1, s2, point);
     }
   }
 
   void BenchHashPoint(benchmark::State& state) {
     MPInt p;
-    MPInt::RandomExactBits(256, &p);
-    auto point = ec_->MulBase(p);
     for (auto _ : state) {
+      state.PauseTiming();
+      MPInt::RandomExactBits(256, &p);
+      auto point = ec_->MulBase(p);
+      state.ResumeTiming();
+
       ec_->HashPoint(point);
     }
   }
 
   void BenchPointEqual(benchmark::State& state) {
     MPInt s;
-    MPInt::RandomExactBits(256, &s);
-    auto p1 = ec_->MulBase(-s);
-    auto p2 = ec_->MulBase(s);
-    ec_->NegateInplace(&p2);
     for (auto _ : state) {
+      state.PauseTiming();
+      MPInt::RandomExactBits(256, &s);
+      auto p1 = ec_->MulBase(-s);
+      auto p2 = ec_->MulBase(s);
+      ec_->NegateInplace(&p2);
+      state.ResumeTiming();
+
       ec_->PointEqual(p1, p2);
     }
   }
 
   void BenchAdd(benchmark::State& state) {
     MPInt s;
-    MPInt::RandomExactBits(256, &s);
-    auto p1 = ec_->MulBase(s);
+
     for (auto _ : state) {
+      state.PauseTiming();
+      MPInt::RandomExactBits(256, &s);
+      auto p1 = ec_->MulBase(s);
+      state.ResumeTiming();
+
       ec_->Add(p1, ec_->GetGenerator());
     }
   }

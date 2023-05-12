@@ -14,6 +14,8 @@
 
 #include "yacl/base/int128.h"
 
+#include <utility>
+
 // For importing ostream implementation.
 #include "absl/numeric/int128.h"
 

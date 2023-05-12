@@ -28,7 +28,7 @@ class ToyXGroup : public ToyEcGroup {
  public:
   ToyXGroup(const CurveMeta &curve_meta, const CurveParam &param);
 
-  std::string ToString() override;
+  std::string ToString() const override;
 
   // Add is not supported, since only the x coordinate cannot uniquely determine
   // a point

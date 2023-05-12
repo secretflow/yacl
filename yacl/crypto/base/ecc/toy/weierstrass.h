@@ -23,7 +23,7 @@ class ToyWeierstrassGroup : public ToyEcGroup {
  public:
   using ToyEcGroup::ToyEcGroup;
 
-  std::string ToString() override;
+  std::string ToString() const override;
 
   EcPoint Add(const EcPoint &p1, const EcPoint &p2) const override;
 

@@ -1,0 +1,12 @@
+diff --git a/src/bvar/default_variables.cpp b/src/bvar/default_variables.cpp
+index be02c50a..57b4f661 100644
+--- a/src/bvar/default_variables.cpp
++++ b/src/bvar/default_variables.cpp
+@@ -449,7 +449,6 @@ static bool read_proc_io(ProcIO* s) {
+     static pid_t pid = getpid();
+     rusage_info_current rusage;
+     if (proc_pid_rusage(pid, RUSAGE_INFO_CURRENT, (void**)&rusage) != 0) {
+-        PLOG(WARNING) << "Fail to proc_pid_rusage";
+         return false;
+     }
+     s->read_bytes = rusage.ri_diskio_bytesread;

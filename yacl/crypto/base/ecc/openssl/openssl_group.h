@@ -43,7 +43,7 @@ class OpensslGroup : public EcGroupSketch {
   MPInt GetField() const override;
   MPInt GetOrder() const override;
   EcPoint GetGenerator() const override;
-  std::string ToString() override;
+  std::string ToString() const override;
 
   EcPoint Add(const EcPoint& p1, const EcPoint& p2) const override;
   void AddInplace(EcPoint* p1, const EcPoint& p2) const override;
@@ -89,6 +89,11 @@ class OpensslGroup : public EcGroupSketch {
 
   EC_GROUP_PTR group_;
   BIGNUM_PTR field_p_;
+
+  MPInt order_;
+  MPInt cofactor_;
+  EcPoint generator_;
+
   static thread_local BN_CTX_PTR ctx_;
 };
 

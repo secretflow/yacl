@@ -98,7 +98,7 @@ class OtRecvStore : public SliceBase {
   explicit OtRecvStore(uint64_t num, OtStoreType type = OtStoreType::Normal);
 
   // slice the ot store
-  std::shared_ptr<OtRecvStore> NextSlice(uint64_t num);
+  OtRecvStore NextSlice(uint64_t num);
 
   // get ot store type
   OtStoreType Type() const { return type_; }
@@ -158,13 +158,11 @@ class OtRecvStore : public SliceBase {
 
 // Easier way of generate a ot_store pointer from a given choice buffer and
 // a block buffer
-std::shared_ptr<OtRecvStore> MakeOtRecvStore(
-    const dynamic_bitset<uint128_t>& choices,
-    const std::vector<uint128_t>& blocks);
+OtRecvStore MakeOtRecvStore(const dynamic_bitset<uint128_t>& choices,
+                            const std::vector<uint128_t>& blocks);
 
 // Easier way of generate a compact cot_store pointer from a given block buffer
-std::shared_ptr<OtRecvStore> MakeCompactCotRecvStore(
-    const std::vector<uint128_t>& blocks);
+OtRecvStore MakeCompactCotRecvStore(const std::vector<uint128_t>& blocks);
 
 // OT Sender (for 1-out-of-2 OT)
 //
@@ -182,13 +180,12 @@ class OtSendStore : public SliceBase {
   explicit OtSendStore(uint64_t num, OtStoreType type = OtStoreType::Normal);
 
   // slice the ot store
-  std::shared_ptr<OtSendStore> NextSlice(uint64_t num);
+  OtSendStore NextSlice(uint64_t num);
 
   // get ot store type
   OtStoreType Type() const { return type_; }
 
-  // get the ownership of block buf
-  // note: block pointer will be set to nullptr after the function call
+  // get a buffer copy of block buf
   std::unique_ptr<Buffer> GetBlockBuf();
 
   // reset ot store
@@ -228,19 +225,19 @@ class OtSendStore : public SliceBase {
 };
 
 // Easier way of generate a ot_store pointer from a given blocks buffer
-std::shared_ptr<OtSendStore> MakeOtSendStore(
+OtSendStore MakeOtSendStore(
     const std::vector<std::array<uint128_t, 2>>& blocks);
 
 // Easier way of generate a compact cot_store pointer from a given blocks
 // buffer and cot delta
-std::shared_ptr<OtSendStore> MakeCompactCotSendStore(
-    const std::vector<uint128_t>& blocks, uint128_t delta);
+OtSendStore MakeCompactCotSendStore(const std::vector<uint128_t>& blocks,
+                                    uint128_t delta);
 
 // OT Store (for mocking only)
 class MockOtStore {
  public:
-  std::shared_ptr<OtSendStore> send;
-  std::shared_ptr<OtRecvStore> recv;
+  OtSendStore send;
+  OtRecvStore recv;
 };
 
 // Locally mock ots

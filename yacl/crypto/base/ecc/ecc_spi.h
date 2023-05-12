@@ -146,7 +146,7 @@ class EcGroup {
   // 125.8-bit.
   virtual size_t GetSecurityStrength() const = 0;
 
-  virtual std::string ToString() = 0;
+  virtual std::string ToString() const = 0;
 
   //================================//
   //   Elliptic curve computation   //

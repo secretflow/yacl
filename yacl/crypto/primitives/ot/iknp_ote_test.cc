@@ -83,7 +83,7 @@ TEST_P(IknpOtExtTest, OtStoreWorks) {
   // THEN
   for (size_t i = 0; i < num_ot; ++i) {
     unsigned idx = choices[i] ? 1 : 0;
-    EXPECT_EQ(send_out->GetBlock(i, idx), recv_out->GetBlock(i));
+    EXPECT_EQ(send_out.GetBlock(i, idx), recv_out.GetBlock(i));
   }
 }
 
@@ -110,7 +110,7 @@ TEST_P(IknpCotExtTest, Works) {
 
   // THEN
   // cot correlation = base ot choice
-  uint128_t check = base_ot.recv->CopyChoice().data()[0];
+  uint128_t check = base_ot.recv.CopyChoice().data()[0];
   for (size_t i = 0; i < num_ot; ++i) {
     EXPECT_NE(recv_out[i], 0);
     EXPECT_NE(send_out[i][0], 0);
@@ -139,13 +139,13 @@ TEST_P(IknpCotExtTest, OtStoreWorks) {
 
   // THEN
   // cot correlation = base ot choice
-  uint128_t check = base_ot.recv->CopyChoice().data()[0];  // base ot choices
-  uint128_t delta = send_out->GetDelta();                  // cot's delta
+  uint128_t check = base_ot.recv.CopyChoice().data()[0];  // base ot choices
+  uint128_t delta = send_out.GetDelta();                  // cot's delta
   EXPECT_EQ(check, delta);
   for (size_t i = 0; i < num_ot; ++i) {
     unsigned idx = choices[i] ? 1 : 0;
-    EXPECT_EQ(send_out->GetBlock(i, idx), recv_out->GetBlock(i));
-    EXPECT_EQ(check, send_out->GetBlock(i, 0) ^ send_out->GetBlock(i, 1));
+    EXPECT_EQ(send_out.GetBlock(i, idx), recv_out.GetBlock(i));
+    EXPECT_EQ(check, send_out.GetBlock(i, 0) ^ send_out.GetBlock(i, 1));
   }
 }
 

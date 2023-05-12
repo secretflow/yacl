@@ -123,7 +123,7 @@ void OtRecvStore::ConsistencyCheck() const {
   }
 }
 
-std::shared_ptr<OtRecvStore> OtRecvStore::NextSlice(uint64_t num) {
+OtRecvStore OtRecvStore::NextSlice(uint64_t num) {
   // Recall: A new slice looks like the follwoing:
   //
   // |---------------|-----slice-----|----------------| internal buffer
@@ -139,9 +139,8 @@ std::shared_ptr<OtRecvStore> OtRecvStore::NextSlice(uint64_t num) {
   uint64_t slice_buf_ctr = GetBufCtr();         // in blocks
   uint64_t slice_buf_size = GetBufCtr() + num;  // in blocks
 
-  auto out = std::make_shared<OtRecvStore>(bit_buf_, blk_buf_, slice_use_ctr,
-                                           slice_use_size, slice_buf_ctr,
-                                           slice_buf_size, type_);
+  auto out = OtRecvStore(bit_buf_, blk_buf_, slice_use_ctr, slice_use_size,
+                         slice_buf_ctr, slice_buf_size, type_);
 
   // where who slice this buffer looks like the following:
   //
@@ -201,32 +200,25 @@ std::vector<uint128_t> OtRecvStore::CopyBlocks() const {
           blk_buf_->begin() + internal_use_size_};
 }
 
-std::shared_ptr<OtRecvStore> MakeOtRecvStore(
-    const dynamic_bitset<uint128_t>& choices,
-    const std::vector<uint128_t>& blocks) {
+OtRecvStore MakeOtRecvStore(const dynamic_bitset<uint128_t>& choices,
+                            const std::vector<uint128_t>& blocks) {
   auto tmp1_ptr = std::make_shared<dynamic_bitset<uint128_t>>(choices);  // copy
   auto tmp2_ptr = std::make_shared<std::vector<uint128_t>>(blocks);      // copy
 
-  uint64_t use_ctr = 0;
-  uint64_t use_size = tmp1_ptr->size();
-  uint64_t buf_ctr = 0;
-  uint64_t buf_size = tmp1_ptr->size();
-
-  return std::make_shared<OtRecvStore>(tmp1_ptr, tmp2_ptr, use_ctr, use_size,
-                                       buf_ctr, buf_size, OtStoreType::Normal);
+  return {tmp1_ptr,         tmp2_ptr,           0, tmp1_ptr->size(), 0,
+          tmp1_ptr->size(), OtStoreType::Normal};
 }
 
-std::shared_ptr<OtRecvStore> MakeCompactCotRecvStore(
-    const std::vector<uint128_t>& blocks) {
+OtRecvStore MakeCompactCotRecvStore(const std::vector<uint128_t>& blocks) {
   auto tmp_ptr = std::make_shared<std::vector<uint128_t>>(blocks);  // copy
 
-  uint64_t use_ctr = 0;
-  uint64_t use_size = tmp_ptr->size();
-  uint64_t buf_ctr = 0;
-  uint64_t buf_size = tmp_ptr->size();
-
-  return std::make_shared<OtRecvStore>(nullptr, tmp_ptr, use_ctr, use_size,
-                                       buf_ctr, buf_size, OtStoreType::Compact);
+  return {nullptr,
+          tmp_ptr,
+          0,
+          tmp_ptr->size(),
+          0,
+          tmp_ptr->size(),
+          OtStoreType::Compact};
 }
 
 //================================//
@@ -273,7 +265,7 @@ void OtSendStore::ConsistencyCheck() const {
                blk_buf_->size(), internal_buf_size_);
 }
 
-std::shared_ptr<OtSendStore> OtSendStore::NextSlice(uint64_t num) {
+OtSendStore OtSendStore::NextSlice(uint64_t num) {
   const uint64_t ot_blk_num = (type_ == OtStoreType::Compact) ? 1 : 2;
 
   // Recall: A new slice looks like the follwoing:
@@ -291,9 +283,8 @@ std::shared_ptr<OtSendStore> OtSendStore::NextSlice(uint64_t num) {
   uint64_t slice_buf_ctr = GetBufCtr();                      // in blocks
   uint64_t slice_buf_size = GetBufCtr() + num * ot_blk_num;  // in blocks
 
-  auto out = std::make_shared<OtSendStore>(blk_buf_, delta_, slice_use_ctr,
-                                           slice_use_size, slice_buf_ctr,
-                                           slice_buf_size, type_);
+  auto out = OtSendStore(blk_buf_, delta_, slice_use_ctr, slice_use_size,
+                         slice_buf_ctr, slice_buf_size, type_);
 
   // where who slice this buffer looks like the following:
   //
@@ -363,33 +354,28 @@ std::vector<uint128_t> OtSendStore::CopyCotBlocks() const {
           blk_buf_->begin() + internal_use_size_};
 }
 
-std::shared_ptr<OtSendStore> MakeOtSendStore(
+OtSendStore MakeOtSendStore(
     const std::vector<std::array<uint128_t, 2>>& blocks) {
   // warning: copy
   auto buf_ptr = std::make_shared<std::vector<uint128_t>>(blocks.size() * 2);
   memcpy(buf_ptr->data(), blocks.data(), buf_ptr->size() * sizeof(uint128_t));
 
-  uint64_t use_ctr = 0;
-  uint64_t use_size = blocks.size() * 2;
-  uint64_t buf_ctr = 0;
-  uint64_t buf_size = blocks.size() * 2;
-
-  return std::make_shared<OtSendStore>(buf_ptr, 0, use_ctr, use_size, buf_ctr,
-                                       buf_size, OtStoreType::Normal);
+  return {buf_ptr,
+          0,
+          0,
+          blocks.size() * 2,
+          0,
+          blocks.size() * 2,
+          OtStoreType::Normal};
 }
 
-std::shared_ptr<OtSendStore> MakeCompactCotSendStore(
-    const std::vector<uint128_t>& blocks, uint128_t delta) {
+OtSendStore MakeCompactCotSendStore(const std::vector<uint128_t>& blocks,
+                                    uint128_t delta) {
   // warning: copy
   auto buf_ptr = std::make_shared<std::vector<uint128_t>>(blocks);
 
-  uint64_t use_ctr = 0;
-  uint64_t use_size = blocks.size();
-  uint64_t buf_ctr = 0;
-  uint64_t buf_size = blocks.size();
-
-  return std::make_shared<OtSendStore>(buf_ptr, delta, use_ctr, use_size,
-                                       buf_ctr, buf_size, OtStoreType::Compact);
+  return {
+      buf_ptr, delta, 0, blocks.size(), 0, blocks.size(), OtStoreType::Compact};
 }
 
 MockOtStore MockRots(uint64_t num) {

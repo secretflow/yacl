@@ -1571,7 +1571,7 @@ class dynamic_bitset {
    *
    *             // the bitset use 2 blocks of 8 bits
    *             // check that unused bits are set to 0
-   *             YACL_ENFORCE(*(bitset.data() + 1) >> 3 == 0);
+   *             assert(*(bitset.data() + 1) >> 3 == 0);
    *             @endcode
    *
    * @remark     If the @ref yacl::dynamic_bitset is empty, this function may or
@@ -1608,7 +1608,7 @@ class dynamic_bitset {
    *
    *             // the bitset use 2 blocks of 8 bits
    *             // check that unused bits are set to 0
-   *             YACL_ENFORCE(*(bitset.data() + 1) >> 3 == 0);
+   *             assert(*(bitset.data() + 1) >> 3 == 0);
    *             @endcode
    *
    * @remark     If the @ref yacl::dynamic_bitset is empty, this function may or
@@ -2321,7 +2321,7 @@ constexpr dynamic_bitset<Block, Allocator>::dynamic_bitset(
     typename std::basic_string_view<_CharT, _Traits>::size_type n, _CharT zero,
     _CharT one, const allocator_type& allocator)
     : m_blocks(allocator), m_bits_number(0) {
-  YACL_ENFORCE(pos < str.size());
+  assert(pos < str.size());
   init_from_string(str, pos, n, zero, one);
 }
 
@@ -2333,7 +2333,7 @@ constexpr dynamic_bitset<Block, Allocator>::dynamic_bitset(
     typename std::basic_string<_CharT, _Traits, _Alloc>::size_type n,
     _CharT zero, _CharT one, const allocator_type& allocator)
     : m_blocks(allocator), m_bits_number(0) {
-  YACL_ENFORCE(pos < str.size());
+  assert(pos < str.size());
   init_from_string(std::basic_string_view<_CharT, _Traits>(str), pos, n, zero,
                    one);
 }
@@ -2375,7 +2375,7 @@ constexpr void dynamic_bitset<Block, Allocator>::resize(size_type nbits,
 
   m_bits_number = nbits;
   sanitize();
-  YACL_ENFORCE(check_consistency());
+  assert(check_consistency());
 }
 
 template <typename Block, typename Allocator>
@@ -2394,8 +2394,8 @@ constexpr void dynamic_bitset<Block, Allocator>::push_back(bool value) {
   } else {
     m_blocks.push_back(block_type(value));
   }
-  YACL_ENFORCE(operator[](new_last_bit) == value);
-  YACL_ENFORCE(check_consistency());
+  assert(operator[](new_last_bit) == value);
+  assert(check_consistency());
 }
 
 template <typename Block, typename Allocator>
@@ -2408,11 +2408,11 @@ constexpr void dynamic_bitset<Block, Allocator>::pop_back() {
   if (m_blocks.size() > blocks_required(m_bits_number)) {
     m_blocks.pop_back();
     // no extra bits: sanitize not required
-    YACL_ENFORCE(extra_bits_number() == 0);
+    assert(extra_bits_number() == 0);
   } else {
     sanitize();
   }
-  YACL_ENFORCE(check_consistency());
+  assert(check_consistency());
 }
 
 template <typename Block, typename Allocator>
@@ -2426,7 +2426,7 @@ constexpr void dynamic_bitset<Block, Allocator>::append(block_type block) {
   }
 
   m_bits_number += bits_per_block;
-  YACL_ENFORCE(check_consistency());
+  assert(check_consistency());
 }
 
 template <typename Block, typename Allocator>
@@ -2451,7 +2451,7 @@ constexpr void dynamic_bitset<Block, Allocator>::append(
   if constexpr (std::is_same_v<typename std::iterator_traits<
                                    BlockInputIterator>::iterator_category,
                                std::random_access_iterator_tag>) {
-    YACL_ENFORCE(std::distance(first, last) > 0);
+    assert(std::distance(first, last) > 0);
     m_blocks.reserve(m_blocks.size() +
                      static_cast<size_type>(std::distance(first, last)));
   }
@@ -2460,7 +2460,7 @@ constexpr void dynamic_bitset<Block, Allocator>::append(
   const size_type unused_bits = unused_bits_number();
   if (extra_bits == 0) {
     auto pos = m_blocks.insert(std::end(m_blocks), first, last);
-    YACL_ENFORCE(std::distance(pos, std::end(m_blocks)) > 0);
+    assert(std::distance(pos, std::end(m_blocks)) > 0);
     m_bits_number +=
         static_cast<size_type>(std::distance(pos, std::end(m_blocks))) *
         bits_per_block;
@@ -2479,13 +2479,13 @@ constexpr void dynamic_bitset<Block, Allocator>::append(
     m_bits_number += bits_per_block;
   }
 
-  YACL_ENFORCE(check_consistency());
+  assert(check_consistency());
 }
 template <typename Block, typename Allocator>
 constexpr dynamic_bitset<Block, Allocator>&
 dynamic_bitset<Block, Allocator>::operator&=(
     const dynamic_bitset<Block, Allocator>& rhs) {
-  YACL_ENFORCE(size() == rhs.size());
+  assert(size() == rhs.size());
   // apply(rhs, std::bit_and());
   for (size_type i = 0; i < m_blocks.size(); ++i) {
     m_blocks[i] &= rhs.m_blocks[i];
@@ -2497,7 +2497,7 @@ template <typename Block, typename Allocator>
 constexpr dynamic_bitset<Block, Allocator>&
 dynamic_bitset<Block, Allocator>::operator|=(
     const dynamic_bitset<Block, Allocator>& rhs) {
-  YACL_ENFORCE(size() == rhs.size());
+  assert(size() == rhs.size());
   // apply(rhs, std::bit_or());
   for (size_type i = 0; i < m_blocks.size(); ++i) {
     m_blocks[i] |= rhs.m_blocks[i];
@@ -2509,7 +2509,7 @@ template <typename Block, typename Allocator>
 constexpr dynamic_bitset<Block, Allocator>&
 dynamic_bitset<Block, Allocator>::operator^=(
     const dynamic_bitset<Block, Allocator>& rhs) {
-  YACL_ENFORCE(size() == rhs.size());
+  assert(size() == rhs.size());
   // apply(rhs, std::bit_xor());
   for (size_type i = 0; i < m_blocks.size(); ++i) {
     m_blocks[i] ^= rhs.m_blocks[i];
@@ -2521,7 +2521,7 @@ template <typename Block, typename Allocator>
 constexpr dynamic_bitset<Block, Allocator>&
 dynamic_bitset<Block, Allocator>::operator-=(
     const dynamic_bitset<Block, Allocator>& rhs) {
-  YACL_ENFORCE(size() == rhs.size());
+  assert(size() == rhs.size());
   // apply(rhs, [](const block_type& x, const block_type& y) { return (x & ~y);
   // });
   for (size_type i = 0; i < m_blocks.size(); ++i) {
@@ -2581,11 +2581,11 @@ template <typename Block, typename Allocator>
 constexpr dynamic_bitset<Block, Allocator>&
 dynamic_bitset<Block, Allocator>::set(size_type pos, size_type len,
                                       bool value) {
-  YACL_ENFORCE(pos < size());
+  assert(pos < size());
   if (len == 0) {
     return *this;
   }
-  YACL_ENFORCE(pos + len - 1 < size());
+  assert(pos + len - 1 < size());
 
   const size_type first_block = block_index(pos);
   const size_type last_block = block_index(pos + len - 1);
@@ -2622,7 +2622,7 @@ dynamic_bitset<Block, Allocator>::set(size_type pos, size_type len,
 template <typename Block, typename Allocator>
 constexpr dynamic_bitset<Block, Allocator>&
 dynamic_bitset<Block, Allocator>::set(size_type pos, bool value) {
-  YACL_ENFORCE(pos < size());
+  assert(pos < size());
 
   if (value) {
     m_blocks[block_index(pos)] |= bit_mask(pos);
@@ -2663,11 +2663,11 @@ dynamic_bitset<Block, Allocator>::reset() {
 template <typename Block, typename Allocator>
 constexpr dynamic_bitset<Block, Allocator>&
 dynamic_bitset<Block, Allocator>::flip(size_type pos, size_type len) {
-  YACL_ENFORCE(pos < size());
+  assert(pos < size());
   if (len == 0) {
     return *this;
   }
-  YACL_ENFORCE(pos + len - 1 < size());
+  assert(pos + len - 1 < size());
 
   const size_type first_block = block_index(pos);
   const size_type last_block = block_index(pos + len - 1);
@@ -2702,7 +2702,7 @@ dynamic_bitset<Block, Allocator>::flip(size_type pos, size_type len) {
 template <typename Block, typename Allocator>
 constexpr dynamic_bitset<Block, Allocator>&
 dynamic_bitset<Block, Allocator>::flip(size_type pos) {
-  YACL_ENFORCE(pos < size());
+  assert(pos < size());
   m_blocks[block_index(pos)] ^= bit_mask(pos);
   return *this;
 }
@@ -2718,7 +2718,7 @@ dynamic_bitset<Block, Allocator>::flip() {
 
 template <typename Block, typename Allocator>
 constexpr bool dynamic_bitset<Block, Allocator>::test(size_type pos) const {
-  YACL_ENFORCE(pos < size());
+  assert(pos < size());
   return (m_blocks[block_index(pos)] & bit_mask(pos)) != zero_block;
 }
 
@@ -2806,7 +2806,7 @@ dynamic_bitset<Block, Allocator>::count() const noexcept {
 template <typename Block, typename Allocator>
 constexpr typename dynamic_bitset<Block, Allocator>::reference
 dynamic_bitset<Block, Allocator>::operator[](size_type pos) {
-  YACL_ENFORCE(pos < size());
+  assert(pos < size());
   return dynamic_bitset<Block, Allocator>::reference(*this, pos);
 }
 
@@ -2852,7 +2852,7 @@ constexpr void dynamic_bitset<Block, Allocator>::shrink_to_fit() {
 template <typename Block, typename Allocator>
 constexpr bool dynamic_bitset<Block, Allocator>::is_subset_of(
     const dynamic_bitset<Block, Allocator>& bitset) const {
-  YACL_ENFORCE(size() == bitset.size());
+  assert(size() == bitset.size());
   for (size_type i = 0; i < m_blocks.size(); ++i) {
     if ((m_blocks[i] & ~bitset.m_blocks[i]) != zero_block) {
       return false;
@@ -2864,7 +2864,7 @@ constexpr bool dynamic_bitset<Block, Allocator>::is_subset_of(
 template <typename Block, typename Allocator>
 constexpr bool dynamic_bitset<Block, Allocator>::is_proper_subset_of(
     const dynamic_bitset<Block, Allocator>& bitset) const {
-  YACL_ENFORCE(size() == bitset.size());
+  assert(size() == bitset.size());
   bool is_proper = false;
   for (size_type i = 0; i < m_blocks.size(); ++i) {
     const block_type& self_block = m_blocks[i];
@@ -3171,7 +3171,8 @@ dynamic_bitset<Block, Allocator>::block_count(
         __builtin_popcountll(static_cast<uint64_t>(block)));
   } else if constexpr (bits_per_block <= u128_bits_number) {
     return static_cast<size_type>(
-        __builtin_popcountll(static_cast<uint128_t>(block)));
+        __builtin_popcountll(absl::Uint128High64(block)) +
+        __builtin_popcountll(absl::Uint128Low64(block)));
   }
 #endif
 
@@ -3191,7 +3192,7 @@ template <typename Block, typename Allocator>
 constexpr typename dynamic_bitset<Block, Allocator>::size_type
 dynamic_bitset<Block, Allocator>::block_count(const block_type& block,
                                               size_type nbits) noexcept {
-  YACL_ENFORCE(nbits <= bits_per_block);
+  assert(nbits <= bits_per_block);
 #if DYNAMIC_BITSET_CAN_USE_STD_BITOPS
   const block_type shifted_block =
       block_type(block << (bits_per_block - nbits));
@@ -3220,7 +3221,8 @@ dynamic_bitset<Block, Allocator>::block_count(const block_type& block,
         __builtin_popcountll(static_cast<uint64_t>(shifted_block)));
   } else if constexpr (bits_per_block <= u128_bits_number) {
     return static_cast<size_type>(
-        __builtin_popcountll(static_cast<uint128_t>(shifted_block)));
+        __builtin_popcountll(absl::Uint128High64(block)) +
+        __builtin_popcountll(absl::Uint128Low64(block)));
   }
 #endif
 
@@ -3259,8 +3261,13 @@ dynamic_bitset<Block, Allocator>::count_block_trailing_zero(
     return static_cast<size_type>(
         __builtin_ctzll(static_cast<uint64_t>(block)));
   } else if constexpr (bits_per_block <= u128_bits_number) {
-    return static_cast<size_type>(
-        __builtin_ctzll(static_cast<uint128_t>(block)));
+    if (absl::Uint128Low64(block) == 0) {
+      return static_cast<size_type>(
+          __builtin_ctzll(absl::Uint128High64(block)) + 64);
+    } else {
+      return static_cast<size_type>(__builtin_ctzll(absl::Uint128Low64(block)));
+    }
+    return 0;
   }
 
 #elif DYNAMIC_BITSET_CAN_USE_MSVC_BUILTIN_BITSCANFORWARD
@@ -3313,7 +3320,7 @@ constexpr void dynamic_bitset<Block, Allocator>::init_from_string(
     typename std::basic_string_view<_CharT, _Traits>::size_type pos,
     typename std::basic_string_view<_CharT, _Traits>::size_type n,
     [[maybe_unused]] _CharT zero, _CharT one) {
-  YACL_ENFORCE(pos < str.size());
+  assert(pos < str.size());
 
   const size_type size = std::min(n, str.size() - pos);
   m_bits_number = size;
@@ -3322,7 +3329,7 @@ constexpr void dynamic_bitset<Block, Allocator>::init_from_string(
   m_blocks.resize(blocks_required(size));
   for (size_t i = 0; i < size; ++i) {
     const _CharT c = str[(pos + size - 1) - i];
-    YACL_ENFORCE(c == zero || c == one);
+    assert(c == zero || c == one);
     if (c == one) {
       set(i);
     }
@@ -3369,7 +3376,7 @@ template <typename Block, typename Allocator>
 template <typename BinaryOperation>
 constexpr void dynamic_bitset<Block, Allocator>::apply(
     const dynamic_bitset<Block, Allocator>& other, BinaryOperation binary_op) {
-  YACL_ENFORCE(num_blocks() == other.num_blocks());
+  assert(num_blocks() == other.num_blocks());
   std::transform(std::cbegin(m_blocks), std::cend(m_blocks),
                  std::cbegin(other.m_blocks), std::begin(m_blocks), binary_op);
 }
@@ -3385,8 +3392,8 @@ constexpr void dynamic_bitset<Block, Allocator>::apply(
 template <typename Block, typename Allocator>
 constexpr void dynamic_bitset<Block, Allocator>::apply_left_shift(
     size_type shift) {
-  YACL_ENFORCE(shift > 0);
-  YACL_ENFORCE(shift < capacity());
+  assert(shift > 0);
+  assert(shift < capacity());
 
   const size_type blocks_shift = shift / bits_per_block;
   const size_type bits_offset = shift % bits_per_block;
@@ -3416,8 +3423,8 @@ constexpr void dynamic_bitset<Block, Allocator>::apply_left_shift(
 template <typename Block, typename Allocator>
 constexpr void dynamic_bitset<Block, Allocator>::apply_right_shift(
     size_type shift) {
-  YACL_ENFORCE(shift > 0);
-  YACL_ENFORCE(shift < capacity());
+  assert(shift > 0);
+  assert(shift < capacity());
 
   const size_type blocks_shift = shift / bits_per_block;
   const size_type bits_offset = shift % bits_per_block;
