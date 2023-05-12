@@ -84,6 +84,57 @@ TYPED_TEST(DynamicBitsetTest, ConstructorTest) {
   EXPECT_EQ(bitset5[2], 0);
 }
 
+TYPED_TEST(DynamicBitsetTest, ResizeTest) {
+  // GIVEN
+  auto r1 = dynamic_bitset<TypeParam>("0100101");
+  auto r2 = dynamic_bitset<TypeParam>("101");
+
+  // WHEN
+  r1.resize(3);
+
+  // THEN
+  EXPECT_EQ(r1, r2);
+}
+
+TYPED_TEST(DynamicBitsetTest, ClearTest) {
+  // GIVEN
+  auto bitset = crypto::RandBits<dynamic_bitset<TypeParam>>(10);
+
+  // WHEN
+  bitset.clear();
+
+  // THEN
+  EXPECT_EQ(bitset.size(), 0);
+}
+
+TYPED_TEST(DynamicBitsetTest, PushPopTest) {
+  // GIVEN
+  auto bitset = dynamic_bitset<TypeParam>("0100101");
+  auto check1 = dynamic_bitset<TypeParam>("10100101");
+  auto check2 = dynamic_bitset<TypeParam>("0100101");
+
+  // WHEN and THEN
+  bitset.push_back(true);
+  EXPECT_EQ(bitset, check1);
+
+  bitset.pop_back();
+  EXPECT_EQ(bitset, check2);
+}
+
+TYPED_TEST(DynamicBitsetTest, AppendTest) {
+  // GIVEN
+  auto bitset = dynamic_bitset<TypeParam>("0100101");
+  auto block = static_cast<TypeParam>(crypto::RandU128());
+
+  // WHEN
+  bitset.append(block);
+
+  // THEN
+  bitset >>= 7;  // right shift to remove the original bits
+  auto check = static_cast<TypeParam>(*bitset.data());
+  EXPECT_EQ(block, check);
+}
+
 TYPED_TEST(DynamicBitsetTest, XorTest) {
   auto r1 = crypto::RandVec<TypeParam>(kBlockNum);
   auto r2 = crypto::RandVec<TypeParam>(kBlockNum);
@@ -161,6 +212,107 @@ TYPED_TEST(DynamicBitsetTest, RshiftTest) {
   EXPECT_EQ(tmp, result);
 }
 
+TYPED_TEST(DynamicBitsetTest, SetBitTest) {
+  // GIVEN
+  auto bitset = dynamic_bitset<TypeParam>("0101110");
+  auto check1 = dynamic_bitset<TypeParam>("0101010");
+  auto check2 = dynamic_bitset<TypeParam>("0111110");
+  auto check3 = dynamic_bitset<TypeParam>("1111111");
+
+  // WHEN & THEN
+  bitset.set(2, false);
+  EXPECT_EQ(bitset, check1);
+
+  bitset.set(2, 3, true);
+  EXPECT_EQ(bitset, check2);
+
+  bitset.set();
+  EXPECT_EQ(bitset, check3);
+  EXPECT_EQ(bitset.all(), true);
+}
+
+TYPED_TEST(DynamicBitsetTest, ResetTest) {
+  // GIVEN
+  auto bitset = dynamic_bitset<TypeParam>("0101110");
+  auto check1 = dynamic_bitset<TypeParam>("0101010");
+  auto check2 = dynamic_bitset<TypeParam>("0100010");
+  auto check3 = dynamic_bitset<TypeParam>("0000000");
+
+  // WHEN & THEN
+  bitset.reset(2);
+  EXPECT_EQ(bitset, check1);
+
+  bitset.reset(2, 3);
+  EXPECT_EQ(bitset, check2);
+
+  bitset.reset();
+  EXPECT_EQ(bitset, check3);
+  EXPECT_EQ(bitset.none(), true);
+}
+
+TYPED_TEST(DynamicBitsetTest, FlipTest) {
+  // GIVEN
+  auto bitset = dynamic_bitset<TypeParam>("0101110");
+  auto check1 = dynamic_bitset<TypeParam>("0101010");
+  auto check2 = dynamic_bitset<TypeParam>("0110110");
+  auto check3 = dynamic_bitset<TypeParam>("1001001");
+
+  // WHEN & THEN
+  bitset.flip(2);
+  EXPECT_EQ(bitset, check1);
+
+  bitset.flip(2, 3);
+  EXPECT_EQ(bitset, check2);
+
+  bitset.flip();
+  EXPECT_EQ(bitset, check3);
+}
+
+TYPED_TEST(DynamicBitsetTest, CountTest) {
+  auto bitset = dynamic_bitset<TypeParam>("010");
+  EXPECT_EQ(bitset.count(), 1);
+}
+
+TYPED_TEST(DynamicBitsetTest, SubsetTest) {
+  auto bitset1 = dynamic_bitset<TypeParam>("001");
+  auto bitset2 = dynamic_bitset<TypeParam>("1101001");
+
+  // after resize, biset1 = 0000001
+  bitset1.resize(bitset2.size());
+
+  EXPECT_EQ(bitset1.is_subset_of(bitset2), true);
+}
+
+TYPED_TEST(DynamicBitsetTest, ProperSubsetTest) {
+  auto bitset1 = dynamic_bitset<TypeParam>("001");
+  auto bitset2 = dynamic_bitset<TypeParam>("1101001");
+  auto bitset3 = dynamic_bitset<TypeParam>("0000001");
+
+  // after resize, biset1 = 0000001
+  bitset1.resize(bitset2.size());
+
+  EXPECT_EQ(bitset1.is_proper_subset_of(bitset2), true);
+  EXPECT_EQ(bitset1.is_proper_subset_of(bitset3), false);
+}
+
+TYPED_TEST(DynamicBitsetTest, IntersectTest) {
+  auto bitset1 = dynamic_bitset<TypeParam>("1101001");
+  auto bitset2 = dynamic_bitset<TypeParam>("0100001");
+  auto bitset3 = dynamic_bitset<TypeParam>("0010110");
+
+  EXPECT_EQ(bitset1.intersects(bitset2), true);
+  EXPECT_EQ(bitset1.intersects(bitset3), false);
+}
+
+TYPED_TEST(DynamicBitsetTest, FindTest) {
+  auto bitset = dynamic_bitset<TypeParam>("0010110");
+
+  EXPECT_EQ(bitset.find_first(), 1);
+  EXPECT_EQ(bitset.find_next(1), 2);
+  EXPECT_EQ(bitset.find_next(2), 4);
+  EXPECT_EQ(bitset.find_next(4), -1);
+}
+
 TYPED_TEST(DynamicBitsetTest, IterateBitTest) {
   dynamic_bitset<TypeParam> bitset(3, true);
   EXPECT_EQ(bitset.size(), 3);
@@ -182,11 +334,10 @@ TYPED_TEST(DynamicBitsetTest, BufferTest) {
   EXPECT_EQ(bitset.size(), 3);
 
   // WHEN
-  auto buf = std::make_shared<Buffer>(bitset.data(),
-                                      bitset.num_blocks() * sizeof(TypeParam));
+  auto buf = Buffer(bitset.data(), bitset.num_blocks() * sizeof(TypeParam));
 
   dynamic_bitset<TypeParam> bitset_check(3);
-  std::memcpy(bitset_check.data(), buf->data(), buf->size());
+  std::memcpy(bitset_check.data(), buf.data(), buf.size());
 
   // THEN
   EXPECT_EQ(bitset[0], bitset_check[0]);

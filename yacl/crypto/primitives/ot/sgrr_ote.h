@@ -46,11 +46,11 @@ namespace yacl::crypto {
 // https://stackoverflow.com/questions/50402168
 
 void SgrrOtExtRecv(const std::shared_ptr<link::Context>& ctx,
-                   const std::shared_ptr<OtRecvStore>& base_ot, uint32_t n,
-                   uint32_t index, absl::Span<uint128_t> output);
+                   const OtRecvStore& base_ot, uint32_t n, uint32_t index,
+                   absl::Span<uint128_t> output);
 
 void SgrrOtExtSend(const std::shared_ptr<link::Context>& ctx,
-                   const std::shared_ptr<OtSendStore>& base_ot, uint32_t n,
+                   const OtSendStore& base_ot, uint32_t n,
                    absl::Span<uint128_t> output);
 
 }  // namespace yacl::crypto

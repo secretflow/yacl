@@ -155,22 +155,22 @@ class KkrtGroupPRF : public IGroupPRF {
 };
 
 std::unique_ptr<IGroupPRF> KkrtOtExtSend(
-    const std::shared_ptr<link::Context>& ctx,
-    const std::shared_ptr<OtRecvStore>& base_ot, size_t num_ot) {
-  YACL_ENFORCE_EQ(kIknpWidth, (int)base_ot->Size());
+    const std::shared_ptr<link::Context>& ctx, const OtRecvStore& base_ot,
+    size_t num_ot) {
+  YACL_ENFORCE_EQ(kIknpWidth, (int)base_ot.Size());
   YACL_ENFORCE(num_ot > 0);
 
   // Build S for sender.
   KkrtRow S{0};
   for (size_t w = 0; w < kKkrtWidth; ++w) {
     for (size_t k = 0; k < kKappa; ++k) {
-      S[w] |= uint128_t(base_ot->GetChoice(w * kKappa + k)) << k;
+      S[w] |= static_cast<uint128_t>(base_ot.GetChoice(w * kKappa + k)) << k;
     }
   }
   // Build PRG from seed Ks.
   std::vector<Prg<uint128_t, kPrgBatchSize>> prgs;
   for (size_t k = 0; k < kIknpWidth; ++k) {
-    prgs.emplace_back(base_ot->GetBlock(k));
+    prgs.emplace_back(base_ot.GetBlock(k));
   }
 
   // Build PRF.
@@ -217,10 +217,10 @@ std::unique_ptr<IGroupPRF> KkrtOtExtSend(
 }
 
 void KkrtOtExtRecv(const std::shared_ptr<link::Context>& ctx,
-                   const std::shared_ptr<OtSendStore>& base_ot,
+                   const OtSendStore& base_ot,
                    absl::Span<const uint128_t> inputs,
                    absl::Span<uint128_t> recv_blocks) {
-  YACL_ENFORCE(base_ot->Size() == kIknpWidth);
+  YACL_ENFORCE(base_ot.Size() == kIknpWidth);
   YACL_ENFORCE(inputs.size() == recv_blocks.size() && !inputs.empty());
 
   const size_t num_ot = inputs.size();
@@ -230,9 +230,9 @@ void KkrtOtExtRecv(const std::shared_ptr<link::Context>& ctx,
   std::vector<Prg<uint128_t, kPrgBatchSize>> prgs1;
   for (size_t k = 0; k < kIknpWidth; ++k) {
     // Build PRG from seed K0.
-    prgs0.emplace_back(base_ot->GetBlock(k, 0));
+    prgs0.emplace_back(base_ot.GetBlock(k, 0));
     // Build PRG from seed K1.
-    prgs1.emplace_back(base_ot->GetBlock(k, 1));
+    prgs1.emplace_back(base_ot.GetBlock(k, 1));
   }
   AES_KEY aes_key[kKkrtWidth];
   PrcInit(ctx, aes_key);
@@ -284,9 +284,8 @@ void KkrtOtExtRecv(const std::shared_ptr<link::Context>& ctx,
 }
 
 void KkrtOtExtSender::Init(const std::shared_ptr<link::Context>& ctx,
-                           const std::shared_ptr<OtRecvStore>& base_ot,
-                           uint64_t num_ot) {
-  YACL_ENFORCE(kIknpWidth == base_ot->Size());
+                           const OtRecvStore& base_ot, uint64_t num_ot) {
+  YACL_ENFORCE(kIknpWidth == base_ot.Size());
   YACL_ENFORCE(num_ot > 0);
 
   correction_idx_ = 0;
@@ -295,14 +294,15 @@ void KkrtOtExtSender::Init(const std::shared_ptr<link::Context>& ctx,
   KkrtRow S{0};
   for (size_t w = 0; w < kKkrtWidth; ++w) {
     for (size_t k = 0; k < kKappa; ++k) {
-      S[w] |= uint128_t(base_ot->GetChoice(w * kKappa + k) ? 1 : 0) << k;
+      S[w] |= static_cast<uint128_t>(base_ot.GetChoice(w * kKappa + k) ? 1 : 0)
+              << k;
     }
   }
   // Build PRG from seed Ks.
   std::vector<Prg<uint128_t, kPrgBatchSize1024>> prgs;
 
   for (size_t k = 0; k < kIknpWidth; ++k) {
-    prgs.emplace_back(base_ot->GetBlock(k));
+    prgs.emplace_back(base_ot.GetBlock(k));
   }
 
   // Build PRF.
@@ -384,8 +384,7 @@ void KkrtOtExtSender::Encode(uint64_t ot_idx, const uint128_t input, void* dest,
 }
 
 void KkrtOtExtReceiver::Init(const std::shared_ptr<link::Context>& ctx,
-                             const std::shared_ptr<OtSendStore>& base_ot,
-                             uint64_t num_ot) {
+                             const OtSendStore& base_ot, uint64_t num_ot) {
   const size_t num_batch = (num_ot + kBatchSize1024 - 1) / kBatchSize1024;
 
   PrcInit(ctx, aes_key_);
@@ -394,8 +393,8 @@ void KkrtOtExtReceiver::Init(const std::shared_ptr<link::Context>& ctx,
   std::vector<Prg<uint128_t>> prgs1;
 
   for (size_t k = 0; k < kIknpWidth; ++k) {
-    prgs0.emplace_back(base_ot->GetBlock(k, 0));  // Build PRG from seed K0.
-    prgs1.emplace_back(base_ot->GetBlock(k, 1));  // Build PRG from seed K1.
+    prgs0.emplace_back(base_ot.GetBlock(k, 0));  // Build PRG from seed K0.
+    prgs1.emplace_back(base_ot.GetBlock(k, 1));  // Build PRG from seed K1.
   }
 
   T_.resize(num_ot);

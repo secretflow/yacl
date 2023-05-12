@@ -1,10 +1,7 @@
-diff --git a/src/impl_aarch64_linux_or_android.c b/src/impl_aarch64.c
-similarity index 99%
-rename from src/impl_aarch64_linux_or_android.c
-rename to src/impl_aarch64.c
-index 745beb9c..471c2e9c 100644
+diff --git a/src/impl_aarch64_linux_or_android.c b/src/impl_aarch64_linux_or_android.c
+index ef923d9..18f90e4 100644
 --- a/src/impl_aarch64_linux_or_android.c
-+++ b/src/impl_aarch64.c
++++ b/src/impl_aarch64_linux_or_android.c
 @@ -15,7 +15,7 @@
  #include "cpu_features_macros.h"
  
@@ -14,16 +11,3 @@ index 745beb9c..471c2e9c 100644
  
  #include "cpuinfo_aarch64.h"
  
-diff --git a/test/CMakeLists.txt b/test/CMakeLists.txt
-index 8e8f72af..295ffbee 100644
---- a/test/CMakeLists.txt
-+++ b/test/CMakeLists.txt
-@@ -71,7 +71,7 @@ endif()
- ##------------------------------------------------------------------------------
- ## cpuinfo_aarch64_test
- if(PROCESSOR_IS_AARCH64)
--  add_executable(cpuinfo_aarch64_test cpuinfo_aarch64_test.cc ../src/impl_aarch64_linux_or_android.c)
-+  add_executable(cpuinfo_aarch64_test cpuinfo_aarch64_test.cc ../src/impl_aarch64.c)
-   target_link_libraries(cpuinfo_aarch64_test all_libraries)
-   add_test(NAME cpuinfo_aarch64_test COMMAND cpuinfo_aarch64_test)
- endif()

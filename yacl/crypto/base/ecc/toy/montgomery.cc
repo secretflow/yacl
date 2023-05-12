@@ -42,7 +42,7 @@ ToyXGroup::ToyXGroup(const CurveMeta &curve_meta, const CurveParam &param)
   a24_ = (params_.A - 2_mp) / 4_mp;
 }
 
-std::string ToyXGroup::ToString() {
+std::string ToyXGroup::ToString() const {
   return fmt::format("{} ==> y^2 = x^3 + {}x^2 + x (mod {})", GetCurveName(),
                      params_.A, params_.p);
 }

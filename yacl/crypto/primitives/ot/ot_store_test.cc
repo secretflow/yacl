@@ -39,10 +39,10 @@ TEST(OtRecvStoreTest, ConstructorTest) {
   auto ot_store = MakeOtRecvStore(recv_choices, recv_blocks);  // normal mode
 
   // THEN
-  EXPECT_EQ(ot_store->Size(), ot_num);
+  EXPECT_EQ(ot_store.Size(), ot_num);
   for (size_t i = 0; i < ot_num; ++i) {
-    EXPECT_EQ(ot_store->GetBlock(i), recv_blocks[i]);
-    EXPECT_EQ(ot_store->GetChoice(i), recv_choices[i]);
+    EXPECT_EQ(ot_store.GetBlock(i), recv_blocks[i]);
+    EXPECT_EQ(ot_store.GetChoice(i), recv_choices[i]);
   }
 }
 
@@ -75,17 +75,17 @@ TEST(OtRecvStoreTest, GetElementsTest) {
 
   // get element tests
   auto idx = RandInRange(ot_num);
-  EXPECT_EQ(ot_store->GetChoice(idx), recv_choices[idx]);
-  EXPECT_EQ(ot_store->GetBlock(idx), recv_blocks[idx]);
+  EXPECT_EQ(ot_store.GetChoice(idx), recv_choices[idx]);
+  EXPECT_EQ(ot_store.GetBlock(idx), recv_blocks[idx]);
 
-  EXPECT_EQ(ot_store->GetChoice(0), recv_choices[0]);
-  EXPECT_EQ(ot_store->GetBlock(0), recv_blocks[0]);
+  EXPECT_EQ(ot_store.GetChoice(0), recv_choices[0]);
+  EXPECT_EQ(ot_store.GetBlock(0), recv_blocks[0]);
 
-  EXPECT_THROW(ot_store->GetChoice(ot_num + 1), yacl::Exception);
-  EXPECT_THROW(ot_store->GetBlock(ot_num + 1), yacl::Exception);
+  EXPECT_THROW(ot_store.GetChoice(ot_num + 1), yacl::Exception);
+  EXPECT_THROW(ot_store.GetBlock(ot_num + 1), yacl::Exception);
 
-  EXPECT_THROW(ot_store->GetChoice(-1), yacl::Exception);
-  EXPECT_THROW(ot_store->GetBlock(-1), yacl::Exception);
+  EXPECT_THROW(ot_store.GetChoice(-1), yacl::Exception);
+  EXPECT_THROW(ot_store.GetBlock(-1), yacl::Exception);
 }
 
 TEST(OtRecvStoreTest, SliceTest) {
@@ -93,65 +93,65 @@ TEST(OtRecvStoreTest, SliceTest) {
   auto recv_choices = RandBits<dynamic_bitset<uint128_t>>(25);
   auto recv_blocks = RandVec<uint128_t>(25);
   auto ot_store = MakeOtRecvStore(recv_choices, recv_blocks);
-  EXPECT_EQ(ot_store->Size(), 25);
+  EXPECT_EQ(ot_store.Size(), 25);
 
   // get first slice (10)
   {
-    auto ot_sub = ot_store->NextSlice(10);
-    EXPECT_EQ(ot_sub->Size(), 10);
+    auto ot_sub = ot_store.NextSlice(10);
+    EXPECT_EQ(ot_sub.Size(), 10);
 
     auto idx = RandInRange(10);
-    EXPECT_EQ(ot_sub->GetChoice(idx), ot_store->GetChoice(idx));
-    EXPECT_EQ(ot_sub->GetBlock(idx), ot_store->GetBlock(idx));
+    EXPECT_EQ(ot_sub.GetChoice(idx), ot_store.GetChoice(idx));
+    EXPECT_EQ(ot_sub.GetBlock(idx), ot_store.GetBlock(idx));
 
-    EXPECT_EQ(ot_sub->GetChoice(0), ot_store->GetChoice(0));
-    EXPECT_EQ(ot_sub->GetBlock(0), ot_store->GetBlock(0));
+    EXPECT_EQ(ot_sub.GetChoice(0), ot_store.GetChoice(0));
+    EXPECT_EQ(ot_sub.GetBlock(0), ot_store.GetBlock(0));
 
-    EXPECT_THROW(ot_sub->GetChoice(11), yacl::Exception);
-    EXPECT_THROW(ot_sub->GetBlock(11), yacl::Exception);
+    EXPECT_THROW(ot_sub.GetChoice(11), yacl::Exception);
+    EXPECT_THROW(ot_sub.GetBlock(11), yacl::Exception);
 
-    EXPECT_THROW(ot_sub->GetChoice(-1), yacl::Exception);
-    EXPECT_THROW(ot_sub->GetBlock(-1), yacl::Exception);
+    EXPECT_THROW(ot_sub.GetChoice(-1), yacl::Exception);
+    EXPECT_THROW(ot_sub.GetBlock(-1), yacl::Exception);
   }
 
   // get second slice (12)
   {
-    auto ot_sub = ot_store->NextSlice(12);
-    EXPECT_EQ(ot_sub->Size(), 12);
+    auto ot_sub = ot_store.NextSlice(12);
+    EXPECT_EQ(ot_sub.Size(), 12);
 
     auto idx = RandInRange(12);
-    EXPECT_EQ(ot_sub->GetChoice(idx), ot_store->GetChoice(idx + 10));
-    EXPECT_EQ(ot_sub->GetBlock(idx), ot_store->GetBlock(idx + 10));
+    EXPECT_EQ(ot_sub.GetChoice(idx), ot_store.GetChoice(idx + 10));
+    EXPECT_EQ(ot_sub.GetBlock(idx), ot_store.GetBlock(idx + 10));
 
-    EXPECT_EQ(ot_sub->GetChoice(0), ot_store->GetChoice(10));
-    EXPECT_EQ(ot_sub->GetBlock(0), ot_store->GetBlock(10));
+    EXPECT_EQ(ot_sub.GetChoice(0), ot_store.GetChoice(10));
+    EXPECT_EQ(ot_sub.GetBlock(0), ot_store.GetBlock(10));
 
-    EXPECT_THROW(ot_sub->GetChoice(13), yacl::Exception);
-    EXPECT_THROW(ot_sub->GetBlock(13), yacl::Exception);
+    EXPECT_THROW(ot_sub.GetChoice(13), yacl::Exception);
+    EXPECT_THROW(ot_sub.GetBlock(13), yacl::Exception);
 
-    EXPECT_THROW(ot_sub->GetChoice(-1), yacl::Exception);
-    EXPECT_THROW(ot_sub->GetBlock(-1), yacl::Exception);
+    EXPECT_THROW(ot_sub.GetChoice(-1), yacl::Exception);
+    EXPECT_THROW(ot_sub.GetBlock(-1), yacl::Exception);
   }
 
   // get third slice (3)
   {
-    EXPECT_THROW(ot_store->NextSlice(15), yacl::Exception);  // should failed
+    EXPECT_THROW(ot_store.NextSlice(15), yacl::Exception);  // should failed
 
-    auto ot_sub = ot_store->NextSlice(3);
-    EXPECT_EQ(ot_sub->Size(), 3);
+    auto ot_sub = ot_store.NextSlice(3);
+    EXPECT_EQ(ot_sub.Size(), 3);
 
     auto idx = RandInRange(3);
-    EXPECT_EQ(ot_sub->GetChoice(idx), recv_choices[idx + 22]);
-    EXPECT_EQ(ot_sub->GetBlock(idx), recv_blocks[idx + 22]);
+    EXPECT_EQ(ot_sub.GetChoice(idx), recv_choices[idx + 22]);
+    EXPECT_EQ(ot_sub.GetBlock(idx), recv_blocks[idx + 22]);
 
-    EXPECT_EQ(ot_sub->GetChoice(0), ot_store->GetChoice(22));
-    EXPECT_EQ(ot_sub->GetBlock(0), ot_store->GetBlock(22));
+    EXPECT_EQ(ot_sub.GetChoice(0), ot_store.GetChoice(22));
+    EXPECT_EQ(ot_sub.GetBlock(0), ot_store.GetBlock(22));
 
-    EXPECT_THROW(ot_sub->GetChoice(4), yacl::Exception);
-    EXPECT_THROW(ot_sub->GetBlock(4), yacl::Exception);
+    EXPECT_THROW(ot_sub.GetChoice(4), yacl::Exception);
+    EXPECT_THROW(ot_sub.GetBlock(4), yacl::Exception);
 
-    EXPECT_THROW(ot_sub->GetChoice(-1), yacl::Exception);
-    EXPECT_THROW(ot_sub->GetBlock(-1), yacl::Exception);
+    EXPECT_THROW(ot_sub.GetChoice(-1), yacl::Exception);
+    EXPECT_THROW(ot_sub.GetBlock(-1), yacl::Exception);
   }
 }
 
@@ -169,11 +169,11 @@ TEST(OtSendStoreTest, ConstructorTest) {
   auto ot_store = MakeOtSendStore(blocks);
 
   // THEN
-  EXPECT_EQ(ot_store->Size(), ot_num);
-  EXPECT_THROW(ot_store->GetDelta(), yacl::Exception);
+  EXPECT_EQ(ot_store.Size(), ot_num);
+  EXPECT_THROW(ot_store.GetDelta(), yacl::Exception);
   for (size_t i = 0; i < ot_num; ++i) {
-    EXPECT_EQ(ot_store->GetBlock(i, 0), blocks[i][0]);
-    EXPECT_EQ(ot_store->GetBlock(i, 1), blocks[i][1]);
+    EXPECT_EQ(ot_store.GetBlock(i, 0), blocks[i][0]);
+    EXPECT_EQ(ot_store.GetBlock(i, 1), blocks[i][1]);
   }
 }
 
@@ -191,7 +191,7 @@ TEST(OtSendStoreTest, GetElementsTest) {
 
   // WHEN and THEN
   auto idx = RandInRange(100);
-  EXPECT_EQ(ot_store->GetBlock(idx, 0), blocks[idx][0]);
+  EXPECT_EQ(ot_store.GetBlock(idx, 0), blocks[idx][0]);
 }
 
 TEST(OtSendStoreTest, SliceTest) {
@@ -205,32 +205,32 @@ TEST(OtSendStoreTest, SliceTest) {
     blocks.push_back(tmp);
   }
   auto ot_store = MakeOtSendStore(blocks);
-  EXPECT_EQ(ot_store->Size(), 25);
+  EXPECT_EQ(ot_store.Size(), 25);
 
   // get first slice (10)
   {
-    auto ot_sub = ot_store->NextSlice(10);  // only increase internal_use_ctr
+    auto ot_sub = ot_store.NextSlice(10);  // only increase internal_use_ctr
     auto idx = RandInRange(10);
-    EXPECT_EQ(ot_sub->Size(), 10);
-    EXPECT_EQ(ot_sub->GetBlock(idx, 0), blocks[idx][0]);
+    EXPECT_EQ(ot_sub.Size(), 10);
+    EXPECT_EQ(ot_sub.GetBlock(idx, 0), blocks[idx][0]);
   }
 
   // get second slice (12)
   {
-    auto ot_sub = ot_store->NextSlice(12);  // only increase internal_use_ctr
+    auto ot_sub = ot_store.NextSlice(12);  // only increase internal_use_ctr
     auto idx = RandInRange(12);
-    EXPECT_EQ(ot_sub->Size(), 12);
-    EXPECT_EQ(ot_sub->GetBlock(idx, 0), blocks[idx + 10][0]);
+    EXPECT_EQ(ot_sub.Size(), 12);
+    EXPECT_EQ(ot_sub.GetBlock(idx, 0), blocks[idx + 10][0]);
   }
 
   // get second slice (15)
   {
-    EXPECT_THROW(ot_store->NextSlice(15), yacl::Exception);
+    EXPECT_THROW(ot_store.NextSlice(15), yacl::Exception);
 
-    auto ot_sub = ot_store->NextSlice(3);  // only increase internal_use_ctr
+    auto ot_sub = ot_store.NextSlice(3);  // only increase internal_use_ctr
     auto idx = RandInRange(3);
-    EXPECT_EQ(ot_sub->Size(), 3);
-    EXPECT_EQ(ot_sub->GetBlock(idx, 0), blocks[idx + 22][0]);
+    EXPECT_EQ(ot_sub.Size(), 3);
+    EXPECT_EQ(ot_sub.GetBlock(idx, 0), blocks[idx + 22][0]);
   }
 }
 
@@ -242,11 +242,11 @@ TEST(MockRotTest, Works) {
   auto rot = MockRots(ot_num);
 
   // THEN
-  EXPECT_EQ(rot.send->Size(), ot_num);
-  EXPECT_EQ(rot.recv->Size(), ot_num);
+  EXPECT_EQ(rot.send.Size(), ot_num);
+  EXPECT_EQ(rot.recv.Size(), ot_num);
   for (size_t i = 0; i < ot_num; ++i) {
-    auto choice = rot.recv->GetChoice(i);
-    EXPECT_EQ(rot.send->GetBlock(i, choice), rot.recv->GetBlock(i));
+    auto choice = rot.recv.GetChoice(i);
+    EXPECT_EQ(rot.send.GetBlock(i, choice), rot.recv.GetBlock(i));
   }
 }
 
@@ -259,13 +259,13 @@ TEST(MockCotTest, Works) {
   auto cot = MockCots(ot_num, delta);
 
   // THEN
-  EXPECT_EQ(cot.send->Size(), ot_num);
-  EXPECT_EQ(cot.recv->Size(), ot_num);
-  EXPECT_EQ(cot.send->GetDelta(), delta);
+  EXPECT_EQ(cot.send.Size(), ot_num);
+  EXPECT_EQ(cot.recv.Size(), ot_num);
+  EXPECT_EQ(cot.send.GetDelta(), delta);
   for (size_t i = 0; i < ot_num; ++i) {
-    auto choice = cot.recv->GetChoice(i);
-    EXPECT_EQ(cot.send->GetBlock(i, choice), cot.recv->GetBlock(i));
-    EXPECT_EQ(delta, cot.send->GetBlock(i, 0) ^ cot.send->GetBlock(i, 1));
+    auto choice = cot.recv.GetChoice(i);
+    EXPECT_EQ(cot.send.GetBlock(i, choice), cot.recv.GetBlock(i));
+    EXPECT_EQ(delta, cot.send.GetBlock(i, 0) ^ cot.send.GetBlock(i, 1));
   }
 }
 
@@ -277,10 +277,10 @@ TEST(MockCompactCotTest, Works) {
   auto cot = MockCompactCots(ot_num);
 
   // THEN
-  EXPECT_EQ(cot.send->GetDelta() & 0x1, 1);
+  EXPECT_EQ(cot.send.GetDelta() & 0x1, 1);
   for (size_t i = 0; i < ot_num; ++i) {
-    auto choice = cot.recv->GetChoice(i);
-    EXPECT_EQ(cot.send->GetBlock(i, choice), cot.recv->GetBlock(i));
+    auto choice = cot.recv.GetChoice(i);
+    EXPECT_EQ(cot.send.GetBlock(i, choice), cot.recv.GetBlock(i));
   }
 }
 

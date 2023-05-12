@@ -99,19 +99,19 @@ std::vector<uint128_t> SplitAllSeeds(absl::Span<uint128_t> seeds) {
 }  // namespace
 
 void SgrrOtExtRecv(const std::shared_ptr<link::Context>& ctx,
-                   const std::shared_ptr<OtRecvStore>& base_ot, uint32_t n,
-                   uint32_t index, absl::Span<uint128_t> output) {
+                   const OtRecvStore& base_ot, uint32_t n, uint32_t index,
+                   absl::Span<uint128_t> output) {
   uint32_t ot_num = Log2Ceil(n);
-  YACL_ENFORCE_GE(n, (uint32_t)1);                  // range should > 1
-  YACL_ENFORCE_GE((uint32_t)128, base_ot->Size());  // base ot num < 128
-  YACL_ENFORCE_GE(base_ot->Size(), ot_num);         //
+  YACL_ENFORCE_GE(n, (uint32_t)1);                 // range should > 1
+  YACL_ENFORCE_GE((uint32_t)128, base_ot.Size());  // base ot num < 128
+  YACL_ENFORCE_GE(base_ot.Size(), ot_num);         //
 
   // we need log(n) 1-2 OTs from log(n) ROTs
   // most significant bit first
   dynamic_bitset<uint128_t> choice = MakeDynamicBitset(index, ot_num);
   dynamic_bitset<uint128_t> masked_choice = ~choice;
   for (uint64_t i = 0; i < ot_num; ++i) {
-    masked_choice[i] ^= base_ot->GetChoice(i);
+    masked_choice[i] ^= base_ot.GetChoice(i);
   }
 
   // send masked_choices to sender
@@ -132,7 +132,7 @@ void SgrrOtExtRecv(const std::shared_ptr<link::Context>& ctx,
     auto inserted_idx = GetInsertedIndex(choice, i);
 
     // unmask and get the seed for this level
-    uint128_t insert_val = recv_msgs[i][1 - choice[i]] ^ base_ot->GetBlock(i);
+    uint128_t insert_val = recv_msgs[i][1 - choice[i]] ^ base_ot.GetBlock(i);
 
     // generate all already knows seeds for this level
     if (i != 0) {
@@ -157,10 +157,10 @@ void SgrrOtExtRecv(const std::shared_ptr<link::Context>& ctx,
 }
 
 void SgrrOtExtSend(const std::shared_ptr<link::Context>& ctx,
-                   const std::shared_ptr<OtSendStore>& base_ot, uint32_t n,
+                   const OtSendStore& base_ot, uint32_t n,
                    absl::Span<uint128_t> output) {
   uint32_t ot_num = Log2Ceil(n);
-  YACL_ENFORCE_GE(base_ot->Size(), ot_num);
+  YACL_ENFORCE_GE(base_ot.Size(), ot_num);
   YACL_ENFORCE_GE(n, (uint32_t)1);
 
   std::vector<std::array<uint128_t, 2>> send_msgs(ot_num);
@@ -189,8 +189,8 @@ void SgrrOtExtSend(const std::shared_ptr<link::Context>& ctx,
 
   // mask the ROT messages and send back
   for (uint32_t i = 0; i < ot_num; ++i) {
-    send_msgs[i][0] ^= base_ot->GetBlock(i, masked_choice[i]);
-    send_msgs[i][1] ^= base_ot->GetBlock(i, 1 - masked_choice[i]);
+    send_msgs[i][0] ^= base_ot.GetBlock(i, masked_choice[i]);
+    send_msgs[i][1] ^= base_ot.GetBlock(i, 1 - masked_choice[i]);
   }
 
   ctx->SendAsync(
