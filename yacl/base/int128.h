@@ -92,18 +92,8 @@ constexpr int128_t abs(int128_t x) { return x >= 0 ? x : -x; }
 
 constexpr int128_t abs(uint128_t x) { return x; }
 
-// double log10(int128_t x) { return std::log10(static_cast<double>(x)); }
-
 std::ostream& operator<<(std::ostream& os, int128_t x);
 std::ostream& operator<<(std::ostream& os, uint128_t x);
-
-#if __GNUC__ >= 10
-constexpr double log10(int128_t x) {
-  return std::log10(static_cast<double>(x));
-}
-
-constexpr double log10(uint128_t x) { return 0.0; }
-#endif
 
 #ifndef HAS_INT128_TRAITS
 template <>
