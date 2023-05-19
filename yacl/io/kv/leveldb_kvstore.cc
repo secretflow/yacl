@@ -43,7 +43,7 @@ LeveldbKVStore::~LeveldbKVStore() {
         butil::DeleteFile(file_path, true);
       } catch (const std::exception &e) {
         // Nothing we can do here.
-        SPDLOG_INFO("Delete tmp file:{} exception {}", path_, std::string(e_tmp));
+        SPDLOG_INFO("Delete tmp file:{} exception {}", path_, std::string(e.what()));
       }
     }
     is_open_ = false;
