@@ -18,9 +18,10 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 SECRETFLOW_GIT = "https://github.com/secretflow"
 
-IC_COMMIT_ID = "db83ca75c321420eb8cf2235d407e4e032b8e8cc"
+IC_COMMIT_ID  = "0c9c7ac13046d96ae6f3584da3c050610fced6b1"
 
-SIMPLEST_OT_COMMIT_ID = "f40a33a37e3ff8cd81655c35237c177e358dc5b1"
+SIMPLEST_OT_COMMIT_ID  = "f40a33a37e3ff8cd81655c35237c177e358dc5b1"
+
 
 def yacl_deps():
     _rule_python()

@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "absl/strings/match.h"
-#include "butil/logging.h"
 #include "gflags/gflags.h"
 
 #include "yacl/base/exception.h"
@@ -28,10 +27,6 @@ namespace yacl::link {
 
 std::shared_ptr<Context> FactoryBrpc::CreateContext(const ContextDesc& desc,
                                                     size_t self_rank) {
-#if !defined(NDEBUG)
-  // Under release build, set logging to one level above waring
-  logging::SetMinLogLevel(logging::BLOG_WARNING + 1);
-#endif
   const size_t world_size = desc.parties.size();
   if (self_rank >= world_size) {
     YACL_THROW_LOGIC_ERROR("invalid self rank={}, world_size={}", self_rank,

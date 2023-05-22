@@ -51,9 +51,10 @@ class OpensslGroup : public EcGroupSketch {
   EcPoint Double(const EcPoint& p) const override;
   void DoubleInplace(EcPoint* p) const override;
 
-  EcPoint MulBase(const MPInt& scalar) const override;
   EcPoint Mul(const EcPoint& point, const MPInt& scalar) const override;
   void MulInplace(EcPoint* point, const MPInt& scalar) const override;
+
+  EcPoint MulBase(const MPInt& scalar) const override;
   EcPoint MulDoubleBase(const MPInt& s1, const MPInt& s2,
                         const EcPoint& p2) const override;
 

@@ -222,6 +222,7 @@ class MPInt {
 
   /* c = a mod b, 0 <= c < b  */
   static void Mod(const MPInt &a, const MPInt &mod, MPInt *c);
+  MPInt Mod(const MPInt &mod) const;
 
   /* a = -a */
   inline void Negate(MPInt *z) const { MPINT_ENFORCE_OK(mp_neg(&n_, &z->n_)); }

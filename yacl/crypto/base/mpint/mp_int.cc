@@ -544,6 +544,12 @@ void MPInt::Mod(const MPInt &a, const MPInt &mod, MPInt *c) {
   MPINT_ENFORCE_OK(mp_mod(&a.n_, &mod.n_, &c->n_));
 }
 
+MPInt MPInt::Mod(const yacl::crypto::MPInt &mod) const {
+  MPInt res(0, mod.BitCount());
+  Mod(*this, mod, &res);
+  return res;
+}
+
 void MPInt::RandomRoundDown(size_t bit_size, MPInt *r) {
   // floor (向下取整)
   mp_int *n = &r->n_;

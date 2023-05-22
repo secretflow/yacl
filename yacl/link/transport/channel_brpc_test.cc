@@ -464,6 +464,7 @@ class DelayReceiverServiceImpl : public ic_pb::ReceiverService {
             const ic_pb::PushRequest* request, ic_pb::PushResponse* response,
             ::google::protobuf::Closure* done) override {
     brpc::ClosureGuard done_guard(done);
+
     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
     response->mutable_header()->set_error_code(ic::ErrorCode::OK);

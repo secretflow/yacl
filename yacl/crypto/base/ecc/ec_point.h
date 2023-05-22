@@ -93,13 +93,11 @@ class AnyPointPtr {
 
 // Feel free to add more storage types if you need.
 // Here is some example:
-using Array32 = std::array<char, 32>;  // 256bits, enough to store X25519 point
-using Array33 = std::array<char, 33>;  // 264bits, x coordinate + 1 sign bit
-using Array64 = std::array<char, 64>;  // 512bits, store (x, y)
+using Array32 = std::array<unsigned char, 32>;  // 256bits, store 25519 point
 
 // The storage format inside EcPoint is explained by each curve itself, here is
 // a black box
-using EcPoint =
-    std::variant<Array32, Array33, Array64, AnyPointPtr, AffinePoint>;
+// todo: can we change std::variant to std::any ?
+using EcPoint = std::variant<Array32, AnyPointPtr, AffinePoint>;
 
 }  // namespace yacl::crypto
