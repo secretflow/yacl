@@ -43,7 +43,7 @@ LeveldbKVStore::~LeveldbKVStore() {
         butil::DeleteFile(file_path, true);
       } catch (const std::exception &e) {
         // Nothing we can do here.
-        SPDLOG_INFO("Delete tmp file:{} exception {}", path_, std::string(e.what()));
+        SPDLOG_INFO("Delete tmp file:{} exception {}", path_, e.what());
       }
     }
     is_open_ = false;
@@ -60,7 +60,7 @@ void LeveldbKVStore::Put(absl::string_view key, ByteContainerView value) {
       value_str);
 
   if (!db_status.ok()) {
-    YACL_THROW("Put key:{} error, {}", key, db_status.ToString());
+    YACL_THROW("Put key:{} error, {}", db_status.ToString());
   }
 }
 
@@ -79,7 +79,7 @@ bool LeveldbKVStore::Get(absl::string_view key, Buffer *value) const {
       SPDLOG_INFO("key not found");
       return false;
     }
-    SPDLOG_ERROR("Get key: {}, error: {}", key, db_status.ToString());
+    SPDLOG_ERROR("Get key: {}, error:", key, db_status.ToString());
     return false;
   }
   return true;

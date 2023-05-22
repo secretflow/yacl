@@ -17,67 +17,49 @@ load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
 package(default_visibility = ["//visibility:public"])
 
 yacl_cc_library(
-    name = "ecc",
+    name = "libsodium",
+    srcs = [
+        "sodium_factory.cc",
+    ],
     deps = [
-        "//yacl/crypto/base/ecc/libsodium",
-        "//yacl/crypto/base/ecc/openssl",
-        "//yacl/crypto/base/ecc/toy",
+        ":ed25519_group",
+    ],
+    alwayslink = 1,
+)
+
+yacl_cc_library(
+    name = "sodium_group",
+    srcs = [
+        "sodium_group.cc",
+    ],
+    hdrs = [
+        "sodium_group.h",
+    ],
+    deps = [
+        "//yacl/crypto/base/ecc:spi",
+        "//yacl/crypto/base/hash:ssl_hash",
+        "@com_github_libsodium//:libsodium",
+        "@yacl//yacl/utils:parallel",
     ],
 )
 
 yacl_cc_library(
-    name = "spi",
+    name = "ed25519_group",
     srcs = [
-        "ecc_spi.cc",
-        "group_sketch.cc",
+        "ed25519_group.cc",
     ],
     hdrs = [
-        "ecc_spi.h",
-        "group_sketch.h",
+        "ed25519_group.h",
     ],
     deps = [
-        ":curve_meta",
-        ":ec_point",
-        "//yacl/base:byte_container_view",
-        "//yacl/crypto/base/mpint",
-    ],
-)
-
-yacl_cc_library(
-    name = "ec_point",
-    srcs = [
-        "ec_point.cc",
-    ],
-    hdrs = [
-        "ec_point.h",
-    ],
-    deps = [
-        "//yacl/crypto/base/mpint",
-    ],
-)
-
-yacl_cc_library(
-    name = "curve_meta",
-    srcs = [
-        "curve_meta.cc",
-    ],
-    hdrs = [
-        "curve_meta.h",
-    ],
-    deps = [
-        "//yacl/base:exception",
-        "@com_google_absl//absl/strings",
+        ":sodium_group",
     ],
 )
 
 yacl_cc_test(
-    name = "ecc_test",
-    srcs = [
-        "ecc_test.cc",
-    ],
+    name = "ed25519_test",
+    srcs = ["ed25519_test.cc"],
     deps = [
-        ":ecc",
-        "@com_github_fmtlib_fmt//:fmtlib",
-        "@yacl//yacl/utils:parallel",
+        ":libsodium",
     ],
 )

@@ -21,11 +21,6 @@
 #include "yacl/crypto/base/ecc/ecc_spi.h"
 #include "yacl/utils/parallel.h"
 
-namespace yacl::crypto {
-// For test
-extern std::vector<CurveMeta> kPredefinedCurves;
-}  // namespace yacl::crypto
-
 namespace yacl::crypto::test {
 
 TEST(CurveFactoryTest, FactoryWorks) {
@@ -180,7 +175,9 @@ class EcCurveTest : public ::testing::TestWithParam<std::string> {
     ASSERT_TRUE(
         ec_->PointEqual(ec_->DeserializePoint(buf), ec_->GetGenerator()));
 
-    if (ec_->GetLibraryName() == "Toy") {
+    // todo: X962 support in libsodium
+    if (ec_->GetLibraryName() == "Toy" ||
+        ec_->GetLibraryName() == "libsodium") {
       return;  // The toy lib do not support X9.62 format
     }
 
@@ -315,6 +312,26 @@ TEST_P(Sm2CurveTest, SpiTest) {
   EXPECT_TRUE(ref_->GetOrder() != ec2->GetOrder());
   EXPECT_TRUE(ref_->GetAffinePoint(ref_->GetGenerator()) !=
               ec2->GetAffinePoint(ec2->GetGenerator()));
+
+  // Run Other tests
+  RunAllTests();
+}
+
+class Ed25519CurveTest : public EcCurveTest {
+ protected:
+  void SetUp() override { ec_ = EcGroupFactory::Create("Ed25519", GetParam()); }
+};
+
+INSTANTIATE_TEST_SUITE_P(
+    Ed25519Test, Ed25519CurveTest,
+    ::testing::ValuesIn(EcGroupFactory::ListEcLibraries("Ed25519")));
+
+TEST_P(Ed25519CurveTest, SpiTest) {
+  EXPECT_STRCASEEQ(ec_->GetCurveName().c_str(), "Ed25519");
+  EXPECT_EQ(ec_->GetCurveForm(), CurveForm::TwistedEdwards);
+  EXPECT_EQ(ec_->GetFieldType(), FieldType::Prime);
+  EXPECT_EQ(ec_->GetSecurityStrength(), 127);
+  EXPECT_FALSE(ec_->ToString().empty());
 
   // Run Other tests
   RunAllTests();

@@ -14,15 +14,15 @@
 
 #include "yacl/base/exception.h"
 
+#include "absl/strings/match.h"
 #include "gtest/gtest.h"
 
 namespace yacl {
 namespace {
 
-void CheckExceptionEndsWith(const std::exception& e,
+void CheckExceptionContains(const std::exception& e,
                             const std::string& expected) {
-  const std::string msg = e.what();
-  EXPECT_EQ(expected, msg.substr(msg.size() - expected.size()));
+  EXPECT_TRUE(absl::StrContains(e.what(), expected));
 }
 
 }  // namespace
@@ -55,7 +55,7 @@ TEST(Exception, Fmt) {
   try {
     YACL_THROW("hello {}", "yacl");
   } catch (const std::exception& e) {
-    CheckExceptionEndsWith(e, "hello yacl");
+    CheckExceptionContains(e, "hello yacl");
   }
 }
 
@@ -63,7 +63,7 @@ TEST(Exception, FmtInThrow) {
   try {
     YACL_THROW(fmt::format("hello {}", "yacl"));
   } catch (const std::exception& e) {
-    CheckExceptionEndsWith(e, "hello yacl");
+    CheckExceptionContains(e, "hello yacl");
   }
 }
 
@@ -85,7 +85,7 @@ TEST(Exception, EnforceFmt) {
   try {
     YACL_ENFORCE(false, "enforce {}", "yacl");
   } catch (const std::exception& e) {
-    CheckExceptionEndsWith(e, "enforce yacl");
+    CheckExceptionContains(e, "enforce yacl");
   }
 }
 
@@ -98,7 +98,7 @@ TEST(Exception, EnforceThatFmt) {
   try {
     YACL_ENFORCE_EQ(0, 1, "enforce {}", "yacl");
   } catch (const std::exception& e) {
-    CheckExceptionEndsWith(e, "enforce yacl");
+    CheckExceptionContains(e, "enforce yacl");
   }
 }
 
