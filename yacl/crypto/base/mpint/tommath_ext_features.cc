@@ -17,6 +17,8 @@
 #include <algorithm>
 #include <functional>
 
+#include "libtommath/tommath.h"
+
 extern "C" {
 #include "libtommath/tommath_private.h"
 }
@@ -356,9 +358,9 @@ size_t mp_ext_to_mag_bytes(const mp_int &num, uint8_t *buf, size_t buf_len,
   }
 
   auto min_bytes = mp_ext_mag_bytes_size(num);
-  YACL_ENFORCE_GE(buf_len, min_bytes,
-                  "buf is too small to store mp_int, buf_size={}, required={}",
-                  buf_len, min_bytes);
+  YACL_ENFORCE(buf_len >= min_bytes,
+               "buf is too small to store mp_int, buf_size={}, required={}",
+               buf_len, min_bytes);
 
   int64_t pos = 0;
   mp_digit cache = 0;
@@ -431,6 +433,7 @@ void mp_ext_from_mag_bytes(mp_int *num, const uint8_t *buf, size_t buf_len,
   for (int idx = num->used; idx < old_used; ++idx) {
     num->dp[idx] = 0;
   }
+  mp_clamp(num);
 }
 
 size_t mp_ext_serialize_size(const mp_int &num) {

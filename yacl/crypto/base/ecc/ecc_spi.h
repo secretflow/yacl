@@ -173,9 +173,10 @@ class EcGroup {
   // - Double-Base: when the protocol actually requires to compute two scalar
   // multiplications and then to add both results. (e.g. 𝑘𝑃+𝑟𝐵)
   // @param scalar: can be < 0
-  virtual EcPoint MulBase(const MPInt &scalar) const = 0;
   virtual EcPoint Mul(const EcPoint &point, const MPInt &scalar) const = 0;
   virtual void MulInplace(EcPoint *point, const MPInt &scalar) const = 0;
+  // Returns: scalar*G
+  virtual EcPoint MulBase(const MPInt &scalar) const = 0;
   // Returns: s1*G + s2*p2
   virtual EcPoint MulDoubleBase(const MPInt &s1, const MPInt &s2,
                                 const EcPoint &p2) const = 0;
@@ -286,6 +287,11 @@ class EcGroupFactory final {
   };
 };
 
+// Please run bazel run
+// >    yacl/crypto/base/ecc/benchmark -c opt -- --curve CURVE_NAME
+// to test your lib's performance.
+// We assume that the performance of OpenSSL is 100, if your library is better
+// than OpenSSL, please increase the 'performance' value.
 #define REGISTER_EC_LIBRARY(lib_name, performance, checker, creator) \
   static EcGroupFactory::Registration registration_ec_##__COUNTER__( \
       lib_name, performance, checker, creator)

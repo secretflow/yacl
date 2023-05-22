@@ -233,8 +233,8 @@ class EnforceNotMet : public Exception {
   EnforceNotMet(const char* file, int line, const char* condition,
                 const std::string& msg, void** stacks, int dep)
       : Exception(msg, stacks, dep),
-        full_msg_(fmt::format("[Enforce fail at {}:{}] {}. {}", file, line,
-                              condition, msg)) {}
+        full_msg_(fmt::format("[Enforce fail at {}:{}] {}. {}\nStacktrace:\n{}",
+                              file, line, condition, msg, stack_trace())) {}
 
   const char* what() const noexcept override { return full_msg_.c_str(); }
 
@@ -242,6 +242,8 @@ class EnforceNotMet : public Exception {
   std::string full_msg_;
 };
 
+// If you don't want to print stacktrace in error message, use
+// "YACL_ENFORCE_THAT" instead.
 #define YACL_ENFORCE(condition, ...)                                         \
   do {                                                                       \
     if (!(condition)) {                                                      \
@@ -338,14 +340,14 @@ BINARY_COMP_HELPER(Less, <)
 BINARY_COMP_HELPER(LessEquals, <=)
 #undef BINARY_COMP_HELPER
 
-#define YACL_ENFORCE_THAT_IMPL(condition, expr, ...)                   \
-  do {                                                                 \
-    ::yacl::enforce_detail::EnforceFailMessage r(condition);           \
-    if (r.Bad()) {                                                     \
-      throw ::yacl::EnforceNotMet(                                     \
-          __FILE__, __LINE__, expr,                                    \
-          r.GetMessageAndFree(::yacl::internal::Format(__VA_ARGS__))); \
-    }                                                                  \
+#define YACL_ENFORCE_THAT_IMPL(condition, expr, ...)                     \
+  do {                                                                   \
+    ::yacl::enforce_detail::EnforceFailMessage _r_(condition);           \
+    if (_r_.Bad()) {                                                     \
+      throw ::yacl::EnforceNotMet(                                       \
+          __FILE__, __LINE__, expr,                                      \
+          _r_.GetMessageAndFree(::yacl::internal::Format(__VA_ARGS__))); \
+    }                                                                    \
   } while (false)
 }  // namespace enforce_detail
 
