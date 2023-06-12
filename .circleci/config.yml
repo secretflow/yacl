@@ -28,3 +28,4 @@ workflows:
           mapping: |
             yacl/.* build-and-run true
             .bazelrc build-and-run true
+            .circleci/continue-config.yml build-and-run true
