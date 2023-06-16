@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstdio>
 #include <mutex>
 #include <random>
 
@@ -40,7 +41,7 @@ TEST(CurveFactoryTest, FactoryWorks) {
   auto c1 = EcGroupFactory::Create("sm2", "toy");
   EXPECT_STRCASEEQ(c1->GetLibraryName().c_str(), "Toy");
 
-  // the openssl's performance is better, so the factory choose openssl
+  // the openssl's performance is better, so the factory chooses openssl
   auto c2 = EcGroupFactory::Create("sm2");
   EXPECT_STRCASEEQ(c2->GetLibraryName().c_str(), "openssl");
 }
@@ -53,6 +54,7 @@ class EcCurveTest : public ::testing::TestWithParam<std::string> {
   void RunAllTests() {
     fmt::print("Begin to test curve {} from {} lib\n", ec_->GetCurveName(),
                ec_->GetLibraryName());
+    fflush(stdout);
 
     TestArithmeticWorks();
     TestMulIsAdd();
@@ -178,7 +180,7 @@ class EcCurveTest : public ::testing::TestWithParam<std::string> {
     // todo: X962 support in libsodium
     if (ec_->GetLibraryName() == "Toy" ||
         ec_->GetLibraryName() == "libsodium") {
-      return;  // The toy lib do not support X9.62 format
+      return;  // The toy lib does not support X9.62 format
     }
 
     // test ANSI X9.62 format
@@ -216,7 +218,7 @@ class EcCurveTest : public ::testing::TestWithParam<std::string> {
     for (int i = 0; i < ts; ++i) {
       auto h = ec_->HashPoint(p);
       ++hit_table[h];
-      ASSERT_EQ(hit_table[h], 1);
+      ASSERT_EQ(hit_table[h], 1) << fmt::format("i={}", i);
       ec_->AddInplace(&p, ec_->GetGenerator());
     }
     ASSERT_EQ(hit_table.size(), ts);
@@ -263,7 +265,7 @@ class EcCurveTest : public ::testing::TestWithParam<std::string> {
   }
 
   void MultiThreadWorks() {
-    constexpr int64_t ts = 1 << 16;
+    constexpr int64_t ts = 1 << 15;
     std::array<EcPoint, ts> buf;
     auto g = ec_->GetGenerator();
     yacl::parallel_for(0, ts, 1, [&](int64_t beg, int64_t end) {

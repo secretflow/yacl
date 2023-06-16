@@ -643,6 +643,9 @@ yacl::Buffer MPInt::ToMagBytes(yacl::crypto::Endian endian) const {
   return buffer;
 }
 
+// If buf_len is too small, an exception will be thrown.
+// If buf_len exceeds the actual required size, considering the
+// characteristics of big-endian, the remaining part will not be assigned 0.
 size_t MPInt::ToMagBytes(unsigned char *buf, size_t buf_len,
                          Endian endian) const {
   return mp_ext_to_mag_bytes(n_, buf, buf_len, endian);

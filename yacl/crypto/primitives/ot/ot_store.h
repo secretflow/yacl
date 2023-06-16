@@ -32,6 +32,12 @@ class SliceBase {
   bool IsSliced() const { return internal_buf_ctr_ != 0; }
   virtual ~SliceBase() = default;
 
+  void ResetSlice() {
+    internal_use_ctr_ = 0;
+    internal_use_size_ = internal_buf_size_;
+    internal_buf_ctr_ = 0;
+  }
+
  protected:
   uint64_t GetUseCtr() const { return internal_use_ctr_; }
   uint64_t GetUseSize() const { return internal_use_size_; }
@@ -97,8 +103,11 @@ class OtRecvStore : public SliceBase {
   // empty constructor
   explicit OtRecvStore(uint64_t num, OtStoreType type = OtStoreType::Normal);
 
-  // slice the ot store
+  // slice the ot store (changes the counters in original ot store)
   OtRecvStore NextSlice(uint64_t num);
+
+  // slice the ot store (does not affect the original ot store)
+  OtRecvStore Slice(uint64_t begin, uint64_t end) const;
 
   // get ot store type
   OtStoreType Type() const { return type_; }
@@ -162,7 +171,10 @@ OtRecvStore MakeOtRecvStore(const dynamic_bitset<uint128_t>& choices,
                             const std::vector<uint128_t>& blocks);
 
 // Easier way of generate a compact cot_store pointer from a given block buffer
-OtRecvStore MakeCompactCotRecvStore(const std::vector<uint128_t>& blocks);
+// Note: Compact ot is correlated-ot (or called delta-ot)
+OtRecvStore MakeCompactOtRecvStore(const std::vector<uint128_t>& blocks);
+
+OtRecvStore MakeCompactOtRecvStore(std::vector<uint128_t>&& blocks);
 
 // OT Sender (for 1-out-of-2 OT)
 //
@@ -179,8 +191,11 @@ class OtSendStore : public SliceBase {
   // empty constructor
   explicit OtSendStore(uint64_t num, OtStoreType type = OtStoreType::Normal);
 
-  // slice the ot store
+  // slice the ot store (changes the counters in original ot store)
   OtSendStore NextSlice(uint64_t num);
+
+  // slice the ot store (does not affect the original ot store)
+  OtSendStore Slice(uint64_t begin, uint64_t end) const;
 
   // get ot store type
   OtStoreType Type() const { return type_; }
@@ -230,8 +245,12 @@ OtSendStore MakeOtSendStore(
 
 // Easier way of generate a compact cot_store pointer from a given blocks
 // buffer and cot delta
-OtSendStore MakeCompactCotSendStore(const std::vector<uint128_t>& blocks,
-                                    uint128_t delta);
+// Note: Compact ot is correlated-ot (or called delta-ot)
+OtSendStore MakeCompactOtSendStore(const std::vector<uint128_t>& blocks,
+                                   uint128_t delta);
+
+OtSendStore MakeCompactOtSendStore(std::vector<uint128_t>&& blocks,
+                                   uint128_t delta);
 
 // OT Store (for mocking only)
 class MockOtStore {
@@ -243,6 +262,8 @@ class MockOtStore {
 // Locally mock ots
 MockOtStore MockRots(uint64_t num);
 MockOtStore MockCots(uint64_t num, uint128_t delta);
-MockOtStore MockCompactCots(uint64_t num);
+
+// Note: Compact ot is correlated-ot (or called delta-ot)
+MockOtStore MockCompactOts(uint64_t num);
 
 }  // namespace yacl::crypto

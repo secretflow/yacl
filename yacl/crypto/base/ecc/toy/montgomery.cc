@@ -16,6 +16,7 @@
 
 #include "absl/strings/escaping.h"
 
+#include "yacl/crypto/base/hash/blake3.h"
 #include "yacl/crypto/base/hash/ssl_hash.h"
 
 namespace yacl::crypto::toy {
@@ -108,7 +109,7 @@ EcPoint ToyXGroup::Negate(const EcPoint &point) const {
 Buffer ToyXGroup::SerializePoint(const EcPoint &point,
                                  PointOctetFormat format) const {
   YACL_ENFORCE(format == PointOctetFormat::Autonomous,
-               "Toy lib do not support {} format", (int)format);
+               "Toy lib does not support {} format", (int)format);
   const auto &op = std::get<AffinePoint>(point);
   return op.x.Serialize();
 }
@@ -121,7 +122,7 @@ void ToyXGroup::SerializePoint(const EcPoint &point, PointOctetFormat format,
 EcPoint ToyXGroup::DeserializePoint(ByteContainerView buf,
                                     PointOctetFormat format) const {
   YACL_ENFORCE(format == PointOctetFormat::Autonomous,
-               "Toy lib do not support {} format", (int)format);
+               "Toy lib does not support {} format", (int)format);
   AffinePoint op;
   op.x.Deserialize(buf);
   return op;
@@ -144,18 +145,27 @@ EcPoint ToyXGroup::HashToCurve(HashToCurveStrategy strategy,
       }
       break;
     case HashToCurveStrategy::HashAsPointX_SHA3:
-      YACL_THROW("Openssl lib do not support HashAsPointX_SHA3 strategy now");
+      YACL_THROW("Toy lib does not support HashAsPointX_SHA3 strategy now");
       break;
     case HashToCurveStrategy::HashAsPointX_SM:
       hash_algorithm = HashAlgorithm::SM3;
       break;
+    case HashToCurveStrategy::Autonomous:
+    case HashToCurveStrategy::HashAsPointX_BLAKE3:
+      hash_algorithm = HashAlgorithm::BLAKE3;
+      break;
     default:
       YACL_THROW(
-          "Openssl lib only support HashAsPointX strategy now. select={}",
+          "Openssl lib only supports HashAsPointX strategy now. select={}",
           (int)strategy);
   }
 
-  auto buf = SslHash(hash_algorithm).Update(str).CumulativeHash();
+  std::vector<uint8_t> buf;
+  if (hash_algorithm != HashAlgorithm::BLAKE3) {
+    buf = SslHash(hash_algorithm).Update(str).CumulativeHash();
+  } else {
+    buf = Blake3Hash((bits + 7) / 8).Update(str).CumulativeHash();
+  }
 
   AffinePoint op;
   op.x.Set(
@@ -174,7 +184,7 @@ bool ToyXGroup::PointEqual(const EcPoint &p1, const EcPoint &p2) const {
 // In the ECDH scenario we do not distinguish between points on C25519 or on a
 // twist curve
 bool ToyXGroup::IsInCurveGroup(const EcPoint &point) const {
-  auto &x = std::get<AffinePoint>(point).x;
+  const auto &x = std::get<AffinePoint>(point).x;
   return !x.IsNegative() && x < params_.p;
 }
 

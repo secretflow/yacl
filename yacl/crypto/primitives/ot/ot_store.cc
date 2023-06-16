@@ -14,6 +14,7 @@
 
 #include "yacl/crypto/primitives/ot/ot_store.h"
 
+#include <memory>
 #include <utility>
 
 #include "yacl/base/exception.h"
@@ -123,6 +124,25 @@ void OtRecvStore::ConsistencyCheck() const {
   }
 }
 
+OtRecvStore OtRecvStore::Slice(uint64_t begin, uint64_t end) const {
+  // Recall: A new slice looks like the follwoing:
+  //
+  // |---------------|-----slice-----|----------------| internal buffer
+  // a               b               c                d
+  //
+  // internal_use_ctr_ = b
+  // internal_use_size_ = c - b
+  // internal_buf_ctr_ = b
+  // internal_buf_size_ = c
+
+  uint64_t slice_use_ctr = begin;         // in blocks
+  uint64_t slice_use_size = end - begin;  // in blocks
+  uint64_t slice_buf_ctr = begin;         // in blocks
+  uint64_t slice_buf_size = end;          // in blocks
+
+  return {bit_buf_,      blk_buf_,       slice_use_ctr, slice_use_size,
+          slice_buf_ctr, slice_buf_size, type_};
+}
 OtRecvStore OtRecvStore::NextSlice(uint64_t num) {
   // Recall: A new slice looks like the follwoing:
   //
@@ -134,17 +154,7 @@ OtRecvStore OtRecvStore::NextSlice(uint64_t num) {
   // internal_buf_ctr_ = b
   // internal_buf_size_ = c
 
-  uint64_t slice_use_ctr = GetBufCtr();         // in blocks
-  uint64_t slice_use_size = num;                // in blocks
-  uint64_t slice_buf_ctr = GetBufCtr();         // in blocks
-  uint64_t slice_buf_size = GetBufCtr() + num;  // in blocks
-
-  auto out = OtRecvStore(bit_buf_, blk_buf_, slice_use_ctr, slice_use_size,
-                         slice_buf_ctr, slice_buf_size, type_);
-
-  // where who slice this buffer looks like the following:
-  //
-  //
+  auto out = Slice(GetBufCtr(), GetBufCtr() + num);
   // |---------------|-----slice-----|----------------| internal buffer
   // a               b               c                d
   //
@@ -209,8 +219,21 @@ OtRecvStore MakeOtRecvStore(const dynamic_bitset<uint128_t>& choices,
           tmp1_ptr->size(), OtStoreType::Normal};
 }
 
-OtRecvStore MakeCompactCotRecvStore(const std::vector<uint128_t>& blocks) {
+OtRecvStore MakeCompactOtRecvStore(const std::vector<uint128_t>& blocks) {
   auto tmp_ptr = std::make_shared<std::vector<uint128_t>>(blocks);  // copy
+
+  return {nullptr,
+          tmp_ptr,
+          0,
+          tmp_ptr->size(),
+          0,
+          tmp_ptr->size(),
+          OtStoreType::Compact};
+}
+
+OtRecvStore MakeCompactOtRecvStore(std::vector<uint128_t>&& blocks) {
+  auto tmp_ptr =
+      std::make_shared<std::vector<uint128_t>>(std::move(blocks));  // move
 
   return {nullptr,
           tmp_ptr,
@@ -265,9 +288,8 @@ void OtSendStore::ConsistencyCheck() const {
                blk_buf_->size(), internal_buf_size_);
 }
 
-OtSendStore OtSendStore::NextSlice(uint64_t num) {
+OtSendStore OtSendStore::Slice(uint64_t begin, uint64_t end) const {
   const uint64_t ot_blk_num = (type_ == OtStoreType::Compact) ? 1 : 2;
-
   // Recall: A new slice looks like the follwoing:
   //
   // |---------------|-----slice-----|----------------| internal buffer
@@ -278,13 +300,27 @@ OtSendStore OtSendStore::NextSlice(uint64_t num) {
   // internal_buf_ctr_ = b
   // internal_buf_size_ = c
 
-  uint64_t slice_use_ctr = GetBufCtr();                      // in blocks
-  uint64_t slice_use_size = num * ot_blk_num;                // in blocks
-  uint64_t slice_buf_ctr = GetBufCtr();                      // in blocks
-  uint64_t slice_buf_size = GetBufCtr() + num * ot_blk_num;  // in blocks
+  uint64_t slice_use_ctr = begin * ot_blk_num;           // in blocks
+  uint64_t slice_use_size = (end - begin) * ot_blk_num;  // in blocks
+  uint64_t slice_buf_ctr = begin * ot_blk_num;           // in blocks
+  uint64_t slice_buf_size = end * ot_blk_num;            // in blocks
 
-  auto out = OtSendStore(blk_buf_, delta_, slice_use_ctr, slice_use_size,
-                         slice_buf_ctr, slice_buf_size, type_);
+  return {blk_buf_,      delta_,         slice_use_ctr, slice_use_size,
+          slice_buf_ctr, slice_buf_size, type_};
+}
+
+OtSendStore OtSendStore::NextSlice(uint64_t num) {
+  const uint64_t ot_blk_num = (type_ == OtStoreType::Compact) ? 1 : 2;
+  // Recall: A new slice looks like the follwoing:
+  //
+  // |---------------|-----slice-----|----------------| internal buffer
+  // a               b               c                d
+  //
+  // internal_use_ctr_ = b
+  // internal_use_size_ = c - b
+  // internal_buf_ctr_ = b
+  // internal_buf_size_ = c
+  auto out = Slice(GetBufCtr() / ot_blk_num, GetBufCtr() / ot_blk_num + num);
 
   // where who slice this buffer looks like the following:
   //
@@ -369,13 +405,32 @@ OtSendStore MakeOtSendStore(
           OtStoreType::Normal};
 }
 
-OtSendStore MakeCompactCotSendStore(const std::vector<uint128_t>& blocks,
-                                    uint128_t delta) {
+OtSendStore MakeCompactOtSendStore(const std::vector<uint128_t>& blocks,
+                                   uint128_t delta) {
   // warning: copy
   auto buf_ptr = std::make_shared<std::vector<uint128_t>>(blocks);
 
-  return {
-      buf_ptr, delta, 0, blocks.size(), 0, blocks.size(), OtStoreType::Compact};
+  return {buf_ptr,
+          delta,
+          0,
+          buf_ptr->size(),
+          0,
+          buf_ptr->size(),
+          OtStoreType::Compact};
+}
+
+OtSendStore MakeCompactOtSendStore(std::vector<uint128_t>&& blocks,
+                                   uint128_t delta) {
+  auto buf_ptr =
+      std::make_shared<std::vector<uint128_t>>(std::move(blocks));  // move
+
+  return {buf_ptr,
+          delta,
+          0,
+          buf_ptr->size(),
+          0,
+          buf_ptr->size(),
+          OtStoreType::Compact};
 }
 
 MockOtStore MockRots(uint64_t num) {
@@ -409,11 +464,11 @@ MockOtStore MockCots(uint64_t num, uint128_t delta) {
     }
   }
 
-  return {MakeCompactCotSendStore(send_blocks, delta),  // sender is compact
+  return {MakeCompactOtSendStore(send_blocks, delta),   // sender is compact
           MakeOtRecvStore(recv_choices, recv_blocks)};  // receiver is normal
 }
 
-MockOtStore MockCompactCots(uint64_t num) {
+MockOtStore MockCompactOts(uint64_t num) {
   uint128_t delta = RandU128();
   delta |= 0x1;  // make sure its last bits = 1;
   std::vector<uint128_t> recv_blocks;
@@ -427,8 +482,8 @@ MockOtStore MockCompactCots(uint64_t num) {
     recv_blocks.push_back(recv_msg);
   }
 
-  return {MakeCompactCotSendStore(send_blocks, delta),  // sender is compact
-          MakeCompactCotRecvStore(recv_blocks)};        // receiver is compact
+  return {MakeCompactOtSendStore(send_blocks, delta),  // sender is compact
+          MakeCompactOtRecvStore(recv_blocks)};        // receiver is compact
 }
 
 }  // namespace yacl::crypto

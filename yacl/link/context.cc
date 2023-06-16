@@ -200,6 +200,24 @@ void Context::SendAsync(size_t dst_rank, Buffer&& value, std::string_view tag) {
   SendAsyncInternal(dst_rank, event, std::move(value));
 }
 
+void Context::SendAsyncThrottled(size_t dst_rank, ByteContainerView value,
+                                 std::string_view tag) {
+  const auto event = NextP2PId(rank_, dst_rank);
+
+  TraceLogger::LinkTrace(event, tag, value);
+
+  SendAsyncThrottledInternal(dst_rank, event, value);
+}
+
+void Context::SendAsyncThrottled(size_t dst_rank, Buffer&& value,
+                                 std::string_view tag) {
+  const auto event = NextP2PId(rank_, dst_rank);
+
+  TraceLogger::LinkTrace(event, tag, value);
+
+  SendAsyncThrottledInternal(dst_rank, event, std::move(value));
+}
+
 void Context::Send(size_t dst_rank, ByteContainerView value,
                    std::string_view tag) {
   const auto event = NextP2PId(rank_, dst_rank);
@@ -236,6 +254,32 @@ void Context::SendAsyncInternal(size_t dst_rank, const std::string& key,
   const size_t value_length = value.size();
 
   channels_[dst_rank]->SendAsync(key, std::move(value));
+
+  stats_->sent_actions++;
+  stats_->sent_bytes += value_length;
+}
+
+void Context::SendAsyncThrottledInternal(size_t dst_rank,
+                                         const std::string& key,
+                                         ByteContainerView value) {
+  YACL_ENFORCE(dst_rank < static_cast<size_t>(channels_.size()),
+               "rank={} out of range={}", dst_rank, channels_.size());
+
+  channels_[dst_rank]->SendAsyncThrottled(key, value);
+
+  stats_->sent_actions++;
+  stats_->sent_bytes += value.size();
+}
+
+void Context::SendAsyncThrottledInternal(size_t dst_rank,
+                                         const std::string& key,
+                                         Buffer&& value) {
+  YACL_ENFORCE(dst_rank < channels_.size(), "rank={} out of range={}", dst_rank,
+               channels_.size());
+
+  const size_t value_length = value.size();
+
+  channels_[dst_rank]->SendAsyncThrottled(key, std::move(value));
 
   stats_->sent_actions++;
   stats_->sent_bytes += value_length;
@@ -339,7 +383,7 @@ std::shared_ptr<IChannel> Context::GetChannel(size_t src_rank) const {
   return channels_[src_rank];
 }
 
-void Context::SetRecvTimeout(uint32_t recv_timeout_ms) {
+void Context::SetRecvTimeout(uint64_t recv_timeout_ms) {
   recv_timeout_ms_ = recv_timeout_ms;
   for (size_t idx = 0; idx < WorldSize(); idx++) {
     if (idx == Rank()) {
@@ -350,7 +394,7 @@ void Context::SetRecvTimeout(uint32_t recv_timeout_ms) {
   SPDLOG_DEBUG("set recv timeout, timeout_ms={}", recv_timeout_ms_);
 }
 
-uint32_t Context::GetRecvTimeout() const { return recv_timeout_ms_; }
+uint64_t Context::GetRecvTimeout() const { return recv_timeout_ms_; }
 
 #undef SPDLOG_COND
 

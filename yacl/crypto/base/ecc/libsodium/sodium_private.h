@@ -1,4 +1,4 @@
-// Copyright 2022 Ant Group Co., Ltd.
+// Copyright 2023 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,16 +14,10 @@
 
 #pragma once
 
-namespace yacl::crypto {
+#define CONFIGURED 1
+// TODO: fix TI MODE
+// #define HAVE_TI_MODE
 
-// borrow from c++20 stl
-enum class Endian {
-  // The high byte of the data is stored in the high address of the memory
-  little = __ORDER_LITTLE_ENDIAN__,
-  // The high byte of the data is stored in the low address of the memory
-  big = __ORDER_BIG_ENDIAN__,
-  // Auto-detect the endianness of the current machine
-  native = __BYTE_ORDER__,  // alias for little or big
+extern "C" {
+#include "sodium/private/ed25519_ref10.h"
 };
-
-}  // namespace yacl::crypto

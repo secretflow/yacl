@@ -13,16 +13,19 @@
 // limitations under the License.
 
 #pragma once
-
 #include <atomic>
 #include <condition_variable>
 #include <map>
 #include <memory>
 #include <mutex>
+#include <optional>
+#include <queue>
 #include <string>
+#include <thread>
 
 #include "bthread/bthread.h"
 #include "bthread/condition_variable.h"
+#include "spdlog/spdlog.h"
 
 #include "yacl/base/buffer.h"
 #include "yacl/base/byte_container_view.h"
@@ -35,16 +38,24 @@ class IChannel {
  public:
   virtual ~IChannel() = default;
 
-  // SendAsync asynchronously.
-  // return when the message successfully pushed into peer's recv buffer.
+  // send asynchronously.
+  // return when the message successfully pushed into the send queue.
   // SendAsync is not reentrant with same key.
   virtual void SendAsync(const std::string& key, ByteContainerView value) = 0;
 
   virtual void SendAsync(const std::string& key, Buffer&& value) = 0;
 
-  // SendAsync synchronously.
-  // return when the message is successfully pushed into the send buffer.
-  // raise when push buffer overflow.
+  // send asynchronously but with throttled limit.
+  // return when 1. the message successfully pushed into the send queue
+  //             2. flying/unconsumed messages is under throttled limit.
+  // SendAsyncThrottled is not reentrant with same key.
+  virtual void SendAsyncThrottled(const std::string& key, Buffer&& value) = 0;
+
+  virtual void SendAsyncThrottled(const std::string& key,
+                                  ByteContainerView value) = 0;
+
+  // Send synchronously.
+  // return when the message is successfully pushed into peer's recv buffer.
   // Send is not reentrant with same key.
   virtual void Send(const std::string& key, ByteContainerView value) = 0;
 
@@ -58,10 +69,10 @@ class IChannel {
   virtual void OnChunkedMessage(const std::string& key, ByteContainerView value,
                                 size_t offset, size_t total_length) = 0;
   // set receive timeout ms
-  virtual void SetRecvTimeout(uint32_t timeout_ms) = 0;
+  virtual void SetRecvTimeout(uint64_t timeout_ms) = 0;
 
   // get receive timemout ms
-  virtual uint32_t GetRecvTimeout() const = 0;
+  virtual uint64_t GetRecvTimeout() const = 0;
 
   // wait for all send and rev msg finish
   virtual void WaitLinkTaskFinish() = 0;
@@ -81,20 +92,44 @@ class IChannel {
 // forward declaractions.
 class ChunkedMessage;
 
-class ChannelBase : public IChannel {
+class ChannelBase : public IChannel,
+                    public std::enable_shared_from_this<ChannelBase> {
  public:
   ChannelBase(size_t self_rank, size_t peer_rank)
-      : self_rank_(self_rank), peer_rank_(peer_rank) {}
+      : self_rank_(self_rank), peer_rank_(peer_rank) {
+    StartSendThread();
+  }
 
   ChannelBase(size_t self_rank, size_t peer_rank, size_t recv_timeout_ms)
       : self_rank_(self_rank),
         peer_rank_(peer_rank),
-        recv_timeout_ms_(recv_timeout_ms) {}
+        recv_timeout_ms_(recv_timeout_ms) {
+    StartSendThread();
+  }
+
+  ~ChannelBase() override {
+    if (!send_thread_stoped_.load()) {
+      SPDLOG_ERROR(
+          "ChannelBase destructor is called before WaitLinkTaskFinish, try "
+          "stop send thread");
+      try {
+        WaitAsyncSendToFinish();
+      } catch (const std::exception& e) {
+        SPDLOG_ERROR("Stop send thread err {}", e.what());
+        exit(-1);
+      }
+    }
+  }
 
   // all send interface for normal msg is not reentrant with same key.
   void SendAsync(const std::string& key, ByteContainerView value) final;
 
   void SendAsync(const std::string& key, Buffer&& value) final;
+
+  void SendAsyncThrottled(const std::string& key, Buffer&& value) final;
+
+  void SendAsyncThrottled(const std::string& key,
+                          ByteContainerView value) final;
 
   void Send(const std::string& key, ByteContainerView value) final;
 
@@ -105,9 +140,9 @@ class ChannelBase : public IChannel {
   void OnChunkedMessage(const std::string& key, ByteContainerView value,
                         size_t offset, size_t total_length) override;
 
-  void SetRecvTimeout(uint32_t recv_timeout_ms) override;
+  void SetRecvTimeout(uint64_t recv_timeout_ms) override;
 
-  uint32_t GetRecvTimeout() const override;
+  uint64_t GetRecvTimeout() const override;
 
   void WaitLinkTaskFinish() final;
 
@@ -123,21 +158,15 @@ class ChannelBase : public IChannel {
   // wait for dummy msg from peer, timeout by recv_timeout_ms_.
   void TestRecv() final;
 
-  // wait for all SendAsync Done.
-  virtual void WaitAsyncSendToFinish() = 0;
-
  protected:
-  virtual void SendAsyncImpl(const std::string& key,
-                             ByteContainerView value) = 0;
-
-  virtual void SendAsyncImpl(const std::string& key, Buffer&& value) = 0;
-
   virtual void SendImpl(const std::string& key, ByteContainerView value) = 0;
 
   virtual void SendImpl(const std::string& key, ByteContainerView value,
-                        uint32_t timeout) = 0;
+                        uint32_t timeout_override_ms) = 0;
 
  private:
+  void WaitAsyncSendToFinish();
+
   void ThrottleWindowWait(size_t);
 
   void StopReceivingAndAckUnreadMsgs();
@@ -151,11 +180,68 @@ class ChannelBase : public IChannel {
 
   void SendAck(size_t seq_id);
 
+  friend class SendTask;
+
+  struct Message {
+    Message() = default;
+    // data owned by msg
+    explicit Message(size_t s, std::string k, Buffer v)
+        : seq_id_(s),
+          msg_key_(std::move(k)),
+          value_data_(std::move(v)),
+          value_(value_data_) {}
+    // only get view
+    explicit Message(size_t s, std::string k, ByteContainerView v)
+        : seq_id_(s), msg_key_(std::move(k)), value_(v) {}
+
+    size_t seq_id_;
+    std::string msg_key_;
+    Buffer value_data_;
+    ByteContainerView value_;
+  };
+
+  void StartSendThread();
+
+  void SendThread();
+
+  void SubmitSendTask(Message&& msg);
+
+  class SendTaskSynchronizer {
+   public:
+    void SendTaskStartNotify();
+    void SendTaskFinishedNotify(size_t seq_id);
+    void WaitSeqIdSendFinished(size_t seq_id);
+    void WaitAllSendFinished();
+
+   private:
+    bthread::Mutex mutex_;
+    size_t running_tasks_ = 0;
+    utils::SegmentTree<size_t> finished_ids_;
+    bthread::ConditionVariable finished_cond_;
+  };
+
+  class MessageQueue {
+   public:
+    void Push(Message&&);
+    std::optional<Message> Pop(bool block);
+    void EmptyNotify();
+
+   private:
+    bthread::Mutex mutex_;
+    std::queue<Message> queue_;
+    bthread::ConditionVariable cond_;
+  };
+
  protected:
   const size_t self_rank_;
   const size_t peer_rank_;
 
-  uint32_t recv_timeout_ms_ = 3 * 60 * 1000;  // 3 minites
+  uint64_t recv_timeout_ms_ = 3UL * 60 * 1000;  // 3 minites
+
+  MessageQueue msg_queue_;
+  std::thread send_thread_;
+  std::atomic<bool> send_thread_stoped_ = false;
+  SendTaskSynchronizer send_sync_;
 
   // message database related.
   bthread::Mutex msg_mutex_;
@@ -165,14 +251,12 @@ class ChannelBase : public IChannel {
 
   // for Throttle Window
   std::atomic<size_t> throttle_window_size_ = 0;
-  size_t ack_msg_count_ = 0;
-
   // for WaitLinkTaskFinish
   // if WaitLinkTaskFinish is called.
   // auto ack all normal msg if true.
   std::atomic<bool> waiting_finish_ = false;
   // id count for normal msg sent to peer.
-  std::atomic<size_t> sent_msg_seq_id_ = 0;
+  std::atomic<size_t> msg_seq_id_ = 0;
   // ids for received normal msg from peer.
   utils::SegmentTree<size_t> received_msg_ids_;
   // ids for received ack msg from peer.
