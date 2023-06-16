@@ -56,12 +56,11 @@ TEST(OpensslTest, BnWorks) {
     ASSERT_EQ(out, in);
   }
 
-  auto tmp = OpensslGroup::Create(GetCurveMetaByName("prime256v1"));
-  auto *curve = dynamic_cast<OpensslGroup *>(tmp.get());
-  auto p = curve->MulBase(333_mp);
-  auto affine = curve->GetAffinePoint(p);
-  auto p2 = curve->GetSslPoint(affine);
-  EXPECT_TRUE(curve->PointEqual(p, p2));
+  auto ec = OpensslGroup::Create(GetCurveMetaByName("prime256v1"));
+  auto p = ec->MulBase(333_mp);
+  auto affine = ec->GetAffinePoint(p);
+  auto p2 = ec->CopyPoint(affine);
+  EXPECT_TRUE(ec->PointEqual(p, p2));
 }
 
 TEST(OpensslTest, HashToCurveWorks) {
@@ -81,6 +80,10 @@ TEST(OpensslTest, HashToCurveWorks) {
                                  fmt::format("id{}", i)));
     is_unique(curve->HashToCurve(HashToCurveStrategy::TryAndRehash_SM,
                                  fmt::format("id{}", i)));
+    is_unique(curve->HashToCurve(HashToCurveStrategy::TryAndRehash_BLAKE3,
+                                 fmt::format("id{}", i)));
+    // Same strategy as above TryAndRehash_BLAKE3
+    // is_unique(curve->HashToCurve(fmt::format("id{}", i)));
   }
 }
 

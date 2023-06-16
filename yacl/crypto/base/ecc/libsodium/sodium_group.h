@@ -20,6 +20,7 @@
 #include "yacl/base/buffer.h"
 #include "yacl/crypto/base/ecc/ec_point.h"
 #include "yacl/crypto/base/ecc/group_sketch.h"
+#include "yacl/crypto/base/ecc/libsodium/sodium_private.h"
 
 namespace yacl::crypto::sodium {
 
@@ -57,8 +58,8 @@ class SodiumGroup : public EcGroupSketch {
   bool PointEqual(const EcPoint& p1, const EcPoint& p2) const override;
 
  protected:
-  const unsigned char* Cast(const EcPoint& p) const;
-  unsigned char* Cast(EcPoint& p) const;
+  static const ge25519_p3* CastP3(const EcPoint& p);
+  static ge25519_p3* CastP3(EcPoint& p);
 
   CurveParam param_;
 };

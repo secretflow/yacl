@@ -40,6 +40,7 @@ namespace yacl::crypto {
 // [Security Assumption]: AES with a "fixed-and-public-known" key is a random
 // permutation
 //
+
 class RandomPerm {
  public:
   using Ctype = SymmetricCrypto::CryptoType;
@@ -86,27 +87,15 @@ void ParaCrHashInplace_128(absl::Span<uint128_t> inout);
 
 // Circular Correlation Robust Hash function (Single Block)
 // See https://eprint.iacr.org/2019/074.pdf Sec 7.3
-// CcrHash = RP(theta(x)) ^ theta(x)
-// theta(x) = x ^ ((x.left ^ x.right) >> 64)
-// uint128_t CcrHash_128(uint128_t x);
+// CcrHash = RP(Sigma(x)) ^ Sigma(x)
+// Sigma(x) = (x.left ^ x.right) || x.left
+uint128_t CcrHash_128(uint128_t x);
 
-// std::vector<uint128_t> ParaCrrHash_128(absl::Span<const uint128_t> x);
+// parallel ccrhash for many blocks
+std::vector<uint128_t> ParaCcrHash_128(absl::Span<const uint128_t> x);
 
-// Evaluate many CrHash in Parallel (Single Block input)
-// inline void ParaCcrHash_128(absl::Span<const uint128_t> x,
-//                             absl::Span<uint128_t> out) {
-//   std::vector<uint128_t> tmp(x.size());
-//   for (size_t i = 0; i < x.size(); i++) {
-//     tmp[i] = x[i] ^ (x[i] >> 64 & 0xffffffffffffffff);
-//   }
-// }
-
-// inline std::vector<uint128_t> ParaCcrHash_128(absl::Span<const uint128_t> x)
-// {
-//   std::vector<uint128_t> res(x.size());
-//   ParaCcrHash_128(x, absl::MakeSpan(res));
-//   return res;
-// }
+// inplace parallel ccrhash for many blocks
+void ParaCcrHashInplace_128(absl::Span<uint128_t> inout);
 
 // TODO(@shanzhu) Tweakable Correlation Robust Hash function (Multiple Blocks)
 // See https://eprint.iacr.org/2019/074.pdf Sec 7.4

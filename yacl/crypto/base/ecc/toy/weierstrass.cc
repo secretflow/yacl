@@ -104,7 +104,7 @@ EcPoint ToyWeierstrassGroup::Negate(const EcPoint &point) const {
 Buffer ToyWeierstrassGroup::SerializePoint(const EcPoint &point,
                                            PointOctetFormat format) const {
   YACL_ENFORCE(format == PointOctetFormat::Autonomous,
-               "Toy lib do not support {} format", (int)format);
+               "Toy lib does not support {} format", (int)format);
   const auto &op = std::get<AffinePoint>(point);
   return op.Serialize();
 }
@@ -113,14 +113,14 @@ void ToyWeierstrassGroup::SerializePoint(const EcPoint &point,
                                          PointOctetFormat format,
                                          Buffer *buf) const {
   YACL_ENFORCE(format == PointOctetFormat::Autonomous,
-               "Toy lib do not support {} format", (int)format);
+               "Toy lib does not support {} format", (int)format);
   *buf = SerializePoint(point, format);
 }
 
 EcPoint ToyWeierstrassGroup::DeserializePoint(ByteContainerView buf,
                                               PointOctetFormat format) const {
   YACL_ENFORCE(format == PointOctetFormat::Autonomous,
-               "Toy lib do not support {} format", (int)format);
+               "Toy lib does not support {} format", (int)format);
   AffinePoint op;
   op.Deserialize(buf);
   return op;

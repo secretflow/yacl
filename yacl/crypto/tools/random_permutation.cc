@@ -20,7 +20,24 @@ namespace yacl::crypto {
 
 namespace {
 using Ctype = SymmetricCrypto::CryptoType;
+
+// Circular Correlation Robust Hash function (Single Block)
+// See https://eprint.iacr.org/2019/074.pdf Sec 7.3
+// CcrHash = RP(Sigma(x)) ^ Sigma(x)
+// Sigma(x) = (x.left ^ x.right) || x.left
+inline uint128_t Sigma(uint128_t x) {
+  // TODO: Sigma(x) = _mm_shuffle_epi32(a, 78) ^ and_si128(x, mask)
+  //       where mask = 1^64 || 0^64
+  const auto& [left, right] = DecomposeUInt128(x);
+  return MakeUint128(left ^ right, left);
 }
+
+// x = SigmaInv( Sigma(x) )
+// inline uint128_t SigmaInv(uint128_t x) {
+//   auto [left, right] = DecomposeUInt128(x);
+//   return MakeUint128(right, left ^ right);
+// }
+}  // namespace
 
 void RandomPerm::Gen(absl::Span<const uint128_t> x,
                      absl::Span<uint128_t> out) const {
@@ -67,18 +84,22 @@ void ParaCrHashInplace_128(absl::Span<uint128_t> inout) {
   }
 }
 
-// uint128_t CcrHash_128(uint128_t x) {
-//   return CrHash_128(x ^ (x >> 64 & 0xffffffffffffffff));
-// }
+uint128_t CcrHash_128(uint128_t x) { return CrHash_128(Sigma(x)); }
 
-// std::vector<uint128_t> ParaCrrHash_128(absl::Span<const uint128_t> x) {}
+std::vector<uint128_t> ParaCcrHash_128(absl::Span<const uint128_t> x) {
+  std::vector<uint128_t> tmp(x.size());
+  for (uint64_t i = 0; i < x.size(); ++i) {
+    tmp[i] = Sigma(x[i]);
+  }
+  ParaCrHashInplace_128(absl::MakeSpan(tmp));
+  return tmp;
+}
 
-// void ParaCcrHash_128(absl::Span<const uint128_t> x, absl::Span<uint128_t>
-// out) {
-//   std::vector<uint128_t> tmp(x.size());
-//   for (size_t i = 0; i < x.size(); i++) {
-//     tmp[i] = x[i] ^ (x[i] >> 64 & 0xffffffffffffffff);
-//   }
-// }
+void ParaCcrHashInplace_128(absl::Span<uint128_t> inout) {
+  for (auto& e : inout) {
+    e = Sigma(e);
+  }
+  ParaCrHashInplace_128(inout);
+}
 
 }  // namespace yacl::crypto

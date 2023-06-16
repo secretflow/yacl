@@ -25,8 +25,7 @@ void ChannelMem::SetPeer(const std::shared_ptr<ChannelMem>& peer_task) {
   peer_channel_ = peer_task;
 }
 
-void ChannelMem::SendAsyncImpl(const std::string& key,
-                               ByteContainerView value) {
+void ChannelMem::SendImpl(const std::string& key, ByteContainerView value) {
   if (auto ptr = peer_channel_.lock()) {
     ptr->OnMessage(key, value);
   } else {
@@ -34,17 +33,9 @@ void ChannelMem::SendAsyncImpl(const std::string& key,
   }
 }
 
-void ChannelMem::SendAsyncImpl(const std::string& key, Buffer&& value) {
-  SendAsyncImpl(key, value);
-}
-
-void ChannelMem::SendImpl(const std::string& key, ByteContainerView value) {
-  return SendAsyncImpl(key, value);
-}
-
 void ChannelMem::SendImpl(const std::string& key, ByteContainerView value,
                           uint32_t /* timeout */) {
-  return SendAsyncImpl(key, value);
+  return SendImpl(key, value);
 }
 
 }  // namespace yacl::link

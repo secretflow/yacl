@@ -30,22 +30,29 @@
 namespace yacl::crypto {
 
 enum class HashToCurveStrategy {
+  // Default strategy for HashToCurve(method)'s easy usage, dealing with the
+  // scene that different libraries support different hash algorithms
+  Autonomous,
+
   // https://eprint.iacr.org/2009/226.pdf
   // Auto select the most suitable algorithm:
   //  - SHA2: select between SHA-224, SHA-256, SHA-384, SHA-512
   //  - SHA3: select between SHA3-224, SHA3-256, SHA3-384, SHA3-512
   //  - SM: Current only support SM3.
+  //  - BLAKE3: fast hash
   // Performance: This method is very fast, but it is susceptible to timing
   // attacks.
   TryAndIncrement_SHA2,
   TryAndIncrement_SHA3,
   TryAndIncrement_SM,
+  TryAndIncrement_BLAKE3,
 
   // Just like TryAndIncrement, but use re-hash instead of increment when try
   // fails.
   TryAndRehash_SHA2,
   TryAndRehash_SHA3,
   TryAndRehash_SM,
+  TryAndRehash_BLAKE3,
 
   // Directly output the hash value as the x-coordinate of the point without any
   // verification. And there is no y-coordinate info in output point.
@@ -61,6 +68,7 @@ enum class HashToCurveStrategy {
   HashAsPointX_SHA2,
   HashAsPointX_SHA3,
   HashAsPointX_SM,  // Currently only support SM3
+  HashAsPointX_BLAKE3,
 
   // Below is IRTF CFRG hash-to-curve standard (draft):
   // https://datatracker.ietf.org/doc/draft-irtf-cfrg-hash-to-curve/
@@ -195,7 +203,13 @@ class EcGroup {
   //     EcPoint helper tools       //
   //================================//
 
-  // Make a deep copy of EcPoint
+  // Copy and normalize an EcPoint
+  // Usage:
+  //  1. Make a deep copy of an EcPoint.
+  //     > EcPoint ep2 = CopyPoint(ep1);
+  //  2. Convert AffinePoint to EcPoint.
+  //     > EcPoint ep = CopyPoint(AffinePoint(x, y));
+  //     Note: If x, y is not in EC group, then an exception will throw.
   virtual EcPoint CopyPoint(const EcPoint &point) const = 0;
 
   // Compress and serialize a point
@@ -222,8 +236,14 @@ class EcGroup {
   virtual AffinePoint GetAffinePoint(const EcPoint &point) const = 0;
 
   // Map a string to curve point
+  //   Waring! Not all strategies are supported by libs, be care to choose a
+  //   valid strategy for specific lib.
   virtual EcPoint HashToCurve(HashToCurveStrategy strategy,
                               std::string_view str) const = 0;
+  EcPoint HashToCurve(std::string_view str) {
+    // Autonomous strategy is lib's default strategy and will always be valid;
+    return HashToCurve(HashToCurveStrategy::Autonomous, str);
+  }
 
   // Get the hash code of EcPoint so that you can store EcPoint in STL
   // associative containers such as std::unordered_map, std::unordered_set, etc.
@@ -267,9 +287,12 @@ using EcCheckerT = std::function<bool(const CurveMeta &)>;
 
 class EcGroupFactory final {
  public:
-  // Auto select the best ec library and create an CurveGroup instance
+  // Auto selects the best ec library and creates an CurveGroup instance
+  //   See pre-defined curve name in kPredefinedCurves from `curve_meta.cc`;
+  //   Warning! Not all curves are supported!
   static std::unique_ptr<EcGroup> Create(const CurveName &ec_name);
   // Create an CurveGroup instance with the specified ec library
+  //   Warning! Not all curves are supported by given lib(`lib_name`).
   static std::unique_ptr<EcGroup> Create(const CurveName &ec_name,
                                          const std::string &lib_name);
   // List all libraries

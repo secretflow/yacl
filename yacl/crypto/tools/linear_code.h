@@ -14,21 +14,28 @@
 
 #pragma once
 
-#include <algorithm>
-#include <cstdint>
-#include <cstring>
-#include <future>
+#include <array>
 #include <vector>
 
-#include "yacl/base/byte_container_view.h"
+#include "absl/types/span.h"
+
 #include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
 #include "yacl/crypto/tools/random_permutation.h"
-#include "yacl/utils/thread_pool.h"
+
+#ifndef __aarch64__
+// sse
+#include <emmintrin.h>
+#include <smmintrin.h>
+// pclmul
+#include <wmmintrin.h>
+#else
+#include "sse2neon.h"
+#endif
 
 namespace yacl::crypto {
 
-constexpr uint32_t kLcBatchSize = 256;  // linear code batch size
+constexpr uint32_t kLcBatchSize = 128;  // linear code batch size
 
 // Linear code interface in F2k
 class LinearCodeInterface {
@@ -55,6 +62,9 @@ class LinearCodeInterface {
 // Implementation mostly from:
 // https://github.com/emp-toolkit/emp-ot/blob/master/emp-ot/ferret/lpn_f2.h
 //
+// For more details about SSE2, see:
+// https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html
+
 template <size_t d = 10>
 class LocalLinearCode : LinearCodeInterface {
  public:
@@ -67,6 +77,15 @@ class LocalLinearCode : LinearCodeInterface {
       mask_ <<= 1;
       mask_ = mask_ | 0x1;
     }
+
+    uint64_t mask64 = ((uint64_t)mask_ << 32 | mask_);
+    extend_mask_ = MakeUint128(mask64, mask64);
+
+    uint64_t k64 = ((uint64_t)k_ << 32 | k_);
+    extend_k_ = MakeUint128(k64, k64);
+
+    uint64_t cmp64 = ((uint64_t)(k_ - 1) << 32 | (k_ - 1));
+    extend_cmp_ = MakeUint128(cmp64, cmp64);
   }
 
   // override functions
@@ -78,27 +97,49 @@ class LocalLinearCode : LinearCodeInterface {
     YACL_ENFORCE_EQ(in.size(), k_);
     YACL_ENFORCE_EQ(out.size(), n_);
 
-    const uint32_t batch_num = (n_ + kLcBatchSize - 1) / kLcBatchSize;
+    // const uint32_t batch_num = (n_ + kLcBatchSize - 1) / kLcBatchSize;
 
-    for (uint32_t i = 0; i < batch_num; ++i) {
-      const uint32_t limit = std::min(kLcBatchSize, n_ - i * kLcBatchSize);
+    constexpr uint32_t tmp_size = kLcBatchSize * d / 4;
+    alignas(16) std::array<uint128_t, tmp_size> tmp;
+
+    auto mask_tmp =
+        _mm_loadu_si128((reinterpret_cast<__m128i *>(&extend_mask_)));
+    auto k_tmp = _mm_loadu_si128((reinterpret_cast<__m128i *>(&extend_k_)));
+    auto cmp_tmp = _mm_loadu_si128((reinterpret_cast<__m128i *>(&extend_cmp_)));
+
+    for (uint32_t i = 0; i < n_; i += kLcBatchSize) {
+      const uint32_t limit = std::min(kLcBatchSize, n_ - i);
       const uint32_t block_num = limit * d / 4;
 
-      std::vector<uint128_t> tmp(block_num);
       for (uint32_t j = 0; j < block_num; ++j) {
-        tmp[j] = MakeUint128(i, j);
+        _mm_store_si128(reinterpret_cast<__m128i *>(&tmp[j]),
+                        _mm_set_epi32(i, 0, j, 0));
       }
 
-      rp_.GenInplace(absl::MakeSpan(tmp));  // kBatchSize * 10 / 4
+      rp_.GenInplace(absl::MakeSpan(reinterpret_cast<uint128_t *>(tmp.data()),
+                                    block_num));  // kBatchSize * 10 / 4
+
+      // SIMD
+      for (uint32_t j = 0; j < block_num; ++j) {
+        auto idx128 = _mm_load_si128(reinterpret_cast<__m128i *>(&tmp[j]));
+        idx128 = _mm_and_si128(idx128, mask_tmp);
+        // compare idx128 and cmp_tmp
+        // return 0xFFFF if true, return 0x0000 otherwise.
+        auto sub = _mm_cmpgt_epi32(idx128, cmp_tmp);
+        // return k_tmp if idx128 greater than or equal to k
+        // return 0x0000 otherwise
+        sub = _mm_and_si128(sub, k_tmp);
+        idx128 = _mm_sub_epi32(idx128, sub);
+        _mm_store_si128(reinterpret_cast<__m128i *>(&tmp[j]), idx128);
+      }
 
       auto *ptr = reinterpret_cast<uint32_t *>(tmp.data());
       for (uint32_t j = 0; j < limit; ++j) {
+        auto tmp = _mm_loadu_si128(reinterpret_cast<__m128i *>(&out[i + j]));
         for (uint32_t k = 0; k < d; ++k, ++ptr) {
-          uint32_t index = (*ptr) & mask_;
-
-          index = index >= k_ ? index - k_ : index;
-          out[i + j] = out[i + j] ^ in[index];
+          tmp = _mm_xor_si128(tmp, reinterpret_cast<__m128i>(in[*ptr]));
         }
+        _mm_storeu_si128(reinterpret_cast<__m128i *>(&out[i + j]), tmp);
       }
     }
   }
@@ -108,6 +149,9 @@ class LocalLinearCode : LinearCodeInterface {
   uint32_t k_;  // dimention
   RandomPerm rp_;
   uint32_t mask_;
+  uint128_t extend_mask_;
+  uint128_t extend_k_;
+  uint128_t extend_cmp_;
 };
 
 }  // namespace yacl::crypto

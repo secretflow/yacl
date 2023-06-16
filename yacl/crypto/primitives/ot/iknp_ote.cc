@@ -141,7 +141,6 @@ void IknpOtExtRecv(const std::shared_ptr<link::Context>& ctx,
 
   // For a task of generating 129 OTs, we actually generates 128 * 2 = 256
   // OTs.
-
   for (size_t i = 0; i < batch_num; ++i) {
     const size_t batch_offset = i * kBatchSize / 128;  // in num of blocks
 

@@ -33,6 +33,10 @@ class MockChannel : public IChannel {
   MOCK_METHOD2(SendAsync,
                void(const std::string &key, ByteContainerView value));
   MOCK_METHOD2(SendAsync, void(const std::string &key, Buffer &&value));
+  MOCK_METHOD2(SendAsyncThrottled,
+               void(const std::string &key, ByteContainerView value));
+  MOCK_METHOD2(SendAsyncThrottled,
+               void(const std::string &key, Buffer &&value));
   MOCK_METHOD2(Send, void(const std::string &key, ByteContainerView value));
   MOCK_METHOD1(Recv, Buffer(const std::string &key));
   MOCK_METHOD2(OnMessage,
@@ -40,8 +44,8 @@ class MockChannel : public IChannel {
   MOCK_METHOD4(OnChunkedMessage,
                void(const std::string &key, ByteContainerView value,
                     size_t offset, size_t total_length));
-  void SetRecvTimeout(uint32_t timeout_ms) override { timeout_ = timeout_ms; }
-  uint32_t GetRecvTimeout() const override { return timeout_; }
+  void SetRecvTimeout(uint64_t timeout_ms) override { timeout_ = timeout_ms; }
+  uint64_t GetRecvTimeout() const override { return timeout_; }
   void WaitLinkTaskFinish() override {}
   void SetThrottleWindowSize(size_t) override {}
 
@@ -49,7 +53,7 @@ class MockChannel : public IChannel {
   MOCK_METHOD0(TestRecv, void());
 
  private:
-  std::uint32_t timeout_{std::numeric_limits<std::uint32_t>::max()};
+  std::uint64_t timeout_{std::numeric_limits<std::uint32_t>::max()};
 };
 
 class ContextConnectToMeshTest : public ::testing::Test {
@@ -121,7 +125,7 @@ TEST_F(ContextConnectToMeshTest, SetRecvTimeoutShouldOk) {
   // GIVEN
   auto msg_loop = std::make_shared<ReceiverLoopMem>();
   ContextDesc ctx_desc;
-  ctx_desc.recv_timeout_ms = 4000;
+  ctx_desc.recv_timeout_ms = 4800000000;
   for (size_t rank = 0; rank < world_size_; rank++) {
     const auto id = fmt::format("id-{}", rank);
     const auto host = fmt::format("host-{}", rank);
@@ -129,7 +133,7 @@ TEST_F(ContextConnectToMeshTest, SetRecvTimeoutShouldOk) {
   }
   auto ctx =
       std::make_shared<Context>(ctx_desc, self_rank_, channels_, msg_loop);
-  EXPECT_EQ(ctx->GetRecvTimeout(), 4000);
+  EXPECT_EQ(ctx->GetRecvTimeout(), 4800000000);
   // WHEN THEN
   {
     RecvTimeoutGuard guard(ctx, 2000);
@@ -137,7 +141,7 @@ TEST_F(ContextConnectToMeshTest, SetRecvTimeoutShouldOk) {
   }
 
   // THEN
-  EXPECT_EQ(ctx->GetRecvTimeout(), 4000);
+  EXPECT_EQ(ctx->GetRecvTimeout(), 4800000000);
 }
 
 class ContextTest : public ::testing::Test {

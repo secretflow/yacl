@@ -14,6 +14,7 @@
 
 #include "yacl/crypto/base/ecc/openssl/openssl_group.h"
 
+#include "yacl/crypto/base/hash/blake3.h"
 #include "yacl/crypto/base/hash/ssl_hash.h"
 #include "yacl/utils/scope_guard.h"
 
@@ -183,7 +184,22 @@ void OpensslGroup::NegateInplace(EcPoint *point) const {
 }
 
 EcPoint OpensslGroup::CopyPoint(const EcPoint &point) const {
-  return WrapOpensslPoint(EC_POINT_dup(Cast(point), group_.get()));
+  if (std::holds_alternative<AnyPointPtr>(point)) {
+    return WrapOpensslPoint(EC_POINT_dup(Cast(point), group_.get()));
+  }
+
+  if (std::holds_alternative<AffinePoint>(point)) {
+    auto p = std::get<AffinePoint>(point);
+    // Convert AffinePoint to EC_POINT
+    auto x = Mp2Bn(p.x);
+    auto y = Mp2Bn(p.y);
+    auto r = MakeOpensslPoint();
+    SSL_RET_1(EC_POINT_set_affine_coordinates(group_.get(), Cast(r), x.get(),
+                                              y.get(), ctx_.get()));
+    return r;
+  }
+
+  YACL_THROW("Unsupported EcPoint type {}", point.index());
 }
 
 AffinePoint OpensslGroup::GetAffinePoint(const EcPoint &point) const {
@@ -196,16 +212,6 @@ AffinePoint OpensslGroup::GetAffinePoint(const EcPoint &point) const {
   SSL_RET_1(EC_POINT_get_affine_coordinates(group_.get(), Cast(point), x.get(),
                                             y.get(), ctx_.get()));
   return {Bn2Mp(x.get()), Bn2Mp(y.get())};
-}
-
-AnyPointPtr OpensslGroup::GetSslPoint(const AffinePoint &p) const {
-  auto point = MakeOpensslPoint();
-  // Convert AffinePoint to EC_POINT
-  auto x = Mp2Bn(p.x);
-  auto y = Mp2Bn(p.y);
-  SSL_RET_1(EC_POINT_set_affine_coordinates(group_.get(), Cast(point), x.get(),
-                                            y.get(), ctx_.get()));
-  return point;
 }
 
 Buffer OpensslGroup::SerializePoint(const EcPoint &point,
@@ -265,19 +271,29 @@ EcPoint OpensslGroup::HashToCurve(HashToCurveStrategy strategy,
       }
       break;
     case HashToCurveStrategy::TryAndRehash_SHA3:
-      YACL_THROW("Openssl lib do not support TryAndRehash_SHA3 strategy now");
+      YACL_THROW("Openssl lib does not support TryAndRehash_SHA3 strategy now");
       break;
     case HashToCurveStrategy::TryAndRehash_SM:
       hash_algorithm = HashAlgorithm::SM3;
       break;
+    case HashToCurveStrategy::TryAndRehash_BLAKE3:
+    case HashToCurveStrategy::Autonomous:
+      hash_algorithm = HashAlgorithm::BLAKE3;
+      break;
     default:
       YACL_THROW(
-          "Openssl lib only support TryAndRehash strategy now. select={}",
+          "Openssl lib only supports TryAndRehash strategy now. select={}",
           (int)strategy);
   }
 
   auto point = MakeOpensslPoint();
-  auto buf = SslHash(hash_algorithm).Update(str).CumulativeHash();
+
+  std::vector<uint8_t> buf;
+  if (hash_algorithm != HashAlgorithm::BLAKE3) {
+    buf = SslHash(hash_algorithm).Update(str).CumulativeHash();
+  } else {
+    buf = Blake3Hash((bits + 7) / 8).Update(str).CumulativeHash();
+  }
   auto bn = BIGNUM_PTR(BN_new());
   for (size_t t = 0; t < kHashToCurveCounterGuard; ++t) {
     // hash value to BN
@@ -294,7 +310,11 @@ EcPoint OpensslGroup::HashToCurve(HashToCurveStrategy strategy,
     }
 
     // do rehash
-    buf = SslHash(hash_algorithm).Update(buf).CumulativeHash();
+    if (hash_algorithm != HashAlgorithm::BLAKE3) {
+      buf = SslHash(hash_algorithm).Update(buf).CumulativeHash();
+    } else {
+      buf = Blake3Hash((bits + 7) / 8).Update(buf).CumulativeHash();
+    }
   }
 
   YACL_THROW("Openssl HashToCurve exceed max loop({})",

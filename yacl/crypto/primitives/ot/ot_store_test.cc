@@ -17,6 +17,7 @@
 #include <future>
 #include <memory>
 #include <thread>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -28,6 +29,50 @@
 #include "yacl/link/test_util.h"
 
 namespace yacl::crypto {
+
+namespace {
+
+inline std::pair<OtRecvStore, std::vector<uint128_t>> RandOtRecvStore(
+    uint64_t num) {
+  auto recv_choices = RandBits<dynamic_bitset<uint128_t>>(num);
+  auto recv_blocks = RandVec<uint128_t>(num);
+  auto ot_store = MakeOtRecvStore(recv_choices, recv_blocks);
+  return {ot_store, recv_blocks};
+}
+
+inline std::pair<OtRecvStore, std::vector<uint128_t>> RandCompactOtRecvStore(
+    uint64_t num) {
+  auto recv_blocks = RandVec<uint128_t>(num);
+  auto ot_store = MakeCompactOtRecvStore(recv_blocks);
+  return {ot_store, recv_blocks};
+}
+
+inline std::pair<OtSendStore, std::vector<std::array<uint128_t, 2>>>
+RandOtSendStore(uint64_t num) {
+  std::vector<std::array<uint128_t, 2>> blocks;
+  Prg<uint128_t> prg;
+  for (size_t i = 0; i < 25; i++) {
+    std::array<uint128_t, 2> tmp;
+    tmp[0] = prg();
+    tmp[1] = prg();
+    blocks.push_back(tmp);
+  }
+  auto ot_store = MakeOtSendStore(blocks);
+  return {ot_store, blocks};
+}
+
+inline std::pair<OtSendStore, std::vector<std::array<uint128_t, 2>>>
+RandCompactOtSendStore(uint64_t num) {
+  auto inputs = RandVec<uint128_t>(num);
+  auto delta = RandU128();
+  std::vector<std::array<uint128_t, 2>> blocks;
+  for (uint64_t i = 0; i < num; i++) {
+    blocks.push_back({inputs[i], inputs[i] ^ delta});
+  }
+  auto ot_store = MakeCompactOtSendStore(inputs, delta);
+  return {ot_store, blocks};
+}
+}  // namespace
 
 TEST(OtRecvStoreTest, ConstructorTest) {
   // GIVEN
@@ -51,18 +96,18 @@ TEST(OtRecvStoreTest, EmptyConstructorTest) {
   const size_t ot_num = 100;
 
   // WHEN
-  auto ot_normal = std::make_shared<OtRecvStore>(ot_num, OtStoreType::Normal);
-  auto ot_compact = std::make_shared<OtRecvStore>(ot_num, OtStoreType::Compact);
+  auto ot_normal = OtRecvStore(ot_num, OtStoreType::Normal);
+  auto ot_compact = OtRecvStore(ot_num, OtStoreType::Compact);
 
   // THEN
-  EXPECT_EQ(ot_normal->Size(), ot_num);
-  EXPECT_EQ(ot_compact->Size(), ot_num);
+  EXPECT_EQ(ot_normal.Size(), ot_num);
+  EXPECT_EQ(ot_compact.Size(), ot_num);
 
   for (size_t i = 0; i < ot_num; ++i) {
-    EXPECT_EQ(ot_normal->GetBlock(i), 0);
-    EXPECT_EQ(ot_compact->GetBlock(i), 0);
-    EXPECT_EQ(ot_normal->GetChoice(i), 0);
-    EXPECT_EQ(ot_compact->GetChoice(i), 0);
+    EXPECT_EQ(ot_normal.GetBlock(i), 0);
+    EXPECT_EQ(ot_compact.GetBlock(i), 0);
+    EXPECT_EQ(ot_normal.GetChoice(i), 0);
+    EXPECT_EQ(ot_compact.GetChoice(i), 0);
   }
 }
 
@@ -86,73 +131,6 @@ TEST(OtRecvStoreTest, GetElementsTest) {
 
   EXPECT_THROW(ot_store.GetChoice(-1), yacl::Exception);
   EXPECT_THROW(ot_store.GetBlock(-1), yacl::Exception);
-}
-
-TEST(OtRecvStoreTest, SliceTest) {
-  // ot recv msgs and blocks
-  auto recv_choices = RandBits<dynamic_bitset<uint128_t>>(25);
-  auto recv_blocks = RandVec<uint128_t>(25);
-  auto ot_store = MakeOtRecvStore(recv_choices, recv_blocks);
-  EXPECT_EQ(ot_store.Size(), 25);
-
-  // get first slice (10)
-  {
-    auto ot_sub = ot_store.NextSlice(10);
-    EXPECT_EQ(ot_sub.Size(), 10);
-
-    auto idx = RandInRange(10);
-    EXPECT_EQ(ot_sub.GetChoice(idx), ot_store.GetChoice(idx));
-    EXPECT_EQ(ot_sub.GetBlock(idx), ot_store.GetBlock(idx));
-
-    EXPECT_EQ(ot_sub.GetChoice(0), ot_store.GetChoice(0));
-    EXPECT_EQ(ot_sub.GetBlock(0), ot_store.GetBlock(0));
-
-    EXPECT_THROW(ot_sub.GetChoice(11), yacl::Exception);
-    EXPECT_THROW(ot_sub.GetBlock(11), yacl::Exception);
-
-    EXPECT_THROW(ot_sub.GetChoice(-1), yacl::Exception);
-    EXPECT_THROW(ot_sub.GetBlock(-1), yacl::Exception);
-  }
-
-  // get second slice (12)
-  {
-    auto ot_sub = ot_store.NextSlice(12);
-    EXPECT_EQ(ot_sub.Size(), 12);
-
-    auto idx = RandInRange(12);
-    EXPECT_EQ(ot_sub.GetChoice(idx), ot_store.GetChoice(idx + 10));
-    EXPECT_EQ(ot_sub.GetBlock(idx), ot_store.GetBlock(idx + 10));
-
-    EXPECT_EQ(ot_sub.GetChoice(0), ot_store.GetChoice(10));
-    EXPECT_EQ(ot_sub.GetBlock(0), ot_store.GetBlock(10));
-
-    EXPECT_THROW(ot_sub.GetChoice(13), yacl::Exception);
-    EXPECT_THROW(ot_sub.GetBlock(13), yacl::Exception);
-
-    EXPECT_THROW(ot_sub.GetChoice(-1), yacl::Exception);
-    EXPECT_THROW(ot_sub.GetBlock(-1), yacl::Exception);
-  }
-
-  // get third slice (3)
-  {
-    EXPECT_THROW(ot_store.NextSlice(15), yacl::Exception);  // should failed
-
-    auto ot_sub = ot_store.NextSlice(3);
-    EXPECT_EQ(ot_sub.Size(), 3);
-
-    auto idx = RandInRange(3);
-    EXPECT_EQ(ot_sub.GetChoice(idx), recv_choices[idx + 22]);
-    EXPECT_EQ(ot_sub.GetBlock(idx), recv_blocks[idx + 22]);
-
-    EXPECT_EQ(ot_sub.GetChoice(0), ot_store.GetChoice(22));
-    EXPECT_EQ(ot_sub.GetBlock(0), ot_store.GetBlock(22));
-
-    EXPECT_THROW(ot_sub.GetChoice(4), yacl::Exception);
-    EXPECT_THROW(ot_sub.GetBlock(4), yacl::Exception);
-
-    EXPECT_THROW(ot_sub.GetChoice(-1), yacl::Exception);
-    EXPECT_THROW(ot_sub.GetBlock(-1), yacl::Exception);
-  }
 }
 
 TEST(OtSendStoreTest, ConstructorTest) {
@@ -194,45 +172,82 @@ TEST(OtSendStoreTest, GetElementsTest) {
   EXPECT_EQ(ot_store.GetBlock(idx, 0), blocks[idx][0]);
 }
 
-TEST(OtSendStoreTest, SliceTest) {
-  // ot send msgs and blocks
-  std::vector<std::array<uint128_t, 2>> blocks;
-  Prg<uint128_t> prg;
-  for (size_t i = 0; i < 25; i++) {
-    std::array<uint128_t, 2> tmp;
-    tmp[0] = prg();
-    tmp[1] = prg();
-    blocks.push_back(tmp);
+#define OtSendStore_SLICE_TEST_INTERNAL(OT_STORE, BLOCKS)      \
+  EXPECT_EQ((OT_STORE).Size(), 25);                            \
+  /* get first slice (10) */                                   \
+  {                                                            \
+    /* only increase internal_use_ctr */                       \
+    auto ot_sub = (OT_STORE).NextSlice(10);                    \
+    auto idx = RandInRange(10);                                \
+    EXPECT_EQ(ot_sub.Size(), 10);                              \
+    EXPECT_EQ(ot_sub.GetBlock(idx, 0), (BLOCKS)[idx][0]);      \
+  }                                                            \
+                                                               \
+  /* get first slice (12) */                                   \
+  {                                                            \
+    /* only increase internal_use_ctr */                       \
+    auto ot_sub = (OT_STORE).NextSlice(12);                    \
+    auto idx = RandInRange(12);                                \
+    EXPECT_EQ(ot_sub.Size(), 12);                              \
+    EXPECT_EQ(ot_sub.GetBlock(idx, 0), (BLOCKS)[idx + 10][0]); \
+  }                                                            \
+                                                               \
+  /* get first slice (15) */                                   \
+  {                                                            \
+    EXPECT_THROW((OT_STORE).NextSlice(15), yacl::Exception);   \
+                                                               \
+    /* only increase internal_use_ctr */                       \
+    auto ot_sub = (OT_STORE).NextSlice(3);                     \
+    auto idx = RandInRange(3);                                 \
+    EXPECT_EQ(ot_sub.Size(), 3);                               \
+    EXPECT_EQ(ot_sub.GetBlock(idx, 0), (BLOCKS)[idx + 22][0]); \
   }
-  auto ot_store = MakeOtSendStore(blocks);
-  EXPECT_EQ(ot_store.Size(), 25);
 
-  // get first slice (10)
-  {
-    auto ot_sub = ot_store.NextSlice(10);  // only increase internal_use_ctr
-    auto idx = RandInRange(10);
-    EXPECT_EQ(ot_sub.Size(), 10);
-    EXPECT_EQ(ot_sub.GetBlock(idx, 0), blocks[idx][0]);
+#define OtRecvStore_SLICE_TEST_INTERNAL(OT_STORE, BLOCKS)    \
+  EXPECT_EQ((OT_STORE).Size(), 25);                          \
+  /* get first slice (10) */                                 \
+  {                                                          \
+    /* only increase internal_use_ctr */                     \
+    auto ot_sub = (OT_STORE).NextSlice(10);                  \
+    auto idx = RandInRange(10);                              \
+    EXPECT_EQ(ot_sub.Size(), 10);                            \
+    EXPECT_EQ(ot_sub.GetBlock(idx), (BLOCKS)[idx]);          \
+  }                                                          \
+                                                             \
+  /* get first slice (12) */                                 \
+  {                                                          \
+    /* only increase internal_use_ctr */                     \
+    auto ot_sub = (OT_STORE).NextSlice(12);                  \
+    auto idx = RandInRange(12);                              \
+    EXPECT_EQ(ot_sub.Size(), 12);                            \
+    EXPECT_EQ(ot_sub.GetBlock(idx), (BLOCKS)[idx + 10]);     \
+  }                                                          \
+                                                             \
+  /* get first slice (15) */                                 \
+  {                                                          \
+    EXPECT_THROW((OT_STORE).NextSlice(15), yacl::Exception); \
+                                                             \
+    /* only increase internal_use_ctr */                     \
+    auto ot_sub = (OT_STORE).NextSlice(3);                   \
+    auto idx = RandInRange(3);                               \
+    EXPECT_EQ(ot_sub.Size(), 3);                             \
+    EXPECT_EQ(ot_sub.GetBlock(idx), (BLOCKS)[idx + 22]);     \
   }
 
-  // get second slice (12)
-  {
-    auto ot_sub = ot_store.NextSlice(12);  // only increase internal_use_ctr
-    auto idx = RandInRange(12);
-    EXPECT_EQ(ot_sub.Size(), 12);
-    EXPECT_EQ(ot_sub.GetBlock(idx, 0), blocks[idx + 10][0]);
-  }
+#define SLICE_TEST(TYPE)                             \
+  /* Normal Slice Test */                            \
+  TEST(TYPE##Test, TYPE##SliceNormalTest) {          \
+    auto [ot_store, blocks] = Rand##TYPE(25);        \
+    TYPE##_SLICE_TEST_INTERNAL(ot_store, blocks);    \
+  }                                                  \
+  /* Compact Slice Test */                           \
+  TEST(TYPE##Test, TYPE##SliceCompactTest) {         \
+    auto [ot_store, blocks] = RandCompact##TYPE(25); \
+    TYPE##_SLICE_TEST_INTERNAL(ot_store, blocks);    \
+  }  // namespace yacl::crypto
 
-  // get second slice (15)
-  {
-    EXPECT_THROW(ot_store.NextSlice(15), yacl::Exception);
-
-    auto ot_sub = ot_store.NextSlice(3);  // only increase internal_use_ctr
-    auto idx = RandInRange(3);
-    EXPECT_EQ(ot_sub.Size(), 3);
-    EXPECT_EQ(ot_sub.GetBlock(idx, 0), blocks[idx + 22][0]);
-  }
-}
+SLICE_TEST(OtSendStore)
+SLICE_TEST(OtRecvStore)
 
 TEST(MockRotTest, Works) {
   // GIVEN
@@ -274,7 +289,7 @@ TEST(MockCompactCotTest, Works) {
   const size_t ot_num = 100;
 
   // WHEN
-  auto cot = MockCompactCots(ot_num);
+  auto cot = MockCompactOts(ot_num);
 
   // THEN
   EXPECT_EQ(cot.send.GetDelta() & 0x1, 1);

@@ -105,7 +105,12 @@ yacl_cc_library(
     deps = [
         "//yacl/crypto/tools:random_permutation",
         "//yacl/utils:thread_pool",
-    ],
+    ] + select({
+        "@platforms//cpu:aarch64": [
+            "@com_github_dltcollab_sse2neon//:sse2neon",
+        ],
+        "//conditions:default": [],
+    }),
 )
 
 yacl_cc_test(

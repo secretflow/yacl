@@ -34,6 +34,7 @@ yacl_cc_library(
     ],
     hdrs = [
         "sodium_group.h",
+        "sodium_private.h",
     ],
     deps = [
         "//yacl/crypto/base/ecc:spi",

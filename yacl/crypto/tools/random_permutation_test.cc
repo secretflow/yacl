@@ -56,8 +56,8 @@ TEST(RandomPermTest, BlocksWorks) {
 }
 
 TEST(RandomPermTest, CrHashWorks) {
-  const size_t x = RandomU128();
-  const size_t y = RandomU128();
+  const uint128_t x = RandomU128();
+  const uint128_t y = RandomU128();
 
   EXPECT_NE(CrHash_128(x), 0);
   EXPECT_EQ(CrHash_128(x), CrHash_128(x));
@@ -88,6 +88,42 @@ TEST(RandomPermTest, ParaCrHashInplaceWorks) {
   EXPECT_NE(absl::MakeSpan(inout), absl::MakeSpan(inout_copy));
 
   ParaCrHashInplace_128(absl::MakeSpan(inout_copy));
+  EXPECT_EQ(absl::MakeSpan(inout), absl::MakeSpan(inout_copy));
+}
+
+TEST(RandomPermTest, CcrHashWorks) {
+  const uint128_t x = RandomU128();
+  const uint128_t y = RandomU128();
+
+  EXPECT_NE(CcrHash_128(x), 0);
+  EXPECT_EQ(CcrHash_128(x), CcrHash_128(x));
+  EXPECT_NE(CcrHash_128(x), CcrHash_128(y));
+}
+
+TEST(RandomPermTest, ParaCcrHashWorks) {
+  const auto size = 20;
+
+  std::vector<uint128_t> zeros(size, 0);
+  auto input = RandomBlocks(size);
+  auto output = ParaCcrHash_128(absl::MakeSpan(input));
+
+  EXPECT_NE(absl::MakeSpan(output), absl::MakeSpan(zeros));
+  EXPECT_NE(absl::MakeSpan(output), absl::MakeSpan(input));
+  EXPECT_EQ(absl::MakeSpan(output), ParaCcrHash_128(absl::MakeSpan(input)));
+}
+
+TEST(RandomPermTest, ParaCcrHashInplaceWorks) {
+  const auto size = 20;
+
+  std::vector<uint128_t> zeros(size, 0);
+  auto inout = RandomBlocks(size);
+  auto inout_copy = inout;
+
+  ParaCcrHashInplace_128(absl::MakeSpan(inout));
+  EXPECT_NE(absl::MakeSpan(inout), absl::MakeSpan(zeros));
+  EXPECT_NE(absl::MakeSpan(inout), absl::MakeSpan(inout_copy));
+
+  ParaCcrHashInplace_128(absl::MakeSpan(inout_copy));
   EXPECT_EQ(absl::MakeSpan(inout), absl::MakeSpan(inout_copy));
 }
 

@@ -307,8 +307,10 @@ class MPInt {
   // Converts the absolute value of MPInt into a byte string.
   // Equals: this->Abs().ToBytes((this->BitCount() + 7) / 8, endian)
   yacl::Buffer ToMagBytes(Endian endian = Endian::native) const;
-  // if buf_len is too small, an exception will be thrown.
-  // returns the number of bytes written
+  // If buf_len is too small, an exception will be thrown.
+  // If buf_len exceeds the actual required size, considering the
+  // characteristics of big-endian, the remaining part will not be assigned 0.
+  // @return: the number of bytes written
   size_t ToMagBytes(unsigned char *buf, size_t buf_len,
                     Endian endian = Endian::native) const;
 

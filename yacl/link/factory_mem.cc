@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <future>
 #include <unordered_map>
+
+#include "spdlog/spdlog.h"
 
 #include "yacl/base/exception.h"
 #include "yacl/link/factory.h"
@@ -27,6 +30,23 @@ struct MemSession {
 
   MemSession(std::string _id, std::vector<std::shared_ptr<Context>> _ctxs)
       : id(std::move(_id)), ctxs(std::move(_ctxs)) {}
+
+  ~MemSession() {
+    std::vector<std::future<void>> stops;
+
+    for (auto& c : ctxs) {
+      stops.push_back(std::async([&]() { c->WaitLinkTaskFinish(); }));
+    }
+
+    for (auto& s : stops) {
+      try {
+        s.get();
+      } catch (...) {
+        SPDLOG_ERROR("WaitLinkTaskFinish error in MemSession");
+        exit(-1);
+      }
+    }
+  }
 };
 
 std::mutex _mutex;

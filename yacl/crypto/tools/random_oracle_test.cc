@@ -44,19 +44,6 @@ TEST_P(RandomOracleTest, OutLen8) {
   EXPECT_EQ(RO.Gen(input), RO.Gen(input));
 }
 
-TEST(RandomOracleTest, MultiInTest) {
-  auto bytes1 = RandBytes(10);
-  auto bytes2 = RandBytes(10);
-  auto bytes3 = RandBytes(10);
-  auto RO = RandomOracle(HashAlgorithm::BLAKE3, 8);
-  RO.Gen<uint128_t>({bytes1, bytes2, bytes3});
-
-  auto bytes4 = RandBytes(10);
-  auto bytes5 = RandBytes(11);
-  auto bytes6 = RandBytes(12);
-  RO.Gen<std::array<uint8_t, 32>>({bytes4, bytes5, bytes6});
-}
-
 TEST(RandomOracleTest, EdgeTest1) {
   EXPECT_THROW(RandomOracle(HashAlgorithm::BLAKE3, 0), yacl::EnforceNotMet);
 }

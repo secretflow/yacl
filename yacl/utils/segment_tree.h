@@ -29,6 +29,7 @@ class SegmentTree {
   bool Insert(const T& item) {
     if (segments_.empty()) {
       segments_.insert({item, item + 1});
+      count_++;
       return true;
     }
 
@@ -66,7 +67,7 @@ class SegmentTree {
       current->second = next->second;
       segments_.erase(next);
     }
-
+    count_++;
     return true;
   }
 
@@ -92,6 +93,8 @@ class SegmentTree {
 
   size_t SegmentsCount() const { return segments_.size(); }
 
+  size_t Count() const { return count_; }
+
   std::vector<std::pair<T, T>> GetSegments() const {
     std::vector<std::pair<T, T>> ret;
     ret.reserve(segments_.size());
@@ -106,6 +109,7 @@ class SegmentTree {
  private:
   // segments for [key, value)
   std::map<T, T> segments_;
+  size_t count_ = 0;
 };
 
 }  // namespace yacl::utils

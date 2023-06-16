@@ -32,9 +32,6 @@ class ReceiverLoopMem final : public ReceiverLoopBase {
 
 class ChannelMem final : public ChannelBase {
  private:
-  void SendAsyncImpl(const std::string& key, ByteContainerView value) override;
-  void SendAsyncImpl(const std::string& key, Buffer&& value) override;
-
   void SendImpl(const std::string& key, ByteContainerView value) override;
   void SendImpl(const std::string& key, ByteContainerView value,
                 uint32_t /* timeout */) override;
@@ -45,8 +42,6 @@ class ChannelMem final : public ChannelBase {
   ChannelMem(size_t self_rank, size_t peer_rank, size_t timeout_ms = 20000U);
 
   void SetPeer(const std::shared_ptr<ChannelMem>& peer_task);
-
-  void WaitAsyncSendToFinish() override {}
 
  protected:
   // Note: we should never manage peer's lifetime.

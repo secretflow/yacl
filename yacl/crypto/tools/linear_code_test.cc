@@ -35,14 +35,15 @@ TEST(Llc, LlcWorks) {
   llc.Encode(input, absl::MakeSpan(out));
   llc.Encode(input, absl::MakeSpan(check));
 
-  uint32_t counter = 0;
+  uint32_t zero_counter = 0;
   for (uint32_t i = 0; i < n; ++i) {
     EXPECT_EQ(out[i], check[i]);
     if (out[i] == 0) {
-      counter++;
+      zero_counter++;
     }
   }
-  std::cout << counter << std::endl;
+
+  EXPECT_LE(zero_counter, 2);
 }
 
 }  // namespace yacl::crypto
