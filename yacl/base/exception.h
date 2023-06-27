@@ -60,7 +60,6 @@ inline std::string Format(Args&&... args) {
 }
 
 // Trick to make Format works with empty arguments.
-template <>
 inline std::string Format() {
   return "";
 }
