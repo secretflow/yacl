@@ -55,8 +55,8 @@ namespace internal {
 const int kMaxStackTraceDep = 16;
 
 template <typename... Args>
-inline std::string Format(Args&&... args) {
-  return fmt::format(std::forward<Args>(args)...);
+inline std::string Format(fmt::format_string<Args...> f, Args&&... args) {
+  return fmt::format(f, std::forward<Args>(args)...);
 }
 
 // Trick to make Format works with empty arguments.
