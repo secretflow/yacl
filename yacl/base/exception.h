@@ -67,7 +67,10 @@ inline std::string Format(Args&&... args) {
 #endif
 
 // Trick to make Format works with empty arguments.
+#if __cplusplus >= 202002L
+#else
 template <>
+#endif
 inline std::string Format() {
   return "";
 }
