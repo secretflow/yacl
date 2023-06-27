@@ -54,12 +54,20 @@ namespace internal {
 
 const int kMaxStackTraceDep = 16;
 
+#if __cplusplus >= 202002L
 template <typename... Args>
 inline std::string Format(fmt::format_string<Args...> f, Args&&... args) {
   return fmt::format(f, std::forward<Args>(args)...);
 }
+#else
+template <typename... Args>
+inline std::string Format(Args&&... args) {
+  return fmt::format(std::forward<Args>(args)...);
+}
+#endif
 
 // Trick to make Format works with empty arguments.
+template <>
 inline std::string Format() {
   return "";
 }
