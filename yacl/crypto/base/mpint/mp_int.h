@@ -408,6 +408,6 @@ MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS) {
 #if __cplusplus >= 202002L
 namespace fmt {
 template <>
-struct formatter<MPInt> : ostream_formatter {};
+struct formatter<yacl::crypto::MPInt> : ostream_formatter {};
 }  // namespace fmt
 #endif
