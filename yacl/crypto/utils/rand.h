@@ -123,16 +123,6 @@ inline uint32_t RandInRange(uint32_t n) {
   return gen() % n;
 }
 
-inline std::vector<uint64_t> MakeRegularRandChoices(uint64_t t, uint64_t n) {
-  const auto bin_size = (n + t - 1) / t;
-  std::vector<uint64_t> out(t);
-  for (uint64_t i = 0; i < t; i++) {
-    const uint64_t limit = std::min(bin_size, n - i * bin_size);
-    out[i] = RandInRange(limit) + i * bin_size;
-  }
-  return out;
-}
-
 // TODO(shanzhu) RFC: add more generic random interface, e.g.
 //        void FillRand(RandContext* ctx, char* buf, uint64_t len);
 

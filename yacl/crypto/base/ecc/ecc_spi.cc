@@ -92,7 +92,7 @@ std::unique_ptr<EcGroup> EcGroupFactory::Create(const CurveName& ec_name) {
   auto meta = GetCurveMetaByName(ec_name);
   for (const auto& perf_item : GStore::PerformanceMap()) {
     if (!GStore::CheckerMap().at(perf_item.second)(meta)) {
-      SPDLOG_DEBUG("Ec lib {} do not support curve {}, try next ...",
+      SPDLOG_DEBUG("Ec lib {} does not support curve {}, try next ...",
                    perf_item.second, ec_name);
       continue;
     }

@@ -21,6 +21,7 @@ yacl_cc_library(
     srcs = ["ot_store.cc"],
     hdrs = ["ot_store.h"],
     deps = [
+        "//yacl/base:aligned_vector",
         "//yacl/base:dynamic_bitset",
         "//yacl/base:int128",
         "//yacl/crypto/utils:rand",
@@ -191,6 +192,7 @@ yacl_cc_library(
     copts = AES_COPT_FLAGS,
     deps = [
         ":ot_store",
+        "//yacl/base:aligned_vector",
         "//yacl/crypto/base/aes:aes_opt",
         "//yacl/crypto/tools:prg",
         "//yacl/crypto/tools:random_permutation",
@@ -214,7 +216,11 @@ yacl_cc_test(
 yacl_cc_library(
     name = "ferret_ote",
     srcs = ["ferret_ote.cc"],
-    hdrs = ["ferret_ote.h"],
+    hdrs = [
+        "ferret_ote.h",
+        "ferret_ote_rn.h",
+        "ferret_ote_un.h",
+    ],
     deps = [
         ":ot_store",
         "//yacl/base:exception",
