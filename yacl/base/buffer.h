@@ -24,7 +24,7 @@
 
 namespace yacl {
 
-// A buffer is an RAII object which represent an in memory buffer.
+// A buffer is a RAII object which represents an in memory buffer.
 class Buffer final {
   std::byte* ptr_{nullptr};
   int64_t size_{0};
@@ -57,7 +57,7 @@ class Buffer final {
     }
   }
 
-  // Constructs Buffer object from a block of already allocated memory
+  // Construct Buffer object from a block of already allocated memory
   // Buffer will take the ownership of ptr
   Buffer(void* ptr, size_t size, const std::function<void(void*)>& deleter) {
     YACL_ENFORCE(reinterpret_cast<uintptr_t>(ptr) % 16 == 0,

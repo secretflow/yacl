@@ -25,107 +25,24 @@
 
 namespace yacl::crypto {
 
-using FerretSimpleMap = std::vector<std::unordered_map<uint64_t, uint64_t>>;
-
 enum class LpnNoiseAsm { RegularNoise, UniformNoise };
 
 // For more parameter choices, see results in
 // https://eprint.iacr.org/2019/273.pdf Page 20, Table 1.
 class LpnParam {
  public:
-  LpnNoiseAsm noise_asm = LpnNoiseAsm::RegularNoise;
   uint64_t n = 10485760;  // primal lpn, security param = 128
   uint64_t k = 452000;    // primal lpn, security param = 128
   uint64_t t = 1280;      // primal lpn, security param = 128
+  LpnNoiseAsm noise_asm = LpnNoiseAsm::RegularNoise;
+
+  LpnParam(uint64_t n, uint64_t k, uint64_t t, LpnNoiseAsm noise_asm)
+      : n(n), k(k), t(t), noise_asm(noise_asm) {}
+
   static LpnParam GetDefault() {
-    return {LpnNoiseAsm::RegularNoise, 10485760, 452000, 1280};
+    return {10485760, 452000, 1280, LpnNoiseAsm::RegularNoise};
   }
 };
-
-// Single-Point Correlated OT ("length") Extension Implementation
-//
-// This implementation bases on Ferret, for more theoretical details, see
-// https://eprint.iacr.org/2020/924.pdf, section 4, figure 6.
-//
-//              +---------+    +------------+
-//              |   COT   | => |   SP-COT   |
-//              +---------+    +------------+
-//              num = t           num = 1
-//              len = kappa       len = 2^t (denote as n)
-//
-//  > kappa: computation security parameter (128 for example)
-//
-// Threat Model:
-//  > Passive Adversary
-//
-// Security assumptions:
-//  > SGRR OTE (n-1 out of n OT Extension)
-//      - see `yacl/crypto/primitives/ot/sgrr_ote.h`
-//
-class SpCotOption {
- public:
-  uint64_t idx_range = 0;  // range of the point
-  uint64_t cot_num = 0;    // required cot_num
-};
-
-inline SpCotOption MakeSpCotOption(uint64_t idx_range) {
-  return {idx_range, Log2Ceil(idx_range)};
-}
-
-void SpCotSend(const std::shared_ptr<link::Context>& ctx,
-               const OtSendStore& cot, const SpCotOption& option,
-               absl::Span<uint128_t> out);
-
-void SpCotRecv(const std::shared_ptr<link::Context>& ctx,
-               const OtRecvStore& cot, const SpCotOption& option, uint64_t idx,
-               absl::Span<uint128_t> out);
-
-// Multi-Point Correlated OT ("length") Extension Implementation
-//
-// This implementation bases on Ferret, for more theoretical details, see
-// https://eprint.iacr.org/2020/924.pdf, section 4, figure 6.
-//
-//              +---------+    +------------+
-//              |   COT   | => |   MP-COT   |
-//              +---------+    +------------+
-//              num = n           num = t
-//              len = kappa       len = 2^n
-//
-//  > kappa: computation security parameter (128 for example)
-//
-// Threat Model:
-//  > Passive Adversary
-//
-// Security assumptions:
-//  > SpCotSend / SpCotRecv (see previous codes in this file)
-
-class MpCotOption {
- public:
-  uint64_t idx_num = 0;    // number of points
-  uint64_t idx_range = 0;  // range of the points
-  uint64_t cot_num = 0;    // required cot_num
-
-  // whether to use cuckoo hashing (experimental, not that we only
-  // use cuckoo mpcot with uniform lpn noise assumption)
-  bool use_cuckoo = false;
-
-  // if use_cuckoo is set to true, MpCotOption use two additional options
-  CuckooIndex::Options cuckoo_option;
-  std::unique_ptr<FerretSimpleMap> simple_map = nullptr;  // the pointer
-};
-
-// Note: In ferret OT we can set use_cuckoo = false, which leverages the
-// assumption of regular lpn noise
-MpCotOption MakeMpCotOption(uint64_t idx_num, uint64_t idx_range,
-                            bool use_cuckoo = false);
-
-void MpCotSend(const std::shared_ptr<link::Context>& ctx,
-               const OtSendStore& cot, const MpCotOption& option,
-               absl::Span<uint128_t> out);
-
-void MpCotRecv(const std::shared_ptr<link::Context>& ctx,
-               const OtRecvStore& cot, const MpCotOption& option,
-               absl::Span<const uint64_t> idxes, absl::Span<uint128_t> out);
 
 // Ferret OT Extension Implementation
 //
@@ -149,38 +66,14 @@ void MpCotRecv(const std::shared_ptr<link::Context>& ctx,
 //  implementation, see `yacl/crypto-tools/random_permutation.h`
 // > Primal LPN, for more details, please see the original paper
 
-class FerretOtExtOption {
- public:
-  LpnParam lpn_param;        // lpn parameters
-  uint64_t cot_num = 0;      // the required cot_num
-  MpCotOption mpcot_option;  // internal mpcot options
-};
+uint64_t FerretCotHelper(const LpnParam& lpn_param, uint64_t ot_num);
 
-FerretOtExtOption MakeFerretOtExtOption(const LpnParam& lpn_param,
-                                        uint64_t ot_num);
+OtSendStore FerretOtExtSend(const std::shared_ptr<link::Context>& ctx,
+                            const OtSendStore& base_cot,
+                            const LpnParam& lpn_param, uint64_t ot_num);
 
-std::shared_ptr<OtSendStore> FerretOtExtSend(
-    const std::shared_ptr<link::Context>& ctx, const OtSendStore& base_cot,
-    const FerretOtExtOption& option, uint64_t ot_num);
-
-std::shared_ptr<OtRecvStore> FerretOtExtRecv(
-    const std::shared_ptr<link::Context>& ctx, const OtRecvStore& base_cot,
-    const FerretOtExtOption& option, uint64_t ot_num);
-
-// inline std::shared_ptr<OtSendStore> FerretOtExtSend(
-//     const std::shared_ptr<link::Context>& ctx,
-//     const OtSendStore& base_cot, const LpnParam& lpn_param,
-//     uint64_t ot_num) {
-//   auto option = MakeFerretOtExtOption(lpn_param, ot_num);
-//   return FerretOtExtSend(ctx, base_cot, option, ot_num);
-// }
-
-// inline std::shared_ptr<OtRecvStore> FerretOtExtRecv(
-//     const std::shared_ptr<link::Context>& ctx,
-//     const OtRecvStore& base_cot, const LpnParam& lpn_param,
-//     uint64_t ot_num) {
-//   auto option = MakeFerretOtExtOption(lpn_param, ot_num);
-//   return FerretOtExtRecv(ctx, base_cot, option, ot_num);
-// }
+OtRecvStore FerretOtExtRecv(const std::shared_ptr<link::Context>& ctx,
+                            const OtRecvStore& base_cot,
+                            const LpnParam& lpn_param, uint64_t ot_num);
 
 }  // namespace yacl::crypto

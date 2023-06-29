@@ -34,7 +34,7 @@ struct TestParams {
 
 class GywzParamTest : public ::testing::TestWithParam<TestParams> {};
 
-TEST_P(GywzParamTest, Works) {
+TEST_P(GywzParamTest, CotWork) {
   size_t n = GetParam().n;
 
   auto index = RandInRange(n);
@@ -68,7 +68,48 @@ TEST_P(GywzParamTest, Works) {
   }
 }
 
-INSTANTIATE_TEST_SUITE_P(Works_Instances, GywzParamTest,
+TEST_P(GywzParamTest, FerretSpCotWork) {
+  size_t n = GetParam().n;
+
+  auto lctxs = link::test::SetupWorld(2);
+
+  auto base_ot = MockCompactOts(Log2Ceil(n));  // mock many base OTs
+  auto delta = base_ot.send.GetDelta();
+
+  // [Warning] Compact Cot doest not support CopyChoice.
+  // TODO: fix it
+  uint32_t index = 0;
+  for (uint32_t i = 0; i < Log2Ceil(n); ++i) {
+    index |= (!base_ot.recv.GetChoice(i)) << i;
+  }
+
+  std::vector<uint128_t> send_out(n);
+  std::vector<uint128_t> recv_out(n);
+
+  std::future<void> sender = std::async([&] {
+    FerretGywzOtExtRecv(lctxs[0], base_ot.recv, n, absl::MakeSpan(recv_out));
+  });
+  std::future<void> receiver = std::async([&] {
+    FerretGywzOtExtSend(lctxs[1], base_ot.send, n, absl::MakeSpan(send_out));
+  });
+  sender.get();
+  receiver.get();
+
+  EXPECT_EQ(send_out.size(), n);
+  EXPECT_EQ(recv_out.size(), n);
+
+  for (size_t i = 0; i < n; ++i) {
+    EXPECT_NE(recv_out[i], 0);
+    EXPECT_NE(send_out[i], 0);
+    if (index != i) {
+      EXPECT_EQ(send_out[i], recv_out[i]);
+    } else {
+      EXPECT_EQ(send_out[i] ^ delta, recv_out[i]);
+    }
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(TestWork, GywzParamTest,
                          testing::Values(TestParams{4},        //
                                          TestParams{5},        //
                                          TestParams{7},        //

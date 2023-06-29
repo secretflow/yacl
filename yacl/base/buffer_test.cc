@@ -12,11 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "yacl/base/buffer.h"
 
-#define CONFIGURED 1
-#define HAVE_TI_MODE
+#include <vector>
 
-extern "C" {
-#include "sodium/private/ed25519_ref10.h"
-};
+#include "gtest/gtest.h"
+
+#include "yacl/utils/parallel.h"
+
+namespace yacl::test {
+
+TEST(BufferTest, BasicWorks) {
+  std::vector<Buffer> v;
+  v.resize(100000);
+  parallel_for(0, v.size(), 1, [&](int64_t beg, int64_t end) {
+    for (int64_t i = beg; i < end; ++i) {
+      v[i] = Buffer(fmt::format("hello_{}", i));
+    }
+  });
+}
+
+}  // namespace yacl::test

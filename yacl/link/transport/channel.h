@@ -109,7 +109,7 @@ class ChannelBase : public IChannel,
 
   ~ChannelBase() override {
     if (!send_thread_stoped_.load()) {
-      SPDLOG_ERROR(
+      SPDLOG_WARN(
           "ChannelBase destructor is called before WaitLinkTaskFinish, try "
           "stop send thread");
       try {

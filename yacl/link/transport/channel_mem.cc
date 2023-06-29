@@ -19,7 +19,7 @@
 namespace yacl::link {
 
 ChannelMem::ChannelMem(size_t self_rank, size_t peer_rank, size_t timeout_ms)
-    : ChannelBase(self_rank, peer_rank, timeout_ms) {}
+    : recv_timeout_ms_(timeout_ms * std::chrono::milliseconds(1)) {}
 
 void ChannelMem::SetPeer(const std::shared_ptr<ChannelMem>& peer_task) {
   peer_channel_ = peer_task;
@@ -33,9 +33,35 @@ void ChannelMem::SendImpl(const std::string& key, ByteContainerView value) {
   }
 }
 
-void ChannelMem::SendImpl(const std::string& key, ByteContainerView value,
-                          uint32_t /* timeout */) {
-  return SendImpl(key, value);
+Buffer ChannelMem::Recv(const std::string& key) {
+  Buffer value;
+  {
+    std::unique_lock lock(msg_mutex_);
+    auto stop_waiting = [&] {
+      auto itr = this->msg_db_.find(key);
+      if (itr == this->msg_db_.end()) {
+        return false;
+      } else {
+        value = std::move(itr->second);
+        this->msg_db_.erase(itr);
+        return true;
+      }
+    };
+    if (!msg_db_cond_.wait_for(lock, recv_timeout_ms_, stop_waiting)) {
+      YACL_THROW_IO_ERROR("Get data timeout, key={}", key);
+    }
+  }
+
+  return value;
+}
+
+void ChannelMem::OnMessage(const std::string& msg_key,
+                           ByteContainerView value) {
+  {
+    std::unique_lock lock(msg_mutex_);
+    msg_db_.emplace(msg_key, value);
+  }
+  msg_db_cond_.notify_all();
 }
 
 }  // namespace yacl::link

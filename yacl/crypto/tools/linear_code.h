@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <vector>
 
@@ -35,7 +36,7 @@
 
 namespace yacl::crypto {
 
-constexpr uint32_t kLcBatchSize = 128;  // linear code batch size
+constexpr uint32_t kLcBatchSize = 1024;  // linear code batch size
 
 // Linear code interface in F2k
 class LinearCodeInterface {
@@ -95,9 +96,7 @@ class LocalLinearCode : LinearCodeInterface {
   // Encode a message (input) into a codeword (output)
   void Encode(absl::Span<const uint128_t> in, absl::Span<uint128_t> out) {
     YACL_ENFORCE_EQ(in.size(), k_);
-    YACL_ENFORCE_EQ(out.size(), n_);
-
-    // const uint32_t batch_num = (n_ + kLcBatchSize - 1) / kLcBatchSize;
+    // YACL_ENFORCE_EQ(out.size(), n_);
 
     constexpr uint32_t tmp_size = kLcBatchSize * d / 4;
     alignas(16) std::array<uint128_t, tmp_size> tmp;
@@ -107,8 +106,9 @@ class LocalLinearCode : LinearCodeInterface {
     auto k_tmp = _mm_loadu_si128((reinterpret_cast<__m128i *>(&extend_k_)));
     auto cmp_tmp = _mm_loadu_si128((reinterpret_cast<__m128i *>(&extend_cmp_)));
 
-    for (uint32_t i = 0; i < n_; i += kLcBatchSize) {
-      const uint32_t limit = std::min(kLcBatchSize, n_ - i);
+    for (uint32_t i = 0; i < out.size(); i += kLcBatchSize) {
+      const uint32_t limit =
+          std::min(kLcBatchSize, static_cast<uint32_t>(out.size()) - i);
       const uint32_t block_num = limit * d / 4;
 
       for (uint32_t j = 0; j < block_num; ++j) {

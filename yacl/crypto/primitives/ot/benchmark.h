@@ -18,6 +18,7 @@
 #include "absl/numeric/bits.h"
 #include "benchmark/benchmark.h"
 
+#include "yacl/base/aligned_vector.h"
 #include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
 #include "yacl/crypto/primitives/ot/base_ot.h"
@@ -57,8 +58,8 @@ BENCHMARK_DEFINE_F(OtBench, SimplestOT)(benchmark::State& state) {
 
       // preprare inputs
       auto choices = RandBits<dynamic_bitset<uint128_t>>(num_ot);
-      std::vector<std::array<Block, 2>> send_blocks(num_ot);
-      std::vector<Block> recv_blocks(num_ot);
+      AlignedVector<std::array<Block, 2>> send_blocks(num_ot);
+      AlignedVector<Block> recv_blocks(num_ot);
 
       state.ResumeTiming();
 
@@ -83,8 +84,8 @@ BENCHMARK_DEFINE_F(OtBench, IknpOTe)(benchmark::State& state) {
       const auto num_ot = state.range(0);
 
       // preprare inputs
-      std::vector<std::array<uint128_t, 2>> send_blocks(num_ot);
-      std::vector<uint128_t> recv_blocks(num_ot);
+      AlignedVector<std::array<uint128_t, 2>> send_blocks(num_ot);
+      AlignedVector<uint128_t> recv_blocks(num_ot);
       auto choices = RandBits<dynamic_bitset<uint128_t>>(num_ot);
       auto base_ot = MockRots(128);
 
@@ -114,8 +115,8 @@ BENCHMARK_DEFINE_F(OtBench, KosOTe)(benchmark::State& state) {
       const auto num_ot = state.range(0);
 
       // preprare inputs
-      std::vector<std::array<uint128_t, 2>> send_blocks(num_ot);
-      std::vector<uint128_t> recv_blocks(num_ot);
+      AlignedVector<std::array<uint128_t, 2>> send_blocks(num_ot);
+      AlignedVector<uint128_t> recv_blocks(num_ot);
       auto choices = RandBits<dynamic_bitset<uint128_t>>(num_ot);
       auto base_ot = MockRots(128);
 
@@ -145,8 +146,8 @@ BENCHMARK_DEFINE_F(OtBench, KkrtOTe)(benchmark::State& state) {
       const auto num_ot = state.range(0);
 
       // preprare inputs
-      std::vector<uint128_t> inputs(num_ot);
-      std::vector<uint128_t> recv_out(num_ot);
+      AlignedVector<uint128_t> inputs(num_ot);
+      AlignedVector<uint128_t> recv_out(num_ot);
       auto base_ot = MockRots(512);
 
       state.ResumeTiming();
@@ -176,8 +177,8 @@ BENCHMARK_DEFINE_F(OtBench, SgrrOTe)(benchmark::State& state) {
       // preprare inputs
       uint32_t choice_value = RandInRange(range_n);
       auto base_ot = MockRots(Log2Ceil(range_n));
-      std::vector<uint128_t> send_out(range_n);
-      std::vector<uint128_t> recv_out(range_n);
+      AlignedVector<uint128_t> send_out(range_n);
+      AlignedVector<uint128_t> recv_out(range_n);
 
       state.ResumeTiming();
 
@@ -209,8 +210,8 @@ BENCHMARK_DEFINE_F(OtBench, GywzOTe)(benchmark::State& state) {
       uint32_t choice_value = RandInRange(range_n);
       uint128_t delta = SecureRandSeed();
       auto base_ot = MockCots(Log2Ceil(range_n), delta);
-      std::vector<uint128_t> send_out(range_n);
-      std::vector<uint128_t> recv_out(range_n);
+      AlignedVector<uint128_t> send_out(range_n);
+      AlignedVector<uint128_t> recv_out(range_n);
 
       state.ResumeTiming();
 
@@ -239,18 +240,19 @@ BENCHMARK_DEFINE_F(OtBench, FerretOTe)(benchmark::State& state) {
       const size_t num_ot = state.range(0);
 
       // preprare inputs
-      auto option =
-          MakeFerretOtExtOption(LpnParam::GetDefault(), num_ot);  // make option
-      auto cots = MockCompactOts(option.cot_num);  // mock base ot
-      dynamic_bitset<uint128_t> choice;
+      auto lpn_param = LpnParam::GetDefault();
+      auto cot_num = FerretCotHelper(lpn_param, num_ot);  // make option
+      auto cots_compact = MockCompactOts(cot_num);        // mock cots
 
       state.ResumeTiming();
 
       // run base OT
-      auto sender = std::async(
-          [&] { FerretOtExtSend(lctxs_[0], cots.send, option, num_ot); });
-      auto receiver = std::async(
-          [&] { FerretOtExtRecv(lctxs_[1], cots.recv, option, num_ot); });
+      auto sender = std::async([&] {
+        return FerretOtExtSend(lctxs_[0], cots_compact.send, lpn_param, num_ot);
+      });
+      auto receiver = std::async([&] {
+        return FerretOtExtRecv(lctxs_[1], cots_compact.recv, lpn_param, num_ot);
+      });
       sender.get();
       receiver.get();
       state.PauseTiming();
