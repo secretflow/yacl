@@ -67,8 +67,8 @@ std::shared_ptr<Context> FactoryBrpc::CreateContext(const ContextDesc& desc,
     if (!desc.brpc_channel_connection_type.empty()) {
       opts.channel_connection_type = desc.brpc_channel_connection_type;
     }
-    auto channel = std::make_shared<ChannelBrpc>(self_rank, rank,
-                                                 desc.recv_timeout_ms, opts);
+    auto channel = std::make_shared<ChannelBrpc>(
+        self_rank, rank, desc.recv_timeout_ms, opts, desc.exit_if_async_error);
     channel->SetPeerHost(desc.parties[rank].host,
                          desc.enable_ssl ? &desc.client_ssl_opts : nullptr);
     channel->SetThrottleWindowSize(desc.throttle_window_size);

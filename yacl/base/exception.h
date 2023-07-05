@@ -71,9 +71,7 @@ inline std::string Format(Args&&... args) {
 #else
 template <>
 #endif
-inline std::string Format() {
-  return "";
-}
+inline std::string Format() { return ""; }
 
 }  // namespace internal
 
@@ -87,7 +85,6 @@ class Exception : public std::exception {
  public:
   Exception() = default;
   explicit Exception(std::string msg) : msg_(std::move(msg)) {}
-  explicit Exception(std::string&& msg) : msg_(std::move(msg)) {}
   explicit Exception(const char* msg) : msg_(msg) {}
   explicit Exception(std::string msg, void** stacks, int dep)
       : msg_(std::move(msg)) {

@@ -256,12 +256,18 @@ class SendChunkedWindow {
     running_push_++;
     while (running_push_ >= parallel_limit_) {
       cond_.wait(lock);
+      if (async_exception_.has_value()) {
+        throw async_exception_.value();
+      }
     }
   }
 
-  void OnPushDone() {
+  void OnPushDone(std::optional<std::exception> e) {
     std::unique_lock<bthread::Mutex> lock(mutex_);
     running_push_--;
+    if (e.has_value()) {
+      async_exception_ = std::move(e);
+    }
     cond_.notify_all();
   }
 
@@ -269,6 +275,9 @@ class SendChunkedWindow {
     std::unique_lock<bthread::Mutex> lock(mutex_);
     while (running_push_ != 0) {
       cond_.wait(lock);
+      if (async_exception_.has_value()) {
+        throw async_exception_.value();
+      }
     }
   }
 
@@ -277,6 +286,7 @@ class SendChunkedWindow {
   int64_t running_push_ = 0;
   bthread::Mutex mutex_;
   bthread::ConditionVariable cond_;
+  std::optional<std::exception> async_exception_;
 };
 
 class SendChunkedDone : public google::protobuf::Closure {
@@ -287,19 +297,22 @@ class SendChunkedDone : public google::protobuf::Closure {
 
   void Run() override {
     std::unique_ptr<SendChunkedDone> self_guard(this);
+    std::optional<std::exception> exception;
     if (cntl_.Failed()) {
-      SPDLOG_ERROR(
+      std::string error = fmt::format(
           "send key={} (chunked {} out of {}) rpc failed: {}, message={}", key_,
           chunk_idx_ + 1, num_chunks_, cntl_.ErrorCode(), cntl_.ErrorText());
-      exit(-1);
+      SPDLOG_ERROR(error);
+      exception = yacl::NetworkError(error);
     } else if (response_.header().error_code() != ic::ErrorCode::OK) {
-      SPDLOG_ERROR(
+      std::string error = fmt::format(
           "send key={} (chunked {} out of {}) response failed, message={}",
           key_, chunk_idx_ + 1, num_chunks_, response_.header().error_msg());
-      exit(-1);
+      SPDLOG_ERROR(error);
+      exception = yacl::NetworkError(error);
     }
 
-    wait_.OnPushDone();
+    wait_.OnPushDone(exception);
   }
 
   brpc::Controller cntl_;
