@@ -70,12 +70,15 @@ class ChannelBrpc final : public ChannelBase {
                 uint32_t timeout) override;
 
  public:
-  ChannelBrpc(size_t self_rank, size_t peer_rank, Options options)
-      : ChannelBase(self_rank, peer_rank), options_(std::move(options)) {}
+  explicit ChannelBrpc(size_t self_rank, size_t peer_rank, Options options,
+                       bool exit_if_async_error = true)
+      : ChannelBase(self_rank, peer_rank, exit_if_async_error),
+        options_(std::move(options)) {}
 
-  ChannelBrpc(size_t self_rank, size_t peer_rank, size_t recv_timeout_ms,
-              Options options)
-      : ChannelBase(self_rank, peer_rank, recv_timeout_ms),
+  explicit ChannelBrpc(size_t self_rank, size_t peer_rank,
+                       size_t recv_timeout_ms, Options options,
+                       bool exit_if_async_error = true)
+      : ChannelBase(self_rank, peer_rank, recv_timeout_ms, exit_if_async_error),
         options_(std::move(options)) {}
 
   void SetPeerHost(const std::string& peer_host,

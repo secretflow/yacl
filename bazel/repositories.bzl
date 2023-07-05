@@ -22,7 +22,6 @@ IC_COMMIT_ID = "aa951609c533091ff9ffb38d4bd60f6e2aba7e60"
 
 SIMPLEST_OT_COMMIT_ID  = "f40a33a37e3ff8cd81655c35237c177e358dc5b1"
 
-
 def yacl_deps():
     _rule_python()
     _rules_foreign_cc()

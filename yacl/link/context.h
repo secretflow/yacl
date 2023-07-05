@@ -102,6 +102,10 @@ struct ContextDesc {
   // this option is ignored if enable_ssl == false;
   SSLOptions server_ssl_opts;
 
+  // if true, process will exit(-1) when error happened in link async operate
+  // otherwise, only log error.
+  bool exit_if_async_error = true;
+
   bool operator==(const ContextDesc& other) const {
     return (id == other.id) && (parties == other.parties);
   }

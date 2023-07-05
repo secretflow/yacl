@@ -98,9 +98,13 @@ class SendTask {
  public:
   std::shared_ptr<ChannelBase> channel_;
   ChannelBase::Message msg_;
+  const bool exit_if_async_error_;
 
-  SendTask(std::shared_ptr<ChannelBase> channel, ChannelBase::Message msg)
-      : channel_(std::move(channel)), msg_(std::move(msg)) {
+  SendTask(std::shared_ptr<ChannelBase> channel, ChannelBase::Message msg,
+           bool exit_if_async_error)
+      : channel_(std::move(channel)),
+        msg_(std::move(msg)),
+        exit_if_async_error_(exit_if_async_error) {
     channel_->send_sync_.SendTaskStartNotify();
   }
 
@@ -109,7 +113,9 @@ class SendTask {
       channel_->send_sync_.SendTaskFinishedNotify(msg_.seq_id_);
     } catch (...) {
       SPDLOG_ERROR("SendTaskFinishedNotify error");
-      exit(-1);
+      if (exit_if_async_error_) {
+        exit(-1);
+      }
     }
   }
 
@@ -120,7 +126,9 @@ class SendTask {
       task->channel_->SendImpl(task->msg_.msg_key_, task->msg_.value_);
     } catch (const yacl::Exception& e) {
       SPDLOG_ERROR("SendImpl error {}", e.what());
-      exit(-1);
+      if (task->exit_if_async_error_) {
+        exit(-1);
+      }
     }
 
     return nullptr;
@@ -133,14 +141,16 @@ void ChannelBase::StartSendThread() {
       SendThread();
     } catch (const yacl::Exception& e) {
       SPDLOG_ERROR("SendThread error {}", e.what());
-      exit(-1);
+      if (exit_if_async_error_) {
+        exit(-1);
+      }
     }
   });
 }
 
 void ChannelBase::SubmitSendTask(Message&& msg) {
-  auto btask =
-      std::make_unique<SendTask>(this->shared_from_this(), std::move(msg));
+  auto btask = std::make_unique<SendTask>(this->shared_from_this(),
+                                          std::move(msg), exit_if_async_error_);
   bthread_t tid;
   if (bthread_start_background(&tid, nullptr, SendTask::Proc, btask.get()) ==
       0) {
