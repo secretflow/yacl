@@ -14,6 +14,8 @@
 
 #include "yacl/crypto/primitives/ot/ot_store.h"
 
+#include <cstring>
+#include <memory>
 #include <utility>
 
 #include "yacl/base/exception.h"
@@ -27,10 +29,14 @@ namespace yacl::crypto {
 //================================//
 
 void SliceBase::ConsistencyCheck() const {
-  YACL_ENFORCE(internal_use_size_ > 0, "Invalid slice size, got {} > 0",
-               internal_use_size_);
-  YACL_ENFORCE(internal_buf_size_ > 0, "Invalid buffer size, got {} > 0",
-               internal_buf_size_);
+  YACL_ENFORCE(
+      internal_use_size_ > 0,
+      "Internal slice size shoud be greater than 0, but got slice size: {}",
+      internal_use_size_);
+  YACL_ENFORCE(
+      internal_buf_size_ > 0,
+      "Internal buffer size shoud be greater than 0, but got buffer size: {}",
+      internal_buf_size_);
   YACL_ENFORCE(internal_buf_size_ >= internal_use_size_,
                "Buffer size should great or equal to slice size, got {} >= {}",
                internal_buf_size_, internal_use_size_);
@@ -87,7 +93,7 @@ OtRecvStore::OtRecvStore(uint64_t num, OtStoreType type) : type_(type) {
   if (type_ == OtStoreType::Normal) {
     bit_buf_ = std::make_shared<dynamic_bitset<uint128_t>>(num);
   }
-  blk_buf_ = std::make_shared<std::vector<uint128_t>>(num);
+  blk_buf_ = std::make_shared<AlignedVector<uint128_t>>(num);
   InitCtrs(0, num, 0, num);
   ConsistencyCheck();
 }
@@ -123,6 +129,25 @@ void OtRecvStore::ConsistencyCheck() const {
   }
 }
 
+OtRecvStore OtRecvStore::Slice(uint64_t begin, uint64_t end) const {
+  // Recall: A new slice looks like the follwoing:
+  //
+  // |---------------|-----slice-----|----------------| internal buffer
+  // a               b               c                d
+  //
+  // internal_use_ctr_ = b
+  // internal_use_size_ = c - b
+  // internal_buf_ctr_ = b
+  // internal_buf_size_ = c
+
+  uint64_t slice_use_ctr = begin;         // in blocks
+  uint64_t slice_use_size = end - begin;  // in blocks
+  uint64_t slice_buf_ctr = begin;         // in blocks
+  uint64_t slice_buf_size = end;          // in blocks
+
+  return {bit_buf_,      blk_buf_,       slice_use_ctr, slice_use_size,
+          slice_buf_ctr, slice_buf_size, type_};
+}
 OtRecvStore OtRecvStore::NextSlice(uint64_t num) {
   // Recall: A new slice looks like the follwoing:
   //
@@ -134,17 +159,7 @@ OtRecvStore OtRecvStore::NextSlice(uint64_t num) {
   // internal_buf_ctr_ = b
   // internal_buf_size_ = c
 
-  uint64_t slice_use_ctr = GetBufCtr();         // in blocks
-  uint64_t slice_use_size = num;                // in blocks
-  uint64_t slice_buf_ctr = GetBufCtr();         // in blocks
-  uint64_t slice_buf_size = GetBufCtr() + num;  // in blocks
-
-  auto out = OtRecvStore(bit_buf_, blk_buf_, slice_use_ctr, slice_use_size,
-                         slice_buf_ctr, slice_buf_size, type_);
-
-  // where who slice this buffer looks like the following:
-  //
-  //
+  auto out = Slice(GetBufCtr(), GetBufCtr() + num);
   // |---------------|-----slice-----|----------------| internal buffer
   // a               b               c                d
   //
@@ -195,7 +210,7 @@ dynamic_bitset<uint128_t> OtRecvStore::CopyChoice() const {
   return out;
 }
 
-std::vector<uint128_t> OtRecvStore::CopyBlocks() const {
+AlignedVector<uint128_t> OtRecvStore::CopyBlocks() const {
   return {blk_buf_->begin() + internal_use_ctr_,
           blk_buf_->begin() + internal_use_size_};
 }
@@ -203,14 +218,67 @@ std::vector<uint128_t> OtRecvStore::CopyBlocks() const {
 OtRecvStore MakeOtRecvStore(const dynamic_bitset<uint128_t>& choices,
                             const std::vector<uint128_t>& blocks) {
   auto tmp1_ptr = std::make_shared<dynamic_bitset<uint128_t>>(choices);  // copy
-  auto tmp2_ptr = std::make_shared<std::vector<uint128_t>>(blocks);      // copy
+  auto tmp2_ptr = std::make_shared<AlignedVector<uint128_t>>(blocks.size());
+  std::memcpy(tmp2_ptr->data(), blocks.data(),
+              blocks.size() * sizeof(uint128_t));  // copy
 
   return {tmp1_ptr,         tmp2_ptr,           0, tmp1_ptr->size(), 0,
           tmp1_ptr->size(), OtStoreType::Normal};
 }
 
-OtRecvStore MakeCompactCotRecvStore(const std::vector<uint128_t>& blocks) {
-  auto tmp_ptr = std::make_shared<std::vector<uint128_t>>(blocks);  // copy
+OtRecvStore MakeOtRecvStore(const dynamic_bitset<uint128_t>& choices,
+                            const AlignedVector<uint128_t>& blocks) {
+  auto tmp1_ptr = std::make_shared<dynamic_bitset<uint128_t>>(choices);  // copy
+  auto tmp2_ptr = std::make_shared<AlignedVector<uint128_t>>(blocks);    // copy
+
+  return {tmp1_ptr,         tmp2_ptr,           0, tmp1_ptr->size(), 0,
+          tmp1_ptr->size(), OtStoreType::Normal};
+}
+
+OtRecvStore MakeCompactOtRecvStore(const std::vector<uint128_t>& blocks) {
+  auto tmp_ptr = std::make_shared<AlignedVector<uint128_t>>(blocks.size());
+  std::memcpy(tmp_ptr->data(), blocks.data(),
+              blocks.size() * sizeof(uint128_t));  // copy
+
+  return {nullptr,
+          tmp_ptr,
+          0,
+          tmp_ptr->size(),
+          0,
+          tmp_ptr->size(),
+          OtStoreType::Compact};
+}
+
+OtRecvStore MakeCompactOtRecvStore(const AlignedVector<uint128_t>& blocks) {
+  auto tmp_ptr = std::make_shared<AlignedVector<uint128_t>>(blocks);  // copy
+
+  return {nullptr,
+          tmp_ptr,
+          0,
+          tmp_ptr->size(),
+          0,
+          tmp_ptr->size(),
+          OtStoreType::Compact};
+}
+
+OtRecvStore MakeCompactOtRecvStore(std::vector<uint128_t>&& blocks) {
+  auto tmp_ptr = std::make_shared<AlignedVector<uint128_t>>(blocks.size());
+
+  std::memcpy(tmp_ptr->data(), blocks.data(),
+              blocks.size() * sizeof(uint128_t));  // copy
+
+  return {nullptr,
+          tmp_ptr,
+          0,
+          tmp_ptr->size(),
+          0,
+          tmp_ptr->size(),
+          OtStoreType::Compact};
+}
+
+OtRecvStore MakeCompactOtRecvStore(AlignedVector<uint128_t>&& blocks) {
+  auto tmp_ptr =
+      std::make_shared<AlignedVector<uint128_t>>(std::move(blocks));  // move
 
   return {nullptr,
           tmp_ptr,
@@ -239,7 +307,7 @@ OtSendStore::OtSendStore(uint64_t num, OtStoreType type) : type_(type) {
     buf_size = num * 2;
   }
 
-  blk_buf_ = std::make_shared<std::vector<uint128_t>>(buf_size);
+  blk_buf_ = std::make_shared<AlignedVector<uint128_t>>(buf_size);
   InitCtrs(0, buf_size, 0, buf_size);
   ConsistencyCheck();
 }
@@ -265,9 +333,8 @@ void OtSendStore::ConsistencyCheck() const {
                blk_buf_->size(), internal_buf_size_);
 }
 
-OtSendStore OtSendStore::NextSlice(uint64_t num) {
+OtSendStore OtSendStore::Slice(uint64_t begin, uint64_t end) const {
   const uint64_t ot_blk_num = (type_ == OtStoreType::Compact) ? 1 : 2;
-
   // Recall: A new slice looks like the follwoing:
   //
   // |---------------|-----slice-----|----------------| internal buffer
@@ -278,13 +345,27 @@ OtSendStore OtSendStore::NextSlice(uint64_t num) {
   // internal_buf_ctr_ = b
   // internal_buf_size_ = c
 
-  uint64_t slice_use_ctr = GetBufCtr();                      // in blocks
-  uint64_t slice_use_size = num * ot_blk_num;                // in blocks
-  uint64_t slice_buf_ctr = GetBufCtr();                      // in blocks
-  uint64_t slice_buf_size = GetBufCtr() + num * ot_blk_num;  // in blocks
+  uint64_t slice_use_ctr = begin * ot_blk_num;           // in blocks
+  uint64_t slice_use_size = (end - begin) * ot_blk_num;  // in blocks
+  uint64_t slice_buf_ctr = begin * ot_blk_num;           // in blocks
+  uint64_t slice_buf_size = end * ot_blk_num;            // in blocks
 
-  auto out = OtSendStore(blk_buf_, delta_, slice_use_ctr, slice_use_size,
-                         slice_buf_ctr, slice_buf_size, type_);
+  return {blk_buf_,      delta_,         slice_use_ctr, slice_use_size,
+          slice_buf_ctr, slice_buf_size, type_};
+}
+
+OtSendStore OtSendStore::NextSlice(uint64_t num) {
+  const uint64_t ot_blk_num = (type_ == OtStoreType::Compact) ? 1 : 2;
+  // Recall: A new slice looks like the follwoing:
+  //
+  // |---------------|-----slice-----|----------------| internal buffer
+  // a               b               c                d
+  //
+  // internal_use_ctr_ = b
+  // internal_use_size_ = c - b
+  // internal_buf_ctr_ = b
+  // internal_buf_size_ = c
+  auto out = Slice(GetBufCtr() / ot_blk_num, GetBufCtr() / ot_blk_num + num);
 
   // where who slice this buffer looks like the following:
   //
@@ -347,7 +428,7 @@ void OtSendStore::SetCompactBlock(uint64_t ot_idx, uint128_t val) {
   blk_buf_->operator[](GetBufIdx(ot_idx)) = val;
 }
 
-std::vector<uint128_t> OtSendStore::CopyCotBlocks() const {
+AlignedVector<uint128_t> OtSendStore::CopyCotBlocks() const {
   YACL_ENFORCE(type_ == OtStoreType::Compact,
                "CopyCotBlocks() is only allowed in compact mode");
   return {blk_buf_->begin() + internal_buf_ctr_,
@@ -357,7 +438,7 @@ std::vector<uint128_t> OtSendStore::CopyCotBlocks() const {
 OtSendStore MakeOtSendStore(
     const std::vector<std::array<uint128_t, 2>>& blocks) {
   // warning: copy
-  auto buf_ptr = std::make_shared<std::vector<uint128_t>>(blocks.size() * 2);
+  auto buf_ptr = std::make_shared<AlignedVector<uint128_t>>(blocks.size() * 2);
   memcpy(buf_ptr->data(), blocks.data(), buf_ptr->size() * sizeof(uint128_t));
 
   return {buf_ptr,
@@ -369,19 +450,84 @@ OtSendStore MakeOtSendStore(
           OtStoreType::Normal};
 }
 
-OtSendStore MakeCompactCotSendStore(const std::vector<uint128_t>& blocks,
-                                    uint128_t delta) {
+OtSendStore MakeOtSendStore(
+    const AlignedVector<std::array<uint128_t, 2>>& blocks) {
   // warning: copy
-  auto buf_ptr = std::make_shared<std::vector<uint128_t>>(blocks);
+  auto buf_ptr = std::make_shared<AlignedVector<uint128_t>>(blocks.size() * 2);
+  memcpy(buf_ptr->data(), blocks.data(), buf_ptr->size() * sizeof(uint128_t));
 
-  return {
-      buf_ptr, delta, 0, blocks.size(), 0, blocks.size(), OtStoreType::Compact};
+  return {buf_ptr,
+          0,
+          0,
+          blocks.size() * 2,
+          0,
+          blocks.size() * 2,
+          OtStoreType::Normal};
+}
+
+OtSendStore MakeCompactOtSendStore(const std::vector<uint128_t>& blocks,
+                                   uint128_t delta) {
+  // warning: copy
+  auto buf_ptr = std::make_shared<AlignedVector<uint128_t>>(blocks.size());
+  std::memcpy(buf_ptr->data(), blocks.data(),
+              blocks.size() * sizeof(uint128_t));  // copy
+
+  return {buf_ptr,
+          delta,
+          0,
+          buf_ptr->size(),
+          0,
+          buf_ptr->size(),
+          OtStoreType::Compact};
+}
+
+OtSendStore MakeCompactOtSendStore(const AlignedVector<uint128_t>& blocks,
+                                   uint128_t delta) {
+  // warning: copy
+  auto buf_ptr = std::make_shared<AlignedVector<uint128_t>>(blocks);
+
+  return {buf_ptr,
+          delta,
+          0,
+          buf_ptr->size(),
+          0,
+          buf_ptr->size(),
+          OtStoreType::Compact};
+}
+
+OtSendStore MakeCompactOtSendStore(std::vector<uint128_t>&& blocks,
+                                   uint128_t delta) {
+  auto buf_ptr = std::make_shared<AlignedVector<uint128_t>>(blocks.size());
+  std::memcpy(buf_ptr->data(), blocks.data(),
+              blocks.size() * sizeof(uint128_t));  // copy
+
+  return {buf_ptr,
+          delta,
+          0,
+          buf_ptr->size(),
+          0,
+          buf_ptr->size(),
+          OtStoreType::Compact};
+}
+
+OtSendStore MakeCompactOtSendStore(AlignedVector<uint128_t>&& blocks,
+                                   uint128_t delta) {
+  auto buf_ptr =
+      std::make_shared<AlignedVector<uint128_t>>(std::move(blocks));  // move
+
+  return {buf_ptr,
+          delta,
+          0,
+          buf_ptr->size(),
+          0,
+          buf_ptr->size(),
+          OtStoreType::Compact};
 }
 
 MockOtStore MockRots(uint64_t num) {
   auto recv_choices = RandBits<dynamic_bitset<uint128_t>>(num);
-  std::vector<uint128_t> recv_blocks;
-  std::vector<std::array<uint128_t, 2>> send_blocks;
+  AlignedVector<uint128_t> recv_blocks;
+  AlignedVector<std::array<uint128_t, 2>> send_blocks;
 
   Prg<uint128_t> gen(RandSeed());
   for (uint64_t i = 0; i < num; ++i) {
@@ -395,8 +541,8 @@ MockOtStore MockRots(uint64_t num) {
 
 MockOtStore MockCots(uint64_t num, uint128_t delta) {
   auto recv_choices = RandBits<dynamic_bitset<uint128_t>>(num);
-  std::vector<uint128_t> recv_blocks;
-  std::vector<uint128_t> send_blocks;
+  AlignedVector<uint128_t> recv_blocks;
+  AlignedVector<uint128_t> send_blocks;
 
   Prg<uint128_t> gen(RandSeed());
   for (uint64_t i = 0; i < num; ++i) {
@@ -409,15 +555,15 @@ MockOtStore MockCots(uint64_t num, uint128_t delta) {
     }
   }
 
-  return {MakeCompactCotSendStore(send_blocks, delta),  // sender is compact
+  return {MakeCompactOtSendStore(send_blocks, delta),   // sender is compact
           MakeOtRecvStore(recv_choices, recv_blocks)};  // receiver is normal
 }
 
-MockOtStore MockCompactCots(uint64_t num) {
+MockOtStore MockCompactOts(uint64_t num) {
   uint128_t delta = RandU128();
   delta |= 0x1;  // make sure its last bits = 1;
-  std::vector<uint128_t> recv_blocks;
-  std::vector<uint128_t> send_blocks;
+  AlignedVector<uint128_t> recv_blocks;
+  AlignedVector<uint128_t> send_blocks;
 
   Prg<uint128_t> gen(RandSeed());
   for (uint64_t i = 0; i < num; ++i) {
@@ -427,8 +573,8 @@ MockOtStore MockCompactCots(uint64_t num) {
     recv_blocks.push_back(recv_msg);
   }
 
-  return {MakeCompactCotSendStore(send_blocks, delta),  // sender is compact
-          MakeCompactCotRecvStore(recv_blocks)};        // receiver is compact
+  return {MakeCompactOtSendStore(send_blocks, delta),  // sender is compact
+          MakeCompactOtRecvStore(recv_blocks)};        // receiver is compact
 }
 
 }  // namespace yacl::crypto

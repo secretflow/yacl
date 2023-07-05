@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include <fmt/core.h>
-
 #include <array>
 #include <cstring>
 #include <vector>
@@ -112,24 +110,6 @@ class RandomOracle {
     std::vector<uint8_t> buf(buf_size);
     std::memcpy(buf.data(), x.data(), x.size());
     std::memcpy(buf.data() + x.size(), &y, sizeof(uint64_t));
-    return Gen<T>(buf);
-  }
-
-  // Apply Random Oracle on many buffer arrays
-  // Typed Output: T
-  template <class T, std::enable_if_t<std::is_standard_layout_v<T>, int> = 0>
-  T Gen(std::initializer_list<ByteContainerView> inputs) {
-    size_t buf_size = 0;
-    for (const auto& x : inputs) {
-      buf_size += x.size();
-    }
-    std::vector<uint8_t> buf(buf_size);
-
-    size_t ctr = 0;
-    for (const auto& x : inputs) {
-      std::memcpy(buf.data() + ctr, x.data(), x.size());
-      ctr += x.size();
-    }
     return Gen<T>(buf);
   }
 

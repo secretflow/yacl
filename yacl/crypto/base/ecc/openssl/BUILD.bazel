@@ -27,6 +27,7 @@ yacl_cc_library(
     ],
     deps = [
         "//yacl/crypto/base/ecc:spi",
+        "//yacl/crypto/base/hash:blake3",
         "//yacl/crypto/base/hash:ssl_hash",
         "@com_github_openssl_openssl//:openssl",
         "@yacl//yacl/utils:parallel",

@@ -12,7 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <future>
 #include <unordered_map>
+
+#include "spdlog/spdlog.h"
 
 #include "yacl/base/exception.h"
 #include "yacl/link/factory.h"
@@ -27,6 +30,8 @@ struct MemSession {
 
   MemSession(std::string _id, std::vector<std::shared_ptr<Context>> _ctxs)
       : id(std::move(_id)), ctxs(std::move(_ctxs)) {}
+
+  ~MemSession() = default;
 };
 
 std::mutex _mutex;

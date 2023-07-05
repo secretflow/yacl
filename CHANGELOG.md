@@ -11,6 +11,12 @@ All notable changes to this project will be documented in this file.
 ## Staging
 > please add your unreleased change here.
 
+## 2023-05-25
+- [YACL] 0.3.3 release
+- [Feature] Add Ferret OTe
+- [Feature] Add Gywz OTe (Correlated GGM Tree)
+- [Feature] Add KOS OTe (warning: KOS still has potential security flaws)
+
 ## 2023-02-02
 - [YACL] 0.3.1 release
 - [Feature] Add `dynamic_bitset` for manipulating bit vectors

@@ -14,9 +14,11 @@
 
 #pragma once
 
+#include <chrono>
 #include <condition_variable>
 #include <memory>
 #include <mutex>
+#include <unordered_map>
 
 #include "yacl/link/transport/channel.h"
 
@@ -30,15 +32,7 @@ class ReceiverLoopMem final : public ReceiverLoopBase {
   void Stop() override {}
 };
 
-class ChannelMem final : public ChannelBase {
- private:
-  void SendAsyncImpl(const std::string& key, ByteContainerView value) override;
-  void SendAsyncImpl(const std::string& key, Buffer&& value) override;
-
-  void SendImpl(const std::string& key, ByteContainerView value) override;
-  void SendImpl(const std::string& key, ByteContainerView value,
-                uint32_t /* timeout */) override;
-
+class ChannelMem final : public IChannel {
  public:
   ~ChannelMem() override = default;
 
@@ -46,11 +40,60 @@ class ChannelMem final : public ChannelBase {
 
   void SetPeer(const std::shared_ptr<ChannelMem>& peer_task);
 
-  void WaitAsyncSendToFinish() override {}
+  void SendAsync(const std::string& key, ByteContainerView value) final {
+    SendImpl(key, value);
+  }
 
- protected:
+  void SendAsync(const std::string& key, Buffer&& value) final {
+    SendImpl(key, value);
+  }
+
+  void SendAsyncThrottled(const std::string& key, Buffer&& value) final {
+    SendImpl(key, value);
+  }
+
+  void SendAsyncThrottled(const std::string& key,
+                          ByteContainerView value) final {
+    SendImpl(key, value);
+  }
+
+  void Send(const std::string& key, ByteContainerView value) final {
+    SendImpl(key, value);
+  }
+
+  Buffer Recv(const std::string& key) final;
+
+  void OnMessage(const std::string& key, ByteContainerView value) final;
+
+  void OnChunkedMessage(const std::string& key, ByteContainerView value,
+                        size_t offset, size_t total_length) final {
+    YACL_THROW("do not use this interface in mem channel");
+  }
+
+  void SetRecvTimeout(uint64_t timeout_ms) final {
+    recv_timeout_ms_ = timeout_ms * std::chrono::milliseconds(1);
+  }
+
+  uint64_t GetRecvTimeout() const final { return recv_timeout_ms_.count(); }
+
+  // do nothing
+  void WaitLinkTaskFinish() final {}
+  void SetThrottleWindowSize(size_t) final {}
+  void TestSend(uint32_t timeout) final {}
+  void TestRecv() final {}
+  // no affect
+
+ private:
+  void SendImpl(const std::string& key, ByteContainerView value);
   // Note: we should never manage peer's lifetime.
   std::weak_ptr<ChannelMem> peer_channel_;
+  // message database related.
+  std::mutex msg_mutex_;
+  std::condition_variable msg_db_cond_;
+  std::unordered_map<std::string, Buffer> msg_db_;
+
+  std::chrono::milliseconds recv_timeout_ms_ =
+      3UL * 60 * std::chrono::milliseconds(1000);
 };
 
 }  // namespace yacl::link

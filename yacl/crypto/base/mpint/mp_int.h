@@ -307,8 +307,10 @@ class MPInt {
   // Converts the absolute value of MPInt into a byte string.
   // Equals: this->Abs().ToBytes((this->BitCount() + 7) / 8, endian)
   yacl::Buffer ToMagBytes(Endian endian = Endian::native) const;
-  // if buf_len is too small, an exception will be thrown.
-  // returns the number of bytes written
+  // If buf_len is too small, an exception will be thrown.
+  // If buf_len exceeds the actual required size, considering the
+  // characteristics of big-endian, the remaining part will not be assigned 0.
+  // @return: the number of bytes written
   size_t ToMagBytes(unsigned char *buf, size_t buf_len,
                     Endian endian = Endian::native) const;
 
@@ -401,3 +403,11 @@ MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS) {
   }  // namespace adaptor
 }  // MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS)
 }  // namespace msgpack
+
+//since c++20 deleted overloads for basic_ostream and UTF character/array
+#if __cplusplus >= 202002L
+namespace fmt {
+template <>
+struct formatter<yacl::crypto::MPInt> : ostream_formatter {};
+}  // namespace fmt
+#endif

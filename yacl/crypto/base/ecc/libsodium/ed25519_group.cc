@@ -18,17 +18,28 @@
 
 #include "sodium/crypto_core_ed25519.h"
 #include "sodium/crypto_scalarmult_ed25519.h"
-
-#include "yacl/crypto/base/ecc/ec_point.h"
-#include "yacl/crypto/base/mpint/mp_int.h"
-#include "yacl/crypto/base/mpint/type_traits.h"
+#include "sodium/private/ed25519_ref10.h"
 
 namespace yacl::crypto::sodium {
 
 #define RET_0(MP_ERR, ...) YACL_ENFORCE((MP_ERR) == 0, __VA_ARGS__)
 
+MPInt Fe25519ToMPInt(const fe25519& x) {
+  Array32 buf;
+  fe25519_tobytes(buf.data(), x);
+  MPInt r(0, 255);
+  r.FromMagBytes(buf, Endian::little);
+  return r;
+}
+
 Ed25519Group::Ed25519Group(const CurveMeta& meta, const CurveParam& param)
     : SodiumGroup(meta, param) {
+  static_assert(sizeof(ge25519_p2) <= sizeof(Array160));
+  static_assert(sizeof(ge25519_p3) <= sizeof(Array160));
+  static_assert(sizeof(ge25519_p1p1) <= sizeof(Array160));
+  static_assert(sizeof(ge25519_precomp) <= sizeof(Array160));
+  static_assert(sizeof(ge25519_cached) <= sizeof(Array160));
+
   g_ = Ed25519Group::MulBase(1_mp);
   inf_ = Ed25519Group::Sub(g_, g_);
 }
@@ -42,23 +53,53 @@ bool Ed25519Group::MPInt2Array(const MPInt& mp, Array32* buf) const {
 EcPoint Ed25519Group::GetGenerator() const { return g_; }
 
 EcPoint Ed25519Group::Add(const EcPoint& p1, const EcPoint& p2) const {
-  EcPoint r(std::in_place_type<Array32>);
-  RET_0(crypto_core_ed25519_add(Cast(r), Cast(p1), Cast(p2)));
+  ge25519_cached p2_cached;
+  ge25519_p3_to_cached(&p2_cached, CastP3(p2));
+
+  ge25519_p1p1 r_p1p1;
+  ge25519_add(&r_p1p1, CastP3(p1), &p2_cached);
+
+  EcPoint r(std::in_place_type<Array160>);
+  ge25519_p1p1_to_p3(CastP3(r), &r_p1p1);
+
+  // alternative api:
+  // RET_0(crypto_core_ed25519_add(Cast(r), Cast(p1), Cast(p2)));
   return r;
 }
 
 void Ed25519Group::AddInplace(EcPoint* p1, const EcPoint& p2) const {
-  RET_0(crypto_core_ed25519_add(Cast(*p1), Cast(*p1), Cast(p2)));
+  ge25519_cached p2_cached;
+  ge25519_p3_to_cached(&p2_cached, CastP3(p2));
+
+  ge25519_p1p1 r_p1p1;
+  ge25519_add(&r_p1p1, CastP3(*p1), &p2_cached);
+
+  ge25519_p1p1_to_p3(CastP3(*p1), &r_p1p1);
 }
 
 EcPoint Ed25519Group::Sub(const EcPoint& p1, const EcPoint& p2) const {
-  EcPoint r(std::in_place_type<Array32>);
-  RET_0(crypto_core_ed25519_sub(Cast(r), Cast(p1), Cast(p2)));
+  ge25519_cached p2_cached;
+  ge25519_p3_to_cached(&p2_cached, CastP3(p2));
+
+  ge25519_p1p1 r_p1p1;
+  ge25519_sub(&r_p1p1, CastP3(p1), &p2_cached);
+
+  EcPoint r(std::in_place_type<Array160>);
+  ge25519_p1p1_to_p3(CastP3(r), &r_p1p1);
+
+  // alternative api:
+  // RET_0(crypto_core_ed25519_sub(Cast(r), Cast(p1), Cast(p2)));
   return r;
 }
 
 void Ed25519Group::SubInplace(EcPoint* p1, const EcPoint& p2) const {
-  RET_0(crypto_core_ed25519_sub(Cast(*p1), Cast(*p1), Cast(p2)));
+  ge25519_cached p2_cached;
+  ge25519_p3_to_cached(&p2_cached, CastP3(p2));
+
+  ge25519_p1p1 r_p1p1;
+  ge25519_sub(&r_p1p1, CastP3(*p1), &p2_cached);
+
+  ge25519_p1p1_to_p3(CastP3(*p1), &r_p1p1);
 }
 
 EcPoint Ed25519Group::Double(const EcPoint& p) const { return Add(p, p); }
@@ -66,32 +107,39 @@ EcPoint Ed25519Group::Double(const EcPoint& p) const { return Add(p, p); }
 void Ed25519Group::DoubleInplace(EcPoint* p) const { AddInplace(p, *p); }
 
 EcPoint Ed25519Group::MulBase(const MPInt& scalar) const {
-  Array32 buf;
-  if (!MPInt2Array(scalar, &buf)) {
+  Array32 s;
+  if (!MPInt2Array(scalar, &s)) {
     return inf_;
   };
-  EcPoint r(std::in_place_type<Array32>);
-  RET_0(crypto_scalarmult_ed25519_base_noclamp(Cast(r), buf.data()));
+
+  EcPoint r(std::in_place_type<Array160>);
+  ge25519_scalarmult_base(CastP3(r), s.data());
+
+  // alternative api:
+  // RET_0(crypto_scalarmult_ed25519_base_noclamp(Cast(r), s.data()));
   return r;
 }
 
 EcPoint Ed25519Group::Mul(const EcPoint& point, const MPInt& scalar) const {
-  Array32 buf;
-  if (!MPInt2Array(scalar, &buf)) {
+  Array32 s;
+  if (!MPInt2Array(scalar, &s) || IsInfinity(point)) {
     return inf_;
   };
-  EcPoint r(std::in_place_type<Array32>);
-  RET_0(crypto_scalarmult_ed25519_noclamp(Cast(r), buf.data(), Cast(point)));
+
+  EcPoint r(std::in_place_type<Array160>);
+  ge25519_scalarmult(CastP3(r), s.data(), CastP3(point));
+
+  // alternative api:
+  //  RET_0(crypto_scalarmult_ed25519_noclamp(Cast(r), s.data(), Cast(point)));
   return r;
 }
 
 void Ed25519Group::MulInplace(EcPoint* point, const MPInt& scalar) const {
-  Array32 buf;
-  if (!MPInt2Array(scalar, &buf)) {
+  Array32 s;
+  if (!MPInt2Array(scalar, &s) || IsInfinity(*point)) {
     *point = inf_;
   } else {
-    RET_0(crypto_scalarmult_ed25519_noclamp(Cast(*point), buf.data(),
-                                            Cast(*point)));
+    ge25519_scalarmult(CastP3(*point), s.data(), CastP3(*point));
   }
 }
 
@@ -103,8 +151,18 @@ EcPoint Ed25519Group::MulDoubleBase(const MPInt& s1, const MPInt& s2,
 }
 
 EcPoint Ed25519Group::Negate(const EcPoint& point) const {
-  EcPoint r = point;
-  NegateInplace(&r);
+  if (IsInfinity(point)) {
+    return point;
+  }
+
+  auto p3 = CastP3(point);
+  EcPoint r(std::in_place_type<Array160>);
+  auto r3 = CastP3(r);
+
+  fe25519_copy(r3->X, p3->X);
+  fe25519_neg(r3->Y, p3->Y);
+  fe25519_neg(r3->Z, p3->Z);
+  fe25519_copy(r3->T, p3->T);
   return r;
 }
 
@@ -113,61 +171,31 @@ void Ed25519Group::NegateInplace(EcPoint* point) const {
     return;
   }
 
-  auto* p = Cast(*point);
-  p[31] ^= (1 << 7);
+  auto* p3 = CastP3(*point);
+  fe25519_neg(p3->Y, p3->Y);
+  fe25519_neg(p3->Z, p3->Z);
 }
 
 AffinePoint Ed25519Group::GetAffinePoint(const EcPoint& point) const {
-  // https://www.rfc-editor.org/rfc/rfc8032.html#section-6  (recover_x)
-  auto copy = point;
-  auto* p = Cast(copy);
-  uint8_t sign = p[31] >> 7;
-  p[31] &= ((1 << 7) - 1);  // clear the bit of x
-  MPInt y(0, 255);
-  y.FromMagBytes({p, 32}, Endian::little);
-  YACL_ENFORCE(y < param_.p, "illegal EcPoint (sign-{}, {})", sign, y);
+  const auto* p3 = CastP3(point);
+  fe25519 recip;
+  fe25519 x;
+  fe25519 y;
 
-  // constant d = -121665 * modp_inv(121666) % p
-  static auto d =
-      (-121665_mp).MulMod((121666_mp).InvertMod(param_.p), param_.p);
-  auto y2 = y * y;
-  auto x2 = (y2 - MPInt::_1_) * (d * y2 + MPInt::_1_).InvertMod(param_.p);
+  fe25519_invert(recip, p3->Z);
+  fe25519_mul(x, p3->X, recip);
+  fe25519_mul(y, p3->Y, recip);
 
-  if (x2.IsZero()) {
-    YACL_ENFORCE(sign == 0, "invalid point (sign-{}, {})", sign, y);
-
-    return {0_mp, y};
-  }
-
-  // Compute square root of x2
-  auto tmp = param_.p + 3_mp;
-  tmp >>= 3;
-  auto x = x2.PowMod(tmp, param_.p);
-  if (!(x * x).SubMod(x2, param_.p).IsZero()) {
-    // Square root of -1
-    static auto modp_sqrt_m1 =
-        MPInt::_2_.PowMod((param_.p - 1_mp) >> 2, param_.p);
-    MPInt::MulMod(x, modp_sqrt_m1, param_.p, &x);
-  }
-
-  YACL_ENFORCE((x * x).SubMod(x2, param_.p).IsZero(),
-               "illegal EcPoint (sign-{}, {})", sign, y);
-
-  if (x.GetBit(0) != sign) {
-    x = param_.p - x;
-  }
-  return {x, y};
+  return {Fe25519ToMPInt(x), Fe25519ToMPInt(y)};
 }
 
 bool Ed25519Group::IsInCurveGroup(const EcPoint& point) const {
-  // fixme: The answer should be true if point in small subgroup, buf current
-  // returns false
-  return IsInfinity(point) ||
-         crypto_core_ed25519_is_valid_point(Cast(point)) == 1;
+  return IsInfinity(point) || ge25519_is_on_curve(CastP3(point)) == 1;
 }
 
 bool Ed25519Group::IsInfinity(const EcPoint& point) const {
-  return PointEqual(inf_, point);
+  return fe25519_iszero(CastP3(point)->X) != 0 ||
+         fe25519_iszero(CastP3(point)->Z) != 0;
 }
 
 }  // namespace yacl::crypto::sodium

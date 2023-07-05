@@ -170,38 +170,6 @@ class BatchDesc {
   std::string ToString() const { return "B:" + std::to_string(batch_idx_); };
 };
 
-class OnPushDone : public google::protobuf::Closure {
- public:
-  explicit OnPushDone(std::shared_ptr<ChannelBrpc> channel)
-      : channel_(std::move(channel)) {
-    channel_->AddAsyncCount();
-  }
-
-  ~OnPushDone() override {
-    try {
-      channel_->SubAsyncCount();
-    } catch (std::exception& e) {
-      SPDLOG_INFO(e.what());
-    }
-  }
-
-  void Run() override {
-    std::unique_ptr<OnPushDone> self_guard(this);
-
-    if (cntl_.Failed()) {
-      SPDLOG_WARN("send, rpc failed={}, message={}", cntl_.ErrorCode(),
-                  cntl_.ErrorText());
-    } else if (response_.header().error_code() != ic::ErrorCode::OK) {
-      SPDLOG_WARN("send, peer failed message={}",
-                  response_.header().error_msg());
-    }
-  }
-
-  ic_pb::PushResponse response_;
-  brpc::Controller cntl_;
-  std::shared_ptr<ChannelBrpc> channel_;
-};
-
 }  // namespace
 
 void ChannelBrpc::SetPeerHost(const std::string& peer_host,
@@ -235,105 +203,6 @@ void ChannelBrpc::SetPeerHost(const std::string& peer_host,
 
   channel_ = std::move(brpc_channel);
   peer_host_ = peer_host;
-}
-
-namespace {
-
-struct SendChunckedBrpcTask {
-  std::shared_ptr<ChannelBrpc> channel;
-  std::string key;
-  Buffer value;
-
-  SendChunckedBrpcTask(std::shared_ptr<ChannelBrpc> _channel, std::string _key,
-                       Buffer _value)
-      : channel(std::move(_channel)),
-        key(std::move(_key)),
-        value(std::move(_value)) {
-    channel->AddAsyncCount();
-  }
-
-  ~SendChunckedBrpcTask() {
-    try {
-      channel->SubAsyncCount();
-    } catch (std::exception& e) {
-      SPDLOG_INFO(e.what());
-    }
-  }
-
-  static void* Proc(void* args) {
-    // take ownership of task.
-    std::unique_ptr<SendChunckedBrpcTask> task(
-        static_cast<SendChunckedBrpcTask*>(args));
-
-    task->channel->SendChunked(task->key, task->value);
-    return nullptr;
-  }
-};
-
-}  // namespace
-
-void ChannelBrpc::AddAsyncCount() {
-  std::unique_lock<bthread::Mutex> lock(wait_async_mutex_);
-  running_async_count_++;
-}
-
-void ChannelBrpc::SubAsyncCount() {
-  std::unique_lock<bthread::Mutex> lock(wait_async_mutex_);
-  YACL_ENFORCE(running_async_count_ > 0);
-  running_async_count_--;
-  if (running_async_count_ == 0) {
-    wait_async_cv_.notify_all();
-  }
-}
-
-void ChannelBrpc::WaitAsyncSendToFinish() {
-  std::unique_lock<bthread::Mutex> lock(wait_async_mutex_);
-  while (running_async_count_ > 0) {
-    wait_async_cv_.wait(lock);
-  }
-}
-
-template <class ValueType>
-void ChannelBrpc::SendAsyncInternal(const std::string& key, ValueType&& value) {
-  if (value.size() > options_.http_max_payload_size) {
-    auto btask = std::make_unique<SendChunckedBrpcTask>(
-        this->shared_from_this(), key, Buffer(std::forward<ValueType>(value)));
-
-    // bthread run in 'detached' mode, we will never wait for it.
-    bthread_t tid;
-    if (bthread_start_background(&tid, nullptr, SendChunckedBrpcTask::Proc,
-                                 btask.get()) == 0) {
-      // bthread takes the ownership, release it.
-      static_cast<void>(btask.release());
-    } else {
-      YACL_THROW("failed to push async sending job to bthread");
-    }
-
-    return;
-  }
-
-  ic_pb::PushRequest request;
-  {
-    request.set_sender_rank(self_rank_);
-    request.set_key(key);
-    request.set_value(reinterpret_cast<const char*>(value.data()),
-                      value.size());
-    request.set_trans_type(ic_pb::TransType::MONO);
-  }
-
-  OnPushDone* done = new OnPushDone(shared_from_this());
-  ic_pb::ReceiverService::Stub stub(channel_.get());
-  done->cntl_.ignore_eovercrowded();
-  stub.Push(&done->cntl_, &request, &done->response_, done);
-}
-
-void ChannelBrpc::SendAsyncImpl(const std::string& key, Buffer&& value) {
-  SendAsyncInternal(key, std::move(value));
-}
-
-void ChannelBrpc::SendAsyncImpl(const std::string& key,
-                                ByteContainerView value) {
-  SendAsyncInternal(key, value);
 }
 
 void ChannelBrpc::SendImpl(const std::string& key, ByteContainerView value) {
@@ -374,70 +243,106 @@ void ChannelBrpc::SendImpl(const std::string& key, ByteContainerView value,
   }
 }
 
-// See: chunked streamming
-//   https://en.wikipedia.org/wiki/Chunked_transfer_encoding
-// See: Brpc does NOT support POST chunked.
-//   https://github.com/apache/incubator-brpc/blob/master/docs/en/http_client.md
+namespace {
+
+class SendChunkedWindow {
+ public:
+  explicit SendChunkedWindow(int64_t limit) : parallel_limit_(limit) {
+    YACL_ENFORCE(parallel_limit_ > 0);
+  }
+
+  void Wait() {
+    std::unique_lock<bthread::Mutex> lock(mutex_);
+    running_push_++;
+    while (running_push_ >= parallel_limit_) {
+      cond_.wait(lock);
+    }
+  }
+
+  void OnPushDone() {
+    std::unique_lock<bthread::Mutex> lock(mutex_);
+    running_push_--;
+    cond_.notify_all();
+  }
+
+  void Finished() {
+    std::unique_lock<bthread::Mutex> lock(mutex_);
+    while (running_push_ != 0) {
+      cond_.wait(lock);
+    }
+  }
+
+ private:
+  const int64_t parallel_limit_;
+  int64_t running_push_ = 0;
+  bthread::Mutex mutex_;
+  bthread::ConditionVariable cond_;
+};
+
+class SendChunkedDone : public google::protobuf::Closure {
+ public:
+  SendChunkedDone(const std::string& k, size_t chunk_idx, size_t num_chunks,
+                  SendChunkedWindow& w)
+      : key_(k), chunk_idx_(chunk_idx), num_chunks_(num_chunks), wait_(w) {}
+
+  void Run() override {
+    std::unique_ptr<SendChunkedDone> self_guard(this);
+    if (cntl_.Failed()) {
+      SPDLOG_ERROR(
+          "send key={} (chunked {} out of {}) rpc failed: {}, message={}", key_,
+          chunk_idx_ + 1, num_chunks_, cntl_.ErrorCode(), cntl_.ErrorText());
+      exit(-1);
+    } else if (response_.header().error_code() != ic::ErrorCode::OK) {
+      SPDLOG_ERROR(
+          "send key={} (chunked {} out of {}) response failed, message={}",
+          key_, chunk_idx_ + 1, num_chunks_, response_.header().error_msg());
+      exit(-1);
+    }
+
+    wait_.OnPushDone();
+  }
+
+  brpc::Controller cntl_;
+  ic_pb::PushResponse response_;
+
+ private:
+  const std::string& key_;
+  const size_t chunk_idx_;
+  const size_t num_chunks_;
+  SendChunkedWindow& wait_;
+};
+
+}  // namespace
+
 void ChannelBrpc::SendChunked(const std::string& key, ByteContainerView value) {
   const size_t bytes_per_chunk = options_.http_max_payload_size;
   const size_t num_bytes = value.size();
   const size_t num_chunks = (num_bytes + bytes_per_chunk - 1) / bytes_per_chunk;
 
-  constexpr uint32_t kParallelSize = 10;
-  const size_t batch_size = kParallelSize;
-  const size_t num_batches = (num_chunks + batch_size - 1) / batch_size;
+  constexpr uint32_t kParallelSize = 8;
+  SendChunkedWindow window(kParallelSize);
 
-  for (size_t batch_idx = 0; batch_idx < num_batches; batch_idx++) {
-    const BatchDesc batch(batch_idx, batch_size, num_chunks);
+  for (size_t chunk_idx = 0; chunk_idx < num_chunks; chunk_idx++) {
+    const size_t chunk_offset = chunk_idx * bytes_per_chunk;
 
-    // See: "半同步“ from
-    // https://github.com/apache/incubator-brpc/blob/master/docs/cn/client.md
-    std::vector<brpc::Controller> cntls(batch.Size());
-    std::vector<ic_pb::PushResponse> responses(batch.Size());
-
-    // fire batched chunk requests.
-    for (size_t idx = 0; idx < batch.Size(); idx++) {
-      const size_t chunk_idx = batch.Begin() + idx;
-      const size_t chunk_offset = chunk_idx * bytes_per_chunk;
-
-      ic_pb::PushRequest request;
-      {
-        request.set_sender_rank(self_rank_);
-        request.set_key(key);
-        request.set_value(
-            value.data() + chunk_offset,
-            std::min(bytes_per_chunk, value.size() - chunk_offset));
-        request.set_trans_type(ic_pb::TransType::CHUNKED);
-        request.mutable_chunk_info()->set_chunk_offset(chunk_offset);
-        request.mutable_chunk_info()->set_message_length(num_bytes);
-      }
-
-      auto& cntl = cntls[idx];
-      cntl.ignore_eovercrowded();
-      auto& response = responses[idx];
-      ic_pb::ReceiverService::Stub stub(channel_.get());
-      stub.Push(&cntl, &request, &response, brpc::DoNothing());
+    ic_pb::PushRequest request;
+    {
+      request.set_sender_rank(self_rank_);
+      request.set_key(key);
+      request.set_value(value.data() + chunk_offset,
+                        std::min(bytes_per_chunk, value.size() - chunk_offset));
+      request.set_trans_type(ic_pb::TransType::CHUNKED);
+      request.mutable_chunk_info()->set_chunk_offset(chunk_offset);
+      request.mutable_chunk_info()->set_message_length(num_bytes);
     }
 
-    for (size_t idx = 0; idx < batch.Size(); idx++) {
-      brpc::Join(cntls[idx].call_id());
-    }
-
-    for (size_t idx = 0; idx < batch.Size(); idx++) {
-      const size_t chunk_idx = batch.Begin() + idx;
-      const auto& cntl = cntls[idx];
-      const auto& response = responses[idx];
-      if (cntl.Failed()) {
-        YACL_THROW_NETWORK_ERROR(
-            "send key={} (chunked {} out of {}) rpc failed: {}, message={}",
-            key, chunk_idx + 1, num_chunks, cntl.ErrorCode(), cntl.ErrorText());
-      } else if (response.header().error_code() != ic::ErrorCode::OK) {
-        YACL_THROW(
-            "send key={} (chunked {} out of {}) response failed, message={}",
-            key, chunk_idx + 1, num_chunks, response.header().error_msg());
-      }
-    }
+    auto* done = new SendChunkedDone(key, chunk_idx, num_chunks, window);
+    done->cntl_.ignore_eovercrowded();
+    ic_pb::ReceiverService::Stub stub(channel_.get());
+    stub.Push(&done->cntl_, &request, &done->response_, done);
+    window.Wait();
   }
+  window.Finished();
 }
 
 }  // namespace yacl::link

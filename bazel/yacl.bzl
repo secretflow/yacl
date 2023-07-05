@@ -26,6 +26,7 @@ WARNING_FLAGS = [
     "-Wno-unused-parameter",
     "-Wnon-virtual-dtor",
 ] + select({
+    "@bazel_tools//src/conditions:linux_aarch64": ["-Wno-uninitialized"],
     "@bazel_tools//src/conditions:darwin": ["-Wunused-const-variable"],
     "//conditions:default": ["-Wunused-const-variable=1"],
 })

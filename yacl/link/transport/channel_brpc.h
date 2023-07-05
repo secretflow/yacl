@@ -54,8 +54,7 @@ class ReceiverLoopBrpc final : public ReceiverLoopBase {
   void StopImpl();
 };
 
-class ChannelBrpc final : public ChannelBase,
-                          public std::enable_shared_from_this<ChannelBrpc> {
+class ChannelBrpc final : public ChannelBase {
  public:
   struct Options {
     uint32_t http_timeout_ms = 10 * 1000;         // 10 seconds
@@ -66,9 +65,6 @@ class ChannelBrpc final : public ChannelBase,
 
  private:
   // from IChannel
-  void SendAsyncImpl(const std::string& key, ByteContainerView value) override;
-  void SendAsyncImpl(const std::string& key, Buffer&& value) override;
-
   void SendImpl(const std::string& key, ByteContainerView value) override;
   void SendImpl(const std::string& key, ByteContainerView value,
                 uint32_t timeout) override;
@@ -84,12 +80,6 @@ class ChannelBrpc final : public ChannelBase,
 
   void SetPeerHost(const std::string& peer_host,
                    const SSLOptions* ssl_opts = nullptr);
-
-  void AddAsyncCount();
-
-  void SubAsyncCount();
-
-  void WaitAsyncSendToFinish() override;
 
   // max payload size for a single http request, in bytes.
   uint32_t GetHttpMaxPayloadSize() const {
@@ -113,11 +103,6 @@ class ChannelBrpc final : public ChannelBase,
   // brpc channel related.
   std::string peer_host_;
   std::shared_ptr<brpc::Channel> channel_;
-
-  // WaitAsyncSendToFinish
-  bthread::ConditionVariable wait_async_cv_;
-  bthread::Mutex wait_async_mutex_;
-  int64_t running_async_count_ = 0;
 };
 
 }  // namespace yacl::link

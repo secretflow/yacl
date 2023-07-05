@@ -94,6 +94,127 @@ class ChunkedMessage {
   Buffer message_;
 };
 
+class SendTask {
+ public:
+  std::shared_ptr<ChannelBase> channel_;
+  ChannelBase::Message msg_;
+
+  SendTask(std::shared_ptr<ChannelBase> channel, ChannelBase::Message msg)
+      : channel_(std::move(channel)), msg_(std::move(msg)) {
+    channel_->send_sync_.SendTaskStartNotify();
+  }
+
+  ~SendTask() {
+    try {
+      channel_->send_sync_.SendTaskFinishedNotify(msg_.seq_id_);
+    } catch (...) {
+      SPDLOG_ERROR("SendTaskFinishedNotify error");
+      exit(-1);
+    }
+  }
+
+  static void* Proc(void* args) {
+    // take ownership of task.
+    std::unique_ptr<SendTask> task(static_cast<SendTask*>(args));
+    try {
+      task->channel_->SendImpl(task->msg_.msg_key_, task->msg_.value_);
+    } catch (const yacl::Exception& e) {
+      SPDLOG_ERROR("SendImpl error {}", e.what());
+      exit(-1);
+    }
+
+    return nullptr;
+  }
+};
+
+void ChannelBase::StartSendThread() {
+  send_thread_ = std::thread([&]() {
+    try {
+      SendThread();
+    } catch (const yacl::Exception& e) {
+      SPDLOG_ERROR("SendThread error {}", e.what());
+      exit(-1);
+    }
+  });
+}
+
+void ChannelBase::SubmitSendTask(Message&& msg) {
+  auto btask =
+      std::make_unique<SendTask>(this->shared_from_this(), std::move(msg));
+  bthread_t tid;
+  if (bthread_start_background(&tid, nullptr, SendTask::Proc, btask.get()) ==
+      0) {
+    // bthread takes the ownership, release it.
+    static_cast<void>(btask.release());
+  } else {
+    YACL_THROW("failed to push async sending job to bthread");
+  }
+}
+
+std::optional<ChannelBase::Message> ChannelBase::MessageQueue::Pop(bool block) {
+  std::unique_lock<bthread::Mutex> lock(mutex_);
+  if (block && queue_.empty()) {
+    cond_.wait(lock);
+  }
+
+  if (!queue_.empty()) {
+    auto msg = std::move(queue_.front());
+    queue_.pop();
+    return msg;
+  } else {
+    return {};
+  }
+}
+
+void ChannelBase::SendThread() {
+  while (!send_thread_stoped_.load()) {
+    auto msg = msg_queue_.Pop(true);
+    if (!msg.has_value()) {
+      continue;
+    }
+    auto seq_id = msg.value().seq_id_;
+    SubmitSendTask(std::move(msg.value()));
+    ThrottleWindowWait(seq_id);
+  }
+
+  // link is closing, send all pending msgs
+  while (true) {
+    auto msg = msg_queue_.Pop(false);
+    if (!msg.has_value()) {
+      break;
+    }
+    SubmitSendTask(std::move(msg.value()));
+  }
+}
+
+void ChannelBase::SendTaskSynchronizer::SendTaskStartNotify() {
+  std::unique_lock<bthread::Mutex> lock(mutex_);
+  running_tasks_++;
+}
+
+void ChannelBase::SendTaskSynchronizer::SendTaskFinishedNotify(size_t seq_id) {
+  std::unique_lock<bthread::Mutex> lock(mutex_);
+  running_tasks_--;
+  if (seq_id != 0) {
+    finished_ids_.Insert(seq_id);
+  }
+  finished_cond_.notify_all();
+}
+
+void ChannelBase::SendTaskSynchronizer::WaitSeqIdSendFinished(size_t seq_id) {
+  std::unique_lock<bthread::Mutex> lock(mutex_);
+  while (!finished_ids_.Contains(seq_id)) {
+    finished_cond_.wait(lock);
+  }
+}
+
+void ChannelBase::SendTaskSynchronizer::WaitAllSendFinished() {
+  std::unique_lock<bthread::Mutex> lock(mutex_);
+  while (running_tasks_ > 0) {
+    finished_cond_.wait(lock);
+  }
+}
+
 Buffer ChannelBase::Recv(const std::string& msg_key) {
   NormalMessageKeyEnforce(msg_key);
 
@@ -112,8 +233,9 @@ Buffer ChannelBase::Recv(const std::string& msg_key) {
       }
     };
     while (!stop_waiting()) {
-      //                              timeout_us
-      if (msg_db_cond_.wait_for(lock, recv_timeout_ms_ * 1000) == ETIMEDOUT) {
+      //                                timeout_us
+      if (msg_db_cond_.wait_for(lock, static_cast<int64_t>(recv_timeout_ms_) *
+                                          1000) == ETIMEDOUT) {
         YACL_THROW_IO_ERROR("Get data timeout, key={}", msg_key);
       }
     }
@@ -126,7 +248,7 @@ Buffer ChannelBase::Recv(const std::string& msg_key) {
 void ChannelBase::SendAck(size_t seq_id) {
   if (seq_id > 0) {
     // 0 seq id use for TestSend/TestRecv, no need to send ack.
-    SendAsyncImpl(kAckKey, std::to_string(seq_id));
+    SubmitSendTask(Message(0, kAckKey, Buffer(std::to_string(seq_id))));
   }
 }
 
@@ -163,7 +285,6 @@ void ChannelBase::OnNormalMessage(const std::string& key, T&& v) {
 void ChannelBase::OnMessage(const std::string& key, ByteContainerView value) {
   std::unique_lock<bthread::Mutex> lock(msg_mutex_);
   if (key == kAckKey) {
-    ack_msg_count_++;
     size_t seq_id = ViewToSizeT(value);
     if (received_ack_ids_.Insert(seq_id)) {
       ack_fin_cond_.notify_all();
@@ -221,40 +342,55 @@ void ChannelBase::OnChunkedMessage(const std::string& key,
   }
 }
 
-void ChannelBase::SetRecvTimeout(uint32_t recv_timeout_ms) {
+void ChannelBase::SetRecvTimeout(uint64_t recv_timeout_ms) {
   recv_timeout_ms_ = recv_timeout_ms;
 }
 
-uint32_t ChannelBase::GetRecvTimeout() const { return recv_timeout_ms_; }
+uint64_t ChannelBase::GetRecvTimeout() const { return recv_timeout_ms_; }
 
 void ChannelBase::SendAsync(const std::string& msg_key,
                             ByteContainerView value) {
-  YACL_ENFORCE(!waiting_finish_.load(),
-               "SendAsync is not allowed when channel is closing");
-  NormalMessageKeyEnforce(msg_key);
-  size_t seq_id = sent_msg_seq_id_.fetch_add(1) + 1;
-  const auto key = BuildChannelKey(msg_key, seq_id);
-  SendAsyncImpl(key, value);
-  ThrottleWindowWait(seq_id);
+  SendAsync(msg_key, Buffer(value));
+}
+
+void ChannelBase::MessageQueue::Push(Message&& msg) {
+  std::unique_lock<bthread::Mutex> lock(mutex_);
+  queue_.push(std::move(msg));
+  cond_.notify_all();
 }
 
 void ChannelBase::SendAsync(const std::string& msg_key, Buffer&& value) {
   YACL_ENFORCE(!waiting_finish_.load(),
                "SendAsync is not allowed when channel is closing");
   NormalMessageKeyEnforce(msg_key);
-  size_t seq_id = sent_msg_seq_id_.fetch_add(1) + 1;
-  const auto key = BuildChannelKey(msg_key, seq_id);
-  SendAsyncImpl(key, std::move(value));
-  ThrottleWindowWait(seq_id);
+  size_t seq_id = msg_seq_id_.fetch_add(1) + 1;
+  auto key = BuildChannelKey(msg_key, seq_id);
+  msg_queue_.Push(Message(seq_id, std::move(key), std::move(value)));
 }
 
 void ChannelBase::Send(const std::string& msg_key, ByteContainerView value) {
   YACL_ENFORCE(!waiting_finish_.load(),
                "Send is not allowed when channel is closing");
   NormalMessageKeyEnforce(msg_key);
-  size_t seq_id = sent_msg_seq_id_.fetch_add(1) + 1;
-  const auto key = BuildChannelKey(msg_key, seq_id);
-  SendImpl(key, value);
+  size_t seq_id = msg_seq_id_.fetch_add(1) + 1;
+  auto key = BuildChannelKey(msg_key, seq_id);
+  msg_queue_.Push(Message(seq_id, std::move(key), value));
+  send_sync_.WaitSeqIdSendFinished(seq_id);
+}
+
+void ChannelBase::SendAsyncThrottled(const std::string& msg_key,
+                                     ByteContainerView value) {
+  SendAsyncThrottled(msg_key, Buffer(value));
+}
+
+void ChannelBase::SendAsyncThrottled(const std::string& msg_key,
+                                     Buffer&& value) {
+  YACL_ENFORCE(!waiting_finish_.load(),
+               "SendAsync is not allowed when channel is closing");
+  NormalMessageKeyEnforce(msg_key);
+  size_t seq_id = msg_seq_id_.fetch_add(1) + 1;
+  auto key = BuildChannelKey(msg_key, seq_id);
+  msg_queue_.Push(Message(seq_id, std::move(key), std::move(value)));
   ThrottleWindowWait(seq_id);
 }
 
@@ -278,17 +414,27 @@ void ChannelBase::ThrottleWindowWait(size_t wait_count) {
   }
   std::unique_lock<bthread::Mutex> lock(msg_mutex_);
   while ((throttle_window_size_ != 0) &&
-         (ack_msg_count_ + throttle_window_size_ <= wait_count)) {
+         (received_ack_ids_.Count() + throttle_window_size_ <= wait_count)) {
     //                               timeout_us
-    if (ack_fin_cond_.wait_for(lock, recv_timeout_ms_ * 1000) == ETIMEDOUT) {
+    if (ack_fin_cond_.wait_for(
+            lock, static_cast<int64_t>(recv_timeout_ms_) * 1000) == ETIMEDOUT) {
       YACL_THROW_IO_ERROR("Throttle window wait timeout");
     }
   }
 }
 
+void ChannelBase::WaitAsyncSendToFinish() {
+  send_thread_stoped_.store(true);
+  msg_queue_.EmptyNotify();
+  send_thread_.join();
+  send_sync_.WaitAllSendFinished();
+}
+
+void ChannelBase::MessageQueue::EmptyNotify() { cond_.notify_all(); }
+
 void ChannelBase::WaitForFinAndFlyingMsg() {
-  size_t sent_msg_count = sent_msg_seq_id_;
-  SendAsyncImpl(kFinKey, std::to_string(sent_msg_count));
+  size_t sent_msg_count = msg_seq_id_;
+  SubmitSendTask(Message(0, kFinKey, Buffer(std::to_string(sent_msg_count))));
   {
     std::unique_lock<bthread::Mutex> lock(msg_mutex_);
     while (!received_fin_) {
@@ -323,7 +469,7 @@ void ChannelBase::StopReceivingAndAckUnreadMsgs() {
 }
 
 void ChannelBase::WaitForFlyingAck() {
-  size_t sent_msg_count = sent_msg_seq_id_;
+  size_t sent_msg_count = msg_seq_id_;
   std::unique_lock<bthread::Mutex> lock(msg_mutex_);
   if (sent_msg_count == 0) {
     // send no thing, no need waiting.

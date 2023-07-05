@@ -29,7 +29,7 @@ void BM_DefaultArguments(benchmark::internal::Benchmark* b) {
 }
 
 void BM_PerfArguments(benchmark::internal::Benchmark* b) {
-  b->Arg(1 << 20)
+  b->Arg(1 << 20)  // 1048576
       ->Arg(1 << 21)
       ->Arg(1 << 22)
       ->Arg(1 << 23)
@@ -44,7 +44,10 @@ BM_REGISTER_ALL_OT(BM_DefaultArguments);
 // Equivalent to the following
 // BM_REGISTER_SIMPLEST_OT(BM_DefaultArguments);
 // BM_REGISTER_IKNP_OTE(BM_DefaultArguments);
+// BM_REGISTER_KOS_OTE(BM_DefaultArguments);
 // BM_REGISTER_KKRT_OTE(BM_DefaultArguments);
 // BM_REGISTER_SGRR_OTE(BM_DefaultArguments);
+// BM_REGISTER_GYWZ_OTE(BM_PerfArguments);
+// BM_REGISTER_FERRET_OTE(BM_PerfArguments);
 
 }  // namespace yacl::crypto

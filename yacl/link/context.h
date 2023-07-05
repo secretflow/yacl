@@ -69,7 +69,7 @@ struct ContextDesc {
   //
   // so for long time work(that one party may wait for the others for very long
   // time), this value should be changed accordingly.
-  uint32_t recv_timeout_ms = 30 * 1000;  // 30s
+  uint64_t recv_timeout_ms = 30 * 1000;  // 30s
 
   // http max payload size, if a single http request size is greater than this
   // limit, it will be unpacked into small chunks then reassembled.
@@ -167,6 +167,12 @@ class Context {
 
   void SendAsync(size_t dst_rank, Buffer&& value, std::string_view tag);
 
+  void SendAsyncThrottled(size_t dst_rank, ByteContainerView value,
+                          std::string_view tag);
+
+  void SendAsyncThrottled(size_t dst_rank, Buffer&& value,
+                          std::string_view tag);
+
   void Send(size_t dst_rank, ByteContainerView value, std::string_view tag);
 
   Buffer Recv(size_t src_rank, std::string_view tag);
@@ -185,9 +191,9 @@ class Context {
       std::string_view id_suffix,
       const std::vector<std::string>& sub_party_ids);
 
-  void SetRecvTimeout(uint32_t recv_timeout_ms);
+  void SetRecvTimeout(uint64_t recv_timeout_ms);
 
-  uint32_t GetRecvTimeout() const;
+  uint64_t GetRecvTimeout() const;
 
   void WaitLinkTaskFinish();
 
@@ -198,6 +204,12 @@ class Context {
                          ByteContainerView value);
   void SendAsyncInternal(size_t dst_rank, const std::string& key,
                          Buffer&& value);
+
+  void SendAsyncThrottledInternal(size_t dst_rank, const std::string& key,
+                                  ByteContainerView value);
+  void SendAsyncThrottledInternal(size_t dst_rank, const std::string& key,
+                                  Buffer&& value);
+
   void SendInternal(size_t dst_rank, const std::string& key,
                     ByteContainerView value);
   Buffer RecvInternal(size_t src_rank, const std::string& key);
@@ -233,7 +245,7 @@ class Context {
 
   size_t child_counter_ = 0U;
 
-  uint32_t recv_timeout_ms_;
+  uint64_t recv_timeout_ms_;
 
   // sub-context will shared statistics with parent
   std::shared_ptr<Statistics> stats_;
@@ -254,7 +266,7 @@ class RecvTimeoutGuard {
  public:
   // set recv timeout and save original value
   RecvTimeoutGuard(const std::shared_ptr<Context>& ctx,
-                   uint32_t recv_timeout_ms)
+                   uint64_t recv_timeout_ms)
       : ctx_(ctx), recv_timeout_ms_(ctx->GetRecvTimeout()) {
     ctx->SetRecvTimeout(recv_timeout_ms);
   }
@@ -266,7 +278,7 @@ class RecvTimeoutGuard {
 
  private:
   const std::shared_ptr<Context>& ctx_;
-  uint32_t recv_timeout_ms_;
+  uint64_t recv_timeout_ms_;
 };
 
 }  // namespace yacl::link

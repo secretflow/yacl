@@ -15,7 +15,7 @@ size_t get_env_num_threads(const char* var_name, size_t def_value = 0) {
       return nthreads;
     }
   } catch (const std::exception& e) {
-    YACL_ENFORCE("Invalid {} variable value: {}", var_name, e.what());
+    YACL_THROW("Invalid {} variable value: {}", var_name, e.what());
   }
   return def_value;
 }
