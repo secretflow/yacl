@@ -106,6 +106,9 @@ struct ContextDesc {
   // otherwise, only log error.
   bool exit_if_async_error = true;
 
+  // "blackbox" or "normal", default: "normal"
+  std::string link_type = "normal";
+
   bool operator==(const ContextDesc& other) const {
     return (id == other.id) && (parties == other.parties);
   }
@@ -124,7 +127,7 @@ struct ContextDescHasher {
                         desc.connect_retry_interval_ms, desc.recv_timeout_ms,
                         desc.http_max_payload_size, desc.http_timeout_ms,
                         desc.throttle_window_size, desc.brpc_channel_protocol,
-                        desc.brpc_channel_connection_type);
+                        desc.brpc_channel_connection_type, desc.link_type);
 
     return seed;
   }
@@ -134,13 +137,13 @@ struct Statistics {
   // total number of data sent in bytes, excluding key
   std::atomic<size_t> sent_bytes = 0U;
 
-  // total number of sent actions, chuncked mode is treated as a single action.
+  // total number of sent actions, chunked mode is treated as a single action.
   std::atomic<size_t> sent_actions = 0U;
 
   // total number of data received in bytes, excluding key.
   std::atomic<size_t> recv_bytes = 0U;
 
-  // total number of recv actions, chuncked mode is treated as a single action.
+  // total number of recv actions, chunked mode is treated as a single action.
   std::atomic<size_t> recv_actions = 0U;
 };
 

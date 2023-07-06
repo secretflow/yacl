@@ -57,9 +57,9 @@ class ChannelBrpcTest : public ::testing::Test {
     std::srand(std::time(nullptr));
     const size_t send_rank = 0;
     const size_t recv_rank = 1;
-
-    sender_ = std::make_shared<ChannelBrpc>(send_rank, recv_rank, options_);
-    receiver_ = std::make_shared<ChannelBrpc>(recv_rank, send_rank, options_);
+    auto options = ChannelBrpc::GetDefaultOptions();
+    sender_ = std::make_shared<ChannelBrpc>(send_rank, recv_rank, options);
+    receiver_ = std::make_shared<ChannelBrpc>(recv_rank, send_rank, options);
 
     // let sender rank as 0, receiver rank as 1.
     // receiver_ listen messages from sender(rank 0).
@@ -88,7 +88,6 @@ class ChannelBrpcTest : public ::testing::Test {
     f_r.get();
   }
 
-  ChannelBrpc::Options options_;
   std::shared_ptr<ChannelBrpc> sender_;
   std::shared_ptr<ChannelBrpc> receiver_;
   std::string receiver_host_;
@@ -361,7 +360,7 @@ class ChannelBrpcSSLTest : public ::testing::Test {
   }
 
  protected:
-  ChannelBrpc::Options channel_options_;
+  ChannelBrpc::Options channel_options_ = ChannelBrpc::GetDefaultOptions();
 };
 
 TEST_F(ChannelBrpcSSLTest, OneWaySSL) {
@@ -369,7 +368,6 @@ TEST_F(ChannelBrpcSSLTest, OneWaySSL) {
   const size_t send_rank = 0;
   const size_t recv_rank = 1;
 
-  ChannelBrpc::Options channel_options;
   auto sender =
       std::make_shared<ChannelBrpc>(send_rank, recv_rank, channel_options_);
   auto receiver =
@@ -482,9 +480,17 @@ class DelayReceiverServiceImpl : public ic_pb::ReceiverService {
   }
 };
 
-class DummyReceiverLoopBrpc final : public ReceiverLoopBase {
+class DummyReceiverLoopBrpc final : public IReceiverLoop {
  public:
   ~DummyReceiverLoopBrpc() override { Stop(); }
+
+  virtual void AddListener(size_t rank,
+                           std::shared_ptr<ChannelChunkedBase> listener) {
+    auto ret = listeners_.emplace(rank, std::move(listener));
+    if (!ret.second) {
+      YACL_THROW_LOGIC_ERROR("duplicated listener for rank={}", rank);
+    }
+  }
 
   void Stop() override {
     server_.Stop(0);
@@ -512,6 +518,7 @@ class DummyReceiverLoopBrpc final : public ReceiverLoopBase {
   }
 
  protected:
+  std::map<size_t, std::shared_ptr<ChannelChunkedBase>> listeners_;
   brpc::Server server_;
 };
 
