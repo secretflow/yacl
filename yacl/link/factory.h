@@ -41,4 +41,13 @@ class FactoryBrpc : public ILinkFactory {
                                          size_t self_rank) override;
 };
 
+/// brpc base link context with blackbox service
+class FactoryBrpcBlackBox : public ILinkFactory {
+ public:
+  std::shared_ptr<Context> CreateContext(const ContextDesc& desc,
+                                         size_t self_rank) override;
+  static void GetPartyNodeInfoFromEnv(std::vector<ContextDesc::Party>& parties,
+                                      size_t& self_rank);
+};
+
 }  // namespace yacl::link

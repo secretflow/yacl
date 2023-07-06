@@ -63,37 +63,6 @@ std::pair<std::string, size_t> SplitChannelKey(std::string_view key) {
 
 }  // namespace
 
-class ChunkedMessage {
- public:
-  explicit ChunkedMessage(int64_t message_length) : message_(message_length) {}
-
-  void AddChunk(int64_t offset, ByteContainerView data) {
-    std::unique_lock<bthread::Mutex> lock(mutex_);
-    if (received_.emplace(offset).second) {
-      std::memcpy(message_.data<std::byte>() + offset, data.data(),
-                  data.size());
-      bytes_written_ += data.size();
-    }
-  }
-
-  bool IsFullyFilled() {
-    std::unique_lock<bthread::Mutex> lock(mutex_);
-    return bytes_written_ == message_.size();
-  }
-
-  Buffer&& Reassemble() {
-    std::unique_lock<bthread::Mutex> lock(mutex_);
-    return std::move(message_);
-  }
-
- protected:
-  bthread::Mutex mutex_;
-  std::set<int64_t> received_;
-  // chunk index to value.
-  int64_t bytes_written_{0};
-  Buffer message_;
-};
-
 class SendTask {
  public:
   std::shared_ptr<ChannelBase> channel_;
@@ -270,7 +239,7 @@ void ChannelBase::OnNormalMessage(const std::string& key, T&& v) {
 
   if (seq_id > 0 && !received_msg_ids_.Insert(seq_id)) {
     // 0 seq id use for TestSend/TestRecv, skip duplicate test.
-    // Duplicate seq id found. may cause by rpc retry, ignore
+    // Duplicate seq id found. may be caused by rpc retry, ignore
     SPDLOG_WARN("Duplicate seq_id found, key {} seq_id {}", msg_key, seq_id);
     return;
   }
@@ -311,44 +280,6 @@ void ChannelBase::OnMessage(const std::string& key, ByteContainerView value) {
     }
   } else {
     OnNormalMessage(key, value);
-  }
-}
-
-void ChannelBase::OnChunkedMessage(const std::string& key,
-                                   ByteContainerView value, size_t offset,
-                                   size_t total_length) {
-  if (offset + value.size() > total_length) {
-    YACL_THROW_LOGIC_ERROR(
-        "invalid chunk info, offset={}, chun size = {}, total_length={}",
-        offset, value.size(), total_length);
-  }
-
-  bool should_reassemble = false;
-  std::shared_ptr<ChunkedMessage> data;
-  {
-    std::unique_lock<bthread::Mutex> lock(chunked_values_mutex_);
-    auto itr = chunked_values_.find(key);
-    if (itr == chunked_values_.end()) {
-      itr = chunked_values_
-                .emplace(key, std::make_shared<ChunkedMessage>(total_length))
-                .first;
-    }
-
-    data = itr->second;
-    data->AddChunk(offset, value);
-
-    if (data->IsFullyFilled()) {
-      chunked_values_.erase(itr);
-
-      // only one thread do the reassemble
-      should_reassemble = true;
-    }
-  }
-
-  if (should_reassemble) {
-    // notify new value arrived.
-    std::unique_lock<bthread::Mutex> lock(msg_mutex_);
-    OnNormalMessage(key, data->Reassemble());
   }
 }
 
@@ -509,14 +440,6 @@ void ChannelBase::WaitLinkTaskFinish() {
   // at least, wait for all ack msg.
   WaitForFlyingAck();
   // after all, we can safely close server port and exit.
-}
-
-void ReceiverLoopBase::AddListener(size_t rank,
-                                   std::shared_ptr<IChannel> listener) {
-  auto ret = listeners_.emplace(rank, std::move(listener));
-  if (!ret.second) {
-    YACL_THROW_LOGIC_ERROR("duplicated listener for rank={}", rank);
-  }
 }
 
 }  // namespace yacl::link

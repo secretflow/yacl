@@ -26,10 +26,11 @@
 
 #include "yacl/link/ssl_options.h"
 #include "yacl/link/transport/channel.h"
+#include "yacl/link/transport/channel_chunked_base.h"
 
 namespace yacl::link {
 
-class ReceiverLoopBrpc final : public ReceiverLoopBase {
+class ReceiverLoopBrpc final : public IReceiverLoop {
  public:
   ~ReceiverLoopBrpc() override;
 
@@ -47,62 +48,38 @@ class ReceiverLoopBrpc final : public ReceiverLoopBase {
   std::string Start(const std::string& host,
                     const SSLOptions* ssl_opts = nullptr);
 
+  void AddListener(size_t rank, std::shared_ptr<ChannelChunkedBase> listener) {
+    auto ret = listeners_.emplace(rank, std::move(listener));
+    if (!ret.second) {
+      YACL_THROW_LOGIC_ERROR("duplicated listener for rank={}", rank);
+    }
+  }
+
  protected:
+  std::map<size_t, std::shared_ptr<ChannelChunkedBase>> listeners_;
   brpc::Server server_;
 
  private:
   void StopImpl();
 };
 
-class ChannelBrpc final : public ChannelBase {
+class ChannelBrpc final : public ChannelChunkedBase {
  public:
-  struct Options {
-    uint32_t http_timeout_ms = 10 * 1000;         // 10 seconds
-    uint32_t http_max_payload_size = 512 * 1024;  // 512k bytes
-    std::string channel_protocol = "baidu_std";
-    std::string channel_connection_type = "single";
-  };
+  using ChannelChunkedBase::ChannelChunkedBase;
 
- private:
+  static ChannelChunkedBase::Options GetDefaultOptions() {
+    return ChannelChunkedBase::Options{10 * 1000, 512 * 1024, "baidu_std",
+                                       "single"};
+  }
+
   // from IChannel
-  void SendImpl(const std::string& key, ByteContainerView value) override;
-  void SendImpl(const std::string& key, ByteContainerView value,
-                uint32_t timeout) override;
-
- public:
-  explicit ChannelBrpc(size_t self_rank, size_t peer_rank, Options options,
-                       bool exit_if_async_error = true)
-      : ChannelBase(self_rank, peer_rank, exit_if_async_error),
-        options_(std::move(options)) {}
-
-  explicit ChannelBrpc(size_t self_rank, size_t peer_rank,
-                       size_t recv_timeout_ms, Options options,
-                       bool exit_if_async_error = true)
-      : ChannelBase(self_rank, peer_rank, recv_timeout_ms, exit_if_async_error),
-        options_(std::move(options)) {}
+  void PushRequest(org::interconnection::link::PushRequest& request,
+                   uint32_t timeout) override;
 
   void SetPeerHost(const std::string& peer_host,
                    const SSLOptions* ssl_opts = nullptr);
 
-  // max payload size for a single http request, in bytes.
-  uint32_t GetHttpMaxPayloadSize() const {
-    return options_.http_max_payload_size;
-  }
-
-  void SetHttpMaxPayloadSize(uint32_t max_payload_size) {
-    options_.http_max_payload_size = max_payload_size;
-  }
-
-  // send chunked, synchronized.
-  void SendChunked(const std::string& key, ByteContainerView value);
-
- private:
-  template <class ValueType>
-  void SendAsyncInternal(const std::string& key, ValueType&& value);
-
  protected:
-  Options options_;
-
   // brpc channel related.
   std::string peer_host_;
   std::shared_ptr<brpc::Channel> channel_;

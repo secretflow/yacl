@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//   http://www.apache.org/licenses/LICENSE-2.0
+//   http://www.apache.org/licenses/LICENSE2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,6 +15,7 @@
 #include "yacl/link/transport/channel_brpc.h"
 
 #include <exception>
+#include <utility>
 
 #include "spdlog/spdlog.h"
 
@@ -32,7 +33,7 @@ namespace internal {
 class ReceiverServiceImpl : public ic_pb::ReceiverService {
  public:
   explicit ReceiverServiceImpl(
-      std::map<size_t, std::shared_ptr<IChannel>> listener)
+      std::map<size_t, std::shared_ptr<ChannelChunkedBase>> listener)
       : listeners_(std::move(listener)) {}
 
   void Push(::google::protobuf::RpcController* /*cntl_base*/,
@@ -40,60 +41,20 @@ class ReceiverServiceImpl : public ic_pb::ReceiverService {
             ::google::protobuf::Closure* done) override {
     brpc::ClosureGuard done_guard(done);
 
-    try {
-      const size_t sender_rank = request->sender_rank();
-      const auto& trans_type = request->trans_type();
-
-      // dispatch the message
-      if (trans_type == ic_pb::TransType::MONO) {
-        OnRpcCall(sender_rank, request->key(), request->value());
-      } else if (trans_type == ic_pb::TransType::CHUNKED) {
-        const auto& chunk = request->chunk_info();
-        OnRpcCall(sender_rank, request->key(), request->value(),
-                  chunk.chunk_offset(), chunk.message_length());
-      } else {
-        response->mutable_header()->set_error_code(
-            ic::ErrorCode::INVALID_REQUEST);
-        response->mutable_header()->set_error_msg(
-            fmt::format("unrecongnized trans type={}, from rank={}", trans_type,
-                        sender_rank));
-      }
-      response->mutable_header()->set_error_code(ic::ErrorCode::OK);
-      response->mutable_header()->set_error_msg("");
-    } catch (const std::exception& e) {
+    const size_t sender_rank = request->sender_rank();
+    auto iter = listeners_.find(sender_rank);
+    if (iter == listeners_.end()) {
       response->mutable_header()->set_error_code(
           ic::ErrorCode::UNEXPECTED_ERROR);
       response->mutable_header()->set_error_msg(fmt::format(
-          "dispatch error, key={}, error={}", request->key(), e.what()));
+          "dispatch error, key={}, error=listener rank={} not found",
+          request->key(), sender_rank));
     }
+    iter->second->OnRequest(request, response);
   }
 
  protected:
-  std::map<size_t, std::shared_ptr<IChannel>> listeners_;
-
- private:
-  void OnRpcCall(size_t src_rank, const std::string& key,
-                 const std::string& value) {
-    auto itr = listeners_.find(src_rank);
-    if (itr == listeners_.end()) {
-      YACL_THROW_LOGIC_ERROR("dispatch error, listener rank={} not found",
-                             src_rank);
-    }
-    // TODO: maybe need std::string_view interface to avoid memcpy
-    return itr->second->OnMessage(key, value);
-  }
-
-  void OnRpcCall(size_t src_rank, const std::string& key,
-                 const std::string& value, size_t offset, size_t total_length) {
-    auto itr = listeners_.find(src_rank);
-    if (itr == listeners_.end()) {
-      YACL_THROW_LOGIC_ERROR("dispatch error, listener rank={} not found",
-                             src_rank);
-    }
-    auto comm_brpc = std::dynamic_pointer_cast<ChannelBrpc>(itr->second);
-    // TODO: maybe need std::string_view interface to avoid memcpy
-    comm_brpc->OnChunkedMessage(key, value, offset, total_length);
-  }
+  std::map<size_t, std::shared_ptr<ChannelChunkedBase>> listeners_;
 };
 
 }  // namespace internal
@@ -140,38 +101,6 @@ std::string ReceiverLoopBrpc::Start(const std::string& host,
   return butil::endpoint2str(server_.listen_address()).c_str();
 }
 
-namespace {
-
-// TODO: move this to somewhere-else.
-class BatchDesc {
- protected:
-  size_t batch_idx_;
-  size_t batch_size_;
-  size_t total_size_;
-
- public:
-  BatchDesc(size_t batch_idx, size_t batch_size, size_t total_size)
-      : batch_idx_(batch_idx),
-        batch_size_(batch_size),
-        total_size_(total_size) {}
-
-  // return the index of this batch.
-  size_t Index() const { return batch_idx_; }
-
-  // return the offset of the first element in this batch.
-  size_t Begin() const { return batch_idx_ * batch_size_; }
-
-  // return the offset after last element in this batch.
-  size_t End() const { return std::min(Begin() + batch_size_, total_size_); }
-
-  // return the size of this batch.
-  size_t Size() const { return End() - Begin(); }
-
-  std::string ToString() const { return "B:" + std::to_string(batch_idx_); };
-};
-
-}  // namespace
-
 void ChannelBrpc::SetPeerHost(const std::string& peer_host,
                               const SSLOptions* ssl_opts) {
   auto brpc_channel = std::make_unique<brpc::Channel>();
@@ -205,157 +134,23 @@ void ChannelBrpc::SetPeerHost(const std::string& peer_host,
   peer_host_ = peer_host;
 }
 
-void ChannelBrpc::SendImpl(const std::string& key, ByteContainerView value) {
-  SendImpl(key, value, 0);
-}
-
-void ChannelBrpc::SendImpl(const std::string& key, ByteContainerView value,
-                           uint32_t timeout) {
-  if (value.size() > options_.http_max_payload_size) {
-    SendChunked(key, value);
-    return;
-  }
-
-  ic_pb::PushRequest request;
-  {
-    request.set_sender_rank(self_rank_);
-    request.set_key(key);
-    request.set_value(value.data(), value.size());
-    request.set_trans_type(ic_pb::TransType::MONO);
-  }
-
+void ChannelBrpc::PushRequest(ic_pb::PushRequest& request, uint32_t timeout) {
   ic_pb::PushResponse response;
   brpc::Controller cntl;
+  cntl.ignore_eovercrowded();
   if (timeout != 0) {
     cntl.set_timeout_ms(timeout);
   }
   ic_pb::ReceiverService::Stub stub(channel_.get());
   stub.Push(&cntl, &request, &response, nullptr);
-
   // handle failures.
   if (cntl.Failed()) {
     YACL_THROW_NETWORK_ERROR("send, rpc failed={}, message={}",
                              cntl.ErrorCode(), cntl.ErrorText());
   }
-
   if (response.header().error_code() != ic::ErrorCode::OK) {
     YACL_THROW("send, peer failed message={}", response.header().error_msg());
   }
-}
-
-namespace {
-
-class SendChunkedWindow {
- public:
-  explicit SendChunkedWindow(int64_t limit) : parallel_limit_(limit) {
-    YACL_ENFORCE(parallel_limit_ > 0);
-  }
-
-  void Wait() {
-    std::unique_lock<bthread::Mutex> lock(mutex_);
-    running_push_++;
-    while (running_push_ >= parallel_limit_) {
-      cond_.wait(lock);
-      if (async_exception_.has_value()) {
-        throw async_exception_.value();
-      }
-    }
-  }
-
-  void OnPushDone(std::optional<std::exception> e) {
-    std::unique_lock<bthread::Mutex> lock(mutex_);
-    running_push_--;
-    if (e.has_value()) {
-      async_exception_ = std::move(e);
-    }
-    cond_.notify_all();
-  }
-
-  void Finished() {
-    std::unique_lock<bthread::Mutex> lock(mutex_);
-    while (running_push_ != 0) {
-      cond_.wait(lock);
-      if (async_exception_.has_value()) {
-        throw async_exception_.value();
-      }
-    }
-  }
-
- private:
-  const int64_t parallel_limit_;
-  int64_t running_push_ = 0;
-  bthread::Mutex mutex_;
-  bthread::ConditionVariable cond_;
-  std::optional<std::exception> async_exception_;
-};
-
-class SendChunkedDone : public google::protobuf::Closure {
- public:
-  SendChunkedDone(const std::string& k, size_t chunk_idx, size_t num_chunks,
-                  SendChunkedWindow& w)
-      : key_(k), chunk_idx_(chunk_idx), num_chunks_(num_chunks), wait_(w) {}
-
-  void Run() override {
-    std::unique_ptr<SendChunkedDone> self_guard(this);
-    std::optional<std::exception> exception;
-    if (cntl_.Failed()) {
-      std::string error = fmt::format(
-          "send key={} (chunked {} out of {}) rpc failed: {}, message={}", key_,
-          chunk_idx_ + 1, num_chunks_, cntl_.ErrorCode(), cntl_.ErrorText());
-      SPDLOG_ERROR(error);
-      exception = yacl::NetworkError(error);
-    } else if (response_.header().error_code() != ic::ErrorCode::OK) {
-      std::string error = fmt::format(
-          "send key={} (chunked {} out of {}) response failed, message={}",
-          key_, chunk_idx_ + 1, num_chunks_, response_.header().error_msg());
-      SPDLOG_ERROR(error);
-      exception = yacl::NetworkError(error);
-    }
-
-    wait_.OnPushDone(exception);
-  }
-
-  brpc::Controller cntl_;
-  ic_pb::PushResponse response_;
-
- private:
-  const std::string& key_;
-  const size_t chunk_idx_;
-  const size_t num_chunks_;
-  SendChunkedWindow& wait_;
-};
-
-}  // namespace
-
-void ChannelBrpc::SendChunked(const std::string& key, ByteContainerView value) {
-  const size_t bytes_per_chunk = options_.http_max_payload_size;
-  const size_t num_bytes = value.size();
-  const size_t num_chunks = (num_bytes + bytes_per_chunk - 1) / bytes_per_chunk;
-
-  constexpr uint32_t kParallelSize = 8;
-  SendChunkedWindow window(kParallelSize);
-
-  for (size_t chunk_idx = 0; chunk_idx < num_chunks; chunk_idx++) {
-    const size_t chunk_offset = chunk_idx * bytes_per_chunk;
-
-    ic_pb::PushRequest request;
-    {
-      request.set_sender_rank(self_rank_);
-      request.set_key(key);
-      request.set_value(value.data() + chunk_offset,
-                        std::min(bytes_per_chunk, value.size() - chunk_offset));
-      request.set_trans_type(ic_pb::TransType::CHUNKED);
-      request.mutable_chunk_info()->set_chunk_offset(chunk_offset);
-      request.mutable_chunk_info()->set_message_length(num_bytes);
-    }
-
-    auto* done = new SendChunkedDone(key, chunk_idx, num_chunks, window);
-    done->cntl_.ignore_eovercrowded();
-    ic_pb::ReceiverService::Stub stub(channel_.get());
-    stub.Push(&done->cntl_, &request, &done->response_, done);
-    window.Wait();
-  }
-  window.Finished();
 }
 
 }  // namespace yacl::link

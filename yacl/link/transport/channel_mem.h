@@ -24,7 +24,7 @@
 
 namespace yacl::link {
 
-class ReceiverLoopMem final : public ReceiverLoopBase {
+class ReceiverLoopMem final : public IReceiverLoop {
  public:
   ~ReceiverLoopMem() override = default;
 
@@ -64,11 +64,6 @@ class ChannelMem final : public IChannel {
   Buffer Recv(const std::string& key) final;
 
   void OnMessage(const std::string& key, ByteContainerView value) final;
-
-  void OnChunkedMessage(const std::string& key, ByteContainerView value,
-                        size_t offset, size_t total_length) final {
-    YACL_THROW("do not use this interface in mem channel");
-  }
 
   void SetRecvTimeout(uint64_t timeout_ms) final {
     recv_timeout_ms_ = timeout_ms * std::chrono::milliseconds(1);

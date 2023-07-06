@@ -265,4 +265,17 @@ TEST_F(ContextTest, SubWorldShouldOk) {
   EXPECT_EQ(send_buf, value_recieve);
 }
 
+TEST(EnvInfo, get_party_node_info) {
+  setenv("config.node_id.host", "alice", 1);
+  setenv("config.node_id.guest", "bob", 1);
+  setenv("config.self_role", "guest", 1);
+
+  std::vector<ContextDesc::Party> parties;
+  size_t self_rank = -1;
+  FactoryBrpcBlackBox().GetPartyNodeInfoFromEnv(parties, self_rank);
+
+  EXPECT_EQ(self_rank, 0);
+  EXPECT_EQ(parties.size(), 2);
+}
+
 }  // namespace yacl::link::test
