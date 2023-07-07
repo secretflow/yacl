@@ -18,7 +18,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 SECRETFLOW_GIT = "https://github.com/secretflow"
 
-IC_COMMIT_ID = "aa951609c533091ff9ffb38d4bd60f6e2aba7e60"
+IC_COMMIT_ID = "dfa3281d641f33c85266b4e04e8c0214f9401cf7"
 
 SIMPLEST_OT_COMMIT_ID  = "f40a33a37e3ff8cd81655c35237c177e358dc5b1"
 
