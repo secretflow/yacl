@@ -231,7 +231,7 @@ void CsvReader::BuildMmapFiles() {
           break;
         }
         default:
-          YACL_THROW("unknow Schema::type {}", type);
+          YACL_THROW("unknow Schema::type {}", static_cast<int>(type));
       }
     }
   }
@@ -346,7 +346,7 @@ bool CsvReader::NextCol(ColumnVectorBatch* data) {
       break;
     }
     default:
-      YACL_THROW("unknow Schema::type {}", type);
+      YACL_THROW("unknow Schema::type {}", static_cast<int>(type));
   }
 
   return true;
@@ -377,7 +377,7 @@ void CsvReader::InitBatchCols(std::vector<ColumnType>* cols,
         break;
       }
       default:
-        YACL_THROW("unknow Schema::type {}", type);
+        YACL_THROW("unknow Schema::type {}", static_cast<int>(type));
     }
   }
 }
@@ -443,7 +443,7 @@ bool CsvReader::NextRow(ColumnVectorBatch* data, size_t batch_size) {
           break;
         }
         default:
-          YACL_THROW("unknow Schema::type {}", type);
+          YACL_THROW("unknow Schema::type {}", static_cast<int>(type));
       }
     }
   }
