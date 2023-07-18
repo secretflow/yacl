@@ -29,5 +29,6 @@ workflows:
             yacl/.* build-and-run true
             bazel/.* build-and-run true
             .bazelrc build-and-run true
+            .bazelversion build-and-run true
             .circleci/.* build-and-run true
             bazel/.* build-and-run true
