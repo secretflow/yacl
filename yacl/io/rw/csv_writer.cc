@@ -88,7 +88,7 @@ bool CsvWriter::Add(const ColumnVectorBatch& data) {
           break;
         }
         default:
-          YACL_THROW("unknow Schema::type {}", types[c]);
+          YACL_THROW("unknow Schema::type {}", static_cast<int>(types[c]));
       }
       if (c + 1 != cols) {
         out_->Write(field_delimiter_.c_str(), field_delimiter_.size());

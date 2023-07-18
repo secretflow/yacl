@@ -18,6 +18,7 @@
 
 #include "absl/types/span.h"
 
+#include "yacl/crypto/primitives/ot/gywz_ote.h"
 #include "yacl/crypto/primitives/ot/ot_store.h"
 #include "yacl/crypto/utils/rand.h"
 #include "yacl/link/link.h"
@@ -40,7 +41,7 @@ namespace yacl::crypto {
 //  > 128 is the length of seed for PRG
 //
 // Security assumptions:
-//   *. Circular correlation-robust Hash, for more details
+//   - Circular correlation-robust Hash, for more details
 //     see yacl/crypto/tools/random_permutation.h
 //
 
@@ -51,5 +52,20 @@ void GywzOtExtRecv(const std::shared_ptr<link::Context>& ctx,
 void GywzOtExtSend(const std::shared_ptr<link::Context>& ctx,
                    const OtSendStore& cot, uint32_t n,
                    absl::Span<uint128_t> output);
+
+// [Warning] For ferretOTe only
+// Random single-point COT, where punctured index is determined by cot choices
+// The output for sender and receiver would be SAME, when punctured
+// index is greater than n.
+// So, please don't use "FerretGywzOtExtRecv" and "FerretGywzOtExtSend", unless
+// you know what you are doing
+void FerretGywzOtExtRecv(const std::shared_ptr<link::Context>& ctx,
+                         const OtRecvStore& cot, uint32_t n,
+                         absl::Span<uint128_t> output);
+
+// [Warning] For ferretOTe only
+void FerretGywzOtExtSend(const std::shared_ptr<link::Context>& ctx,
+                         const OtSendStore& cot, uint32_t n,
+                         absl::Span<uint128_t> output);
 
 }  // namespace yacl::crypto

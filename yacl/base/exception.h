@@ -54,16 +54,24 @@ namespace internal {
 
 const int kMaxStackTraceDep = 16;
 
+#if __cplusplus >= 202002L
+template <typename... Args>
+inline std::string Format(fmt::format_string<Args...> f, Args&&... args) {
+  return fmt::format(f, std::forward<Args>(args)...);
+}
+#else
 template <typename... Args>
 inline std::string Format(Args&&... args) {
   return fmt::format(std::forward<Args>(args)...);
 }
+#endif
 
 // Trick to make Format works with empty arguments.
+#if __cplusplus >= 202002L
+#else
 template <>
-inline std::string Format() {
-  return "";
-}
+#endif
+inline std::string Format() { return ""; }
 
 }  // namespace internal
 
@@ -77,7 +85,6 @@ class Exception : public std::exception {
  public:
   Exception() = default;
   explicit Exception(std::string msg) : msg_(std::move(msg)) {}
-  explicit Exception(std::string&& msg) : msg_(std::move(msg)) {}
   explicit Exception(const char* msg) : msg_(msg) {}
   explicit Exception(std::string msg, void** stacks, int dep)
       : msg_(std::move(msg)) {

@@ -102,3 +102,10 @@ using Array160 =
 using EcPoint = std::variant<Array32, Array160, AnyPointPtr, AffinePoint>;
 
 }  // namespace yacl::crypto
+
+#if __cplusplus >= 202002L
+namespace fmt {
+template <>
+struct formatter<yacl::crypto::AffinePoint> : ostream_formatter {};
+}  // namespace fmt
+#endif

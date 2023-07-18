@@ -95,28 +95,34 @@ class ChunkedMessage;
 class ChannelBase : public IChannel,
                     public std::enable_shared_from_this<ChannelBase> {
  public:
-  ChannelBase(size_t self_rank, size_t peer_rank)
-      : self_rank_(self_rank), peer_rank_(peer_rank) {
+  ChannelBase(size_t self_rank, size_t peer_rank, bool exit_if_async_error)
+      : self_rank_(self_rank),
+        peer_rank_(peer_rank),
+        exit_if_async_error_(exit_if_async_error) {
     StartSendThread();
   }
 
-  ChannelBase(size_t self_rank, size_t peer_rank, size_t recv_timeout_ms)
+  ChannelBase(size_t self_rank, size_t peer_rank, size_t recv_timeout_ms,
+              bool exit_if_async_error)
       : self_rank_(self_rank),
         peer_rank_(peer_rank),
-        recv_timeout_ms_(recv_timeout_ms) {
+        recv_timeout_ms_(recv_timeout_ms),
+        exit_if_async_error_(exit_if_async_error) {
     StartSendThread();
   }
 
   ~ChannelBase() override {
     if (!send_thread_stoped_.load()) {
-      SPDLOG_ERROR(
+      SPDLOG_WARN(
           "ChannelBase destructor is called before WaitLinkTaskFinish, try "
           "stop send thread");
       try {
         WaitAsyncSendToFinish();
       } catch (const std::exception& e) {
         SPDLOG_ERROR("Stop send thread err {}", e.what());
-        exit(-1);
+        if (exit_if_async_error_) {
+          exit(-1);
+        }
       }
     }
   }
@@ -271,6 +277,8 @@ class ChannelBase : public IChannel,
   // chunking related.
   bthread::Mutex chunked_values_mutex_;
   std::map<std::string, std::shared_ptr<ChunkedMessage>> chunked_values_;
+
+  const bool exit_if_async_error_;
 };
 
 // A receiver loop is a thread loop which receives messages from the world.

@@ -14,14 +14,16 @@
 
 #include "yacl/crypto/primitives/ot/gywz_ote.h"
 
-#include <vector>
+#include <cstdint>
 
+#include "yacl/base/aligned_vector.h"
 #include "yacl/base/buffer.h"
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/dynamic_bitset.h"
 #include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
 #include "yacl/crypto/base/aes/aes_opt.h"
+#include "yacl/crypto/primitives/ot/ot_store.h"
 #include "yacl/crypto/tools/prg.h"
 #include "yacl/crypto/tools/random_permutation.h"
 #include "yacl/crypto/utils/math.h"
@@ -29,15 +31,20 @@
 namespace yacl::crypto {
 
 namespace {
+constexpr uint128_t one128 =
+    MakeUint128(0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFFFF);
+
 void CggmFullEval(uint128_t delta, uint128_t seed, uint32_t n,
                   absl::Span<uint128_t> all_msgs,
-                  absl::Span<uint128_t> left_sums) {
+                  absl::Span<uint128_t> left_sums, uint128_t one = one128) {
   uint32_t height = Log2Ceil(n);
   YACL_ENFORCE(height == left_sums.size());
-  std::vector<uint128_t> extra_buff((uint32_t)1 << (height - 1));
+  AlignedVector<uint128_t> extra_buff((uint32_t)1 << (height - 1));
   auto& working_seeds = all_msgs;
 
   // first level
+  seed &= one;
+  delta &= one;
   uint32_t prev_size = 1;
   working_seeds[0] = seed;
   working_seeds[1] = seed ^ delta;
@@ -60,6 +67,7 @@ void CggmFullEval(uint128_t delta, uint128_t seed, uint32_t n,
     ParaCcrHashInplace_128(left_side);
     // G(x) = Ccrhash(x) || x ^ Ccrhash(x)
     for (uint32_t i = 0; i < prev_size; ++i) {
+      left_side[i] &= one;
       right_side[i] ^= left_side[i];
       left_child_sum ^= left_side[i];
     }
@@ -71,16 +79,17 @@ void CggmFullEval(uint128_t delta, uint128_t seed, uint32_t n,
 }
 
 void CggmPuncFullEval(uint32_t index, absl::Span<const uint128_t> sibling_sums,
-                      uint32_t n, absl::Span<uint128_t> punctured_msgs) {
+                      uint32_t n, absl::Span<uint128_t> punctured_msgs,
+                      uint128_t one = one128) {
   uint32_t height = sibling_sums.size();
-  std::vector<uint128_t> extra_buff((uint32_t)1 << (height - 1));
+  AlignedVector<uint128_t> extra_buff((uint32_t)1 << (height - 1));
   auto& working_seeds = punctured_msgs;
 
   //  first level
   uint32_t prev_size = 1;
   uint32_t& mask = prev_size;
-  working_seeds[0] = sibling_sums[0];
-  working_seeds[1] = sibling_sums[0];
+  working_seeds[0] = sibling_sums[0] & one;
+  working_seeds[1] = sibling_sums[0] & one;
   uint32_t punctured_idx = index & 1;
 
   for (uint32_t level = 1; level < height; ++level) {
@@ -101,6 +110,7 @@ void CggmPuncFullEval(uint32_t index, absl::Span<const uint128_t> sibling_sums,
     ParaCcrHashInplace_128(left_side);
     // G(x) = Ccrhash(x) || x ^ Ccrhash(x)
     for (uint32_t i = 0; i < prev_size; ++i) {
+      left_side[i] &= one;
       left_side_sum ^= left_side[i];
       right_side[i] ^= left_side[i];
       right_side_sum ^= right_side[i];
@@ -120,7 +130,7 @@ void CggmPuncFullEval(uint32_t index, absl::Span<const uint128_t> sibling_sums,
 void GywzOtExtRecv(const std::shared_ptr<link::Context>& ctx,
                    const OtRecvStore& cot, uint32_t n, uint32_t index,
                    absl::Span<uint128_t> output) {
-  uint32_t height = Log2Ceil(n);
+  const uint32_t height = Log2Ceil(n);
   YACL_ENFORCE(cot.Size() == height);
   YACL_ENFORCE_GE(n, (uint32_t)1);
   YACL_ENFORCE_GT(n, index);
@@ -139,11 +149,11 @@ void GywzOtExtRecv(const std::shared_ptr<link::Context>& ctx,
       ctx->NextRank(),
       ByteContainerView(masked_choice.data(),
                         masked_choice.num_blocks() * sizeof(uint128_t)),
-      "gywz_choice");
+      "GYWZ_OTE: choice");
 
   // receive punctured seed thought cot
-  auto recv_buf = ctx->Recv(ctx->NextRank(), "gywz_ote");
-  std::vector<uint128_t> sibling_sums(height);
+  auto recv_buf = ctx->Recv(ctx->NextRank(), "GYWZ_OTE: message");
+  AlignedVector<uint128_t> sibling_sums(height);
   memcpy(sibling_sums.data(), recv_buf.data(), recv_buf.size());
   for (uint32_t i = 0; i < height; ++i) {
     sibling_sums[i] ^= cot.GetBlock(i);
@@ -155,18 +165,18 @@ void GywzOtExtRecv(const std::shared_ptr<link::Context>& ctx,
 void GywzOtExtSend(const std::shared_ptr<link::Context>& ctx,
                    const OtSendStore& cot, uint32_t n,
                    absl::Span<uint128_t> output) {
-  uint32_t height = Log2Ceil(n);
+  const uint32_t height = Log2Ceil(n);
   YACL_ENFORCE(cot.Size() == height);
   YACL_ENFORCE_GE(n, (uint32_t)1);
 
   // get delta from cot
   uint128_t delta = cot.GetDelta();
-  std::vector<uint128_t> left_sums(height);
+  AlignedVector<uint128_t> left_sums(height);
   uint128_t seed = SecureRandSeed();
   CggmFullEval(delta, seed, n, output, absl::MakeSpan(left_sums));
 
   dynamic_bitset<uint128_t> masked_choice(height);
-  auto recv_buf = ctx->Recv(ctx->NextRank(), "gywz_choice");
+  auto recv_buf = ctx->Recv(ctx->NextRank(), "GYWZ_OTE: choice");
   memcpy(masked_choice.data(), recv_buf.data(),
          masked_choice.num_blocks() * sizeof(uint128_t));
 
@@ -176,9 +186,65 @@ void GywzOtExtSend(const std::shared_ptr<link::Context>& ctx,
       left_sums[i] ^= cot.GetDelta();
     }
   }
-  auto bv = ByteContainerView(reinterpret_cast<const char*>(left_sums.data()),
-                              sizeof(uint128_t) * height);
-  ctx->SendAsync(ctx->NextRank(), bv, "gywz_ote");
+  ctx->SendAsync(
+      ctx->NextRank(),
+      ByteContainerView(left_sums.data(), sizeof(uint128_t) * height),
+      "GYWZ_OTE: message");
+}
+
+void FerretGywzOtExtRecv(const std::shared_ptr<link::Context>& ctx,
+                         const OtRecvStore& cot, uint32_t n,
+                         absl::Span<uint128_t> output) {
+  uint32_t height = Log2Ceil(n);
+  YACL_ENFORCE(cot.Size() == height);
+  YACL_ENFORCE_GE(n, (uint32_t)1);
+  YACL_ENFORCE(cot.Type() == OtStoreType::Compact);
+
+  uint32_t index = 0;
+  for (uint32_t i = 0; i < height; ++i) {
+    index |= (!cot.GetChoice(i)) << i;
+  }
+  uint128_t one = MakeUint128(0xffffffffffffffff, 0xfffffffffffffffe);
+
+  auto recv_buf = ctx->Recv(ctx->NextRank(), "GYWZ_OTE: messages");
+  AlignedVector<uint128_t> sibling_sums(height);
+  memcpy(sibling_sums.data(), recv_buf.data(), recv_buf.size());
+  for (uint32_t i = 0; i < height; ++i) {
+    sibling_sums[i] ^= (cot.GetBlock(i) & one);
+  }
+
+  CggmPuncFullEval(index, absl::MakeConstSpan(sibling_sums), n, output, one);
+
+  // notice: "index" may be greater than n
+  if (n > index) {
+    output[index] |= ~one;
+  }
+}
+
+void FerretGywzOtExtSend(const std::shared_ptr<link::Context>& ctx,
+                         const OtSendStore& cot, uint32_t n,
+                         absl::Span<uint128_t> output) {
+  uint32_t height = Log2Ceil(n);
+  YACL_ENFORCE(cot.Size() == height);
+  YACL_ENFORCE_GE(n, (uint32_t)1);
+  YACL_ENFORCE(cot.Type() == OtStoreType::Compact);
+
+  // get delta from cot
+  uint128_t one = MakeUint128(0xffffffffffffffff, 0xfffffffffffffffe);
+
+  uint128_t delta = cot.GetDelta() & one;
+  uint128_t seed = SecureRandSeed() & one;
+
+  AlignedVector<uint128_t> left_sums(height);
+  CggmFullEval(delta, seed, n, output, absl::MakeSpan(left_sums), one);
+
+  for (uint32_t i = 0; i < height; ++i) {
+    left_sums[i] ^= (cot.GetBlock(i, 0) & one);
+  }
+  ctx->SendAsync(
+      ctx->NextRank(),
+      ByteContainerView(left_sums.data(), sizeof(uint128_t) * height),
+      "GYWZ_OTE: messages");
 }
 
 }  // namespace yacl::crypto

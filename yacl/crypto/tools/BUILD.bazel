@@ -28,15 +28,6 @@ yacl_cc_library(
     ],
 )
 
-yacl_cc_binary(
-    name = "prg_bench",
-    srcs = ["prg_bench.cc"],
-    deps = [
-        ":prg",
-        "@com_github_google_benchmark//:benchmark_main",
-    ],
-)
-
 yacl_cc_test(
     name = "prg_test",
     srcs = ["prg_test.cc"],
@@ -62,15 +53,6 @@ yacl_cc_test(
     ],
 )
 
-yacl_cc_binary(
-    name = "random_oracle_bench",
-    srcs = ["random_oracle_bench.cc"],
-    deps = [
-        ":random_oracle",
-        "@com_github_google_benchmark//:benchmark_main",
-    ],
-)
-
 yacl_cc_library(
     name = "random_permutation",
     srcs = ["random_permutation.cc"],
@@ -87,15 +69,6 @@ yacl_cc_test(
     deps = [
         ":prg",
         ":random_permutation",
-    ],
-)
-
-yacl_cc_binary(
-    name = "random_permutation_bench",
-    srcs = ["random_permutation_bench.cc"],
-    deps = [
-        ":random_permutation",
-        "@com_github_google_benchmark//:benchmark_main",
     ],
 )
 
@@ -119,5 +92,22 @@ yacl_cc_test(
     deps = [
         ":linear_code",
         "//yacl/crypto/utils:rand",
+    ],
+)
+
+yacl_cc_binary(
+    name = "benchmark",
+    srcs = [
+        "benchmark.cc",
+        "benchmark.h",
+    ],
+    deps = [
+        ":linear_code",
+        ":prg",
+        ":random_oracle",
+        ":random_permutation",
+        "//yacl/base:aligned_vector",
+        "//yacl/crypto/utils:rand",
+        "@com_github_google_benchmark//:benchmark_main",
     ],
 )

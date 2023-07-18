@@ -28,7 +28,10 @@ struct CurveParam {
   MPInt n;
   MPInt h;
 
+#if __cplusplus >= 202002L
+#else
   CurveParam() = default;
+#endif
 };
 
 // base class of Toy lib
