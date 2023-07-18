@@ -65,7 +65,7 @@ jobs:
       - checkout
       - when:
           condition:
-            equal: [ main, << pipeline.git.branch >> ]
+            equal: [ xc/bazel6, << pipeline.git.branch >> ]
           steps:
             - run:
                 name: "build and test"
