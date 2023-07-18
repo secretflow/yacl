@@ -98,6 +98,6 @@ workflows:
     jobs:
       - linux_ut:
         matrix:
-            parameters:
-              resource_class: ["2xlarge", "arm-xlarge"]
+          parameters:
+            resource_class: ["2xlarge", "arm-xlarge"]
       - macOS_ut_arm64
