@@ -29,6 +29,9 @@ jobs:
     # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
     docker:
       - image: secretflow/ubuntu-base-ci:latest
+    parameters:
+      resource_class:
+        type: string
     resource_class: << parameters.resource_class >>
     # Add steps to the job
     # See: https://circleci.com/docs/2.0/configuration-reference/#steps
