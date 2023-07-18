@@ -96,7 +96,7 @@ workflows:
   unittest:
     when: << pipeline.parameters.build-and-run >> 
     jobs:
-      - linux_ut
+      - linux_ut:
         matrix:
             parameters:
               resource_class: ["2xlarge", "arm-xlarge"]
