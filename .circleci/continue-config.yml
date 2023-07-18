@@ -97,7 +97,7 @@ workflows:
     when: << pipeline.parameters.build-and-run >> 
     jobs:
       - linux_ut:
-        matrix:
-          parameters:
-            resource_class: ["2xlarge", "arm-xlarge"]
+          matrix:
+            parameters:
+              resource_class: ["2xlarge", "arm-xlarge"]
       - macOS_ut_arm64
