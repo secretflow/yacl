@@ -29,7 +29,7 @@ jobs:
     # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
     docker:
       - image: secretflow/ubuntu-base-ci:latest
-    resource_class: 2xlarge
+    resource_class: << parameters.resource_class >>
     # Add steps to the job
     # See: https://circleci.com/docs/2.0/configuration-reference/#steps
     steps:
@@ -39,7 +39,7 @@ jobs:
           command: |
             set +e
             declare -i test_status
-            bazel test //... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; test_status=${PIPESTATUS[0]}
+            bazel test //... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors --jobs 16 | tee test_result.log; test_status=${PIPESTATUS[0]}
             
             git clone https://github.com/secretflow/devtools.git
             sh devtools/rename-junit-xml.sh
@@ -53,40 +53,7 @@ jobs:
           path: test_binary.tar.gz
       - store_artifacts:
           path: test_logs.tar.gz
-  linux_arm_ut:
-    # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
-    # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
-    docker:
-      - image: secretflow/ubuntu-base-ci:latest
-    resource_class: arm-xlarge
-    # Add steps to the job
-    # See: https://circleci.com/docs/2.0/configuration-reference/#steps
-    steps:
-      - checkout
-      - when:
-          condition:
-            equal: [ xc/bazel6, << pipeline.git.branch >> ]
-          steps:
-            - run:
-                name: "build and test"
-                command: |
-                  set +e
-                  declare -i test_status
-                  bazel test //... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors --jobs 16 | tee test_result.log; test_status=${PIPESTATUS[0]}
-                  
-                  git clone https://github.com/secretflow/devtools.git
-                  sh devtools/rename-junit-xml.sh
-
-                  find bazel-bin/ -executable -type f -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar.gz
-                  find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz
-                  exit ${test_status}
-            - store_test_results:
-                path: test-results
-            - store_artifacts:
-                path: test_binary.tar.gz
-            - store_artifacts:
-                path: test_logs.tar.gz 
-  macOS_ut:
+  macOS_ut_arm64:
     macos:
       xcode: 14.2
     environment:
@@ -130,5 +97,7 @@ workflows:
     when: << pipeline.parameters.build-and-run >> 
     jobs:
       - linux_ut
-      - linux_arm_ut
-      - macOS_ut
+        matrix:
+            parameters:
+              resource_class: ["2xlarge", "arm-xlarge"]
+      - macOS_ut_arm64
