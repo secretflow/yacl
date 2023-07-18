@@ -27,4 +27,5 @@ workflows:
           config-path: .circleci/continue-config.yml
           mapping: |
             yacl/.* build-and-run true
+            bazel/.* build-and-run true
             .bazelrc build-and-run true
