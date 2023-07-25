@@ -12,22 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@yacl//bazel:yacl.bzl", "yacl_cmake_external")
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("//bazel:yacl.bzl", "yacl_cc_library")
 
 package(default_visibility = ["//visibility:public"])
 
-filegroup(
-    name = "all_srcs",
-    srcs = glob(["**"]),
+proto_library(
+    name = "blackbox_service",
+    srcs = ["blackbox_service.proto"],
 )
 
-yacl_cmake_external(
-    name = "libtommath",
-    cache_entries = {
-        "CMAKE_INSTALL_LIBDIR": "lib",
-        "CMAKE_POSITION_INDEPENDENT_CODE": "ON",
-    },
-    copts = ["-Wno-error"],
-    lib_source = ":all_srcs",
-    out_static_libs = ["libtommath.a"],
+yacl_cc_library(
+    name = "blackbox_service_errorcode",
+    hdrs = ["blackbox_service_errorcode.h"],
+)
+
+cc_proto_library(
+    name = "blackbox_service_proto",
+    deps = [
+        ":blackbox_service",
+    ],
+)
+
+proto_library(
+    name = "blackbox_dummy_service",
+    srcs = ["blackbox_dummy_service.proto"],
+)
+
+cc_proto_library(
+    name = "blackbox_dummy_service_proto",
+    deps = [
+        ":blackbox_dummy_service",
+    ],
 )

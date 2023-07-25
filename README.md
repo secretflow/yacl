@@ -15,6 +15,24 @@ Repo layout:
 - [io](yacl/io/): a simple streaming-based io library.
 - [link](yacl/link/): a simple rpc-based MPI framework, providing the [SPMD](https://en.wikipedia.org/wiki/SPMD) parallel programming capability.
 
+## Supported Crypto Primitives
+
+Oblivious Transfer (and extensions)
+
+- [Simplest OT](https://eprint.iacr.org/2015/267.pdf): 1-out-of-2 OT
+- [IKNP OTe](https://www.iacr.org/archive/crypto2003/27290145/27290145.pdf): 1-out-of-2 OT extension
+- [Ferret OTe](https://eprint.iacr.org/2020/924): 1-out-of-2 OT extension
+- [KKRT OTe](https://eprint.iacr.org/2016/799.pdf): 1-out-of-n OT (a.k.a OPRF)
+- [SGRR OTe](https://eprint.iacr.org/2019/1084.pdf): (n-1)-out-of-n OTe
+- [GYWZ+ OTe](https://eprint.iacr.org/2022/1431.pdf): (n-1)-out-of-n OTe with correlated GGM tree optimizations
+
+Distributed Point Function
+
+- [BGI16](https://eprint.iacr.org/2018/707.pdf)
+
+Threshold Proxy-Re-encryption
+
+- A substitute of [umbral](https://github.com/nucypher/umbral-doc/blob/master/umbral-doc.pdf). Our implementation supports SM2, SM3 and SM4.
 
 ## Build
 

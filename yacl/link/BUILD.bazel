@@ -59,12 +59,14 @@ yacl_cc_library(
     name = "factory",
     srcs = [
         "factory_brpc.cc",
+        "factory_brpc_blackbox.cc",
         "factory_mem.cc",
     ],
     hdrs = ["factory.h"],
     deps = [
         ":context",
         "//yacl/link/transport:channel_brpc",
+        "//yacl/link/transport:channel_brpc_blackbox",
         "//yacl/link/transport:channel_mem",
     ],
 )

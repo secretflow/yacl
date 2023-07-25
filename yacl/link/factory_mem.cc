@@ -40,7 +40,7 @@ std::unordered_map<ContextDesc, std::shared_ptr<MemSession>, ContextDescHasher>
 
 std::shared_ptr<MemSession> CreateSession(const ContextDesc& desc) {
   const size_t world_size = desc.parties.size();
-  std::vector<std::vector<std::shared_ptr<ChannelMem>>> all_channels(
+  std::vector<std::vector<std::shared_ptr<transport::ChannelMem>>> all_channels(
       world_size);
   {
     // create instances.
@@ -51,7 +51,7 @@ std::shared_ptr<MemSession> CreateSession(const ContextDesc& desc) {
         if (self_rank == peer_rank) {
           continue;
         }
-        channels[peer_rank] = std::make_shared<ChannelMem>(
+        channels[peer_rank] = std::make_shared<transport::ChannelMem>(
             self_rank, peer_rank, desc.recv_timeout_ms);
       }
     }
@@ -71,11 +71,11 @@ std::shared_ptr<MemSession> CreateSession(const ContextDesc& desc) {
   // setup rendezvous
   std::vector<std::shared_ptr<Context>> ctxs(world_size);
   for (size_t self_rank = 0; self_rank < world_size; self_rank++) {
-    std::vector<std::shared_ptr<IChannel>> channels(world_size);
+    std::vector<std::shared_ptr<transport::IChannel>> channels(world_size);
     for (size_t peer_rank = 0; peer_rank < world_size; peer_rank++) {
       channels[peer_rank] = all_channels[self_rank][peer_rank];
     }
-    auto msg_loop = std::make_unique<ReceiverLoopMem>();
+    auto msg_loop = std::make_unique<transport::ReceiverLoopMem>();
     ctxs[self_rank] = std::make_shared<Context>(
         desc, self_rank, std::move(channels), std::move(msg_loop));
   }

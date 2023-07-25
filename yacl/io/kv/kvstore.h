@@ -21,7 +21,18 @@ class KVStore {
   virtual void Put(absl::string_view key, ByteContainerView value) = 0;
 
   // get value by key
-  virtual bool Get(absl::string_view key, Buffer *value) const = 0;
+  virtual bool Get(absl::string_view key, std::string *value) const = 0;
+
+  // get value by key
+  bool Get(absl::string_view key, Buffer *value) const {
+    std::string value_str;
+    bool ret = Get(key, &value_str);
+
+    value->resize(value_str.length());
+    std::memcpy(value->data(), value_str.data(), value_str.length());
+
+    return ret;
+  }
 
   // get count
   virtual size_t Count() const = 0;
@@ -38,7 +49,12 @@ class IndexStore {
   }
 
   // get value by index
-  bool Get(size_t index, Buffer *value) {
+  bool Get(size_t index, std::string *value) const {
+    return kv_store_->Get(std::to_string(index), value);
+  }
+
+  // get value by key
+  bool Get(size_t index, Buffer *value) const {
     return kv_store_->Get(std::to_string(index), value);
   }
 

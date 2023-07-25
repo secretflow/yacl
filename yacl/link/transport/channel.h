@@ -31,7 +31,7 @@
 #include "yacl/base/byte_container_view.h"
 #include "yacl/utils/segment_tree.h"
 
-namespace yacl::link {
+namespace yacl::link::transport {
 
 // A channel is basic interface for p2p communicator.
 class IChannel {
@@ -65,9 +65,6 @@ class IChannel {
   // called by an async dispatcher.
   virtual void OnMessage(const std::string& key, ByteContainerView value) = 0;
 
-  // called by an async dispatcher.
-  virtual void OnChunkedMessage(const std::string& key, ByteContainerView value,
-                                size_t offset, size_t total_length) = 0;
   // set receive timeout ms
   virtual void SetRecvTimeout(uint64_t timeout_ms) = 0;
 
@@ -142,9 +139,6 @@ class ChannelBase : public IChannel,
   Buffer Recv(const std::string& key) override;
 
   void OnMessage(const std::string& key, ByteContainerView value) override;
-
-  void OnChunkedMessage(const std::string& key, ByteContainerView value,
-                        size_t offset, size_t total_length) override;
 
   void SetRecvTimeout(uint64_t recv_timeout_ms) override;
 
@@ -274,10 +268,6 @@ class ChannelBase : public IChannel,
   // cond for ack/fin wait.
   bthread::ConditionVariable ack_fin_cond_;
 
-  // chunking related.
-  bthread::Mutex chunked_values_mutex_;
-  std::map<std::string, std::shared_ptr<ChunkedMessage>> chunked_values_;
-
   const bool exit_if_async_error_;
 };
 
@@ -289,17 +279,6 @@ class IReceiverLoop {
 
   //
   virtual void Stop() = 0;
-
-  // add listener who interested messages from 'rank'
-  virtual void AddListener(size_t rank, std::shared_ptr<IChannel> channel) = 0;
 };
 
-class ReceiverLoopBase : public IReceiverLoop {
- public:
-  void AddListener(size_t rank, std::shared_ptr<IChannel> listener) override;
-
- protected:
-  std::map<size_t, std::shared_ptr<IChannel>> listeners_;
-};
-
-}  // namespace yacl::link
+}  // namespace yacl::link::transport
