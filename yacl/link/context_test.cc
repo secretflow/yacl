@@ -28,7 +28,7 @@
 
 namespace yacl::link::test {
 
-class MockChannel : public IChannel {
+class MockChannel : public transport::IChannel {
  public:
   MOCK_METHOD2(SendAsync,
                void(const std::string &key, ByteContainerView value));
@@ -66,14 +66,14 @@ class ContextConnectToMeshTest : public ::testing::Test {
     channels_[2] = std::make_shared<MockChannel>();
   }
 
-  std::vector<std::shared_ptr<IChannel>> channels_;
+  std::vector<std::shared_ptr<transport::IChannel>> channels_;
   size_t self_rank_;
   size_t world_size_;
 };
 
 TEST_F(ContextConnectToMeshTest, ConnectToMeshShouldOk) {
   // GIVEN
-  auto msg_loop = std::make_shared<ReceiverLoopMem>();
+  auto msg_loop = std::make_shared<transport::ReceiverLoopMem>();
   ContextDesc ctx_desc;
   ctx_desc.connect_retry_interval_ms = 100;
   for (size_t rank = 0; rank < world_size_; rank++) {
@@ -102,7 +102,7 @@ ACTION(ThrowNetworkErrorException) { throw ::yacl::NetworkError(); }
 
 TEST_F(ContextConnectToMeshTest, ThrowExceptionIfNetworkError) {
   // GIVEN
-  auto msg_loop = std::make_shared<ReceiverLoopMem>();
+  auto msg_loop = std::make_shared<transport::ReceiverLoopMem>();
   ContextDesc ctx_desc;
   ctx_desc.connect_retry_interval_ms = 100;
   for (size_t rank = 0; rank < world_size_; rank++) {
@@ -123,7 +123,7 @@ TEST_F(ContextConnectToMeshTest, ThrowExceptionIfNetworkError) {
 
 TEST_F(ContextConnectToMeshTest, SetRecvTimeoutShouldOk) {
   // GIVEN
-  auto msg_loop = std::make_shared<ReceiverLoopMem>();
+  auto msg_loop = std::make_shared<transport::ReceiverLoopMem>();
   ContextDesc ctx_desc;
   ctx_desc.recv_timeout_ms = 4800000000;
   for (size_t rank = 0; rank < world_size_; rank++) {
@@ -263,6 +263,19 @@ TEST_F(ContextTest, SubWorldShouldOk) {
   auto value_recieve = sub_ctxs[1]->Recv(0, tag);
 
   EXPECT_EQ(send_buf, value_recieve);
+}
+
+TEST(EnvInfo, get_party_node_info) {
+  setenv("config.node_id.host", "alice", 1);
+  setenv("config.node_id.guest", "bob", 1);
+  setenv("config.self_role", "guest", 1);
+
+  std::vector<ContextDesc::Party> parties;
+  size_t self_rank = -1;
+  FactoryBrpcBlackBox().GetPartyNodeInfoFromEnv(parties, self_rank);
+
+  EXPECT_EQ(self_rank, 0);
+  EXPECT_EQ(parties.size(), 2);
 }
 
 }  // namespace yacl::link::test

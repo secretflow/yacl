@@ -43,7 +43,8 @@ LeveldbKVStore::~LeveldbKVStore() {
         butil::DeleteFile(file_path, true);
       } catch (const std::exception &e) {
         // Nothing we can do here.
-        SPDLOG_INFO("Delete tmp file:{} exception {}", path_, std::string(e.what()));
+        SPDLOG_INFO("Delete tmp file:{} exception {}", path_,
+                    std::string(e.what()));
       }
     }
     is_open_ = false;
@@ -51,28 +52,21 @@ LeveldbKVStore::~LeveldbKVStore() {
 }
 
 void LeveldbKVStore::Put(absl::string_view key, ByteContainerView value) {
-  std::string value_str(value.size(), '\0');
-  std::memcpy(&value_str[0], value.data(), value.size());
+  leveldb::Slice key_slice(key.data(), key.length());
+  leveldb::Slice data_slice((const char *)value.data(), value.size());
 
-  leveldb::Status db_status = db_->Put(
-      leveldb::WriteOptions(),
-      static_cast<std::basic_string<char, std::char_traits<char>>>(key),
-      value_str);
+  leveldb::Status db_status =
+      db_->Put(leveldb::WriteOptions(), key_slice, data_slice);
 
   if (!db_status.ok()) {
     YACL_THROW("Put key:{} error, {}", key, db_status.ToString());
   }
 }
 
-bool LeveldbKVStore::Get(absl::string_view key, Buffer *value) const {
-  std::string value_str;
+bool LeveldbKVStore::Get(absl::string_view key, std::string *value) const {
   leveldb::Status db_status = db_->Get(
       leveldb::ReadOptions(),
-      static_cast<std::basic_string<char, std::char_traits<char>>>(key),
-      &value_str);
-
-  (*value).resize(value_str.size());
-  std::memcpy((*value).data(), &value_str[0], value_str.size());
+      static_cast<std::basic_string<char, std::char_traits<char>>>(key), value);
 
   if (!db_status.ok()) {
     if (db_status.IsNotFound()) {

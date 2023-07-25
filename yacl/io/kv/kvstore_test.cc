@@ -19,15 +19,15 @@ TEST(KVStore, memory_test) {
   std::random_device rd;
 
   std::string key(16, '\0');
-  Buffer value(32);
+  std::string value(32, '\0');
   yacl::crypto::Prg<uint8_t> prg(rd());
 
   prg.Fill(absl::MakeSpan(&key[0], key.length()));
-  prg.Fill(absl::MakeSpan(value.data<uint8_t>(), value.size()));
+  prg.Fill(absl::MakeSpan(&value[0], value.size()));
 
   memory_store->Put(key, value);
 
-  Buffer value2;
+  std::string value2;
   memory_store->Get(key, &value2);
 
   EXPECT_EQ(value, value2);
@@ -40,15 +40,15 @@ TEST(KVStore, leveldb_test) {
   std::random_device rd;
 
   std::string key(16, '\0');
-  Buffer value(32);
+  std::string value(32, '\0');
   yacl::crypto::Prg<uint8_t> prg(rd());
 
   prg.Fill(absl::MakeSpan(&key[0], key.length()));
-  prg.Fill(absl::MakeSpan(value.data<uint8_t>(), value.size()));
+  prg.Fill(absl::MakeSpan(&value[0], value.size()));
 
   leveldb_store->Put(key, value);
 
-  Buffer value2;
+  std::string value2;
   leveldb_store->Get(key, &value2);
 
   EXPECT_EQ(value, value2);
@@ -61,15 +61,15 @@ TEST(KVStore, index_memory_test) {
   std::random_device rd;
 
   uint32_t key;
-  Buffer value(32);
+  std::string value(32, '\0');
   yacl::crypto::Prg<uint8_t> prg(rd());
 
   key = prg();
-  prg.Fill(absl::MakeSpan(value.data<uint8_t>(), value.size()));
+  prg.Fill(absl::MakeSpan(&value[0], value.size()));
 
   index_store.Put(key, value);
 
-  Buffer value2;
+  std::string value2;
   index_store.Get(key, &value2);
 
   EXPECT_EQ(value, value2);
@@ -82,15 +82,15 @@ TEST(KVStore, index_leveldb_test) {
   std::random_device rd;
 
   uint32_t key;
-  Buffer value(32);
+  std::string value(32, '\0');
   yacl::crypto::Prg<uint8_t> prg(rd());
 
   key = prg();
-  prg.Fill(absl::MakeSpan(value.data<uint8_t>(), value.size()));
+  prg.Fill(absl::MakeSpan(&value[0], value.size()));
 
   index_store.Put(key, value);
 
-  Buffer value2;
+  std::string value2;
   index_store.Get(key, &value2);
 
   EXPECT_EQ(value, value2);

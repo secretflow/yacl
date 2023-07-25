@@ -23,7 +23,7 @@ class LeveldbKVStore : public KVStore {
 
   void Put(absl::string_view key, ByteContainerView value) override;
 
-  bool Get(absl::string_view key, Buffer *value) const override;
+  bool Get(absl::string_view key, std::string *value) const override;
 
   size_t Count() const override;
 

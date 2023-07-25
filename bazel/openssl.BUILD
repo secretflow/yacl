@@ -21,9 +21,21 @@ filegroup(
     srcs = glob(["**"]),
 )
 
+# This is the value defined by --config=android_arm64
+config_setting(
+    name = "cpu_arm64_v8a",
+    values = {"cpu": "arm64-v8a"},
+    visibility = ["//visibility:private"],
+)
+
 configure_make(
     name = "openssl",
-    configure_command = "config",
+    configure_command = select(
+        {
+            ":cpu_arm64_v8a": "Configure",  # Use Configure for android build
+            "//conditions:default": "config",
+        },
+    ),
     configure_options = [
         # fixed openssl work dir for deterministic build.
         "--openssldir=/tmp/openssl",
@@ -33,12 +45,19 @@ configure_make(
         # OPENSSL_ENGINES_DIR point to /tmp path randomly generated.
         "no-engine",
         "no-tests",
-    ],
+    ] + select(
+        {
+            ":cpu_arm64_v8a": ["android-arm64"],
+            "//conditions:default": [],
+        },
+    ),
+    copts = ["-Wno-format"],
     env = select({
         "@bazel_tools//src/conditions:darwin": {
             "ARFLAGS": "-static -s -o",
         },
-        "//conditions:default": {},
+        "//conditions:default": {
+        },
     }),
     lib_source = ":all_srcs",
     linkopts = ["-ldl"],

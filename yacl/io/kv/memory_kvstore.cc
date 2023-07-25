@@ -13,12 +13,11 @@ void MemoryKVStore::Put(absl::string_view key, ByteContainerView value) {
   kv_map.insert(std::make_pair(key, value_vec));
 }
 
-bool MemoryKVStore::Get(absl::string_view key, Buffer *value) const {
+bool MemoryKVStore::Get(absl::string_view key, std::string *value) const {
   auto it = kv_map.find(
       static_cast<std::basic_string<char, std::char_traits<char>>>(key));
   if (it != kv_map.end()) {
-    (*value).resize(it->second.size());
-    std::memcpy((*value).data(), it->second.data(), it->second.size());
+    value->assign((const char *)it->second.data(), it->second.size());
     return true;
   }
 

@@ -67,9 +67,8 @@ inline uint64_t FillPRand(SymmetricCrypto::CryptoType crypto_type,
                           uint128_t seed, uint128_t iv, uint64_t count,
                           absl::Span<T> out) {
   const size_t nbytes = out.size() * sizeof(T);
-  std::vector<uint8_t> tmp(nbytes);
-  auto ctr = FillPRandBytes(crypto_type, seed, iv, count, absl::MakeSpan(tmp));
-  std::memcpy(out.data(), tmp.data(), nbytes);
+  auto ctr = FillPRandBytes(crypto_type, seed, iv, count,
+                            absl::MakeSpan((uint8_t*)out.data(), nbytes));
   return ctr;
 }
 

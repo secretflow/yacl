@@ -107,6 +107,11 @@ TEST_F(SodiumTest, InfWorks) {
   ec_->AddInplace(&inf, ec_->GetGenerator());
   EXPECT_FALSE(ec_->PointEqual(inf, inf2));
   EXPECT_TRUE(ec_->PointEqual(inf, g));
+
+  inf = ec_->MulBase(0_mp);
+  inf2 = ec_->CopyPoint(AffinePoint(0_mp, 1_mp));
+  EXPECT_EQ(ec_->HashPoint(inf), ec_->HashPoint(inf2));
+  EXPECT_TRUE(ec_->PointEqual(inf, inf2));
 }
 
 TEST_F(SodiumTest, NegateWorks) {
