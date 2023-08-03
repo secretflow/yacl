@@ -28,6 +28,25 @@ std::string AffinePoint::ToString() const {
   return fmt::format("({}, {})", x, y);
 }
 
+uint64_t AffinePoint::GetSerializeLength() const {
+  msgpack::sbuffer buffer;
+  msgpack::pack(buffer, *this);
+  uint64_t len = buffer.size();
+  return len;
+}
+
+void AffinePoint::SerializePoint(uint8_t* buf, uint64_t buf_size) const {
+  msgpack::sbuffer buffer;
+  msgpack::pack(buffer, *this);
+  uint64_t len = buffer.size();
+  YACL_ENFORCE(buf_size >= len, "buf size is small than needed {}", len);
+  std::memcpy(buf, buffer.release(), len);
+  // set the rest to 0
+  if (buf_size > len) {
+    std::memset(buf + len, 0, buf_size - len);
+  }
+}
+
 Buffer AffinePoint::Serialize() const {
   msgpack::sbuffer buffer;
   msgpack::pack(buffer, *this);

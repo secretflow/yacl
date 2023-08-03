@@ -12,29 +12,36 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:yacl.bzl", "yacl_cc_binary", "yacl_cc_library")
+load("//bazel:yacl.bzl", "yacl_cc_binary", "yacl_cc_library", "yacl_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
 yacl_cc_library(
-    name = "rand",
-    srcs = ["rand.cc"],
-    hdrs = ["rand.h"],
+    name = "spi",
     deps = [
-        "//yacl/base:dynamic_bitset",
-        "//yacl/base:exception",
-        "//yacl/base:int128",
-        "//yacl/crypto/tools:prg",
-        "@com_github_openssl_openssl//:openssl",
-        "@com_google_absl//absl/types:span",
+        ":spi_factory",
+        ":type_traits",
     ],
 )
 
-yacl_cc_binary(
-    name = "rand_bench",
-    srcs = ["rand_bench.cc"],
+yacl_cc_library(
+    name = "spi_factory",
+    srcs = ["spi_factory.cc"],
+    hdrs = ["spi_factory.h"],
     deps = [
-        ":rand",
-        "@com_github_google_benchmark//:benchmark_main",
+        "//yacl/base:exception",
     ],
+)
+
+yacl_cc_test(
+    name = "spi_factory_test",
+    srcs = ["spi_factory_test.cc"],
+    deps = [
+        ":spi_factory",
+    ],
+)
+
+yacl_cc_library(
+    name = "type_traits",
+    hdrs = ["type_traits.h"],
 )

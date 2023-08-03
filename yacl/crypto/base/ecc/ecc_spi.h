@@ -22,12 +22,15 @@
 #include "yacl/base/byte_container_view.h"
 #include "yacl/crypto/base/ecc/curve_meta.h"
 #include "yacl/crypto/base/ecc/ec_point.h"
-#include "yacl/crypto/base/mpint/mp_int.h"
+#include "yacl/math/mpint/mp_int.h"
+#include "yacl/utils/spi/spi_factory.h"
 
 // ECC usage example:
-//   auto curve = ::yacl::crypto::EcGroupFactory::Create("sm2");
+//   auto curve = ::yacl::crypto::EcGroupFactory::Instance().Create("sm2");
 // And now you can perform ecc operations using the 'curve' object.
 namespace yacl::crypto {
+
+using yacl::math::MPInt;
 
 enum class HashToCurveStrategy {
   // Default strategy for HashToCurve(method)'s easy usage, dealing with the
@@ -212,6 +215,12 @@ class EcGroup {
   //     Note: If x, y is not in EC group, then an exception will throw.
   virtual EcPoint CopyPoint(const EcPoint &point) const = 0;
 
+  // Return the byte length of serialized point (not infinity)
+  virtual uint64_t GetSerializeLength(PointOctetFormat format) const = 0;
+  uint64_t GetSerializeLength() const {
+    return GetSerializeLength(PointOctetFormat::Autonomous);
+  }
+
   // Compress and serialize a point
   virtual Buffer SerializePoint(const EcPoint &point,
                                 PointOctetFormat format) const = 0;
@@ -223,6 +232,15 @@ class EcGroup {
                               Buffer *buf) const = 0;
   void SerializePoint(const EcPoint &point, Buffer *buf) const {
     SerializePoint(point, PointOctetFormat::Autonomous, buf);
+  }
+
+  // Serialize to a fixed buf [buf, buf + buf_size]
+  virtual void SerializePoint(const EcPoint &point, PointOctetFormat format,
+                              uint8_t *buf, uint64_t buf_size) const = 0;
+
+  void SerializePoint(const EcPoint &point, uint8_t *buf,
+                      uint64_t buf_size) const {
+    return SerializePoint(point, PointOctetFormat::Autonomous, buf, buf_size);
   }
 
   // Load a point, the format MUST BE same with SerializePoint
@@ -285,38 +303,25 @@ using EcCreatorT = std::function<std::unique_ptr<EcGroup>(const CurveMeta &)>;
 // True is supported and false is unsupported.
 using EcCheckerT = std::function<bool(const CurveMeta &)>;
 
-class EcGroupFactory final {
+class EcGroupFactory final : public SpiFactoryBase<EcGroup> {
  public:
-  // Auto selects the best ec library and creates an CurveGroup instance
-  //   See pre-defined curve name in kPredefinedCurves from `curve_meta.cc`;
-  //   Warning! Not all curves are supported!
-  static std::unique_ptr<EcGroup> Create(const CurveName &ec_name);
-  // Create an CurveGroup instance with the specified ec library
-  //   Warning! Not all curves are supported by given lib(`lib_name`).
-  static std::unique_ptr<EcGroup> Create(const CurveName &ec_name,
-                                         const std::string &lib_name);
-  // List all libraries
-  static std::vector<std::string> ListEcLibraries();
-  // List libraries that support this curve
-  static std::vector<std::string> ListEcLibraries(const CurveName &ec_name);
+  static EcGroupFactory &Instance();
 
-  struct Registration final {
-    /// Register an elliptic curve library
-    /// \param lib_name library name, e.g. openssl
-    /// \param performance the estimated performance of this lib, bigger is
-    /// better
-    Registration(const std::string &lib_name, uint64_t performance,
-                 const EcCheckerT &checker, const EcCreatorT &creator);
-  };
+  /// Register an elliptic curve library
+  /// \param lib_name library name, e.g. openssl
+  /// \param performance the estimated performance of this lib, bigger is
+  /// better
+  void Register(const std::string &lib_name, uint64_t performance,
+                const EcCheckerT &checker, const EcCreatorT &creator);
 };
 
 // Please run bazel run
-// >    yacl/crypto/base/ecc/benchmark -c opt -- --curve CURVE_NAME
+//   > yacl/crypto/base/ecc/benchmark -c opt -- --curve CURVE_NAME
 // to test your lib's performance.
 // We assume that the performance of OpenSSL is 100, if your library is better
 // than OpenSSL, please increase the 'performance' value.
-#define REGISTER_EC_LIBRARY(lib_name, performance, checker, creator) \
-  static EcGroupFactory::Registration registration_ec_##__COUNTER__( \
-      lib_name, performance, checker, creator)
+#define REGISTER_EC_LIBRARY(lib_name, performance, checker, creator)          \
+  REGISTER_SPI_LIBRARY_HELPER(EcGroupFactory, lib_name, performance, checker, \
+                              creator)
 
 }  // namespace yacl::crypto

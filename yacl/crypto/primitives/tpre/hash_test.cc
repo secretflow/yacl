@@ -17,13 +17,13 @@
 #include "gtest/gtest.h"
 
 #include "yacl/base/exception.h"
-#include "yacl/crypto/base/mpint/mp_int.h"
+#include "yacl/math/mpint/mp_int.h"
 
 namespace yacl::crypto::test {
 
 TEST(HashTest, Test1) {
   MPInt zero(0);
-  std::unique_ptr<EcGroup> ecc_group = EcGroupFactory::Create("sm2");
+  std::unique_ptr<EcGroup> ecc_group = EcGroupFactory::Instance().Create("sm2");
 
   auto hash_value = CipherHash("tpre", ecc_group);
 

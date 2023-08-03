@@ -12,24 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/base/mpint/mp_int.h"
+#include "yacl/math/mpint/mp_int.h"
 
-#include "yacl/crypto/base/mpint/tommath_ext_features.h"
-#include "yacl/crypto/base/mpint/tommath_ext_types.h"
+#include "yacl/math/mpint/tommath_ext_features.h"
+#include "yacl/math/mpint/tommath_ext_types.h"
 
 extern "C" {
 #include "libtommath/tommath_private.h"
 }
 
-yacl::crypto::MPInt operator""_mp(const char *sz, size_t n) {
-  return yacl::crypto::MPInt(std::string(sz, n));
+yacl::math::MPInt operator""_mp(const char *sz, size_t n) {
+  return yacl::math::MPInt(std::string(sz, n));
 }
 
-yacl::crypto::MPInt operator""_mp(unsigned long long num) {
-  return yacl::crypto::MPInt(static_cast<uint64_t>(num));
+yacl::math::MPInt operator""_mp(unsigned long long num) {
+  return yacl::math::MPInt(static_cast<uint64_t>(num));
 }
 
-namespace yacl::crypto {
+namespace yacl::math {
 
 const MPInt MPInt::_1_(1);
 const MPInt MPInt::_2_(2);
@@ -544,7 +544,7 @@ void MPInt::Mod(const MPInt &a, const MPInt &mod, MPInt *c) {
   MPINT_ENFORCE_OK(mp_mod(&a.n_, &mod.n_, &c->n_));
 }
 
-MPInt MPInt::Mod(const yacl::crypto::MPInt &mod) const {
+MPInt MPInt::Mod(const yacl::math::MPInt &mod) const {
   MPInt res(0, mod.BitCount());
   Mod(*this, mod, &res);
   return res;
@@ -631,12 +631,11 @@ yacl::Buffer MPInt::ToBytes(size_t byte_len, Endian endian) const {
   return buf;
 }
 
-void MPInt::ToBytes(unsigned char *buf, size_t buf_len,
-                    yacl::crypto::Endian endian) const {
+void MPInt::ToBytes(unsigned char *buf, size_t buf_len, Endian endian) const {
   mp_ext_to_bytes(n_, buf, buf_len, endian);
 }
 
-yacl::Buffer MPInt::ToMagBytes(yacl::crypto::Endian endian) const {
+yacl::Buffer MPInt::ToMagBytes(Endian endian) const {
   size_t size = mp_ext_mag_bytes_size(n_);
   yacl::Buffer buffer(size);
   mp_ext_to_mag_bytes(n_, buffer.data<uint8_t>(), size, endian);
@@ -655,4 +654,4 @@ void MPInt::FromMagBytes(yacl::ByteContainerView buffer, Endian endian) {
   mp_ext_from_mag_bytes(&n_, buffer.data(), buffer.size(), endian);
 }
 
-}  // namespace yacl::crypto
+}  // namespace yacl::math

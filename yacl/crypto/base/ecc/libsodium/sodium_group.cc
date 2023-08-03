@@ -24,9 +24,8 @@
 #include "sodium/private/ed25519_ref10.h"
 
 #include "yacl/base/int128.h"
-#include "yacl/crypto/base/ecc/ec_point.h"
-#include "yacl/crypto/base/mpint/mp_int.h"
-#include "yacl/crypto/base/mpint/type_traits.h"
+#include "yacl/math/mpint/mp_int.h"
+#include "yacl/utils/spi/type_traits.h"
 
 namespace yacl::crypto::sodium {
 
@@ -122,6 +121,13 @@ EcPoint SodiumGroup::CopyPoint(const EcPoint& point) const {
   YACL_THROW("Unsupported EcPoint type {}", point.index());
 }
 
+uint64_t SodiumGroup::GetSerializeLength(PointOctetFormat format) const {
+  YACL_ENFORCE(format == PointOctetFormat::Autonomous,
+               "{} only support Autonomous format, given={}", GetLibraryName(),
+               (int)format);
+  return 32;
+}
+
 Buffer SodiumGroup::SerializePoint(const EcPoint& point,
                                    PointOctetFormat format) const {
   YACL_ENFORCE(format == PointOctetFormat::Autonomous,
@@ -136,6 +142,15 @@ Buffer SodiumGroup::SerializePoint(const EcPoint& point,
 void SodiumGroup::SerializePoint(const EcPoint& point, PointOctetFormat format,
                                  Buffer* buf) const {
   *buf = SerializePoint(point, format);
+}
+
+void SodiumGroup::SerializePoint(const EcPoint& point, PointOctetFormat format,
+                                 uint8_t* buf, uint64_t buf_size) const {
+  YACL_ENFORCE(format == PointOctetFormat::Autonomous,
+               "{} only support Autonomous format, given={}", GetLibraryName(),
+               (int)format);
+  YACL_ENFORCE(buf_size >= 32, "buf size is small than needed 32");
+  ge25519_p3_tobytes(buf, CastP3(point));
 }
 
 EcPoint SodiumGroup::DeserializePoint(ByteContainerView buf,

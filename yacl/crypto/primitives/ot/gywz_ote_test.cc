@@ -22,9 +22,9 @@
 
 #include "yacl/base/exception.h"
 #include "yacl/crypto/primitives/ot/ot_store.h"
-#include "yacl/crypto/utils/math.h"
 #include "yacl/crypto/utils/rand.h"
 #include "yacl/link/test_util.h"
+#include "yacl/math/gadget.h"
 
 namespace yacl::crypto {
 
@@ -40,7 +40,7 @@ TEST_P(GywzParamTest, CotWork) {
   auto index = RandInRange(n);
   auto lctxs = link::test::SetupWorld(2);
   uint128_t delta = SecureRandSeed();
-  auto base_ot = MockCots(Log2Ceil(n), delta);  // mock many base OTs
+  auto base_ot = MockCots(math::Log2Ceil(n), delta);  // mock many base OTs
 
   std::vector<uint128_t> send_out(n);
   std::vector<uint128_t> recv_out(n);
@@ -73,13 +73,13 @@ TEST_P(GywzParamTest, FerretSpCotWork) {
 
   auto lctxs = link::test::SetupWorld(2);
 
-  auto base_ot = MockCompactOts(Log2Ceil(n));  // mock many base OTs
+  auto base_ot = MockCompactOts(math::Log2Ceil(n));  // mock many base OTs
   auto delta = base_ot.send.GetDelta();
 
   // [Warning] Compact Cot doest not support CopyChoice.
   // TODO: fix it
   uint32_t index = 0;
-  for (uint32_t i = 0; i < Log2Ceil(n); ++i) {
+  for (uint32_t i = 0; i < math::Log2Ceil(n); ++i) {
     index |= (!base_ot.recv.GetChoice(i)) << i;
   }
 

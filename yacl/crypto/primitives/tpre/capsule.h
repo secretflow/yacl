@@ -21,8 +21,8 @@
 #include <vector>
 
 #include "yacl/crypto/base/ecc/ec_point.h"
-#include "yacl/crypto/base/mpint/mp_int.h"
 #include "yacl/crypto/primitives/tpre/keys.h"
+#include "yacl/math/mpint/mp_int.h"
 
 namespace yacl::crypto {
 

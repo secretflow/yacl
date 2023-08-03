@@ -28,8 +28,8 @@
 #include "yacl/crypto/base/aes/aes_opt.h"
 #include "yacl/crypto/tools/prg.h"
 #include "yacl/crypto/tools/random_permutation.h"
-#include "yacl/crypto/utils/math.h"
 #include "yacl/crypto/utils/rand.h"
+#include "yacl/math/gadget.h"
 
 namespace yacl::crypto {
 
@@ -101,7 +101,7 @@ std::vector<uint128_t> SplitAllSeeds(absl::Span<uint128_t> seeds) {
 void SgrrOtExtRecv(const std::shared_ptr<link::Context>& ctx,
                    const OtRecvStore& base_ot, uint32_t n, uint32_t index,
                    absl::Span<uint128_t> output) {
-  uint32_t ot_num = Log2Ceil(n);
+  uint32_t ot_num = math::Log2Ceil(n);
   YACL_ENFORCE_GE(n, (uint32_t)1);                 // range should > 1
   YACL_ENFORCE_GE((uint32_t)128, base_ot.Size());  // base ot num < 128
   YACL_ENFORCE_GE(base_ot.Size(), ot_num);         //
@@ -159,7 +159,7 @@ void SgrrOtExtRecv(const std::shared_ptr<link::Context>& ctx,
 void SgrrOtExtSend(const std::shared_ptr<link::Context>& ctx,
                    const OtSendStore& base_ot, uint32_t n,
                    absl::Span<uint128_t> output) {
-  uint32_t ot_num = Log2Ceil(n);
+  uint32_t ot_num = math::Log2Ceil(n);
   YACL_ENFORCE_GE(base_ot.Size(), ot_num);
   YACL_ENFORCE_GE(n, (uint32_t)1);
 

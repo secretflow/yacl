@@ -17,9 +17,12 @@
 #include <utility>
 #include <variant>
 
-#include "yacl/crypto/base/mpint/mp_int.h"
+#include "yacl/crypto/base/ecc/any_ptr.h"
+#include "yacl/math/mpint/mp_int.h"
 
 namespace yacl::crypto {
+
+using yacl::math::MPInt;
 
 // Elliptic curve point Octet-String format
 // See SECG standard for details: SEC 1, section 2.3. https://www.secg.org/
@@ -62,6 +65,8 @@ struct AffinePoint {
 
   std::string ToString() const;
 
+  uint64_t GetSerializeLength() const;
+  void SerializePoint(uint8_t *buf, uint64_t buf_size) const;
   [[nodiscard]] Buffer Serialize() const;
   void Deserialize(ByteContainerView in);
 
@@ -72,25 +77,6 @@ struct AffinePoint {
   friend std::ostream &operator<<(std::ostream &os, const AffinePoint &point);
 };
 
-class AnyPointPtr {
- public:
-  AnyPointPtr(void *point, std::function<void(void *)> deleter)
-      : ptr_(point, std::move(deleter)) {}
-
-  template <typename T>
-  inline const T *get() const & {
-    return reinterpret_cast<const T *>(ptr_.get());
-  }
-
-  template <typename T>
-  inline T *get() & {
-    return reinterpret_cast<T *>(ptr_.get());
-  }
-
- private:
-  std::shared_ptr<void> ptr_;
-};
-
 // Feel free to add more storage types if you need.
 // Here are some examples:
 using Array32 = std::array<unsigned char, 32>;  // exactly 256bits
@@ -99,13 +85,11 @@ using Array160 =
 
 // The storage format inside EcPoint is explained by each curve itself, here is
 // a black box
-using EcPoint = std::variant<Array32, Array160, AnyPointPtr, AffinePoint>;
+using EcPoint = std::variant<Array32, Array160, AnyPtr, AffinePoint>;
 
 }  // namespace yacl::crypto
 
-#if __cplusplus >= 202002L
 namespace fmt {
 template <>
 struct formatter<yacl::crypto::AffinePoint> : ostream_formatter {};
 }  // namespace fmt
-#endif

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/base/mpint/tommath_ext_features.h"
+#include "yacl/math/mpint/tommath_ext_features.h"
 
 #include <algorithm>
 #include <functional>
@@ -27,11 +27,9 @@ extern "C" {
 #include "yacl/base/exception.h"
 #include "yacl/utils/scope_guard.h"
 
-#ifndef MPINT_ENFORCE_OK
-#define MPINT_ENFORCE_OK(MP_ERR, ...) YACL_ENFORCE_EQ((MP_ERR), 0, __VA_ARGS__)
-#endif
+#include "yacl/math/mpint/mp_int_enforce.h"
 
-namespace yacl::crypto {
+namespace yacl::math {
 
 namespace {
 // small_primes is a list of small, prime numbers that allows us to rapidly
@@ -488,4 +486,4 @@ void mp_ext_set_bit(mp_int *a, int index, uint8_t value) {
   mp_clamp(a);
 }
 
-}  // namespace yacl::crypto
+}  // namespace yacl::math

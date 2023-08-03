@@ -103,7 +103,7 @@ static std::string RandStr(size_t length) {
   return str;
 }
 
-std::atomic_int64_t port = 8080;
+std::atomic_int64_t port = 49152;
 
 class ChannelBlackBoxTest : public ::testing::Test {
  protected:

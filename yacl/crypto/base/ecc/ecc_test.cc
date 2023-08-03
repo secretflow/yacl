@@ -21,28 +21,29 @@
 
 #include "yacl/crypto/base/ecc/ecc_spi.h"
 #include "yacl/utils/parallel.h"
+#include "yacl/utils/spi/spi_factory.h"
 
 namespace yacl::crypto::test {
 
 TEST(CurveFactoryTest, FactoryWorks) {
   // test list lib
-  EXPECT_TRUE(EcGroupFactory::ListEcLibraries("not_exist").empty());
+  EXPECT_TRUE(EcGroupFactory::Instance().ListLibraries("not_exist").empty());
 
-  auto all = EcGroupFactory::ListEcLibraries();
+  auto all = EcGroupFactory::Instance().ListLibraries();
   ASSERT_TRUE(std::find(all.begin(), all.end(), "toy") != all.end())
       << fmt::format("{}", all);
   ASSERT_TRUE(std::find(all.begin(), all.end(), "openssl") != all.end());
 
-  all = EcGroupFactory::ListEcLibraries("sm2");
+  all = EcGroupFactory::Instance().ListLibraries("sm2");
   ASSERT_TRUE(std::find(all.begin(), all.end(), "toy") != all.end());
   ASSERT_TRUE(std::find(all.begin(), all.end(), "openssl") != all.end());
 
   // test create curve
-  auto c1 = EcGroupFactory::Create("sm2", "toy");
+  auto c1 = EcGroupFactory::Instance().Create("sm2", Lib = "toy");
   EXPECT_STRCASEEQ(c1->GetLibraryName().c_str(), "Toy");
 
   // the openssl's performance is better, so the factory chooses openssl
-  auto c2 = EcGroupFactory::Create("sm2");
+  auto c2 = EcGroupFactory::Instance().Create("sm2");
   EXPECT_STRCASEEQ(c2->GetLibraryName().c_str(), "openssl");
 }
 
@@ -209,6 +210,20 @@ class EcCurveTest : public ::testing::TestWithParam<std::string> {
     ASSERT_EQ(buf.size(), 1);
     auto p6 = ec_->DeserializePoint(buf, PointOctetFormat::X962Compressed);
     ASSERT_TRUE(ec_->IsInfinity(p6));
+
+    // Multi points serialization
+    auto len = ec_->GetSerializeLength(PointOctetFormat::X962Compressed);
+    std::vector<EcPoint> points{p1, p2, p3, p4, p5, p1};
+    Buffer buf_m = Buffer(len * points.size());
+    for (uint64_t i = 0; i < points.size(); i++) {
+      ec_->SerializePoint(points[i], PointOctetFormat::X962Compressed,
+                          buf_m.data<uint8_t>() + i * len, len);
+    }
+    for (uint64_t i = 0; i < points.size(); i++) {
+      auto tmp = ec_->DeserializePoint({buf_m.data<uint8_t>() + i * len, len},
+                                       PointOctetFormat::X962Compressed);
+      ASSERT_TRUE(ec_->PointEqual(tmp, points[i]));
+    }
   }
 
   void TestHashPointWorks() {
@@ -285,12 +300,14 @@ class EcCurveTest : public ::testing::TestWithParam<std::string> {
 
 class Sm2CurveTest : public EcCurveTest {
  protected:
-  void SetUp() override { ec_ = EcGroupFactory::Create("sm2", GetParam()); }
+  void SetUp() override {
+    ec_ = EcGroupFactory::Instance().Create("sm2", Lib = GetParam());
+  }
 };
 
 INSTANTIATE_TEST_SUITE_P(
     Sm2Test, Sm2CurveTest,
-    ::testing::ValuesIn(EcGroupFactory::ListEcLibraries("sm2")));
+    ::testing::ValuesIn(EcGroupFactory::Instance().ListLibraries("sm2")));
 
 TEST_P(Sm2CurveTest, SpiTest) {
   EXPECT_STRCASEEQ(ec_->GetCurveName().c_str(), "sm2");
@@ -300,7 +317,7 @@ TEST_P(Sm2CurveTest, SpiTest) {
   EXPECT_FALSE(ec_->ToString().empty());
 
   std::unique_ptr<EcGroup> ref_;
-  ref_ = EcGroupFactory::Create("sm2", "toy");
+  ref_ = EcGroupFactory::Instance().Create("sm2", Lib = "toy");
   // meta test
   EXPECT_EQ(ref_->GetCofactor(), ec_->GetCofactor());
   EXPECT_EQ(ref_->GetField(), ec_->GetField());
@@ -309,7 +326,7 @@ TEST_P(Sm2CurveTest, SpiTest) {
             ec_->GetAffinePoint(ec_->GetGenerator()));
 
   // Multi Curve Instances test
-  auto ec2 = yacl::crypto::EcGroupFactory::Create("secp256k1", "openssl");
+  auto ec2 = EcGroupFactory::Instance().Create("secp256k1", Lib = "openssl");
   EXPECT_TRUE(ref_->GetField() != ec2->GetField());
   EXPECT_TRUE(ref_->GetOrder() != ec2->GetOrder());
   EXPECT_TRUE(ref_->GetAffinePoint(ref_->GetGenerator()) !=
@@ -321,12 +338,14 @@ TEST_P(Sm2CurveTest, SpiTest) {
 
 class Ed25519CurveTest : public EcCurveTest {
  protected:
-  void SetUp() override { ec_ = EcGroupFactory::Create("Ed25519", GetParam()); }
+  void SetUp() override {
+    ec_ = EcGroupFactory::Instance().Create("Ed25519", Lib = GetParam());
+  }
 };
 
 INSTANTIATE_TEST_SUITE_P(
     Ed25519Test, Ed25519CurveTest,
-    ::testing::ValuesIn(EcGroupFactory::ListEcLibraries("Ed25519")));
+    ::testing::ValuesIn(EcGroupFactory::Instance().ListLibraries("Ed25519")));
 
 TEST_P(Ed25519CurveTest, SpiTest) {
   EXPECT_STRCASEEQ(ec_->GetCurveName().c_str(), "Ed25519");
@@ -341,8 +360,8 @@ TEST_P(Ed25519CurveTest, SpiTest) {
 
 // The simplest code to reproduce openssl memory leaks
 TEST(OpensslMemLeakTest, DISABLED_MulBaseLeaks) {
-  std::shared_ptr<yacl::crypto::EcGroup> ec =
-      yacl::crypto::EcGroupFactory::Create("sm2", "openssl");
+  std::shared_ptr<EcGroup> ec =
+      EcGroupFactory::Instance().Create("sm2", Lib = "openssl");
 
   std::mutex mutex;
   yacl::parallel_for(0, 2, 1, [&](int64_t, int64_t) {
@@ -354,18 +373,19 @@ TEST(OpensslMemLeakTest, DISABLED_MulBaseLeaks) {
 
 TEST(AliasNameTest, AliasWorks) {
   // for (const auto &meta : kPredefinedCurves) {
-  for (const auto name : {"secp256k1", "secp192r1", "secp256r1"}) {
+  for (const auto *const name : {"secp256k1", "secp192r1", "secp256r1"}) {
     auto meta = GetCurveMetaByName(name);
-    auto libs = yacl::crypto::EcGroupFactory::ListEcLibraries(meta.LowerName());
+    auto libs = EcGroupFactory::Instance().ListLibraries(meta.LowerName());
     if (!libs.empty() && !meta.aliases.empty()) {
-      auto c1 = yacl::crypto::EcGroupFactory::Create(meta.LowerName(), libs[0]);
+      auto c1 =
+          EcGroupFactory::Instance().Create(meta.LowerName(), Lib = libs[0]);
       for (const auto &alias : meta.aliases) {
-        auto libs_alias = yacl::crypto::EcGroupFactory::ListEcLibraries(alias);
+        auto libs_alias = EcGroupFactory::Instance().ListLibraries(alias);
         EXPECT_EQ(libs, libs_alias);
 
         for (uint64_t i = 1; i < libs.size(); i++) {
           auto curve_alias =
-              yacl::crypto::EcGroupFactory::Create(alias, libs_alias[i]);
+              EcGroupFactory::Instance().Create(alias, Lib = libs_alias[i]);
           // check if same curve
           ASSERT_TRUE(c1->GetCofactor() == curve_alias->GetCofactor());
           ASSERT_TRUE(c1->GetField() == curve_alias->GetField());

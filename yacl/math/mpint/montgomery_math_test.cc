@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/base/mpint/montgomery_math.h"
+#include "yacl/math/mpint/montgomery_math.h"
 
 #include "gtest/gtest.h"
 
-namespace yacl::crypto::test {
+namespace yacl::math::test {
 
 class MontgomeryMathTest
     : public ::testing::TestWithParam<std::tuple<int64_t, int64_t, int64_t>> {
@@ -120,4 +120,4 @@ TEST_P(MontgomeryMathTest, TestPowModBigNumber) {
   mp_clear(&factor);
 }
 
-}  // namespace yacl::crypto::test
+}  // namespace yacl::math::test

@@ -17,6 +17,7 @@
 #include "gflags/gflags.h"
 
 #include "yacl/crypto/base/ecc/ecc_spi.h"
+#include "yacl/utils/spi/spi_factory.h"
 
 namespace yacl::crypto::bench {
 
@@ -157,12 +158,14 @@ void InitAndRunBenchmarks() {
       FLAGS_curve, absl::ByAnyChar(";,.|&+"), absl::SkipWhitespace());
   for (const std::string& curve : curves) {
     if (!FLAGS_lib.empty()) {
-      benchers.emplace_back(EcGroupFactory::Create(curve, FLAGS_lib));
+      benchers.emplace_back(
+          EcGroupFactory::Instance().Create(curve, Lib = FLAGS_lib));
       continue;
     }
 
-    for (const auto& lib : EcGroupFactory::ListEcLibraries(curve)) {
-      benchers.emplace_back(EcGroupFactory::Create(curve, lib));
+    for (const auto& lib : EcGroupFactory::Instance().ListLibraries(curve)) {
+      benchers.emplace_back(
+          EcGroupFactory::Instance().Create(curve, Lib = lib));
     }
   }
 

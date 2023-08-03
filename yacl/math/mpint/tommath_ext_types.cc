@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/base/mpint/tommath_ext_types.h"
+#include "yacl/math/mpint/tommath_ext_types.h"
 
 #include <climits>
 #include <cstring>  // memset

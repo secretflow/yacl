@@ -66,18 +66,17 @@ def _com_github_brpc_brpc():
     maybe(
         http_archive,
         name = "com_github_brpc_brpc",
-        sha256 = "5ce178e3070ecdf9576a8917e3f65d96085f437bfbf9f1d09d46bca1375938cf",
-        strip_prefix = "brpc-1.5.0",
+        sha256 = "d286d520ec4d317180d91ea3970494c1b8319c8867229e5c4784998c4536718f",
+        strip_prefix = "brpc-1.6.0",
         type = "tar.gz",
         patch_args = ["-p1"],
         patches = [
             "@yacl//bazel:patches/brpc.patch",
-            "@yacl//bazel:patches/brpc_ssl.patch",
-            "@yacl//bazel:patches/brpc_pr_2156.patch",
             "@yacl//bazel:patches/brpc_m1.patch",
+            "@yacl//bazel:patches/brpc-2324.patch",
         ],
         urls = [
-            "https://github.com/apache/brpc/archive/refs/tags/1.5.0.tar.gz",
+            "https://github.com/apache/brpc/archive/refs/tags/1.6.0.tar.gz",
         ],
     )
 
@@ -149,11 +148,11 @@ def _com_github_openssl_openssl():
     maybe(
         http_archive,
         name = "com_github_openssl_openssl",
-        sha256 = "0686897afd3a08223760db73d8034550401b53ffc545798d7ca476564f80315e",
+        sha256 = "c0bb03960ba535e51726950853f0e01a0a92e107e202f417e7546ee5e59baee0",
         type = "tar.gz",
-        strip_prefix = "openssl-OpenSSL_1_1_1q",
+        strip_prefix = "openssl-OpenSSL_1_1_1v",
         urls = [
-            "https://github.com/openssl/openssl/archive/refs/tags/OpenSSL_1_1_1q.tar.gz",
+            "https://github.com/openssl/openssl/archive/refs/tags/OpenSSL_1_1_1v.tar.gz",
         ],
         build_file = "@yacl//bazel:openssl.BUILD",
     )
@@ -162,11 +161,11 @@ def _com_github_fmtlib_fmt():
     maybe(
         http_archive,
         name = "com_github_fmtlib_fmt",
-        strip_prefix = "fmt-8.1.1",
-        sha256 = "3d794d3cf67633b34b2771eb9f073bde87e846e0d395d254df7b211ef1ec7346",
+        strip_prefix = "fmt-10.0.0",
+        sha256 = "ede1b6b42188163a3f2e0f25ad5c0637eca564bd8df74d02e31a311dd6b37ad8",
         build_file = "@yacl//bazel:fmtlib.BUILD",
         urls = [
-            "https://github.com/fmtlib/fmt/archive/refs/tags/8.1.1.tar.gz",
+            "https://github.com/fmtlib/fmt/archive/refs/tags/10.0.0.tar.gz",
         ],
     )
 
@@ -174,12 +173,12 @@ def _com_github_gabime_spdlog():
     maybe(
         http_archive,
         name = "com_github_gabime_spdlog",
-        strip_prefix = "spdlog-1.10.0",
+        strip_prefix = "spdlog-1.12.0",
         type = "tar.gz",
-        sha256 = "697f91700237dbae2326b90469be32b876b2b44888302afbc7aceb68bcfe8224",
+        sha256 = "4dccf2d10f410c1e2feaff89966bfc49a1abb29ef6f08246335b110e001e09a9",
         build_file = "@yacl//bazel:spdlog.BUILD",
         urls = [
-            "https://github.com/gabime/spdlog/archive/refs/tags/v1.10.0.tar.gz",
+            "https://github.com/gabime/spdlog/archive/refs/tags/v1.12.0.tar.gz",
         ],
     )
 
@@ -200,10 +199,10 @@ def _com_github_google_benchmark():
         http_archive,
         name = "com_github_google_benchmark",
         type = "tar.gz",
-        strip_prefix = "benchmark-1.7.1",
-        sha256 = "6430e4092653380d9dc4ccb45a1e2dc9259d581f4866dc0759713126056bc1d7",
+        strip_prefix = "benchmark-1.8.2",
+        sha256 = "2aab2980d0376137f969d92848fbb68216abb07633034534fc8c65cc4e7a0e93",
         urls = [
-            "https://github.com/google/benchmark/archive/refs/tags/v1.7.1.tar.gz",
+            "https://github.com/google/benchmark/archive/refs/tags/v1.8.2.tar.gz",
         ],
     )
 
@@ -211,11 +210,11 @@ def _com_github_blake3team_blake3():
     maybe(
         http_archive,
         name = "com_github_blake3team_blake3",
-        strip_prefix = "BLAKE3-1.3.0",
-        sha256 = "a559309c2dad8cc8314ea779664ec5093c79de2e9be14edbf76ae2ce380222c0",
+        strip_prefix = "BLAKE3-1.4.1",
+        sha256 = "33020ac83a8169b2e847cc6fb1dd38806ffab6efe79fe6c320e322154a3bea2c",
         build_file = "@yacl//bazel:blake3.BUILD",
         urls = [
-            "https://github.com/BLAKE3-team/BLAKE3/archive/refs/tags/1.3.0.tar.gz",
+            "https://github.com/BLAKE3-team/BLAKE3/archive/refs/tags/1.4.1.tar.gz",
         ],
     )
 
@@ -223,10 +222,10 @@ def _rule_python():
     maybe(
         http_archive,
         name = "rules_python",
-        sha256 = "a644da969b6824cc87f8fe7b18101a8a6c57da5db39caa6566ec6109f37d2141",
-        strip_prefix = "rules_python-0.20.0",
+        sha256 = "0a8003b044294d7840ac7d9d73eef05d6ceb682d7516781a4ec62eeb34702578",
+        strip_prefix = "rules_python-0.24.0",
         urls = [
-            "https://github.com/bazelbuild/rules_python/releases/download/0.20.0/rules_python-0.20.0.tar.gz",
+            "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.24.0.tar.gz",
         ],
     )
 
@@ -258,15 +257,15 @@ def _com_github_intel_ipp():
     maybe(
         http_archive,
         name = "com_github_intel_ipp",
-        sha256 = "120c5e0ac5d2a9150c0b500f170bbf1542abdbb810c03cd61326ca40b9b23e95",
-        strip_prefix = "ipp-crypto-ippcp_2021.7.1",
+        sha256 = "1ecfa70328221748ceb694debffa0106b92e0f9bf6a484f8e8512c2730c7d730",
+        strip_prefix = "ipp-crypto-ippcp_2021.8",
         build_file = "@yacl//bazel:ipp.BUILD",
         patch_args = ["-p1"],
         patches = [
             "@yacl//bazel:patches/ippcp.patch",
         ],
         urls = [
-            "https://github.com/intel/ipp-crypto/archive/refs/tags/ippcp_2021.7.1.tar.gz",
+            "https://github.com/intel/ipp-crypto/archive/refs/tags/ippcp_2021.8.tar.gz",
         ],
     )
 

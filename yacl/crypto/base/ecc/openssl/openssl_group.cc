@@ -17,6 +17,7 @@
 #include "yacl/crypto/base/hash/blake3.h"
 #include "yacl/crypto/base/hash/ssl_hash.h"
 #include "yacl/utils/scope_guard.h"
+#include "yacl/utils/spi/type_traits.h"
 
 namespace yacl::crypto::openssl {
 
@@ -66,28 +67,7 @@ MPInt Bn2Mp(const BIGNUM *bn) {
   return mp;
 }
 
-const EC_POINT *Cast(const EcPoint &p) {
-  YACL_ENFORCE(
-      std::holds_alternative<AnyPointPtr>(p),
-      "Unsupported EcPoint type, expected AnyPointPtr, real type index is {}",
-      p.index());
-
-  return std::get<AnyPointPtr>(p).get<EC_POINT>();
-}
-
-EC_POINT *Cast(EcPoint *p) {
-  CheckNotNull(p);
-  YACL_ENFORCE(
-      std::holds_alternative<AnyPointPtr>(*p),
-      "Unsupported EcPoint type, expected AnyPointPtr, real type index is {}",
-      p->index());
-
-  return std::get<AnyPointPtr>(*p).get<EC_POINT>();
-}
-
-EC_POINT *Cast(AnyPointPtr &ptr) { return ptr.get<EC_POINT>(); }
-
-AnyPointPtr WrapOpensslPoint(EC_POINT *point) {
+AnyPtr WrapOpensslPoint(EC_POINT *point) {
   return {point,
           [](void *p) { EC_POINT_free(reinterpret_cast<EC_POINT *>(p)); }};
 }
@@ -102,7 +82,7 @@ OpensslGroup::OpensslGroup(const CurveMeta &meta, EC_GROUP_PTR group)
                                ctx_.get()));
 }
 
-AnyPointPtr OpensslGroup::MakeOpensslPoint() const {
+AnyPtr OpensslGroup::MakeOpensslPoint() const {
   return WrapOpensslPoint(EC_POINT_new(group_.get()));
 }
 
@@ -118,24 +98,28 @@ std::string OpensslGroup::ToString() const { return GetCurveName(); }
 
 EcPoint OpensslGroup::Add(const EcPoint &p1, const EcPoint &p2) const {
   auto res = MakeOpensslPoint();
-  SSL_RET_1(
-      EC_POINT_add(group_.get(), Cast(res), Cast(p1), Cast(p2), ctx_.get()));
+  SSL_RET_1(EC_POINT_add(group_.get(), CastAny<EC_POINT>(res),
+                         CastAny<EC_POINT>(p1), CastAny<EC_POINT>(p2),
+                         ctx_.get()));
   return res;
 }
 
 void OpensslGroup::AddInplace(EcPoint *p1, const EcPoint &p2) const {
-  SSL_RET_1(
-      EC_POINT_add(group_.get(), Cast(p1), Cast(p1), Cast(p2), ctx_.get()));
+  SSL_RET_1(EC_POINT_add(group_.get(), CastAny<EC_POINT>(p1),
+                         CastAny<EC_POINT>(p1), CastAny<EC_POINT>(p2),
+                         ctx_.get()));
 }
 
 EcPoint OpensslGroup::Double(const EcPoint &p) const {
   auto res = MakeOpensslPoint();
-  SSL_RET_1(EC_POINT_dbl(group_.get(), Cast(res), Cast(p), ctx_.get()));
+  SSL_RET_1(EC_POINT_dbl(group_.get(), CastAny<EC_POINT>(res),
+                         CastAny<EC_POINT>(p), ctx_.get()));
   return res;
 }
 
 void OpensslGroup::DoubleInplace(EcPoint *p) const {
-  SSL_RET_1(EC_POINT_dbl(group_.get(), Cast(p), Cast(p), ctx_.get()));
+  SSL_RET_1(EC_POINT_dbl(group_.get(), CastAny<EC_POINT>(p),
+                         CastAny<EC_POINT>(p), ctx_.get()));
 }
 
 EcPoint OpensslGroup::MulBase(const MPInt &scalar) const {
@@ -144,23 +128,23 @@ EcPoint OpensslGroup::MulBase(const MPInt &scalar) const {
   // EC_POINT_mul has random memory leaks, be careful.
   // See UT for demo code.
   // We tested openssl 3.1.0, it still leaks.
-  SSL_RET_1(EC_POINT_mul(group_.get(), Cast(res), s.get(), nullptr, nullptr,
-                         ctx_.get()));
+  SSL_RET_1(EC_POINT_mul(group_.get(), CastAny<EC_POINT>(res), s.get(), nullptr,
+                         nullptr, ctx_.get()));
   return res;
 }
 
 EcPoint OpensslGroup::Mul(const EcPoint &point, const MPInt &scalar) const {
   auto res = MakeOpensslPoint();
   auto s = Mp2Bn(scalar);
-  SSL_RET_1(EC_POINT_mul(group_.get(), Cast(res), nullptr, Cast(point), s.get(),
-                         ctx_.get()));
+  SSL_RET_1(EC_POINT_mul(group_.get(), CastAny<EC_POINT>(res), nullptr,
+                         CastAny<EC_POINT>(point), s.get(), ctx_.get()));
   return res;
 }
 
 void OpensslGroup::MulInplace(EcPoint *point, const MPInt &scalar) const {
   auto s = Mp2Bn(scalar);
-  SSL_RET_1(EC_POINT_mul(group_.get(), Cast(point), nullptr, Cast(point),
-                         s.get(), ctx_.get()));
+  SSL_RET_1(EC_POINT_mul(group_.get(), CastAny<EC_POINT>(point), nullptr,
+                         CastAny<EC_POINT>(point), s.get(), ctx_.get()));
 }
 
 EcPoint OpensslGroup::MulDoubleBase(const MPInt &s1, const MPInt &s2,
@@ -168,24 +152,27 @@ EcPoint OpensslGroup::MulDoubleBase(const MPInt &s1, const MPInt &s2,
   auto res = MakeOpensslPoint();
   auto bn1 = Mp2Bn(s1);
   auto bn2 = Mp2Bn(s2);
-  SSL_RET_1(EC_POINT_mul(group_.get(), Cast(res), bn1.get(), Cast(p2),
-                         bn2.get(), ctx_.get()));
+  SSL_RET_1(EC_POINT_mul(group_.get(), CastAny<EC_POINT>(res), bn1.get(),
+                         CastAny<EC_POINT>(p2), bn2.get(), ctx_.get()));
   return res;
 }
 
 EcPoint OpensslGroup::Negate(const EcPoint &point) const {
-  auto res = WrapOpensslPoint(EC_POINT_dup(Cast(point), group_.get()));
-  SSL_RET_1(EC_POINT_invert(group_.get(), Cast(res), ctx_.get()));
+  auto res =
+      WrapOpensslPoint(EC_POINT_dup(CastAny<EC_POINT>(point), group_.get()));
+  SSL_RET_1(EC_POINT_invert(group_.get(), CastAny<EC_POINT>(res), ctx_.get()));
   return res;
 }
 
 void OpensslGroup::NegateInplace(EcPoint *point) const {
-  SSL_RET_1(EC_POINT_invert(group_.get(), Cast(point), ctx_.get()));
+  SSL_RET_1(
+      EC_POINT_invert(group_.get(), CastAny<EC_POINT>(point), ctx_.get()));
 }
 
 EcPoint OpensslGroup::CopyPoint(const EcPoint &point) const {
-  if (std::holds_alternative<AnyPointPtr>(point)) {
-    return WrapOpensslPoint(EC_POINT_dup(Cast(point), group_.get()));
+  if (std::holds_alternative<AnyPtr>(point)) {
+    return WrapOpensslPoint(
+        EC_POINT_dup(CastAny<EC_POINT>(point), group_.get()));
   }
 
   if (std::holds_alternative<AffinePoint>(point)) {
@@ -194,8 +181,8 @@ EcPoint OpensslGroup::CopyPoint(const EcPoint &point) const {
     auto x = Mp2Bn(p.x);
     auto y = Mp2Bn(p.y);
     auto r = MakeOpensslPoint();
-    SSL_RET_1(EC_POINT_set_affine_coordinates(group_.get(), Cast(r), x.get(),
-                                              y.get(), ctx_.get()));
+    SSL_RET_1(EC_POINT_set_affine_coordinates(
+        group_.get(), CastAny<EC_POINT>(r), x.get(), y.get(), ctx_.get()));
     return r;
   }
 
@@ -209,9 +196,29 @@ AffinePoint OpensslGroup::GetAffinePoint(const EcPoint &point) const {
 
   auto x = BIGNUM_PTR(BN_new());
   auto y = BIGNUM_PTR(BN_new());
-  SSL_RET_1(EC_POINT_get_affine_coordinates(group_.get(), Cast(point), x.get(),
-                                            y.get(), ctx_.get()));
+  SSL_RET_1(EC_POINT_get_affine_coordinates(
+      group_.get(), CastAny<EC_POINT>(point), x.get(), y.get(), ctx_.get()));
   return {Bn2Mp(x.get()), Bn2Mp(y.get())};
+}
+
+uint64_t OpensslGroup::GetSerializeLength(PointOctetFormat format) const {
+  point_conversion_form_t f;
+  switch (format) {
+    case PointOctetFormat::X962Uncompressed:
+      f = POINT_CONVERSION_UNCOMPRESSED;
+      break;
+    case PointOctetFormat::X962Hybrid:
+      f = POINT_CONVERSION_HYBRID;
+      break;
+    default:
+      f = POINT_CONVERSION_COMPRESSED;
+      break;
+  }
+
+  int64_t len = EC_POINT_point2oct(group_.get(), CastAny<EC_POINT>(generator_),
+                                   f, nullptr, 0, ctx_.get());
+  SSL_RET_ZP(len, "calc serialize point size, openssl returns 0");
+  return len;
 }
 
 Buffer OpensslGroup::SerializePoint(const EcPoint &point,
@@ -236,20 +243,49 @@ void OpensslGroup::SerializePoint(const EcPoint &point, PointOctetFormat format,
       break;
   }
 
-  int64_t len =
-      EC_POINT_point2oct(group_.get(), Cast(point), f, nullptr, 0, ctx_.get());
+  int64_t len = EC_POINT_point2oct(group_.get(), CastAny<EC_POINT>(point), f,
+                                   nullptr, 0, ctx_.get());
   SSL_RET_ZP(len, "calc serialize point size, openssl returns 0");
   buf->resize(len);
 
-  len = EC_POINT_point2oct(group_.get(), Cast(point), f,
+  len = EC_POINT_point2oct(group_.get(), CastAny<EC_POINT>(point), f,
                            buf->data<unsigned char>(), len, ctx_.get());
   SSL_RET_ZP(len, "serialize point to buf fail, openssl returns 0");
+}
+
+void OpensslGroup::SerializePoint(const EcPoint &point, PointOctetFormat format,
+                                  uint8_t *buf, uint64_t buf_size) const {
+  point_conversion_form_t f;
+  switch (format) {
+    case PointOctetFormat::X962Uncompressed:
+      f = POINT_CONVERSION_UNCOMPRESSED;
+      break;
+    case PointOctetFormat::X962Hybrid:
+      f = POINT_CONVERSION_HYBRID;
+      break;
+    default:
+      f = POINT_CONVERSION_COMPRESSED;
+      break;
+  }
+
+  int64_t len = EC_POINT_point2oct(group_.get(), CastAny<EC_POINT>(point), f,
+                                   nullptr, 0, ctx_.get());
+  SSL_RET_ZP(len, "calc serialize point size, openssl returns 0");
+  YACL_ENFORCE(buf_size >= static_cast<uint64_t>(len),
+               "buf size is small than needed {}", len);
+  len = EC_POINT_point2oct(group_.get(), CastAny<EC_POINT>(point), f, buf, len,
+                           ctx_.get());
+  if (buf_size > static_cast<uint64_t>(len)) {
+    std::memset(buf + len, 0, buf_size - len);
+  }
 }
 
 EcPoint OpensslGroup::DeserializePoint(ByteContainerView buf,
                                        PointOctetFormat format) const {
   auto p = MakeOpensslPoint();
-  SSL_RET_1(EC_POINT_oct2point(group_.get(), Cast(p), buf.data(), buf.length(),
+  // buf[0] == 0 indicate it's a infinity point, will fail if input len != 1
+  SSL_RET_1(EC_POINT_oct2point(group_.get(), CastAny<EC_POINT>(p), buf.data(),
+                               buf.size() > 0 && buf[0] != 0 ? buf.length() : 1,
                                ctx_.get()));
   return p;
 }
@@ -303,8 +339,8 @@ EcPoint OpensslGroup::HashToCurve(HashToCurveStrategy strategy,
               "hash-to-curve: bn mod p fail");
 
     // check BN on the curve
-    int ret = EC_POINT_set_compressed_coordinates(group_.get(), Cast(point),
-                                                  bn.get(), 0, ctx_.get());
+    int ret = EC_POINT_set_compressed_coordinates(
+        group_.get(), CastAny<EC_POINT>(point), bn.get(), 0, ctx_.get());
     if (ret == 1) {
       return point;
     }
@@ -346,25 +382,27 @@ size_t OpensslGroup::HashPoint(const EcPoint &point) const {
   thread_local BIGNUM_PTR y(BN_new());
   // You cannot use projective coordinates here because point expression is not
   // unique
-  SSL_RET_1(EC_POINT_get_affine_coordinates(group_.get(), Cast(point), x.get(),
-                                            y.get(), ctx_.get()));
+  SSL_RET_1(EC_POINT_get_affine_coordinates(
+      group_.get(), CastAny<EC_POINT>(point), x.get(), y.get(), ctx_.get()));
   return HashBn(x.get()) + BN_is_odd(y.get());
 }
 
 bool OpensslGroup::PointEqual(const EcPoint &p1, const EcPoint &p2) const {
-  auto res = EC_POINT_cmp(group_.get(), Cast(p1), Cast(p2), ctx_.get());
+  auto res = EC_POINT_cmp(group_.get(), CastAny<EC_POINT>(p1),
+                          CastAny<EC_POINT>(p2), ctx_.get());
   SSL_RET_N(res);
   return res == 0;
 }
 
 bool OpensslGroup::IsInCurveGroup(const EcPoint &point) const {
-  auto ret = EC_POINT_is_on_curve(group_.get(), Cast(point), ctx_.get());
+  auto ret =
+      EC_POINT_is_on_curve(group_.get(), CastAny<EC_POINT>(point), ctx_.get());
   SSL_RET_N(ret, "calc point is on curve fail, err={}", ret);
   return ret == 1 || IsInfinity(point);
 }
 
 bool OpensslGroup::IsInfinity(const EcPoint &point) const {
-  return EC_POINT_is_at_infinity(group_.get(), Cast(point)) == 1;
+  return EC_POINT_is_at_infinity(group_.get(), CastAny<EC_POINT>(point)) == 1;
 }
 
 }  // namespace yacl::crypto::openssl

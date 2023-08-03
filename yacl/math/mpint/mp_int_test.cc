@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/base/mpint/mp_int.h"
+#include "yacl/math/mpint/mp_int.h"
 
 #include "gtest/gtest.h"
 
-namespace yacl::crypto::test {
+namespace yacl::math::test {
 
 class MPIntTest : public testing::Test {};
 
@@ -348,4 +348,4 @@ TEST_P(MPIntToBytesTest, NativeWorks) {
   EXPECT_EQ(static_cast<int64_t>(GetParam()), buf.data<int64_t>()[0]);
 }
 
-}  // namespace yacl::crypto::test
+}  // namespace yacl::math::test

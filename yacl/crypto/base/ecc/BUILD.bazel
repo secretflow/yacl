@@ -39,7 +39,8 @@ yacl_cc_library(
         ":curve_meta",
         ":ec_point",
         "//yacl/base:byte_container_view",
-        "//yacl/crypto/base/mpint",
+        "//yacl/math/mpint",
+        "//yacl/utils/spi",
     ],
 )
 
@@ -52,8 +53,15 @@ yacl_cc_library(
         "ec_point.h",
     ],
     deps = [
-        "//yacl/crypto/base/mpint",
+        ":any_ptr",
+        "//yacl/math/mpint",
     ],
+)
+
+yacl_cc_library(
+    name = "any_ptr",
+    hdrs = ["any_ptr.h"],
+    deps = ["//yacl/base:exception"],
 )
 
 yacl_cc_library(

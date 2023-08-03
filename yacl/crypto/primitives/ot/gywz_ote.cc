@@ -26,7 +26,7 @@
 #include "yacl/crypto/primitives/ot/ot_store.h"
 #include "yacl/crypto/tools/prg.h"
 #include "yacl/crypto/tools/random_permutation.h"
-#include "yacl/crypto/utils/math.h"
+#include "yacl/math/gadget.h"
 
 namespace yacl::crypto {
 
@@ -37,7 +37,7 @@ constexpr uint128_t one128 =
 void CggmFullEval(uint128_t delta, uint128_t seed, uint32_t n,
                   absl::Span<uint128_t> all_msgs,
                   absl::Span<uint128_t> left_sums, uint128_t one = one128) {
-  uint32_t height = Log2Ceil(n);
+  uint32_t height = math::Log2Ceil(n);
   YACL_ENFORCE(height == left_sums.size());
   AlignedVector<uint128_t> extra_buff((uint32_t)1 << (height - 1));
   auto& working_seeds = all_msgs;
@@ -130,7 +130,7 @@ void CggmPuncFullEval(uint32_t index, absl::Span<const uint128_t> sibling_sums,
 void GywzOtExtRecv(const std::shared_ptr<link::Context>& ctx,
                    const OtRecvStore& cot, uint32_t n, uint32_t index,
                    absl::Span<uint128_t> output) {
-  const uint32_t height = Log2Ceil(n);
+  const uint32_t height = math::Log2Ceil(n);
   YACL_ENFORCE(cot.Size() == height);
   YACL_ENFORCE_GE(n, (uint32_t)1);
   YACL_ENFORCE_GT(n, index);
@@ -165,7 +165,7 @@ void GywzOtExtRecv(const std::shared_ptr<link::Context>& ctx,
 void GywzOtExtSend(const std::shared_ptr<link::Context>& ctx,
                    const OtSendStore& cot, uint32_t n,
                    absl::Span<uint128_t> output) {
-  const uint32_t height = Log2Ceil(n);
+  const uint32_t height = math::Log2Ceil(n);
   YACL_ENFORCE(cot.Size() == height);
   YACL_ENFORCE_GE(n, (uint32_t)1);
 
@@ -195,7 +195,7 @@ void GywzOtExtSend(const std::shared_ptr<link::Context>& ctx,
 void FerretGywzOtExtRecv(const std::shared_ptr<link::Context>& ctx,
                          const OtRecvStore& cot, uint32_t n,
                          absl::Span<uint128_t> output) {
-  uint32_t height = Log2Ceil(n);
+  uint32_t height = math::Log2Ceil(n);
   YACL_ENFORCE(cot.Size() == height);
   YACL_ENFORCE_GE(n, (uint32_t)1);
   YACL_ENFORCE(cot.Type() == OtStoreType::Compact);
@@ -224,7 +224,7 @@ void FerretGywzOtExtRecv(const std::shared_ptr<link::Context>& ctx,
 void FerretGywzOtExtSend(const std::shared_ptr<link::Context>& ctx,
                          const OtSendStore& cot, uint32_t n,
                          absl::Span<uint128_t> output) {
-  uint32_t height = Log2Ceil(n);
+  uint32_t height = math::Log2Ceil(n);
   YACL_ENFORCE(cot.Size() == height);
   YACL_ENFORCE_GE(n, (uint32_t)1);
   YACL_ENFORCE(cot.Type() == OtStoreType::Compact);

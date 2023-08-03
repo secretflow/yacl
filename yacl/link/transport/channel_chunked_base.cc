@@ -19,6 +19,7 @@
 #include <utility>
 
 #include "absl/strings/match.h"
+#include "fmt/ostream.h"
 #include "spdlog/spdlog.h"
 
 #include "yacl/base/exception.h"
@@ -30,6 +31,11 @@ namespace brpc::policy {
 DECLARE_int32(h2_client_stream_window_size);
 
 }
+
+namespace fmt {
+template <>
+struct formatter<org::interconnection::link::TransType> : ostream_formatter {};
+}  // namespace fmt
 
 namespace yacl::link::transport {
 

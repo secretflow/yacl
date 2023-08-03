@@ -16,9 +16,9 @@
 
 #include "benchmark/benchmark.h"
 
-#include "yacl/crypto/base/mpint/mp_int.h"
+#include "yacl/math/mpint/mp_int.h"
 
-namespace yacl::crypto::bench {
+namespace yacl::math::bench {
 
 static std::vector<MPInt> GenerateMPInts(size_t count) {
   std::vector<MPInt> mpints(count);
@@ -86,6 +86,6 @@ BENCHMARK(BM_MPIntPackingUsingDeserialize)->Unit(benchmark::kMillisecond);
 BENCHMARK(BM_MPIntPackingUsingToHexString)->Unit(benchmark::kMillisecond);
 BENCHMARK(BM_MPIntPackingUsingToBytes)->Unit(benchmark::kMillisecond);
 
-}  // namespace yacl::crypto::bench
+}  // namespace yacl::math::bench
 
 BENCHMARK_MAIN();
