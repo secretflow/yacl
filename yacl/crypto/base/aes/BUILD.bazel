@@ -21,10 +21,10 @@ yacl_cc_binary(
     srcs = ["aes_bench.cc"],
     copts = AES_COPT_FLAGS,
     deps = [
-        "//yacl/crypto/tools:prg",
         ":aes_opt",
-        "@com_github_google_benchmark//:benchmark_main",
+        "//yacl/crypto/tools:prg",
         "//yacl/crypto/utils:rand",
+        "@com_github_google_benchmark//:benchmark_main",
     ] + select({
         "@platforms//cpu:x86_64": [
             "@com_github_intel_ipp//:ipp",

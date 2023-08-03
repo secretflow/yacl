@@ -25,10 +25,10 @@ cc_library(
             "c/blake3_neon.c",
         ],
         "//conditions:default": [
-            "c/blake3_sse2_x86-64_unix.S",
-            "c/blake3_sse41_x86-64_unix.S",
             "c/blake3_avx2_x86-64_unix.S",
             "c/blake3_avx512_x86-64_unix.S",
+            "c/blake3_sse2_x86-64_unix.S",
+            "c/blake3_sse41_x86-64_unix.S",
         ],
     }),
     hdrs = [

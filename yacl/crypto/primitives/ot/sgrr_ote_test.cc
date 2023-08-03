@@ -24,8 +24,8 @@
 
 #include "yacl/base/exception.h"
 #include "yacl/crypto/primitives/ot/ot_store.h"
-#include "yacl/math/gadget.h"
 #include "yacl/link/test_util.h"
+#include "yacl/math/gadget.h"
 
 namespace yacl::crypto {
 

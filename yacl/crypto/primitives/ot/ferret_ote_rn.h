@@ -40,8 +40,8 @@ void MpCotRNSend(const std::shared_ptr<link::Context>& ctx,
   for (uint64_t i = 0; i < batch_num; ++i) {
     const uint64_t this_size =
         (i == batch_size - 1) ? full_size - i * batch_size : batch_size;
-    const auto& cot_slice =
-        cot.Slice(i * math::Log2Ceil(this_size), (i + 1) * math::Log2Ceil(this_size));
+    const auto& cot_slice = cot.Slice(i * math::Log2Ceil(this_size),
+                                      (i + 1) * math::Log2Ceil(this_size));
 
     FerretGywzOtExtSend(ctx, cot_slice, this_size,
                         out.subspan(i * batch_size, this_size));
@@ -59,8 +59,8 @@ void MpCotRNRecv(const std::shared_ptr<link::Context>& ctx,
   for (uint64_t i = 0; i < batch_num; ++i) {
     const uint64_t this_size =
         (i == batch_size - 1) ? full_size - i * batch_size : batch_size;
-    const auto cot_slice =
-        cot.Slice(i * math::Log2Ceil(this_size), (i + 1) * math::Log2Ceil(this_size));
+    const auto cot_slice = cot.Slice(i * math::Log2Ceil(this_size),
+                                     (i + 1) * math::Log2Ceil(this_size));
     FerretGywzOtExtRecv(ctx, cot_slice, this_size,
                         out.subspan(i * batch_size, this_size));
   }
