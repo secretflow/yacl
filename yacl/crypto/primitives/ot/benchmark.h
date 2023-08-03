@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #include <future>
 #include <memory>
 #include <vector>
@@ -176,7 +177,7 @@ BENCHMARK_DEFINE_F(OtBench, SgrrOTe)(benchmark::State& state) {
 
       // preprare inputs
       uint32_t choice_value = RandInRange(range_n);
-      auto base_ot = MockRots(Log2Ceil(range_n));
+      auto base_ot = MockRots(math::Log2Ceil(range_n));
       AlignedVector<uint128_t> send_out(range_n);
       AlignedVector<uint128_t> recv_out(range_n);
 
@@ -209,7 +210,7 @@ BENCHMARK_DEFINE_F(OtBench, GywzOTe)(benchmark::State& state) {
       // preprare inputs
       uint32_t choice_value = RandInRange(range_n);
       uint128_t delta = SecureRandSeed();
-      auto base_ot = MockCots(Log2Ceil(range_n), delta);
+      auto base_ot = MockCots(math::Log2Ceil(range_n), delta);
       AlignedVector<uint128_t> send_out(range_n);
       AlignedVector<uint128_t> recv_out(range_n);
 

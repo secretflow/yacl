@@ -17,10 +17,10 @@
 #include "fmt/format.h"
 #include "gtest/gtest.h"
 
-#include "yacl/crypto/base/mpint/tommath_ext_features.h"
+#include "yacl/math/mpint/tommath_ext_features.h"
 #include "yacl/utils/scope_guard.h"
 
-namespace yacl::crypto::test {
+namespace yacl::math::test {
 
 #define MP_ASSERT_OK(MP_ERR) EXPECT_EQ((MP_ERR), MP_OKAY)
 
@@ -153,4 +153,4 @@ TEST(TommathExtTest, GetBit) {
   EXPECT_LE(mp_ext_count_bits_fast(new_n), 64);
 }
 
-}  // namespace yacl::crypto::test
+}  // namespace yacl::math::test

@@ -67,10 +67,14 @@ class OpensslGroup : public EcGroupSketch {
   // EcPoint(OpensslPoint) -> AffinePoint
   AffinePoint GetAffinePoint(const EcPoint& point) const override;
 
+  uint64_t GetSerializeLength(PointOctetFormat format) const override;
+
   Buffer SerializePoint(const EcPoint& point,
                         PointOctetFormat format) const override;
   void SerializePoint(const EcPoint& point, PointOctetFormat format,
                       Buffer* buf) const override;
+  void SerializePoint(const EcPoint& point, PointOctetFormat format,
+                      uint8_t* buf, uint64_t buf_size) const override;
   EcPoint DeserializePoint(ByteContainerView buf,
                            PointOctetFormat format) const override;
 
@@ -85,7 +89,7 @@ class OpensslGroup : public EcGroupSketch {
  private:
   explicit OpensslGroup(const CurveMeta& meta, EC_GROUP_PTR group);
 
-  AnyPointPtr MakeOpensslPoint() const;
+  AnyPtr MakeOpensslPoint() const;
 
   EC_GROUP_PTR group_;
   BIGNUM_PTR field_p_;

@@ -12,20 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "benchmark/benchmark.h"
+#pragma once
 
-#include "yacl/crypto/base/mpint/mp_int.h"
+#include "absl/strings/numbers.h"
 
-namespace yacl::crypto::bench {
+namespace yacl::math {
 
-static void BM_MPIntCtor(benchmark::State& state) {
-  for (auto _ : state) {
-    for (int64_t i = 0; i < 10000; ++i) {
-      benchmark::DoNotOptimize(MPInt(i));
-    }
-  }
+constexpr uint64_t Log2Floor(uint64_t x) {
+  return (8 * sizeof(uint64_t) - absl::countl_zero(x)) - 1;
 }
 
-BENCHMARK(BM_MPIntCtor)->Unit(benchmark::kMillisecond);
+constexpr uint64_t Log2Ceil(uint64_t x) { return Log2Floor(x - 1) + 1; }
 
-}  // namespace yacl::crypto::bench
+}  // namespace yacl::math

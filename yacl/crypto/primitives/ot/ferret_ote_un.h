@@ -22,7 +22,7 @@
 #include "yacl/crypto/primitives/ot/ferret_ote.h"
 #include "yacl/crypto/primitives/ot/gywz_ote.h"
 #include "yacl/crypto/tools/random_permutation.h"
-#include "yacl/crypto/utils/math.h"
+#include "yacl/math/gadget.h"
 #include "yacl/utils/cuckoo_index.h"
 
 namespace yacl::crypto {
@@ -96,7 +96,7 @@ uint64_t MpCotUNHelper(uint64_t idx_num, uint64_t idx_range) {
   auto option = CuckooIndex::SelectParams(idx_num, kFerretCuckooStashNum,
                                           kFerretCuckooHashNum);
   // [note] this is larger than the actual required cot num
-  return Log2Ceil(idx_range) * option.NumBins();
+  return math::Log2Ceil(idx_range) * option.NumBins();
 }
 
 void MpCotUNSend(const std::shared_ptr<link::Context>& ctx,
@@ -114,13 +114,13 @@ void MpCotUNSend(const std::shared_ptr<link::Context>& ctx,
     // run single-point cot for this bin, with out size =
     // simple_table_size + 1
     const uint64_t spcot_range_n = simple_map->operator[](i).size() + 1;
-    const auto spot_option = Log2Ceil(spcot_range_n);
+    const auto spot_option = math::Log2Ceil(spcot_range_n);
 
     s[i].resize(spcot_range_n);
     auto cot_slice =
-        cot.Slice(slice_begin, slice_begin + Log2Ceil(spcot_range_n));
+        cot.Slice(slice_begin, slice_begin + math::Log2Ceil(spcot_range_n));
     GywzOtExtSend(ctx, cot_slice, spot_option, absl::MakeSpan(s[i]));
-    slice_begin += Log2Ceil(spcot_range_n);
+    slice_begin += math::Log2Ceil(spcot_range_n);
   }
 
   // calculate the final result for each bin
@@ -157,7 +157,7 @@ void MpCotUNRecv(const std::shared_ptr<link::Context>& ctx,
   for (uint64_t i = 0; i < bin_num && !simple_map->operator[](i).empty(); ++i) {
     // if cuckoo bin is empty, we use idx = simple_table_size
     const uint64_t spcot_range_n = simple_map->operator[](i).size() + 1;
-    const auto spot_option = Log2Ceil(spcot_range_n);
+    const auto spot_option = math::Log2Ceil(spcot_range_n);
 
     uint64_t spcot_idx = spcot_range_n - 1;
     if (!cuckoo_index.bins()[i].IsEmpty()) {  // if bin is not empty
@@ -168,9 +168,9 @@ void MpCotUNRecv(const std::shared_ptr<link::Context>& ctx,
     r[i].resize(spcot_range_n);
 
     auto cot_slice =
-        cot.Slice(slice_begin, slice_begin + Log2Ceil(spcot_range_n));
+        cot.Slice(slice_begin, slice_begin + math::Log2Ceil(spcot_range_n));
     GywzOtExtRecv(ctx, cot_slice, spot_option, spcot_idx, absl::MakeSpan(r[i]));
-    slice_begin += Log2Ceil(spcot_range_n);
+    slice_begin += math::Log2Ceil(spcot_range_n);
   }
 
   // calculate the final result for each (non-empty) bin

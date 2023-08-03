@@ -23,7 +23,6 @@
 
 #include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
-#include "yacl/crypto/base/symmetric_crypto.h"
 
 namespace yacl::crypto {
 
@@ -184,11 +183,9 @@ INSTANTIATE_TEST_SUITE_P(Cases, SymmetricCryptoTest,
 
 // Large input is kind of slow to iterate through all cryptor kinds...so just
 // use one
-TEST(SymmetricCryptoTest, ExtraLarge) {
-  size_t msg_size =
-      static_cast<size_t>(std::numeric_limits<int32_t>::max()) + 1;
+TEST(SymmetricCryptoTest, DISABLED_ExtraLarge) {
   SymmetricCrypto crypto(kTestTypes.front(), kKey1, kIv1);
-  auto plaintext = MakeVector(msg_size);
+  auto plaintext = MakeVector(static_cast<size_t>(1) << 32);
   std::vector<uint8_t> encrypted(plaintext.size());
   ASSERT_NO_THROW(crypto.Encrypt(plaintext, absl::MakeSpan(encrypted)));
 

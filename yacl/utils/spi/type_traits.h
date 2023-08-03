@@ -1,4 +1,4 @@
-// Copyright 2022 Ant Group Co., Ltd.
+// Copyright 2023 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 
 #pragma once
 
-namespace yacl::crypto {
+namespace yacl {
 
 // borrow from c++20 stl
 enum class Endian {
@@ -26,4 +26,4 @@ enum class Endian {
   native = __BYTE_ORDER__,  // alias for little or big
 };
 
-}  // namespace yacl::crypto
+}  // namespace yacl

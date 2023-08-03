@@ -38,7 +38,7 @@ yacl_cc_library(
         "//yacl/base:dynamic_bitset",
         "//yacl/crypto/base/ecc:spi",
         "//yacl/crypto/base/hash:hash_utils",
-        "//yacl/crypto/base/mpint",
+        "//yacl/math/mpint",
     ],
 )
 
@@ -48,7 +48,7 @@ yacl_cc_test(
     deps = [
         ":hash",
         "//yacl/crypto/base/ecc",
-        "//yacl/crypto/base/mpint",
+        "//yacl/math/mpint",
     ],
 )
 
@@ -59,7 +59,7 @@ yacl_cc_library(
     deps = [
         ":hash",
         "//yacl/crypto/base/ecc:spi",
-        "//yacl/crypto/base/mpint",
+        "//yacl/math/mpint",
     ],
 )
 
@@ -70,7 +70,7 @@ yacl_cc_test(
         ":keys",
         "//yacl/crypto/base/ecc",
         "//yacl/crypto/base/ecc:spi",
-        "//yacl/crypto/base/mpint",
+        "//yacl/math/mpint",
     ],
 )
 
@@ -86,7 +86,7 @@ yacl_cc_library(
         ":kdf",
         "//yacl/crypto/base/ecc:spi",
         "//yacl/crypto/base/hash:hash_utils",
-        "//yacl/crypto/base/mpint",
+        "//yacl/math/mpint",
     ],
 )
 
@@ -99,7 +99,7 @@ yacl_cc_test(
         "//yacl/base:exception",
         "//yacl/crypto/base/ecc",
         "//yacl/crypto/base/ecc:spi",
-        "//yacl/crypto/base/mpint",
+        "//yacl/math/mpint",
         "//yacl/utils:scope_guard",
         "@com_google_absl//absl/strings",
     ],

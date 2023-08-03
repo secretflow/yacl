@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/base/mpint/montgomery_math.h"
+#include "yacl/math/mpint/montgomery_math.h"
 
-namespace yacl::crypto {
+namespace yacl::math {
 
 MontgomerySpace::MontgomerySpace(const MPInt &mod) {
   YACL_ENFORCE(!mod.IsNegative() && mod.IsOdd(),
@@ -128,4 +128,4 @@ void MontgomerySpace::PowMod(const BaseTable &base, const MPInt &e,
   }
 }
 
-}  // namespace yacl::crypto
+}  // namespace yacl::math

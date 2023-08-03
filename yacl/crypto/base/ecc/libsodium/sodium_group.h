@@ -47,10 +47,14 @@ class SodiumGroup : public EcGroupSketch {
 
   EcPoint CopyPoint(const EcPoint& point) const override;
 
+  uint64_t GetSerializeLength(PointOctetFormat format) const override;
+
   Buffer SerializePoint(const EcPoint& point,
                         PointOctetFormat format) const override;
   void SerializePoint(const EcPoint& point, PointOctetFormat format,
                       Buffer* buf) const override;
+  void SerializePoint(const EcPoint& point, PointOctetFormat format,
+                      uint8_t* buf, uint64_t buf_size) const override;
   EcPoint DeserializePoint(ByteContainerView buf,
                            PointOctetFormat format) const override;
 

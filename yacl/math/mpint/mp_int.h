@@ -18,18 +18,15 @@
 #include <ostream>
 #include <string>
 
-#include "fmt/ostream.h"
 #include "libtommath/tommath.h"
 #include "msgpack.hpp"
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/int128.h"
-#include "yacl/crypto/base/mpint/tommath_ext_features.h"
+#include "yacl/math/mpint/tommath_ext_features.h"
+#include "yacl/math/mpint/mp_int_enforce.h"
 
-#define MPINT_ENFORCE_OK(MP_ERR, ...) \
-  YACL_ENFORCE_EQ((MP_ERR), MP_OKAY, __VA_ARGS__)
-
-namespace yacl::crypto {
+namespace yacl::math {
 
 enum class PrimeType : int {
   Normal = 0,    // p is prime
@@ -372,29 +369,29 @@ class MPInt {
   friend class MontgomerySpace;
 };
 
-}  // namespace yacl::crypto
+}  // namespace yacl::math
 
-yacl::crypto::MPInt operator""_mp(const char *sz, size_t n);
-yacl::crypto::MPInt operator""_mp(unsigned long long num);
+yacl::math::MPInt operator""_mp(const char *sz, size_t n);
+yacl::math::MPInt operator""_mp(unsigned long long num);
 
 namespace msgpack {
 MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS) {
   namespace adaptor {
 
   template <>
-  struct pack<yacl::crypto::MPInt> {
+  struct pack<yacl::math::MPInt> {
     template <typename Stream>
     msgpack::packer<Stream> &operator()(msgpack::packer<Stream> &object,
-                                        const yacl::crypto::MPInt &mp) const {
+                                        const yacl::math::MPInt &mp) const {
       object.pack(std::string_view(mp.Serialize()));
       return object;
     }
   };
 
   template <>
-  struct convert<yacl::crypto::MPInt> {
+  struct convert<yacl::math::MPInt> {
     const msgpack::object &operator()(const msgpack::object &object,
-                                      yacl::crypto::MPInt &mp) const {
+                                      yacl::math::MPInt &mp) const {
       mp.Deserialize(object.as<std::string_view>());
       return object;
     }
@@ -404,10 +401,7 @@ MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS) {
 }  // MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS)
 }  // namespace msgpack
 
-//since c++20 deleted overloads for basic_ostream and UTF character/array
-#if __cplusplus >= 202002L
 namespace fmt {
 template <>
-struct formatter<yacl::crypto::MPInt> : ostream_formatter {};
+struct formatter<yacl::math::MPInt> : ostream_formatter {};
 }  // namespace fmt
-#endif

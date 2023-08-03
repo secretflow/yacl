@@ -26,7 +26,7 @@ TEST(TpreTest, Test1) {
 
   /************************* Phase 1 *************************/
   // Start testing encryption and decryption functions
-  std::unique_ptr<EcGroup> ecc_group = EcGroupFactory::Create("sm2");
+  std::unique_ptr<EcGroup> ecc_group = EcGroupFactory::Instance().Create("sm2");
 
   std::pair<Keys::PublicKey, Keys::PrivateKey> key_pair_A =
       keys.GenerateKeyPair(ecc_group);

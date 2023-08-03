@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "yacl/crypto/primitives/ot/ot_store.h"
-#include "yacl/crypto/utils/math.h"
+#include "yacl/math/gadget.h"
 #include "yacl/utils/cuckoo_index.h"
 
 namespace yacl::crypto {

@@ -16,9 +16,9 @@
 
 #include "libtommath/tommath.h"
 
-#include "yacl/crypto/base/mpint/type_traits.h"
+#include "yacl/utils/spi/type_traits.h"
 
-namespace yacl::crypto {
+namespace yacl::math {
 
 // Reference: https://eprint.iacr.org/2003/186.pdf
 // libtommath style
@@ -48,4 +48,4 @@ void mp_ext_deserialize(mp_int *num, const uint8_t *buf, size_t buf_len);
 uint8_t mp_ext_get_bit(const mp_int &a, int index);
 void mp_ext_set_bit(mp_int *a, int index, uint8_t value);
 
-}  // namespace yacl::crypto
+}  // namespace yacl::math

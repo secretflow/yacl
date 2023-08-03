@@ -19,7 +19,6 @@
 
 #include "yacl/crypto/base/ecc/ec_point.h"
 #include "yacl/crypto/base/ecc/ecc_spi.h"
-#include "yacl/crypto/base/mpint/mp_int.h"
 
 namespace yacl::crypto {
 

@@ -22,6 +22,7 @@
 #include "yacl/crypto/base/ecc/ec_point.h"
 #include "yacl/crypto/base/ecc/ecc_spi.h"
 #include "yacl/crypto/base/ecc/libsodium/ed25519_group.h"
+#include "yacl/utils/spi/spi_factory.h"
 
 namespace yacl::crypto::sodium {
 MPInt Fe25519ToMPInt(const fe25519& x);
@@ -41,7 +42,8 @@ std::ostream& operator<<(std::ostream& os, const EcPoint& p) {
 
 class SodiumTest : public ::testing::Test {
  protected:
-  std::unique_ptr<EcGroup> ec_ = EcGroupFactory::Create("ed25519", "libsodium");
+  std::unique_ptr<EcGroup> ec_ =
+      EcGroupFactory::Instance().Create("ed25519", Lib = "libsodium");
 };
 
 TEST_F(SodiumTest, CopyPointWorks) {

@@ -16,9 +16,9 @@
 
 #include "libtommath/tommath.h"
 
-#include "yacl/crypto/base/mpint/mp_int.h"
+#include "yacl/math/mpint/mp_int.h"
 
-namespace yacl::crypto {
+namespace yacl::math {
 
 #define CHECK_MP_ERR(MP_FUNC) \
   do {                        \
@@ -107,4 +107,4 @@ class MontgomerySpace {
   MPInt identity_;  // identity = R mod m // i.e. unit 1 in Montgomery ring
 };
 
-}  // namespace yacl::crypto
+}  // namespace yacl::math

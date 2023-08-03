@@ -132,9 +132,11 @@ void SymmetricCrypto::Decrypt(absl::Span<const uint8_t> ciphertext,
   size_t out_length = 0;
   size_t in_offset = 0;
 
+  size_t limit = ((size_t)1 << 31) - BlockSize();
+
   while (in_offset < ciphertext.size()) {
     auto step_length = static_cast<int>(
-        std::min<size_t>(ciphertext.size() - in_offset, INT_MAX));
+        std::min<size_t>(ciphertext.size() - in_offset, limit));
     int current_out_length;
     int rc = EVP_CipherUpdate(ctx, plaintext.data() + out_length,
                               &current_out_length,
@@ -183,9 +185,11 @@ void SymmetricCrypto::Encrypt(absl::Span<const uint8_t> plaintext,
   size_t out_length = 0;
   size_t in_offset = 0;
 
+  size_t limit = ((size_t)1 << 31) - BlockSize();
+
   while (in_offset < plaintext.size()) {
-    int step_length = static_cast<int>(
-        std::min<size_t>(plaintext.size() - in_offset, INT_MAX));
+    int step_length =
+        static_cast<int>(std::min<size_t>(plaintext.size() - in_offset, limit));
     int current_out_length;
     int rc = EVP_CipherUpdate(ctx, ciphertext.data() + out_length,
                               &current_out_length, plaintext.data() + in_offset,

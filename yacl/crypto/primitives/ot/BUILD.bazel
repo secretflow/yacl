@@ -168,9 +168,9 @@ yacl_cc_library(
         "//yacl/crypto/base/aes:aes_opt",
         "//yacl/crypto/tools:prg",
         "//yacl/crypto/tools:random_permutation",
-        "//yacl/crypto/utils:math",
         "//yacl/crypto/utils:rand",
         "//yacl/link",
+        "//yacl/math:gadget",
         "@com_google_absl//absl/numeric:bits",
     ],
 )
@@ -196,9 +196,9 @@ yacl_cc_library(
         "//yacl/crypto/base/aes:aes_opt",
         "//yacl/crypto/tools:prg",
         "//yacl/crypto/tools:random_permutation",
-        "//yacl/crypto/utils:math",
         "//yacl/crypto/utils:rand",
         "//yacl/link",
+        "//yacl/math:gadget",
         "@com_google_absl//absl/numeric:bits",
     ],
 )
@@ -229,9 +229,9 @@ yacl_cc_library(
         "//yacl/crypto/tools:linear_code",
         "//yacl/crypto/tools:prg",
         "//yacl/crypto/tools:random_permutation",
-        "//yacl/crypto/utils:math",
         "//yacl/crypto/utils:rand",
         "//yacl/link",
+        "//yacl/math:gadget",
         "//yacl/utils:cuckoo_index",
     ],
 )

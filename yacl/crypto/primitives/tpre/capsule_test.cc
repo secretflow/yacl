@@ -23,7 +23,7 @@
 namespace yacl::crypto::test {
 
 TEST(CapsuleTest, Test1) {
-  std::unique_ptr<EcGroup> ecc_group = EcGroupFactory::Create("sm2");
+  std::unique_ptr<EcGroup> ecc_group = EcGroupFactory::Instance().Create("sm2");
   Keys keys;
 
   std::pair<Keys::PublicKey, Keys::PrivateKey> key_pair_alice =

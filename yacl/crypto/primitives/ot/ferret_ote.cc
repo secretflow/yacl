@@ -25,7 +25,7 @@
 #include "yacl/crypto/primitives/ot/gywz_ote.h"
 #include "yacl/crypto/primitives/ot/ot_store.h"
 #include "yacl/crypto/tools/linear_code.h"
-#include "yacl/crypto/utils/math.h"
+#include "yacl/math/gadget.h"
 #include "yacl/utils/cuckoo_index.h"
 #include "yacl/utils/serialize.h"
 

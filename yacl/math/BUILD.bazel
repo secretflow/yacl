@@ -17,24 +17,9 @@ load("//bazel:yacl.bzl", "yacl_cc_binary", "yacl_cc_library")
 package(default_visibility = ["//visibility:public"])
 
 yacl_cc_library(
-    name = "rand",
-    srcs = ["rand.cc"],
-    hdrs = ["rand.h"],
+    name = "gadget",
+    hdrs = ["gadget.h"],
     deps = [
-        "//yacl/base:dynamic_bitset",
-        "//yacl/base:exception",
-        "//yacl/base:int128",
-        "//yacl/crypto/tools:prg",
-        "@com_github_openssl_openssl//:openssl",
-        "@com_google_absl//absl/types:span",
-    ],
-)
-
-yacl_cc_binary(
-    name = "rand_bench",
-    srcs = ["rand_bench.cc"],
-    deps = [
-        ":rand",
-        "@com_github_google_benchmark//:benchmark_main",
+        "@com_google_absl//absl/strings",
     ],
 )
