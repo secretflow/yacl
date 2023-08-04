@@ -32,11 +32,6 @@ DECLARE_int32(h2_client_stream_window_size);
 
 }
 
-namespace fmt {
-template <>
-struct formatter<org::interconnection::link::TransType> : ostream_formatter {};
-}  // namespace fmt
-
 namespace yacl::link::transport {
 
 namespace ic = org::interconnection;
@@ -250,8 +245,8 @@ void ChannelChunkedBase::OnRequest(const ic_pb::PushRequest* request,
   } else {
     response->mutable_header()->set_error_code(ic::ErrorCode::INVALID_REQUEST);
     response->mutable_header()->set_error_msg(
-        fmt::format("unrecongnized trans type={}, from rank={}", trans_type,
-                    request->sender_rank()));
+        fmt::format("unrecongnized trans type={}, from rank={}",
+                    TransType_Name(trans_type), request->sender_rank()));
   }
 }
 

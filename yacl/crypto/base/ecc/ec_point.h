@@ -87,9 +87,6 @@ using Array160 =
 // a black box
 using EcPoint = std::variant<Array32, Array160, AnyPtr, AffinePoint>;
 
-}  // namespace yacl::crypto
+inline auto format_as(const AffinePoint &ap) { return fmt::streamed(ap); }
 
-namespace fmt {
-template <>
-struct formatter<yacl::crypto::AffinePoint> : ostream_formatter {};
-}  // namespace fmt
+}  // namespace yacl::crypto
