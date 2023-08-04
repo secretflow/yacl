@@ -20,7 +20,7 @@
 namespace fmt {
 template <>
 struct formatter<mp_err> : ostream_formatter {};
-}
+}  // namespace fmt
 
 #define MPINT_ENFORCE_OK(MP_ERR, ...) \
   YACL_ENFORCE_EQ((MP_ERR), MP_OKAY, __VA_ARGS__)

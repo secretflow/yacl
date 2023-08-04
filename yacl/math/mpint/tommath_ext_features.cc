@@ -25,9 +25,8 @@ extern "C" {
 
 #include "yacl/base/buffer.h"
 #include "yacl/base/exception.h"
-#include "yacl/utils/scope_guard.h"
-
 #include "yacl/math/mpint/mp_int_enforce.h"
+#include "yacl/utils/scope_guard.h"
 
 namespace yacl::math {
 

@@ -41,7 +41,10 @@ cc_library(
         include = ["src/**/*.c"],
     ) + [":version_h"],
     hdrs = glob(["src/**/*.h"] + [":version_h"]),
-    copts = ["-DCONFIGURED", "-DHAVE_TI_MODE"],
+    copts = [
+        "-DCONFIGURED",
+        "-DHAVE_TI_MODE",
+    ],
     includes = [
         "src/libsodium/crypto_core/curve25519/ref10",
         "src/libsodium/crypto_generichash/blake2b/ref",

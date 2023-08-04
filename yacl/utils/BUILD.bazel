@@ -154,9 +154,9 @@ yacl_cc_library(
         "matrix_utils.h",
     ],
     deps = [
+        "//yacl/base:block",
         "//yacl/base:byte_container_view",
         "//yacl/base:int128",
-        "//yacl/base:block",
         "@com_github_google_cpu_features//:cpu_features",
         "@com_google_absl//absl/types:span",
     ] + select({

@@ -23,8 +23,8 @@
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/int128.h"
-#include "yacl/math/mpint/tommath_ext_features.h"
 #include "yacl/math/mpint/mp_int_enforce.h"
+#include "yacl/math/mpint/tommath_ext_features.h"
 
 namespace yacl::math {
 
