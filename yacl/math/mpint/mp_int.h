@@ -369,6 +369,8 @@ class MPInt {
   friend class MontgomerySpace;
 };
 
+inline auto format_as(const MPInt &i) { return fmt::streamed(i); }
+
 }  // namespace yacl::math
 
 yacl::math::MPInt operator""_mp(const char *sz, size_t n);
@@ -400,8 +402,3 @@ MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS) {
   }  // namespace adaptor
 }  // MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS)
 }  // namespace msgpack
-
-namespace fmt {
-template <>
-struct formatter<yacl::math::MPInt> : ostream_formatter {};
-}  // namespace fmt
