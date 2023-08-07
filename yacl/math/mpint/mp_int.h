@@ -237,7 +237,7 @@ class MPInt {
    * > RandomRoundUp
    *     - Generate 120-bit random numbers with the highest bit being 1.
    * > RandomExactBits
-   *     - Generate an exact bit_size random number, the smb is not guaranteed
+   *     - Generate an exact bit_size random number, the msb is not guaranteed
    * to be 1.
    * > RandomMonicExactBits
    *     - Generate an exact bit_size random number with the highest bit
@@ -321,7 +321,7 @@ class MPInt {
   //================================//
 
   // if combiner is add, output scalar * base
-  // if combiner is mul, output scalar ** base
+  // if combiner is mul, output base ** scalar
   // warning: this function is very slow.
   template <typename T>
   static T SlowCustomPow(
