@@ -58,7 +58,7 @@ inline void PrcInit(const std::shared_ptr<link::Context>& ctx,
 }
 
 // Apply Pseudorandom coding on the input
-inline void Prc(AES_KEY* aes_key, uint128_t input, KkrtRow* prc) {
+void Prc(AES_KEY* aes_key, uint128_t input, KkrtRow* prc) {
   std::array<uint128_t, kKkrtWidth> aes_blocks;
   std::fill(aes_blocks.begin(), aes_blocks.end(), input);
   ParaEnc<kKkrtWidth, 1>(aes_blocks.data(), aes_key);
