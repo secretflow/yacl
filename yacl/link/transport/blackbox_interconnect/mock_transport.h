@@ -26,6 +26,8 @@
 #include "yacl/base/exception.h"
 #include "yacl/link/transport/blackbox_interconnect/blackbox_dummy_service_impl.h"
 
+extern char** environ;
+
 namespace yacl::link::transport::blackbox_interconnect {
 
 class MockTransport {
