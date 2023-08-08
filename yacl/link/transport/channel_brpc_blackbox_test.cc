@@ -196,7 +196,7 @@ class ChannelBlackBoxTest : public ::testing::Test {
   inline static std::vector<std::string> node_id = {"1234", "5678"};
 
   std::mutex port_mtx_;
-  std::int64_t port_ = 49152;
+  std::int64_t port_ = 40000;
 };
 
 TEST_F(ChannelBlackBoxTest, Normal_Empty) {
