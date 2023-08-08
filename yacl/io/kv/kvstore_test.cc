@@ -36,7 +36,7 @@ TEST(KVStore, memory_test) {
 
 TEST(KVStore, leveldb_test) {
   std::unique_ptr<KVStore> leveldb_store(
-      new LeveldbKVStore(false, std::tmpnam(nullptr)));
+      new LeveldbKVStore(true, "/tmp/leveldb_test"));
 
   std::random_device rd;
 
