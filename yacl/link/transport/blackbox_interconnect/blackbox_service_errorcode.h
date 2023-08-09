@@ -42,7 +42,7 @@ const static std::unordered_map<std::string_view, std::string_view>
         {"MessageError", "E0000000616"},
         {"VersionError", "E0000000617"},
         {"NodeNotConnect", "E0000000618"},
-        {"AddressInvalid", "E0000000619"},
+        {"UnsupportedUriPath", "E0000000619"},
         {"QueueFull", "E0000000700"},
 };
 

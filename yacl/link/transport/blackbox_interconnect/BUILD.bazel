@@ -13,7 +13,7 @@
 # limitations under the License.
 
 load("@rules_proto//proto:defs.bzl", "proto_library")
-load("//bazel:yacl.bzl", "yacl_cc_library")
+load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -43,5 +43,39 @@ cc_proto_library(
     name = "blackbox_dummy_service_proto",
     deps = [
         ":blackbox_dummy_service",
+    ],
+)
+
+yacl_cc_library(
+    name = "blackbox_dummy_service_impl",
+    srcs = ["blackbox_dummy_service_impl.cc"],
+    hdrs = ["blackbox_dummy_service_impl.h"],
+    deps = [
+        ":blackbox_dummy_service_proto",
+        ":blackbox_service_errorcode",
+        ":blackbox_service_proto",
+        "//yacl/base:exception",
+        "@com_github_brpc_brpc//:brpc",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+yacl_cc_library(
+    name = "mock_transport",
+    hdrs = ["mock_transport.h"],
+    deps = [
+        ":blackbox_dummy_service_impl",
+        "//yacl/base:exception",
+        "@com_github_brpc_brpc//:brpc",
+    ],
+)
+
+yacl_cc_test(
+    name = "mock_transport_test",
+    srcs = ["mock_transport_test.cc"],
+    deps = [
+        ":blackbox_service_proto",
+        ":mock_transport",
+        "//yacl/link/transport/blackbox_interconnect:blackbox_dummy_service_proto",
     ],
 )
