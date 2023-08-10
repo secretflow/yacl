@@ -211,7 +211,6 @@ void mp_ext_safe_prime_rand(mp_int *p, int t, int psize) {
         break;
       }
     }
-    
     if (mp_ext_count_bits_fast(*p) != psize) {
         continue;
     }
@@ -474,10 +473,10 @@ uint8_t mp_ext_get_bit(const mp_int &a, int index) {
 void mp_ext_set_bit(mp_int *a, int index, uint8_t value) {
   int limb = index / MP_DIGIT_BIT;
   if (limb > a->alloc) {
-    MPINT_ENFORCE_OK(mp_grow(a, limb + 1));
     for (int i = a->used; i < a->alloc; ++i) {
       a->dp[i] = 0;
     }
+    MPINT_ENFORCE_OK(mp_grow(a, limb + 1));
   }
 
   if (limb >= a->used) {
