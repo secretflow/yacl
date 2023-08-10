@@ -75,7 +75,7 @@ inline bool is_prime_candidate(const mp_int *p) {
 // Let P>1 be an integer, and suppose there exist natural numbers A and Q such
 // that
 //   * A^{P-1} = 1 mod P
-//   * Q is prime, Q|N−1 and Q > sqrt(P) - 1
+//   * Q is prime, Q|P−1 and Q > sqrt(P) - 1
 //   * gcd(A^{(P-1)/Q} - 1, P) = 1
 // Then P is prime
 //
@@ -205,11 +205,15 @@ void mp_ext_safe_prime_rand(mp_int *p, int t, int psize) {
       MPINT_ENFORCE_OK(mp_incr(p));
 
       if (mp_ext_count_bits_fast(*p) != psize) {
-        continue;
+        break;
       }
       if (is_prime_candidate(p)) {
         break;
       }
+    }
+    
+    if (mp_ext_count_bits_fast(*p) != psize) {
+        continue;
     }
     // is `q` a prime? try 10 times.
     MPINT_ENFORCE_OK(mp_prime_is_prime(&q, 10, &res));
@@ -217,7 +221,7 @@ void mp_ext_safe_prime_rand(mp_int *p, int t, int psize) {
       continue;
     }
     // test Pocklington Criterion
-    if (!is_pocklington_criterion_satisfied(&q)) {
+    if (!is_pocklington_criterion_satisfied(&p)) {
       continue;
     }
     // final check
@@ -471,7 +475,7 @@ void mp_ext_set_bit(mp_int *a, int index, uint8_t value) {
   int limb = index / MP_DIGIT_BIT;
   if (limb > a->alloc) {
     MPINT_ENFORCE_OK(mp_grow(a, limb + 1));
-    for (int i = a->used + 1; i <= limb; ++i) {
+    for (int i = a->used; i < a->alloc; ++i) {
       a->dp[i] = 0;
     }
   }
