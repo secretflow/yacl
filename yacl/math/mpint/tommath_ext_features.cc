@@ -212,7 +212,7 @@ void mp_ext_safe_prime_rand(mp_int *p, int t, int psize) {
       }
     }
     if (mp_ext_count_bits_fast(*p) != psize) {
-        continue;
+      continue;
     }
     // is `q` a prime? try 10 times.
     MPINT_ENFORCE_OK(mp_prime_is_prime(&q, 10, &res));
