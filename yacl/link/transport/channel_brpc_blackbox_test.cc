@@ -19,6 +19,8 @@
 #include <cstddef>
 #include <future>
 #include <memory>
+#include <mutex>
+#include <random>
 #include <string>
 #include <thread>
 
@@ -71,7 +73,7 @@ class DummyBlackBoxServiceImpl : public DummyBlackBoxService {
           msg_db_[*topic].pop();
         }
       } else {
-        response.set_code(error_code::Code("AddressInvalid"));
+        response.set_code(error_code::Code("UnsupportedUriPath"));
       }
     }
 
@@ -103,8 +105,6 @@ static std::string RandStr(size_t length) {
   return str;
 }
 
-std::atomic_int64_t port = 49152;
-
 class ChannelBlackBoxTest : public ::testing::Test {
  protected:
   void SetUp() override {
@@ -118,9 +118,15 @@ class ChannelBlackBoxTest : public ::testing::Test {
     receiver_ =
         std::make_shared<ChannelBrpcBlackBox>(recv_rank, send_rank, options);
 
-    // let sender rank as 0, receiver rank as 1.
-    // client_ listen messages from sender(rank 0).
-    std::string server_addr = "127.0.0.1:" + std::to_string(port++);
+    // in case different user run this test, use random to avoid port collision
+    std::random_device rd;   // a seed source for the random number engine
+    std::mt19937 gen(rd());  // mersenne_twister_engine seeded with rd()
+    std::uniform_int_distribution<> distrib(10, 1000);
+    {
+      std::lock_guard<std::mutex> lock(port_mtx_);
+      port_ += distrib(gen);
+    }
+    std::string server_addr = "127.0.0.1:" + std::to_string(port_);
 
     if (mock_service_) {
       if (server_.IsRunning()) {
@@ -188,6 +194,9 @@ class ChannelBlackBoxTest : public ::testing::Test {
   std::unique_ptr<ReceiverLoopBlackBox> receive_loop_;
   inline static std::vector<std::string> party_id = {"alice", "bob"};
   inline static std::vector<std::string> node_id = {"1234", "5678"};
+
+  std::mutex port_mtx_;
+  std::int64_t port_ = 40000;
 };
 
 TEST_F(ChannelBlackBoxTest, Normal_Empty) {

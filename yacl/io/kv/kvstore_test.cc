@@ -1,5 +1,6 @@
 // Copyright (c) 2021 Ant Financial. All rights reserved.
 
+#include <cstdio>
 #include <memory>
 #include <random>
 #include <string>
@@ -35,7 +36,7 @@ TEST(KVStore, memory_test) {
 
 TEST(KVStore, leveldb_test) {
   std::unique_ptr<KVStore> leveldb_store(
-      new LeveldbKVStore(false, "/tmp/abcd"));
+      new LeveldbKVStore(true, "/tmp/leveldb_test"));
 
   std::random_device rd;
 
