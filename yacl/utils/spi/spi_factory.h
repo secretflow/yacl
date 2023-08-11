@@ -26,92 +26,9 @@
 #include "spdlog/spdlog.h"
 
 #include "yacl/base/exception.h"
+#include "yacl/utils/spi/argument.h"
 
 namespace yacl {
-
-class SpiArg {
- public:
-  explicit SpiArg(const std::string &key) : key_(absl::AsciiStrToLower(key)) {}
-
-  template <typename T>
-  SpiArg(const std::string &key, T &&value) : key_(absl::AsciiStrToLower(key)) {
-    operator=(std::forward<T>(value));
-  }
-
-  SpiArg operator=(const char *value) {
-    value_ = absl::AsciiStrToLower(std::string(value));
-    return *this;
-  }
-
-  SpiArg operator=(const std::string &value) {
-    value_ = absl::AsciiStrToLower(value);
-    return *this;
-  }
-
-  template <typename T>
-  SpiArg operator=(const T &value) {
-    value_ = value;
-    return *this;
-  }
-
-  const std::string &Key() const;
-
-  bool HasValue();
-
-  template <typename T>
-  T Value() const {
-    try {
-      return std::any_cast<T>(value_);
-    } catch (const std::bad_any_cast &e) {
-      YACL_THROW("Get SPI arg {}: Cannot cast from {} to {}", key_,
-                 value_.type().name(), typeid(T).name());
-    }
-  }
-
- private:
-  std::string key_;
-  std::any value_;
-};
-
-class SpiArgKey {
- public:
-  explicit SpiArgKey(std::string key) : key_(std::move(key)) {}
-
-  const std::string &Key() const & { return key_; }
-
-  template <typename T>
-  SpiArg operator=(T &&value) const {
-    return {key_, std::forward<T>(value)};
-  }
-
- private:
-  std::string key_;
-};
-
-inline namespace literals {
-SpiArgKey operator""_arg(const char *name, size_t s);
-
-// Pre-defined args..
-const SpiArgKey Lib("lib");
-
-}  // namespace literals
-
-class SpiArgs : public std::map<std::string, SpiArg> {
- public:
-  SpiArgs(std::initializer_list<SpiArg> args);
-
-  template <typename T>
-  T Get(const std::string &key, const T &default_value) const {
-    auto it = find(absl::AsciiStrToLower(key));
-    if (it == end()) {
-      return default_value;
-    } else {
-      return it->second.Value<T>();
-    }
-  }
-
-  SpiArg Get(const SpiArgKey &arg);
-};
 
 // Give config, return SPI instance.
 // SPI_T: The type of SPI class, such as EcGroup
@@ -141,7 +58,7 @@ class SpiFactoryBase {
   std::unique_ptr<SPI_T> Create(const std::string &feature_name,
                                 T &&...extra_args) const {
     SpiArgs args({std::forward<T>(extra_args)...});
-    auto lib_name = args.Get(Lib);
+    auto lib_name = args.GetOptional(Lib);
     if (!lib_name.HasValue()) {
       for (const auto &perf_item : performance_map_) {
         if (checker_map_.at(perf_item.second)(feature_name, args)) {

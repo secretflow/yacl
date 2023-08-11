@@ -39,8 +39,7 @@ FAST_FLAGS = ["-O1"]
 AES_COPT_FLAGS = select({
     "@platforms//cpu:aarch64": ["-O3"],
     "//conditions:default": [
-        "-march=haswell",
-        "-mavx2",
+        "-mavx",
         "-maes",
     ],
 })

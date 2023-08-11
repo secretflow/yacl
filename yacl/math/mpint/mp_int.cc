@@ -457,6 +457,11 @@ MPInt MPInt::AddMod(const MPInt &b, const MPInt &mod) const {
   return res;
 }
 
+void MPInt::AddMod(const yacl::math::MPInt &a, const yacl::math::MPInt &b,
+                   const yacl::math::MPInt &mod, yacl::math::MPInt *d) {
+  MPINT_ENFORCE_OK(mp_addmod(&a.n_, &b.n_, &mod.n_, &d->n_));
+}
+
 void MPInt::Sub(const MPInt &a, const MPInt &b, MPInt *c) {
   MPINT_ENFORCE_OK(mp_sub(&a.n_, &b.n_, &c->n_));
 }

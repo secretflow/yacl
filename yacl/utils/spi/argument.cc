@@ -12,32 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/utils/spi/spi_factory.h"
+#include "yacl/utils/spi/argument.h"
 
 namespace yacl {
 
-inline namespace literals {
-SpiArgKey operator""_arg(const char* name, size_t s) {
-  return SpiArgKey(std::string(name, s));
-}
-}  // namespace literals
-
 const std::string& SpiArg::Key() const { return key_; }
 
-bool SpiArg::HasValue() { return value_.has_value(); }
+bool SpiArg::HasValue() const { return value_.has_value(); }
 
 SpiArgs::SpiArgs(std::initializer_list<SpiArg> args) {
   for (const auto& item : args) {
     insert({item.Key(), item});
-  }
-}
-
-SpiArg SpiArgs::Get(const SpiArgKey& arg) {
-  auto it = find(arg.Key());
-  if (it == end()) {
-    return SpiArg{arg.Key()};
-  } else {
-    return it->second;
   }
 }
 
