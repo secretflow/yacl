@@ -178,7 +178,10 @@ class MPInt {
 
   // (*c) = a + b
   static void Add(const MPInt &a, const MPInt &b, MPInt *c);
+
   MPInt AddMod(const MPInt &b, const MPInt &mod) const;
+  static void AddMod(const MPInt &a, const MPInt &b, const MPInt &mod,
+                     MPInt *d);
 
   // (*c) = a - b
   static void Sub(const MPInt &a, const MPInt &b, MPInt *c);

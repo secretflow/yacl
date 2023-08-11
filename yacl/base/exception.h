@@ -86,8 +86,7 @@ class Exception : public std::exception {
   Exception() = default;
   explicit Exception(std::string msg) : msg_(std::move(msg)) {}
   explicit Exception(const char* msg) : msg_(msg) {}
-  explicit Exception(std::string msg, void** stacks, int dep)
-      : msg_(std::move(msg)) {
+  explicit Exception(const std::string& msg, void** stacks, int dep) {
     for (int i = 0; i < dep; ++i) {
       std::array<char, 2048> tmp;
       const char* symbol = "(unknown)";
@@ -96,6 +95,8 @@ class Exception : public std::exception {
       }
       stack_trace_.append(fmt::format("#{} {}+{}\n", i, symbol, stacks[i]));
     }
+
+    msg_ = fmt::format("{}\nStacktrace:\n{}", msg, stack_trace_);
   }
   const char* what() const noexcept override { return msg_.c_str(); }
 

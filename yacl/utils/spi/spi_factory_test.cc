@@ -29,6 +29,8 @@ class MockPheSpi {
   virtual ~MockPheSpi(){};
 };
 
+SpiArgKey<int> KeySize("key_size");
+
 // Define sub factory
 
 class MockPheSpiFactory final : public SpiFactoryBase<MockPheSpi> {
@@ -52,11 +54,11 @@ class MockPaillierLib : public MockPheSpi {
   static std::unique_ptr<MockPheSpi> Create(const std::string &phe_name,
                                             const SpiArgs &args) {
     YACL_ENFORCE(phe_name == "paillier");
-    return std::make_unique<MockPaillierLib>(args.Get("key_size", 2048));
+    return std::make_unique<MockPaillierLib>(args.Get(KeySize, 2048));
   }
 
   static bool Check(const std::string &phe_name, const SpiArgs &args) {
-    return phe_name == "paillier" && args.Get("key_size", 2048) <= 4096;
+    return phe_name == "paillier" && args.Get(KeySize, 2048) <= 4096;
   }
 
   std::string ToString() override {
@@ -72,6 +74,8 @@ REGISTER_MOCK_LIBRARY("mock_paillier_lib", 10, MockPaillierLib::Check,
 
 // Implement 2: Another lib
 
+SpiArgKey<std::string> Curve("curve");
+
 class MockQuantumLib : public MockPheSpi {
  public:
   explicit MockQuantumLib(std::string curve) : curve_(std::move(curve)) {}
@@ -80,12 +84,12 @@ class MockQuantumLib : public MockPheSpi {
                                             const SpiArgs &args) {
     YACL_ENFORCE(phe_name == "elgamal");
     return std::make_unique<MockQuantumLib>(
-        args.Get<std::string>("curve", "ed25519"));
+        args.Get<std::string>(Curve, "ed25519"));
   }
 
   static bool Check(const std::string &phe_name, const SpiArgs &args) {
     return phe_name == "elgamal" &&
-           args.Get<std::string>("curve", "ed25519") == "ed25519";
+           args.Get<std::string>(Curve, "ed25519") == "ed25519";
   }
 
   std::string ToString() override {
@@ -103,7 +107,7 @@ REGISTER_MOCK_LIBRARY("mock_quantum_lib", 20, MockQuantumLib::Check,
 
 TEST(SpiFactoryTest, TestArg) {
   ASSERT_EQ((Lib = "ABC").Value<std::string>(), "abc");
-  ASSERT_EQ(("key_size1"_arg = 100).Value<int>(), 100);
+  ASSERT_EQ((KeySize = 100).Value<int>(), 100);
 }
 
 TEST(SpiFactoryTest, TestListLibs) {
@@ -116,17 +120,17 @@ TEST(SpiFactoryTest, TestListLibs) {
   ASSERT_EQ(libs.size(), 1);
   ASSERT_TRUE(libs[0] == "mock_paillier_lib");
 
-  libs = MockPheSpiFactory::Instance().ListLibraries("paillier",
-                                                     "key_size"_arg = 2048);
+  libs =
+      MockPheSpiFactory::Instance().ListLibraries("paillier", KeySize = 2048);
   ASSERT_EQ(libs.size(), 1);
   ASSERT_TRUE(libs[0] == "mock_paillier_lib");
 
-  libs = MockPheSpiFactory::Instance().ListLibraries("paillier",
-                                                     "key_size"_arg = 100000);
+  libs =
+      MockPheSpiFactory::Instance().ListLibraries("paillier", KeySize = 100000);
   ASSERT_EQ(libs.size(), 0);
 
-  libs = MockPheSpiFactory::Instance().ListLibraries("elgamal",
-                                                     "curve"_arg = "ed25519");
+  libs =
+      MockPheSpiFactory::Instance().ListLibraries("elgamal", Curve = "ed25519");
   ASSERT_EQ(libs.size(), 1);
   ASSERT_TRUE(libs[0] == "mock_quantum_lib");
 
@@ -138,7 +142,7 @@ TEST(SpiFactoryTest, TestCreate) {
   auto lib = MockPheSpiFactory::Instance().Create("paillier");
   ASSERT_EQ(lib->ToString(), "mock_paillier_lib: key_size=2048");
 
-  lib = MockPheSpiFactory::Instance().Create("paillier", "key_size"_arg = 3000);
+  lib = MockPheSpiFactory::Instance().Create("paillier", KeySize = 3000ULL);
   ASSERT_EQ(lib->ToString(), "mock_paillier_lib: key_size=3000");
 }
 

@@ -19,17 +19,43 @@ package(default_visibility = ["//visibility:public"])
 yacl_cc_library(
     name = "spi",
     deps = [
+        ":item",
         ":spi_factory",
         ":type_traits",
     ],
 )
 
 yacl_cc_library(
-    name = "spi_factory",
-    srcs = ["spi_factory.cc"],
-    hdrs = ["spi_factory.h"],
+    name = "argument",
+    srcs = ["argument.cc"],
+    hdrs = ["argument.h"],
     deps = [
         "//yacl/base:exception",
+    ],
+)
+
+yacl_cc_library(
+    name = "item",
+    hdrs = ["item.h"],
+    deps = [
+        "//yacl/base:exception",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+yacl_cc_test(
+    name = "item_test",
+    srcs = ["item_test.cc"],
+    deps = [
+        ":item",
+    ],
+)
+
+yacl_cc_library(
+    name = "spi_factory",
+    hdrs = ["spi_factory.h"],
+    deps = [
+        ":argument",
     ],
 )
 
