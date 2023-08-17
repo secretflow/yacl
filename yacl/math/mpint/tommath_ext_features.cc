@@ -220,7 +220,7 @@ void mp_ext_safe_prime_rand(mp_int *p, int t, int psize) {
       continue;
     }
     // test Pocklington Criterion
-    if (!is_pocklington_criterion_satisfied(&p)) {
+    if (!is_pocklington_criterion_satisfied(p)) {
       continue;
     }
     // final check
