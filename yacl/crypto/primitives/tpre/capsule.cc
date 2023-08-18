@@ -26,7 +26,6 @@ namespace yacl::crypto {
 std::pair<Capsule::CapsuleStruct, std::vector<uint8_t>> Capsule::EnCapsulate(
     const std::unique_ptr<EcGroup>& ecc_group,
     const Keys::PublicKey& delegating_public_key) const {
-  MPInt zero_bn(0);
   MPInt order = ecc_group->GetOrder();
   MPInt r;
   MPInt::RandomLtN(order, &r);
@@ -35,25 +34,15 @@ std::pair<Capsule::CapsuleStruct, std::vector<uint8_t>> Capsule::EnCapsulate(
 
   EcPoint E = ecc_group->MulBase(r);
   EcPoint V = ecc_group->MulBase(u);
-  std::string E_string_join_V_sting =
-      std::string(ecc_group->SerializePoint(E)) +
-      std::string(ecc_group->SerializePoint(V));
 
-  MPInt s = u.AddMod(
-      r.MulMod(CipherHash(E_string_join_V_sting, ecc_group), order), order);
+  MPInt s = u.AddMod(r.MulMod(CipherHash({E, V}, ecc_group), order), order);
 
   EcPoint K_point = ecc_group->Mul(delegating_public_key.y, u.AddMod(r, order));
 
-  std::string K_string = std::string(ecc_group->SerializePoint(K_point));
-
   Capsule::CapsuleStruct capsule_struct = {E, V, s};
-  std::vector<uint8_t> K = KDF(K_string, 16);
+  std::vector<uint8_t> K = KDF(ecc_group->SerializePoint(K_point), 16);
 
-  std::pair<Capsule::CapsuleStruct, std::vector<uint8_t>> capsule_pair;
-  capsule_pair.first = capsule_struct;
-  capsule_pair.second = K;
-
-  return capsule_pair;
+  return {capsule_struct, K};
 }
 
 // Decapsulate(skA,capsule)->(K)
@@ -63,9 +52,8 @@ std::vector<uint8_t> Capsule::DeCapsulate(
     const CapsuleStruct& capsule_struct) const {
   EcPoint K_point = ecc_group->Mul(
       ecc_group->Add(capsule_struct.E, capsule_struct.V), private_key.x);
-  std::string K_string = std::string(ecc_group->SerializePoint(K_point));
 
-  std::vector<uint8_t> K = KDF(K_string, 16);
+  std::vector<uint8_t> K = KDF(ecc_group->SerializePoint(K_point), 16);
 
   return K;
 }
@@ -76,39 +64,22 @@ std::pair<Capsule::CapsuleStruct, int> Capsule::CheckCapsule(
   EcPoint tmp0 = ecc_group->MulBase(capsule_struct.s);
 
   // compute H_2(E,V)
-  std::string E_string_join_V_sting =
-      std::string(ecc_group->SerializePoint(capsule_struct.E)) +
-      std::string(ecc_group->SerializePoint(capsule_struct.V));
-  MPInt hev = CipherHash(E_string_join_V_sting, ecc_group);
+  MPInt hev = CipherHash({capsule_struct.E, capsule_struct.V}, ecc_group);
 
   EcPoint e_exp_hev = ecc_group->Mul(capsule_struct.E, hev);
   EcPoint tmp1 = ecc_group->Add(capsule_struct.V, e_exp_hev);
 
-  std::string tmp0_string = std::string(ecc_group->SerializePoint(tmp0));
-  std::string tmp1_string = std::string(ecc_group->SerializePoint(tmp1));
-
-  int signal;
-  if (tmp0_string == tmp1_string) {
-    signal = 1;
-  } else {
-    signal = 0;
-  }
-
-  std::pair<Capsule::CapsuleStruct, int> capsule_check_result = {capsule_struct,
-                                                                 signal};
-
-  return capsule_check_result;
+  return {capsule_struct, ecc_group->PointEqual(tmp0, tmp1)};
 }
 
-// /**
-//  * Each Re-encryptor generates the ciphertext fragment, i.e., cfrag
-//  * */
+//
+// Each Re-encryptor generates the ciphertext fragment, i.e., cfrag
+//
 Capsule::CFrag Capsule::ReEncapsulate(const std::unique_ptr<EcGroup>& ecc_group,
                                       const Keys::KFrag& kfrag,
                                       const CapsuleStruct& capsule) const {
   //  First checks the validity of the capsule with CheckCapsule and outputs ⊥
   //  if the check fails.
-
   auto capsule_check_result = CheckCapsule(ecc_group, capsule);
 
   YACL_ENFORCE(capsule_check_result.second == 1,
@@ -130,18 +101,11 @@ std::vector<uint8_t> Capsule::DeCapsulateFrags(
     const std::unique_ptr<EcGroup>& ecc_group, const Keys::PrivateKey& sk_B,
     const Keys::PublicKey& pk_A, const Keys::PublicKey& pk_B,
     const std::vector<CFrag>& cfrags) const {
-  MPInt one_bn(1);
-
   // Compute (pk_B)^a
   EcPoint pk_A_mul_b = ecc_group->Mul(pk_A.y, sk_B.x);
-  std::string pk_A_mul_b_str =
-      std::string(ecc_group->SerializePoint(pk_A_mul_b));
-  std::string pk_A_str = std::string(ecc_group->SerializePoint(pk_A.y));
-  std::string pk_B_str = std::string(ecc_group->SerializePoint(pk_B.y));
-
   // 1. Compute D = H_6(pk_A, pk_B, (pk_A)^b)
 
-  MPInt D = CipherHash(pk_A_str + pk_B_str + pk_A_mul_b_str, ecc_group);
+  MPInt D = CipherHash({pk_A.y, pk_B.y, pk_A_mul_b}, ecc_group);
 
   // 2. Compute s_{x,i} and lambda_{i,S}
   // 2.1 Compute s_{x,i} = H_5(id_i, D)
@@ -191,20 +155,14 @@ std::vector<uint8_t> Capsule::DeCapsulateFrags(
   // 4. Compute d = H_3(X_A,pk_B,(X_A)^b)
   std::string X_A_str = std::string(ecc_group->SerializePoint(cfrags[0].X_A));
   EcPoint X_A_mul_b = ecc_group->Mul(cfrags[0].X_A, sk_B.x);
-  std::string X_A_mul_b_str = std::string(ecc_group->SerializePoint(X_A_mul_b));
 
-  MPInt d = CipherHash(X_A_str + pk_B_str + X_A_mul_b_str, ecc_group);
+  MPInt d = CipherHash({cfrags[0].X_A, pk_B.y, X_A_mul_b}, ecc_group);
 
   // 5. Compute DEK, i.e., K=KDF((E'· V')^d)
-
   EcPoint E_prime_add_V_prime = ecc_group->Add(E_prime, V_prime);
   EcPoint E_prime_add_V_prime_mul_d = ecc_group->Mul(E_prime_add_V_prime, d);
 
-  std::string K_string =
-      std::string(ecc_group->SerializePoint(E_prime_add_V_prime_mul_d));
-
-  std::vector<uint8_t> K = KDF(K_string, 16);
-
-  return K;
+  return KDF(ecc_group->SerializePoint(E_prime_add_V_prime_mul_d), 16);
 }
+
 }  // namespace yacl::crypto

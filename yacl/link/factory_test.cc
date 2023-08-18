@@ -33,10 +33,8 @@ class FactoryTest : public ::testing::Test {
     contexts_.resize(2);
     ContextDesc desc;
     desc.id = fmt::format("world_{}", desc_count++);
-    desc.parties.push_back(
-        ContextDesc::Party{.id = "alice", .host = "127.0.0.1:63927"});
-    desc.parties.push_back(
-        ContextDesc::Party{.id = "bob", .host = "127.0.0.1:63921"});
+    desc.parties.push_back(ContextDesc::Party("alice", "127.0.0.1:63927"));
+    desc.parties.push_back(ContextDesc::Party("bob", "127.0.0.1:63921"));
 
     auto create_brpc = [&](int self_rank) {
       contexts_[self_rank] = M().CreateContext(desc, self_rank);

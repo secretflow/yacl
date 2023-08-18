@@ -158,6 +158,9 @@ class ChannelBase : public IChannel,
   // wait for dummy msg from peer, timeout by recv_timeout_ms_.
   void TestRecv() final;
 
+  void OnChunkedMessage(const std::string& key, ByteContainerView value,
+                        size_t offset, size_t total_length);
+
  protected:
   virtual void SendImpl(const std::string& key, ByteContainerView value) = 0;
 
@@ -242,6 +245,10 @@ class ChannelBase : public IChannel,
   std::thread send_thread_;
   std::atomic<bool> send_thread_stoped_ = false;
   SendTaskSynchronizer send_sync_;
+
+  // chunking related.
+  bthread::Mutex chunked_values_mutex_;
+  std::map<std::string, std::shared_ptr<ChunkedMessage>> chunked_values_;
 
   // message database related.
   bthread::Mutex msg_mutex_;

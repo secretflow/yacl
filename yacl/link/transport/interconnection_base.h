@@ -34,7 +34,7 @@ class PushResponse;
 
 namespace yacl::link::transport {
 
-class ChannelChunkedBase : public ChannelBase {
+class InterconnectionBase : public ChannelBase {
  public:
   struct Options {
     uint32_t http_timeout_ms;        // 10 seconds
@@ -65,17 +65,15 @@ class ChannelChunkedBase : public ChannelBase {
   // send chunked, synchronized.
   void SendChunked(const std::string& key, ByteContainerView value);
 
-  void OnChunkedMessage(const std::string& key, ByteContainerView value,
-                        size_t offset, size_t total_length);
-
  public:
-  ChannelChunkedBase(size_t self_rank, size_t peer_rank, Options options,
-                     bool exit_if_async_error = true)
+  InterconnectionBase(size_t self_rank, size_t peer_rank, Options options,
+                      bool exit_if_async_error = true)
       : ChannelBase(self_rank, peer_rank, exit_if_async_error),
         options_(std::move(options)) {}
 
-  ChannelChunkedBase(size_t self_rank, size_t peer_rank, size_t recv_timeout_ms,
-                     Options options, bool exit_if_async_error = true)
+  InterconnectionBase(size_t self_rank, size_t peer_rank,
+                      size_t recv_timeout_ms, Options options,
+                      bool exit_if_async_error = true)
       : ChannelBase(self_rank, peer_rank, recv_timeout_ms, exit_if_async_error),
         options_(std::move(options)) {}
 
@@ -95,10 +93,6 @@ class ChannelChunkedBase : public ChannelBase {
                  ::org::interconnection::link::PushResponse* response);
 
  protected:
-  // chunking related.
-  bthread::Mutex chunked_values_mutex_;
-  std::map<std::string, std::shared_ptr<ChunkedMessage>> chunked_values_;
-
   Options options_;
 };
 

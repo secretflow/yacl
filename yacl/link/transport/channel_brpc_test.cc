@@ -484,8 +484,7 @@ class DummyReceiverLoopBrpc final : public IReceiverLoop {
  public:
   ~DummyReceiverLoopBrpc() override { Stop(); }
 
-  virtual void AddListener(size_t rank,
-                           std::shared_ptr<ChannelChunkedBase> listener) {
+  virtual void AddListener(size_t rank, std::shared_ptr<ChannelBase> listener) {
     auto ret = listeners_.emplace(rank, std::move(listener));
     if (!ret.second) {
       YACL_THROW_LOGIC_ERROR("duplicated listener for rank={}", rank);
@@ -518,7 +517,7 @@ class DummyReceiverLoopBrpc final : public IReceiverLoop {
   }
 
  protected:
-  std::map<size_t, std::shared_ptr<ChannelChunkedBase>> listeners_;
+  std::map<size_t, std::shared_ptr<ChannelBase>> listeners_;
   brpc::Server server_;
 };
 

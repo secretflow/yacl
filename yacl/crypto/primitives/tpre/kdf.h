@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef YACL_CRYPTO_PRIMITIVES_TPRE_KDF_H_
-#define YACL_CRYPTO_PRIMITIVES_TPRE_KDF_H_
+#pragma once
+
 #include <memory>
 #include <vector>
 
@@ -21,15 +21,13 @@
 
 namespace yacl::crypto {
 
-/// @brief The KDF structure is derived from the official document of SM2, i.e.,
-/// "Public Key Cryptographic Algorithm SM2 Based on Elliptic Curves",
-/// reference:
-/// http://www.sca.gov.cn/sca/xwdt/2010-12/17/1002386/files/b791a9f908bb4803875ab6aeeb7b4e03.pdf
-/// @param Z, a random value
-/// @param key_len, the key length
-/// @return key
+// @brief The KDF structure is derived from the official document of SM2, i.e.,
+// "Public Key Cryptographic Algorithm SM2 Based on Elliptic Curves",
+// reference:
+// http://www.sca.gov.cn/sca/xwdt/2010-12/17/1002386/files/b791a9f908bb4803875ab6aeeb7b4e03.pdf
+// @param Z, a random value
+// @param key_len, the key length
+// @return key
 std::vector<uint8_t> KDF(ByteContainerView Z, size_t key_len);
 
 }  // namespace yacl::crypto
-
-#endif  // YACL_CRYPTO_PRIMITIVES_TPRE_KDF_H_
