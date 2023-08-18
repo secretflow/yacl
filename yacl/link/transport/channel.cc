@@ -261,6 +261,73 @@ void ChannelBase::OnNormalMessage(const std::string& key, T&& v) {
   msg_db_cond_.notify_all();
 }
 
+class ChunkedMessage {
+ public:
+  explicit ChunkedMessage(int64_t message_length) : message_(message_length) {}
+
+  void AddChunk(int64_t offset, ByteContainerView data) {
+    std::unique_lock<bthread::Mutex> lock(mutex_);
+    if (received_.emplace(offset).second) {
+      std::memcpy(message_.data<std::byte>() + offset, data.data(),
+                  data.size());
+      bytes_written_ += data.size();
+    }
+  }
+
+  bool IsFullyFilled() {
+    std::unique_lock<bthread::Mutex> lock(mutex_);
+    return bytes_written_ == message_.size();
+  }
+
+  Buffer&& Reassemble() {
+    std::unique_lock<bthread::Mutex> lock(mutex_);
+    return std::move(message_);
+  }
+
+ protected:
+  bthread::Mutex mutex_;
+  std::set<int64_t> received_;
+  // chunk index to value.
+  int64_t bytes_written_{0};
+  Buffer message_;
+};
+
+void ChannelBase::OnChunkedMessage(const std::string& key,
+                                   ByteContainerView value, size_t offset,
+                                   size_t total_length) {
+  if (offset + value.size() > total_length) {
+    YACL_THROW_LOGIC_ERROR(
+        "invalid chunk info, offset={}, chun size = {}, total_length={}",
+        offset, value.size(), total_length);
+  }
+
+  bool should_reassemble = false;
+  std::shared_ptr<ChunkedMessage> data;
+  {
+    std::unique_lock<bthread::Mutex> lock(chunked_values_mutex_);
+    auto itr = chunked_values_.find(key);
+    if (itr == chunked_values_.end()) {
+      itr = chunked_values_
+                .emplace(key, std::make_shared<ChunkedMessage>(total_length))
+                .first;
+    }
+
+    data = itr->second;
+    data->AddChunk(offset, value);
+
+    if (data->IsFullyFilled()) {
+      chunked_values_.erase(itr);
+
+      // only one thread do the reassemble
+      should_reassemble = true;
+    }
+  }
+
+  if (should_reassemble) {
+    OnMessage(key, data->Reassemble());
+  }
+}
+
 void ChannelBase::OnMessage(const std::string& key, ByteContainerView value) {
   std::unique_lock<bthread::Mutex> lock(msg_mutex_);
   if (key == kAckKey) {

@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef YACL_CRYPTO_PRIMITIVES_TPRE_KEYS_H_
-#define YACL_CRYPTO_PRIMITIVES_TPRE_KEYS_H_
+#pragma once
 
 #include <iostream>
 #include <memory>
@@ -44,8 +43,8 @@ namespace yacl::crypto {
  */
 class Keys {
  public:
-  Keys() {}
-  ~Keys() {}
+  Keys() = default;
+  ~Keys() = default;
 
   /// @brief public key struct
   struct PublicKey {
@@ -88,6 +87,5 @@ class Keys {
                                    const PublicKey& pk_A, const PublicKey& pk_B,
                                    int N, int t) const;
 };
-}  // namespace yacl::crypto
 
-#endif  // YACL_CRYPTO_PRIMITIVES_TPRE_KEYS_H_
+}  // namespace yacl::crypto

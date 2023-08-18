@@ -26,7 +26,7 @@
 
 #include "yacl/link/ssl_options.h"
 #include "yacl/link/transport/channel.h"
-#include "yacl/link/transport/channel_chunked_base.h"
+#include "yacl/link/transport/interconnection_base.h"
 
 namespace yacl::link::transport {
 
@@ -48,7 +48,7 @@ class ReceiverLoopBrpc final : public IReceiverLoop {
   std::string Start(const std::string& host,
                     const SSLOptions* ssl_opts = nullptr);
 
-  void AddListener(size_t rank, std::shared_ptr<ChannelChunkedBase> listener) {
+  void AddListener(size_t rank, std::shared_ptr<InterconnectionBase> listener) {
     auto ret = listeners_.emplace(rank, std::move(listener));
     if (!ret.second) {
       YACL_THROW_LOGIC_ERROR("duplicated listener for rank={}", rank);
@@ -56,20 +56,20 @@ class ReceiverLoopBrpc final : public IReceiverLoop {
   }
 
  protected:
-  std::map<size_t, std::shared_ptr<ChannelChunkedBase>> listeners_;
+  std::map<size_t, std::shared_ptr<InterconnectionBase>> listeners_;
   brpc::Server server_;
 
  private:
   void StopImpl();
 };
 
-class ChannelBrpc final : public ChannelChunkedBase {
+class ChannelBrpc final : public InterconnectionBase {
  public:
-  using ChannelChunkedBase::ChannelChunkedBase;
+  using InterconnectionBase::InterconnectionBase;
 
-  static ChannelChunkedBase::Options GetDefaultOptions() {
-    return ChannelChunkedBase::Options{10 * 1000, 512 * 1024, "baidu_std",
-                                       "single"};
+  static InterconnectionBase::Options GetDefaultOptions() {
+    return InterconnectionBase::Options{10 * 1000, 512 * 1024, "baidu_std",
+                                        "single"};
   }
 
   // from IChannel

@@ -12,22 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef YACL_CRYPTO_PRIMITIVES_TPRE_HASH_H_
-#define YACL_CRYPTO_PRIMITIVES_TPRE_HASH_H_
+#pragma once
 
 #include <string>
 
-#include "yacl/crypto/base/ecc/ec_point.h"
 #include "yacl/crypto/base/ecc/ecc_spi.h"
 
 namespace yacl::crypto {
 
-/// @brief Cryptographic hash function, h_x = 1 + Bignum(sm3(x)||sm3(sm3(x))),
-///        where n is the degree of EC Group, and x is input mod n-1
-/// @param input
-/// @param curve_id, elliptic curve type
-/// @return hash value
+// @brief Cryptographic hash function, h_x = 1 + Bignum(sm3(x)||sm3(sm3(x))),
+//        where n is the degree of EC Group, and x is input mod n-1
+// @param input
+// @param curve_id, elliptic curve type
+// @return hash value
 MPInt CipherHash(ByteContainerView input,
                  const std::unique_ptr<EcGroup>& ecc_group);
+
+MPInt CipherHash(std::initializer_list<EcPoint> input,
+                 const std::unique_ptr<EcGroup>& ecc_group);
+
 }  // namespace yacl::crypto
-#endif  // YACL_CRYPTO_PRIMITIVES_TPRE_HASH_H_

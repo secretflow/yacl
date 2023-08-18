@@ -26,7 +26,7 @@
 
 #include "yacl/link/ssl_options.h"
 #include "yacl/link/transport/channel.h"
-#include "yacl/link/transport/channel_chunked_base.h"
+#include "yacl/link/transport/interconnection_base.h"
 
 namespace yacl::link::transport::util {
 
@@ -66,14 +66,14 @@ class ReceiverLoopBlackBox final : public IReceiverLoop {
   std::vector<std::thread> threads_;
 };
 
-class ChannelBrpcBlackBox final : public ChannelChunkedBase {
+class ChannelBrpcBlackBox final : public InterconnectionBase {
  public:
-  static ChannelChunkedBase::Options GetDefaultOptions() {
-    return ChannelChunkedBase::Options{10 * 1000, 512 * 1024, "http", ""};
+  static InterconnectionBase::Options GetDefaultOptions() {
+    return InterconnectionBase::Options{10 * 1000, 512 * 1024, "http", ""};
   }
 
  public:
-  using ChannelChunkedBase::ChannelChunkedBase;
+  using InterconnectionBase::InterconnectionBase;
 
   ~ChannelBrpcBlackBox() override {
     if (is_recv_.load()) {

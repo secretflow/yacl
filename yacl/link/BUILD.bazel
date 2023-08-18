@@ -13,6 +13,8 @@
 # limitations under the License.
 
 load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("@rules_cc//cc:defs.bzl", "cc_proto_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -40,6 +42,9 @@ yacl_cc_library(
 yacl_cc_library(
     name = "ssl_options",
     hdrs = ["ssl_options.h"],
+    deps = [
+        ":link_cc_proto",
+    ],
 )
 
 yacl_cc_library(
@@ -47,6 +52,7 @@ yacl_cc_library(
     srcs = ["context.cc"],
     hdrs = ["context.h"],
     deps = [
+        ":link_cc_proto",
         ":ssl_options",
         ":trace",
         "//yacl/base:byte_container_view",
@@ -113,5 +119,17 @@ yacl_cc_library(
         "//yacl/link:context",
         "//yacl/link:factory",
         "@com_github_fmtlib_fmt//:fmtlib",
+    ],
+)
+
+proto_library(
+    name = "link_proto",
+    srcs = ["link.proto"],
+)
+
+cc_proto_library(
+    name = "link_cc_proto",
+    deps = [
+        ":link_proto",
     ],
 )

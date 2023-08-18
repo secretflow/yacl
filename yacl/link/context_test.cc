@@ -19,12 +19,15 @@
 
 #include "fmt/format.h"
 #include "gmock/gmock.h"
+#include "google/protobuf/util/json_util.h"
 #include "gtest/gtest.h"
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/exception.h"
 #include "yacl/link/factory.h"
 #include "yacl/link/transport/channel_mem.h"
+
+#include "yacl/link/link.pb.h"
 
 namespace yacl::link::test {
 
@@ -276,6 +279,68 @@ TEST(EnvInfo, get_party_node_info) {
 
   EXPECT_EQ(self_rank, 0);
   EXPECT_EQ(parties.size(), 2);
+}
+
+TEST(ContextDesc, construct_from_pb) {
+  ContextDescProto pb;
+  std::string json = R"json(
+  {
+      "parties": [
+          {
+              "id": "alice",
+              "host": "1.2.3.4:1000"
+          },
+          {
+              "id": "bob",
+              "host": "1.2.3.5:2000"
+          }
+      ],
+      "connect_retry_times": 15,
+      "recv_timeout_ms": 20000,
+      "brpc_channel_protocol": "thrift",
+      "brpc_channel_connection_type":"single",
+      "enable_ssl": true,
+      "client_ssl_opts": {
+          "certificate_path": "certificate_path/alice",
+          "private_key_path": "private_key_path/alice",
+          "verify_depth": 1,
+          "ca_file_path": "ca_file_path/alice"
+      },
+      "server_ssl_opts": {
+          "certificate_path": "certificate_path/bob",
+          "private_key_path": "private_key_path/bob",
+          "verify_depth": 1,
+          "ca_file_path": "ca_file_path/bob"
+      }
+  })json";
+
+  EXPECT_TRUE(google::protobuf::util::JsonStringToMessage(json, &pb).ok());
+
+  ContextDesc desc(pb);
+
+  EXPECT_EQ(desc.id, ContextDesc::kDefaultId);
+  EXPECT_EQ(desc.parties.size(), 2);
+  EXPECT_EQ(desc.parties[0].id, "alice");
+  EXPECT_EQ(desc.parties[1].host, "1.2.3.5:2000");
+  EXPECT_EQ(desc.connect_retry_times, 15);
+  EXPECT_EQ(desc.connect_retry_interval_ms,
+            ContextDesc::kDefaultConnectRetryIntervalMs);
+  EXPECT_EQ(desc.recv_timeout_ms, 20000);
+  EXPECT_EQ(desc.http_max_payload_size,
+            ContextDesc::kDefaultHttpMaxPayloadSize);
+  EXPECT_EQ(desc.http_timeout_ms, ContextDesc::kDefaultHttpTimeoutMs);
+  EXPECT_EQ(desc.throttle_window_size, ContextDesc::kDefaultThrottleWindowSize);
+  EXPECT_EQ(desc.brpc_channel_protocol, "thrift");
+  EXPECT_EQ(desc.brpc_channel_connection_type, "single");
+  EXPECT_EQ(desc.enable_ssl, true);
+  EXPECT_EQ(desc.client_ssl_opts.cert.certificate_path,
+            "certificate_path/alice");
+  EXPECT_EQ(desc.client_ssl_opts.cert.private_key_path,
+            "private_key_path/alice");
+  EXPECT_EQ(desc.server_ssl_opts.verify.verify_depth, 1);
+  EXPECT_EQ(desc.server_ssl_opts.verify.ca_file_path, "ca_file_path/bob");
+  EXPECT_EQ(desc.exit_if_async_error, true);
+  EXPECT_EQ(desc.link_type, ContextDesc::kDefaultLinkType);
 }
 
 }  // namespace yacl::link::test

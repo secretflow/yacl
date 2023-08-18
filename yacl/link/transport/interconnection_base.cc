@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/link/transport/channel_chunked_base.h"
+#include "yacl/link/transport/interconnection_base.h"
 
 #include <exception>
 #include <memory>
@@ -105,44 +105,13 @@ class SendChunkedWindow
   std::optional<std::exception> async_exception_;
 };
 
-class ChunkedMessage {
- public:
-  explicit ChunkedMessage(int64_t message_length) : message_(message_length) {}
-
-  void AddChunk(int64_t offset, ByteContainerView data) {
-    std::unique_lock<bthread::Mutex> lock(mutex_);
-    if (received_.emplace(offset).second) {
-      std::memcpy(message_.data<std::byte>() + offset, data.data(),
-                  data.size());
-      bytes_written_ += data.size();
-    }
-  }
-
-  bool IsFullyFilled() {
-    std::unique_lock<bthread::Mutex> lock(mutex_);
-    return bytes_written_ == message_.size();
-  }
-
-  Buffer&& Reassemble() {
-    std::unique_lock<bthread::Mutex> lock(mutex_);
-    return std::move(message_);
-  }
-
- protected:
-  bthread::Mutex mutex_;
-  std::set<int64_t> received_;
-  // chunk index to value.
-  int64_t bytes_written_{0};
-  Buffer message_;
-};
-
-void ChannelChunkedBase::SendImpl(const std::string& key,
-                                  ByteContainerView value) {
+void InterconnectionBase::SendImpl(const std::string& key,
+                                   ByteContainerView value) {
   SendImpl(key, value, 0);
 }
 
-void ChannelChunkedBase::SendImpl(const std::string& key,
-                                  ByteContainerView value, uint32_t timeout) {
+void InterconnectionBase::SendImpl(const std::string& key,
+                                   ByteContainerView value, uint32_t timeout) {
   if (value.size() > options_.http_max_payload_size) {
     SendChunked(key, value);
     return;
@@ -161,7 +130,7 @@ void ChannelChunkedBase::SendImpl(const std::string& key,
 
 class SendChunkedTask {
  public:
-  SendChunkedTask(ChannelChunkedBase* channel,
+  SendChunkedTask(InterconnectionBase* channel,
                   std::unique_ptr<SendChunkedWindow::Token> token,
                   std::unique_ptr<ic_pb::PushRequest> request)
       : channel_(channel),
@@ -186,13 +155,13 @@ class SendChunkedTask {
   };
 
  private:
-  ChannelChunkedBase* channel_;
+  InterconnectionBase* channel_;
   std::unique_ptr<SendChunkedWindow::Token> token_;
   std::unique_ptr<ic_pb::PushRequest> request_;
 };
 
-void ChannelChunkedBase::SendChunked(const std::string& key,
-                                     ByteContainerView value) {
+void InterconnectionBase::SendChunked(const std::string& key,
+                                      ByteContainerView value) {
   const size_t bytes_per_chunk = options_.http_max_payload_size;
   const size_t num_bytes = value.size();
   const size_t num_chunks = (num_bytes + bytes_per_chunk - 1) / bytes_per_chunk;
@@ -229,8 +198,8 @@ void ChannelChunkedBase::SendChunked(const std::string& key,
   window->Finished();
 }
 
-void ChannelChunkedBase::OnRequest(const ic_pb::PushRequest* request,
-                                   ic_pb::PushResponse* response) {
+void InterconnectionBase::OnRequest(const ic_pb::PushRequest* request,
+                                    ic_pb::PushResponse* response) {
   auto trans_type = request->trans_type();
 
   response->mutable_header()->set_error_code(ic::ErrorCode::OK);
@@ -250,43 +219,7 @@ void ChannelChunkedBase::OnRequest(const ic_pb::PushRequest* request,
   }
 }
 
-void ChannelChunkedBase::OnChunkedMessage(const std::string& key,
-                                          ByteContainerView value,
-                                          size_t offset, size_t total_length) {
-  if (offset + value.size() > total_length) {
-    YACL_THROW_LOGIC_ERROR(
-        "invalid chunk info, offset={}, chun size = {}, total_length={}",
-        offset, value.size(), total_length);
-  }
-
-  bool should_reassemble = false;
-  std::shared_ptr<ChunkedMessage> data;
-  {
-    std::unique_lock<bthread::Mutex> lock(chunked_values_mutex_);
-    auto itr = chunked_values_.find(key);
-    if (itr == chunked_values_.end()) {
-      itr = chunked_values_
-                .emplace(key, std::make_shared<ChunkedMessage>(total_length))
-                .first;
-    }
-
-    data = itr->second;
-    data->AddChunk(offset, value);
-
-    if (data->IsFullyFilled()) {
-      chunked_values_.erase(itr);
-
-      // only one thread do the reassemble
-      should_reassemble = true;
-    }
-  }
-
-  if (should_reassemble) {
-    OnMessage(key, data->Reassemble());
-  }
-}
-
-auto ChannelChunkedBase::MakeOptions(
+auto InterconnectionBase::MakeOptions(
     Options& default_opt, uint32_t http_timeout_ms,
     uint32_t http_max_payload_size, const std::string& brpc_channel_protocol,
     const std::string& brpc_channel_connection_type) -> Options {

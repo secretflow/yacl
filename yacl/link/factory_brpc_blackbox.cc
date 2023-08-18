@@ -65,7 +65,7 @@ void FactoryBrpcBlackBox::GetPartyNodeInfoFromEnv(
                kSelfPartyKey, self_party_id, kNodeInfoPrefix);
   self_rank = std::distance(party_info.begin(), iter);
   for (auto const& [party_id, node_id] : party_info) {
-    parties.emplace_back(ContextDesc::Party{.id = party_id, .host = node_id});
+    parties.emplace_back(ContextDesc::Party(party_id, node_id));
   }
 }
 

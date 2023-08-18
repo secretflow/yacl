@@ -33,7 +33,7 @@ namespace internal {
 class ReceiverServiceImpl : public ic_pb::ReceiverService {
  public:
   explicit ReceiverServiceImpl(
-      std::map<size_t, std::shared_ptr<ChannelChunkedBase>> listener)
+      std::map<size_t, std::shared_ptr<InterconnectionBase>> listener)
       : listeners_(std::move(listener)) {}
 
   void Push(::google::protobuf::RpcController* /*cntl_base*/,
@@ -54,7 +54,7 @@ class ReceiverServiceImpl : public ic_pb::ReceiverService {
   }
 
  protected:
-  std::map<size_t, std::shared_ptr<ChannelChunkedBase>> listeners_;
+  std::map<size_t, std::shared_ptr<InterconnectionBase>> listeners_;
 };
 
 }  // namespace internal
