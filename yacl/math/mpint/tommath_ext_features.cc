@@ -134,7 +134,7 @@ void mp_ext_safe_prime_rand(mp_int *p, int t, int psize) {
   int maskOR_msb_offset;
   bool res;
   mp_int q;
-  uint64_t mod;
+  uint64_t mod, original_m;
 
   /* sanity check the input */
   YACL_ENFORCE(psize > 1 && t > 0, "with psize={}, t={}", psize, t);
@@ -182,11 +182,11 @@ void mp_ext_safe_prime_rand(mp_int *p, int t, int psize) {
     // Find a odd number `q` among q, q+2, .... , (1 << 20) satisfy：
     // 1. co-prime to `small_primes`.
     // 2. `q = 1 mod 3` (p = 2q+1).
-    MPINT_ENFORCE_OK(mp_mod_d(&q, small_prime_prod, &mod));
+    MPINT_ENFORCE_OK(mp_mod_d(&q, small_prime_prod, &original_m));
 
     uint64_t last_delta = 0;
     for (uint64_t delta = 0; delta < (1 << 20); delta += 2) {
-      uint64_t m = mod + delta;
+      uint64_t m = original_m + delta;
       if (!is_co_prime(m, small_primes, std::size(small_primes))) {
         continue;
       }
