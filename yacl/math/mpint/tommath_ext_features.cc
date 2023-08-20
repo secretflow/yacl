@@ -219,7 +219,7 @@ void mp_ext_safe_prime_rand(mp_int *p, int t, int psize) {
     if (!res) {
       continue;
     }
-    MPINT_ENFORCE_OK(mp_prime_is_prime(p, 5, &res));
+    MPINT_ENFORCE_OK(mp_prime_is_prime(p, 1, &res));
     if (!res) {
       continue;
     }
