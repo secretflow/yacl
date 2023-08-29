@@ -389,8 +389,7 @@ template <>
 struct std::hash<yacl::math::MPInt> {
   size_t operator()(const yacl::math::MPInt &x) const {
     uint64_t h;
-    // TODO: remove const_cast
-    MPINT_ENFORCE_OK(mp_hash(const_cast<mp_int *>(&x.n_), &h));
+    MPINT_ENFORCE_OK(mp_hash(&x.n_, &h));
     return h;
   }
 };
