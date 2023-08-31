@@ -1,5 +1,4 @@
-#ifndef YACL_CRYPTO_VERIFIABLE_SECRET_SHARING_H
-#define YACL_CRYPTO_VERIFIABLE_SECRET_SHARING_H
+#pragma once
 
 #include <iostream>
 #include <utility>
@@ -64,7 +63,9 @@ class VerifiableSecretSharing {
    * @param prime
    */
   VerifiableSecretSharing(size_t total, size_t threshold, math::MPInt prime)
-      : total_(total), threshold_(threshold), prime_(std::move(prime)) {}
+      : total_(total), threshold_(threshold), prime_(std::move(prime)) {
+    YACL_ENFORCE(total >= threshold);
+  }
 
   /**
    * @brief Destroy the Verifiable Secret Sharing object
@@ -99,7 +100,7 @@ class VerifiableSecretSharing {
    * @param poly
    * @return math::MPInt
    */
-  math::MPInt RecoverSecret(std::vector<Share> shares, Polynomial& poly);
+  math::MPInt RecoverSecret(std::vector<Share> shares);
 
   // New name for the type representing the result of GenerateShareWithCommits
   // function.
@@ -178,5 +179,3 @@ bool VerifyCommits(const std::unique_ptr<yacl::crypto::EcGroup>& ecc_group,
                    const math::MPInt& prime);
 
 }  // namespace yacl::crypto
-
-#endif  // YACL_CRYPTO_VERIFIABLE_SECRET_SHARING_H

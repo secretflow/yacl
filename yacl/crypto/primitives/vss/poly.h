@@ -1,5 +1,4 @@
-#ifndef YACL_CRYPTO_POLY_SHARING_H
-#define YACL_CRYPTO_POLY_SHARING_H
+#pragma once
 
 #include "yacl/math/mpint/mp_int.h"
 
@@ -13,6 +12,13 @@ class Polynomial {
    *
    */
   Polynomial(){};
+
+  /**
+   * @brief Construct a new Polynomial object with modulus
+   *
+   * @param modulus
+   */
+  Polynomial(math::MPInt modulus) : modulus_(modulus) {}
 
   /**
    * @brief Destroy the Polynomial object
@@ -60,8 +66,7 @@ class Polynomial {
    * @param modulus
    * @param result
    */
-  void EvaluatePolynomial(const math::MPInt& x, const math::MPInt& modulus,
-                          math::MPInt& result);
+  void EvaluatePolynomial(const math::MPInt& x, math::MPInt& result) const;
 
   /**
    * @brief Performs Lagrange interpolation to interpolate the polynomial based
@@ -73,8 +78,8 @@ class Polynomial {
    * @param result
    */
   void LagrangeInterpolation(std::vector<math::MPInt>& xs,
-                             std::vector<math::MPInt>& ys, math::MPInt& prime,
-                             math::MPInt& result);
+                             std::vector<math::MPInt>& ys,
+                             math::MPInt& result) const;
 
   /**
    * @brief Sets the coefficients of the polynomial to the provided vector of
@@ -96,8 +101,7 @@ class Polynomial {
  private:
   // Vector to store the coefficients of the polynomial.
   std::vector<math::MPInt> coeffs_;
+  math::MPInt modulus_;
 };
 
 }  // namespace yacl::crypto
-
-#endif  // YACL_CRYPTO_POLY_SHARING_H

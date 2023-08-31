@@ -27,7 +27,7 @@ VerifiableSecretSharing::CreateShare(const math::MPInt& secret,
     // EvaluatePolynomial uses Horner's method.
     // Evaluate the polynomial at the point x_i to compute the share's
     // y-coordinate (ys[i]).
-    poly.EvaluatePolynomial(x_i, this->GetPrime(), ys[i]);
+    poly.EvaluatePolynomial(x_i, ys[i]);
 
     xs[i] = x_i;
     shares.push_back({xs[i], ys[i]});
@@ -54,7 +54,7 @@ VerifiableSecretSharing::CreateShareWithCommits(
     math::MPInt x_i;
     math::MPInt::RandomLtN(this->prime_, &x_i);
 
-    poly.EvaluatePolynomial(x_i, this->prime_, ys[i]);
+    poly.EvaluatePolynomial(x_i, ys[i]);
     xs[i] = x_i;
     shares[i] = {xs[i], ys[i]};
   }
@@ -69,9 +69,10 @@ VerifiableSecretSharing::CreateShareWithCommits(
 
 // Recover the secret from the shares using Lagrange interpolation.
 math::MPInt VerifiableSecretSharing::RecoverSecret(
-    std::vector<VerifiableSecretSharing::Share> shares, Polynomial& poly) {
-  math::MPInt secret(0);
+    std::vector<VerifiableSecretSharing::Share> shares) {
+  YACL_ENFORCE(shares.size() == threshold_);
 
+  math::MPInt secret(0);
   std::vector<math::MPInt> xs(shares.size());
   std::vector<math::MPInt> ys(shares.size());
 
@@ -82,7 +83,8 @@ math::MPInt VerifiableSecretSharing::RecoverSecret(
   }
 
   // Use Lagrange interpolation to recover the secret from the shares.
-  poly.LagrangeInterpolation(xs, ys, this->prime_, secret);
+  Polynomial poly(this->prime_);
+  poly.LagrangeInterpolation(xs, ys, secret);
 
   return secret;
 }

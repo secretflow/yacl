@@ -1,6 +1,7 @@
 #include "yacl/crypto/primitives/vss/vss.h"
 
 #include "gtest/gtest.h"
+#include "spdlog/spdlog.h"
 
 #include "yacl/crypto/base/ecc/ecc_spi.h"
 #include "yacl/crypto/primitives/vss/poly.h"
@@ -39,8 +40,8 @@ TEST(VerifiableSecretSharingTest, TestCreateAndVerifyShares) {
   }
 
   // Reconstruct the secret using the shares and the polynomial
-  math::MPInt reconstructed_secret = vss.RecoverSecret(shares, polynomial);
-
+  math::MPInt reconstructed_secret = vss.RecoverSecret(shares);
+  SPDLOG_INFO("reconstructed_secret is : {}", reconstructed_secret);
   // Check if the reconstructed secret matches the original secret
   EXPECT_EQ(reconstructed_secret, original_secret);
 
