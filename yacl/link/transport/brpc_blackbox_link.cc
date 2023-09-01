@@ -194,7 +194,7 @@ brpc::ChannelOptions BrpcBlackBoxLink::GetChannelOption(
     options.connection_type = options_.channel_connection_type;
     options.connect_timeout_ms = 20000;
     options.timeout_ms = options_.http_timeout_ms;
-    options.max_retry = options.max_retry;
+    options.max_retry = options_.max_retry;
     options.retry_policy = retry_policy.get();
     if (ssl_opts != nullptr) {
       options.mutable_ssl_options()->client_cert.certificate =
