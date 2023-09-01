@@ -103,4 +103,12 @@ message ContextDescProto {
   // ssl configs for service
   // this config is ignored if enable_ssl == false;
   SSLOptionsProto server_ssl_opts = 13;
+
+  // max retry count
+  uint32 brpc_retry_count = 14;
+  // the time between retries
+  uint32 brpc_retry_interval_ms = 15;
+  // do aggressive retry， this means that retries will be made on additional
+  // error codes
+  bool brpc_aggressive_retry = 16;
 }

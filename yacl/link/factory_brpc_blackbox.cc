@@ -25,8 +25,9 @@
 #include "yacl/base/exception.h"
 #include "yacl/link/context.h"
 #include "yacl/link/factory.h"
-#include "yacl/link/transport/channel_brpc.h"
-#include "yacl/link/transport/channel_brpc_blackbox.h"
+#include "yacl/link/transport/brpc_blackbox_link.h"
+#include "yacl/link/transport/brpc_link.h"
+#include "yacl/link/transport/channel.h"
 
 namespace brpc::policy {
 DECLARE_int32(h2_client_stream_window_size);
@@ -76,10 +77,12 @@ std::shared_ptr<Context> FactoryBrpcBlackBox::CreateContext(
     YACL_THROW_LOGIC_ERROR("invalid self rank={}, world_size={}", self_rank,
                            world_size);
   }
-  auto options = transport::ChannelBrpcBlackBox::GetDefaultOptions();
-  options = transport::ChannelBrpcBlackBox::MakeOptions(
+  auto options = transport::BrpcBlackBoxLink::GetDefaultOptions();
+  options = transport::BrpcBlackBoxLink::MakeOptions(
       options, desc.http_timeout_ms, desc.http_max_payload_size,
-      desc.brpc_channel_protocol, desc.brpc_channel_connection_type);
+      desc.brpc_channel_protocol, desc.brpc_channel_connection_type,
+      desc.brpc_retry_count, desc.brpc_retry_interval_ms,
+      desc.brpc_aggressive_retry);
 
   if (options.channel_protocol != "http" && options.channel_protocol != "h2") {
     YACL_THROW_LOGIC_ERROR(
@@ -94,15 +97,18 @@ std::shared_ptr<Context> FactoryBrpcBlackBox::CreateContext(
       continue;
     }
 
-    auto channel = std::make_shared<transport::ChannelBrpcBlackBox>(
-        self_rank, rank, desc.recv_timeout_ms, options);
-    channel->SetPeerHost(desc.parties[self_rank].id,
-                         desc.parties[self_rank].host, desc.parties[rank].id,
-                         desc.parties[rank].host,
-                         desc.enable_ssl ? &desc.client_ssl_opts : nullptr);
-    channel->SetThrottleWindowSize(desc.throttle_window_size);
+    auto delegate =
+        std::make_shared<transport::BrpcBlackBoxLink>(self_rank, rank, options);
+    delegate->SetPeerHost(desc.parties[self_rank].id,
+                          desc.parties[self_rank].host, desc.parties[rank].id,
+                          desc.parties[rank].host,
+                          desc.enable_ssl ? &desc.client_ssl_opts : nullptr);
 
-    msg_loop->AddListener(rank, channel);
+    auto channel = std::make_shared<transport::Channel>(
+        delegate, desc.recv_timeout_ms, false);
+    channel->SetThrottleWindowSize(desc.throttle_window_size);
+    msg_loop->AddLinkAndChannel(rank, channel, delegate);
+
     channels[rank] = std::move(channel);
   }
 

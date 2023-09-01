@@ -14,6 +14,7 @@
 
 #include "yacl/link/transport/channel.h"
 
+#include <memory>
 #include <set>
 
 #include "absl/strings/numbers.h"
@@ -65,11 +66,11 @@ std::pair<std::string, size_t> SplitChannelKey(std::string_view key) {
 
 class SendTask {
  public:
-  std::shared_ptr<ChannelBase> channel_;
-  ChannelBase::Message msg_;
+  std::shared_ptr<Channel> channel_;
+  Channel::Message msg_;
   const bool exit_if_async_error_;
 
-  SendTask(std::shared_ptr<ChannelBase> channel, ChannelBase::Message msg,
+  SendTask(std::shared_ptr<Channel> channel, Channel::Message msg,
            bool exit_if_async_error)
       : channel_(std::move(channel)),
         msg_(std::move(msg)),
@@ -104,7 +105,7 @@ class SendTask {
   }
 };
 
-void ChannelBase::StartSendThread() {
+void Channel::StartSendThread() {
   send_thread_ = std::thread([&]() {
     try {
       SendThread();
@@ -117,7 +118,7 @@ void ChannelBase::StartSendThread() {
   });
 }
 
-void ChannelBase::SubmitSendTask(Message&& msg) {
+void Channel::SubmitSendTask(Message&& msg) {
   auto btask = std::make_unique<SendTask>(this->shared_from_this(),
                                           std::move(msg), exit_if_async_error_);
   bthread_t tid;
@@ -130,7 +131,7 @@ void ChannelBase::SubmitSendTask(Message&& msg) {
   }
 }
 
-std::optional<ChannelBase::Message> ChannelBase::MessageQueue::Pop(bool block) {
+std::optional<Channel::Message> Channel::MessageQueue::Pop(bool block) {
   std::unique_lock<bthread::Mutex> lock(mutex_);
   if (block && queue_.empty()) {
     cond_.wait(lock);
@@ -145,7 +146,7 @@ std::optional<ChannelBase::Message> ChannelBase::MessageQueue::Pop(bool block) {
   }
 }
 
-void ChannelBase::SendThread() {
+void Channel::SendThread() {
   while (!send_thread_stoped_.load()) {
     auto msg = msg_queue_.Pop(true);
     if (!msg.has_value()) {
@@ -166,12 +167,144 @@ void ChannelBase::SendThread() {
   }
 }
 
-void ChannelBase::SendTaskSynchronizer::SendTaskStartNotify() {
+class SendChunkedWindow
+    : public std::enable_shared_from_this<SendChunkedWindow> {
+ public:
+  explicit SendChunkedWindow(int64_t limit) : parallel_limit_(limit) {
+    YACL_ENFORCE(parallel_limit_ > 0);
+  }
+
+  void OnPushDone(std::optional<std::exception> e) noexcept {
+    std::unique_lock<bthread::Mutex> lock(mutex_);
+    running_push_--;
+
+    if (e.has_value()) {
+      async_exception_ = std::move(e);
+    }
+    cond_.notify_all();
+  }
+
+  void Finished() {
+    std::unique_lock<bthread::Mutex> lock(mutex_);
+    while (running_push_ != 0) {
+      cond_.wait(lock);
+      if (async_exception_.has_value()) {
+        throw async_exception_.value();
+      }
+    }
+  }
+
+  class Token {
+   public:
+    explicit Token(std::shared_ptr<SendChunkedWindow> window)
+        : window_(std::move(window)) {}
+
+    void SetException(std::optional<std::exception>& e) {
+      if (!e.has_value()) {
+        return;
+      }
+      exception_ = std::move(e);
+    }
+
+    ~Token() { window_->OnPushDone(exception_); }
+
+   private:
+    std::shared_ptr<SendChunkedWindow> window_;
+    std::optional<std::exception> exception_;
+  };
+
+  std::unique_ptr<Token> GetToken() {
+    std::unique_lock<bthread::Mutex> lock(mutex_);
+    running_push_++;
+
+    while (running_push_ >= parallel_limit_) {
+      cond_.wait(lock);
+      if (async_exception_.has_value()) {
+        throw async_exception_.value();
+      }
+    }
+
+    return std::make_unique<Token>(this->shared_from_this());
+  }
+
+ private:
+  const int64_t parallel_limit_;
+  int64_t running_push_ = 0;
+  bthread::Mutex mutex_;
+  bthread::ConditionVariable cond_;
+  std::optional<std::exception> async_exception_;
+};
+
+class SendChunkedTask {
+ public:
+  SendChunkedTask(std::shared_ptr<TransportLink> delegate,
+                  std::unique_ptr<SendChunkedWindow::Token> token,
+                  std::unique_ptr<::google::protobuf::Message> request)
+      : link_(std::move(delegate)),
+        token_(std::move(token)),
+        request_(std::move(request)) {
+    YACL_ENFORCE(request_, "request is null");
+    YACL_ENFORCE(token_, "token is null");
+    YACL_ENFORCE(link_, "channel is null");
+  }
+
+  static void* Proc(void* param) {
+    std::unique_ptr<SendChunkedTask> task(static_cast<SendChunkedTask*>(param));
+    std::optional<std::exception> except;
+    try {
+      task->link_->SendRequest(*(task->request_), 0);
+    } catch (Exception& e) {
+      except = e;
+      task->token_->SetException(except);
+    }
+
+    return nullptr;
+  };
+
+ private:
+  std::shared_ptr<TransportLink> link_;
+  std::unique_ptr<SendChunkedWindow::Token> token_;
+  std::unique_ptr<::google::protobuf::Message> request_;
+};
+
+void Channel::SendChunked(const std::string& key, ByteContainerView value) {
+  const size_t bytes_per_chunk = link_->GetMaxBytesPerChunk();
+  const size_t num_bytes = value.size();
+  const size_t num_chunks = (num_bytes + bytes_per_chunk - 1) / bytes_per_chunk;
+
+  constexpr uint32_t kParallelSize = 8;
+  auto window = std::make_shared<SendChunkedWindow>(kParallelSize);
+
+  for (size_t chunk_idx = 0; chunk_idx < num_chunks; chunk_idx++) {
+    const size_t chunk_offset = chunk_idx * bytes_per_chunk;
+
+    auto request = link_->PackChunkedRequest(
+        key,
+        ByteContainerView(
+            value.data() + chunk_offset,
+            std::min(bytes_per_chunk, value.size() - chunk_offset)),
+        chunk_offset, num_bytes);
+
+    auto task = std::make_unique<SendChunkedTask>(link_, window->GetToken(),
+                                                  std::move(request));
+    bthread_t tid;
+    if (bthread_start_background(&tid, nullptr, SendChunkedTask::Proc,
+                                 task.get()) == 0) {
+      (void)task.release();
+    } else {
+      YACL_THROW("Start bthread error for Chunk (key: {}, {} of {}) error", key,
+                 chunk_idx, num_chunks);
+    }
+  }
+  window->Finished();
+}
+
+void Channel::SendTaskSynchronizer::SendTaskStartNotify() {
   std::unique_lock<bthread::Mutex> lock(mutex_);
   running_tasks_++;
 }
 
-void ChannelBase::SendTaskSynchronizer::SendTaskFinishedNotify(size_t seq_id) {
+void Channel::SendTaskSynchronizer::SendTaskFinishedNotify(size_t seq_id) {
   std::unique_lock<bthread::Mutex> lock(mutex_);
   running_tasks_--;
   if (seq_id != 0) {
@@ -180,21 +313,21 @@ void ChannelBase::SendTaskSynchronizer::SendTaskFinishedNotify(size_t seq_id) {
   finished_cond_.notify_all();
 }
 
-void ChannelBase::SendTaskSynchronizer::WaitSeqIdSendFinished(size_t seq_id) {
+void Channel::SendTaskSynchronizer::WaitSeqIdSendFinished(size_t seq_id) {
   std::unique_lock<bthread::Mutex> lock(mutex_);
   while (!finished_ids_.Contains(seq_id)) {
     finished_cond_.wait(lock);
   }
 }
 
-void ChannelBase::SendTaskSynchronizer::WaitAllSendFinished() {
+void Channel::SendTaskSynchronizer::WaitAllSendFinished() {
   std::unique_lock<bthread::Mutex> lock(mutex_);
   while (running_tasks_ > 0) {
     finished_cond_.wait(lock);
   }
 }
 
-Buffer ChannelBase::Recv(const std::string& msg_key) {
+Buffer Channel::Recv(const std::string& msg_key) {
   NormalMessageKeyEnforce(msg_key);
 
   Buffer value;
@@ -224,7 +357,7 @@ Buffer ChannelBase::Recv(const std::string& msg_key) {
   return value;
 }
 
-void ChannelBase::SendAck(size_t seq_id) {
+void Channel::SendAck(size_t seq_id) {
   if (seq_id > 0) {
     // 0 seq id use for TestSend/TestRecv, no need to send ack.
     SubmitSendTask(Message(0, kAckKey, Buffer(std::to_string(seq_id))));
@@ -232,7 +365,7 @@ void ChannelBase::SendAck(size_t seq_id) {
 }
 
 template <typename T>
-void ChannelBase::OnNormalMessage(const std::string& key, T&& v) {
+void Channel::OnNormalMessage(const std::string& key, T&& v) {
   std::string msg_key;
   size_t seq_id = 0;
   std::tie(msg_key, seq_id) = SplitChannelKey(key);
@@ -292,9 +425,8 @@ class ChunkedMessage {
   Buffer message_;
 };
 
-void ChannelBase::OnChunkedMessage(const std::string& key,
-                                   ByteContainerView value, size_t offset,
-                                   size_t total_length) {
+void Channel::OnChunkedMessage(const std::string& key, ByteContainerView value,
+                               size_t offset, size_t total_length) {
   if (offset + value.size() > total_length) {
     YACL_THROW_LOGIC_ERROR(
         "invalid chunk info, offset={}, chun size = {}, total_length={}",
@@ -328,7 +460,7 @@ void ChannelBase::OnChunkedMessage(const std::string& key,
   }
 }
 
-void ChannelBase::OnMessage(const std::string& key, ByteContainerView value) {
+void Channel::OnMessage(const std::string& key, ByteContainerView value) {
   std::unique_lock<bthread::Mutex> lock(msg_mutex_);
   if (key == kAckKey) {
     size_t seq_id = ViewToSizeT(value);
@@ -350,24 +482,23 @@ void ChannelBase::OnMessage(const std::string& key, ByteContainerView value) {
   }
 }
 
-void ChannelBase::SetRecvTimeout(uint64_t recv_timeout_ms) {
+void Channel::SetRecvTimeout(uint64_t recv_timeout_ms) {
   recv_timeout_ms_ = recv_timeout_ms;
 }
 
-uint64_t ChannelBase::GetRecvTimeout() const { return recv_timeout_ms_; }
+uint64_t Channel::GetRecvTimeout() const { return recv_timeout_ms_; }
 
-void ChannelBase::SendAsync(const std::string& msg_key,
-                            ByteContainerView value) {
+void Channel::SendAsync(const std::string& msg_key, ByteContainerView value) {
   SendAsync(msg_key, Buffer(value));
 }
 
-void ChannelBase::MessageQueue::Push(Message&& msg) {
+void Channel::MessageQueue::Push(Message&& msg) {
   std::unique_lock<bthread::Mutex> lock(mutex_);
   queue_.push(std::move(msg));
   cond_.notify_all();
 }
 
-void ChannelBase::SendAsync(const std::string& msg_key, Buffer&& value) {
+void Channel::SendAsync(const std::string& msg_key, Buffer&& value) {
   YACL_ENFORCE(!waiting_finish_.load(),
                "SendAsync is not allowed when channel is closing");
   NormalMessageKeyEnforce(msg_key);
@@ -376,7 +507,7 @@ void ChannelBase::SendAsync(const std::string& msg_key, Buffer&& value) {
   msg_queue_.Push(Message(seq_id, std::move(key), std::move(value)));
 }
 
-void ChannelBase::Send(const std::string& msg_key, ByteContainerView value) {
+void Channel::Send(const std::string& msg_key, ByteContainerView value) {
   YACL_ENFORCE(!waiting_finish_.load(),
                "Send is not allowed when channel is closing");
   NormalMessageKeyEnforce(msg_key);
@@ -386,13 +517,12 @@ void ChannelBase::Send(const std::string& msg_key, ByteContainerView value) {
   send_sync_.WaitSeqIdSendFinished(seq_id);
 }
 
-void ChannelBase::SendAsyncThrottled(const std::string& msg_key,
-                                     ByteContainerView value) {
+void Channel::SendAsyncThrottled(const std::string& msg_key,
+                                 ByteContainerView value) {
   SendAsyncThrottled(msg_key, Buffer(value));
 }
 
-void ChannelBase::SendAsyncThrottled(const std::string& msg_key,
-                                     Buffer&& value) {
+void Channel::SendAsyncThrottled(const std::string& msg_key, Buffer&& value) {
   YACL_ENFORCE(!waiting_finish_.load(),
                "SendAsync is not allowed when channel is closing");
   NormalMessageKeyEnforce(msg_key);
@@ -402,21 +532,21 @@ void ChannelBase::SendAsyncThrottled(const std::string& msg_key,
   ThrottleWindowWait(seq_id);
 }
 
-void ChannelBase::TestSend(uint32_t timeout) {
+void Channel::TestSend(uint32_t timeout) {
   YACL_ENFORCE(!waiting_finish_.load(),
                "TestSend is not allowed when channel is closing");
-  const auto msg_key = fmt::format("connect_{}", self_rank_);
+  const auto msg_key = fmt::format("connect_{}", link_->LocalRank());
   const auto key = BuildChannelKey(msg_key, 0);
   SendImpl(key, "", timeout);
 }
 
-void ChannelBase::TestRecv() {
-  const auto msg_key = fmt::format("connect_{}", peer_rank_);
+void Channel::TestRecv() {
+  const auto msg_key = fmt::format("connect_{}", link_->RemoteRank());
   Recv(msg_key);
 }
 
 // all sender thread wait on it's send order.
-void ChannelBase::ThrottleWindowWait(size_t wait_count) {
+void Channel::ThrottleWindowWait(size_t wait_count) {
   if (throttle_window_size_ == 0) {
     return;
   }
@@ -431,16 +561,16 @@ void ChannelBase::ThrottleWindowWait(size_t wait_count) {
   }
 }
 
-void ChannelBase::WaitAsyncSendToFinish() {
+void Channel::WaitAsyncSendToFinish() {
   send_thread_stoped_.store(true);
   msg_queue_.EmptyNotify();
   send_thread_.join();
   send_sync_.WaitAllSendFinished();
 }
 
-void ChannelBase::MessageQueue::EmptyNotify() { cond_.notify_all(); }
+void Channel::MessageQueue::EmptyNotify() { cond_.notify_all(); }
 
-void ChannelBase::WaitForFinAndFlyingMsg() {
+void Channel::WaitForFinAndFlyingMsg() {
   size_t sent_msg_count = msg_seq_id_;
   SubmitSendTask(Message(0, kFinKey, Buffer(std::to_string(sent_msg_count))));
   {
@@ -464,7 +594,7 @@ void ChannelBase::WaitForFinAndFlyingMsg() {
   }
 }
 
-void ChannelBase::StopReceivingAndAckUnreadMsgs() {
+void Channel::StopReceivingAndAckUnreadMsgs() {
   std::unique_lock<bthread::Mutex> lock(msg_mutex_);
   waiting_finish_.store(true);
   for (auto& msg : msg_db_) {
@@ -476,7 +606,7 @@ void ChannelBase::StopReceivingAndAckUnreadMsgs() {
   msg_db_.clear();
 }
 
-void ChannelBase::WaitForFlyingAck() {
+void Channel::WaitForFlyingAck() {
   size_t sent_msg_count = msg_seq_id_;
   std::unique_lock<bthread::Mutex> lock(msg_mutex_);
   if (sent_msg_count == 0) {
@@ -492,7 +622,7 @@ void ChannelBase::WaitForFlyingAck() {
   }
 }
 
-void ChannelBase::WaitLinkTaskFinish() {
+void Channel::WaitLinkTaskFinish() {
   // 4 steps to total stop link.
   // send ack for msg exist in msg_db_ that unread by up layer logic.
   // stop OnMessage & auto ack all normal msg from now on.
@@ -507,6 +637,32 @@ void ChannelBase::WaitLinkTaskFinish() {
   // at least, wait for all ack msg.
   WaitForFlyingAck();
   // after all, we can safely close server port and exit.
+}
+
+void Channel::OnRequest(const ::google::protobuf::Message& request,
+                        ::google::protobuf::Message* response) {
+  YACL_ENFORCE(response != nullptr, "response should not be null");
+  YACL_ENFORCE(link_ != nullptr, "delegate should not be null");
+
+  link_->FillResponseOk(request, response);
+
+  if (link_->IsMonoRequest(request)) {
+    std::string key;
+    ByteContainerView value;
+    link_->UnpackMonoRequest(request, &key, &value);
+    SPDLOG_DEBUG("{} recv {}", link_->LocalRank(), key);
+    OnMessage(key, value);
+  } else if (link_->IsChunkedRequest(request)) {
+    std::string key;
+    ByteContainerView value;
+    size_t offset = 0;
+    size_t total_length = 0;
+    SPDLOG_DEBUG("{} recv {}", link_->LocalRank(), key);
+    link_->UnpackChunckRequest(request, &key, &value, &offset, &total_length);
+    OnChunkedMessage(key, value, offset, total_length);
+  } else {
+    link_->FillResponseError(request, response);
+  }
 }
 
 }  // namespace yacl::link::transport

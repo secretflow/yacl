@@ -12,13 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <memory>
+
 #include "absl/strings/match.h"
 #include "butil/logging.h"
 #include "gflags/gflags.h"
 
 #include "yacl/base/exception.h"
 #include "yacl/link/factory.h"
-#include "yacl/link/transport/channel_brpc.h"
+#include "yacl/link/transport/brpc_link.h"
+#include "yacl/link/transport/channel.h"
 
 namespace brpc::policy {
 DECLARE_int32(h2_client_stream_window_size);
@@ -42,10 +45,12 @@ std::shared_ptr<Context> FactoryBrpc::CreateContext(const ContextDesc& desc,
                            world_size);
   }
 
-  auto opts = transport::ChannelBrpc::GetDefaultOptions();
-  opts = transport::ChannelBrpc::MakeOptions(
+  auto opts = transport::BrpcLink::GetDefaultOptions();
+  opts = transport::BrpcLink::MakeOptions(
       opts, desc.http_timeout_ms, desc.http_max_payload_size,
-      desc.brpc_channel_protocol, desc.brpc_channel_connection_type);
+      desc.brpc_channel_protocol, desc.brpc_channel_connection_type,
+      desc.brpc_retry_count, desc.brpc_retry_interval_ms,
+      desc.brpc_aggressive_retry);
 
   auto msg_loop = std::make_unique<transport::ReceiverLoopBrpc>();
   std::vector<std::shared_ptr<transport::IChannel>> channels(world_size);
@@ -54,12 +59,14 @@ std::shared_ptr<Context> FactoryBrpc::CreateContext(const ContextDesc& desc,
       continue;
     }
 
-    auto channel = std::make_shared<transport::ChannelBrpc>(
-        self_rank, rank, desc.recv_timeout_ms, opts, desc.exit_if_async_error);
-    channel->SetPeerHost(desc.parties[rank].host,
-                         desc.enable_ssl ? &desc.client_ssl_opts : nullptr);
-    channel->SetThrottleWindowSize(desc.throttle_window_size);
+    auto delegate =
+        std::make_shared<transport::BrpcLink>(self_rank, rank, opts);
+    delegate->SetPeerHost(desc.parties[rank].host,
+                          desc.enable_ssl ? &desc.client_ssl_opts : nullptr);
 
+    auto channel = std::make_shared<transport::Channel>(
+        delegate, desc.recv_timeout_ms, desc.exit_if_async_error);
+    channel->SetThrottleWindowSize(desc.throttle_window_size);
     msg_loop->AddListener(rank, channel);
     channels[rank] = std::move(channel);
   }
