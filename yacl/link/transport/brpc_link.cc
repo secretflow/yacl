@@ -12,14 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/link/transport/channel_brpc.h"
+#include "yacl/link/transport/brpc_link.h"
 
 #include <exception>
+#include <memory>
 #include <utility>
 
 #include "spdlog/spdlog.h"
 
 #include "yacl/base/exception.h"
+#include "yacl/link/transport/channel.h"
+#include "yacl/link/transport/default_brpc_retry_policy.h"
 
 #include "interconnection/link/transport.pb.h"
 
@@ -28,12 +31,40 @@ namespace yacl::link::transport {
 namespace ic = org::interconnection;
 namespace ic_pb = org::interconnection::link;
 
+class BrpcRetryPolicy : public DefaultBrpcRetryPolicy {
+ public:
+  using DefaultBrpcRetryPolicy::DefaultBrpcRetryPolicy;
+  bool OnRpcSuccess(const brpc::Controller* cntl) const override {
+    if (cntl->response() == nullptr) {
+      SPDLOG_ERROR("response is null");
+      return false;
+    }
+
+    if (cntl->response()->GetDescriptor() !=
+        ic_pb::PushResponse::descriptor()) {
+      SPDLOG_ERROR("unexpected response typename: {}",
+                   cntl->response()->GetTypeName());
+      return false;
+    }
+
+    auto* response = static_cast<ic_pb::PushResponse*>(cntl->response());
+    auto error_code = response->header().error_code();
+    if (error_code == ic::ErrorCode::NETWORK_ERROR) {
+      SPDLOG_INFO("NETWORK_ERROR, sleep={}us and retry", retry_interval_us_);
+      bthread_usleep(retry_interval_us_);
+      return true;
+    } else {
+      return false;
+    }
+  }
+};
+
 namespace internal {
 
 class ReceiverServiceImpl : public ic_pb::ReceiverService {
  public:
   explicit ReceiverServiceImpl(
-      std::map<size_t, std::shared_ptr<InterconnectionBase>> listener)
+      std::map<size_t, std::shared_ptr<Channel>> listener)
       : listeners_(std::move(listener)) {}
 
   void Push(::google::protobuf::RpcController* /*cntl_base*/,
@@ -49,12 +80,13 @@ class ReceiverServiceImpl : public ic_pb::ReceiverService {
       response->mutable_header()->set_error_msg(fmt::format(
           "dispatch error, key={}, error=listener rank={} not found",
           request->key(), sender_rank));
+    } else {
+      iter->second->OnRequest(*request, response);
     }
-    iter->second->OnRequest(request, response);
   }
 
  protected:
-  std::map<size_t, std::shared_ptr<InterconnectionBase>> listeners_;
+  std::map<size_t, std::shared_ptr<Channel>> listeners_;
 };
 
 }  // namespace internal
@@ -101,18 +133,22 @@ std::string ReceiverLoopBrpc::Start(const std::string& host,
   return butil::endpoint2str(server_.listen_address()).c_str();
 }
 
-void ChannelBrpc::SetPeerHost(const std::string& peer_host,
-                              const SSLOptions* ssl_opts) {
+void BrpcLink::SetPeerHost(const std::string& peer_host,
+                           const SSLOptions* ssl_opts) {
   auto brpc_channel = std::make_unique<brpc::Channel>();
   const auto load_balancer = "";
+  auto retry_policy = std::make_unique<BrpcRetryPolicy>(
+      options_.retry_interval_ms, options_.aggressive_retry);
   brpc::ChannelOptions options;
   {
     options.protocol = options_.channel_protocol;
     options.connection_type = options_.channel_connection_type;
     options.connect_timeout_ms = 20000;
     options.timeout_ms = options_.http_timeout_ms;
-    options.max_retry = 3;
-    // options.retry_policy = DefaultRpcRetryPolicy();
+
+    options.max_retry = options_.max_retry;
+    options.retry_policy = retry_policy.get();
+
     if (ssl_opts != nullptr) {
       options.mutable_ssl_options()->client_cert.certificate =
           ssl_opts->cert.certificate_path;
@@ -130,19 +166,22 @@ void ChannelBrpc::SetPeerHost(const std::string& peer_host,
                              peer_host, res);
   }
 
-  channel_ = std::move(brpc_channel);
+  delegate_channel_ = std::move(brpc_channel);
+  retry_policy_ = std::move(retry_policy);
   peer_host_ = peer_host;
 }
 
-void ChannelBrpc::PushRequest(ic_pb::PushRequest& request, uint32_t timeout) {
+void BrpcLink::SendRequest(const ::google::protobuf::Message& request,
+                           uint32_t timeout) {
   ic_pb::PushResponse response;
   brpc::Controller cntl;
   cntl.ignore_eovercrowded();
   if (timeout != 0) {
     cntl.set_timeout_ms(timeout);
   }
-  ic_pb::ReceiverService::Stub stub(channel_.get());
-  stub.Push(&cntl, &request, &response, nullptr);
+  ic_pb::ReceiverService::Stub stub(delegate_channel_.get());
+  stub.Push(&cntl, static_cast<const ic_pb::PushRequest*>(&request), &response,
+            nullptr);
   // handle failures.
   if (cntl.Failed()) {
     YACL_THROW_NETWORK_ERROR("send, rpc failed={}, message={}",
