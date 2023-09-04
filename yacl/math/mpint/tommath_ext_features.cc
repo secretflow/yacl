@@ -217,7 +217,7 @@ void mp_ext_safe_prime_rand(mp_int *p, int t, int psize) {
     if (!is_pocklington_criterion_satisfied(p)) {
       continue;
     }
-    // final check, if q is prime, 
+    // final check, if q is prime,
     // then p is 100% prime since Pocklington is deterministic
     MPINT_ENFORCE_OK(mp_prime_is_prime(&q, t, &res));
     if (res) {
