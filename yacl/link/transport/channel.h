@@ -147,7 +147,7 @@ class Channel : public IChannel, public std::enable_shared_from_this<Channel> {
   }
 
   ~Channel() override {
-    if (!send_thread_stoped_.load()) {
+    if (!send_thread_stopped_.load()) {
       SPDLOG_WARN(
           "Channel destructor is called before WaitLinkTaskFinish, try "
           "stop send thread");
@@ -290,6 +290,7 @@ class Channel : public IChannel, public std::enable_shared_from_this<Channel> {
     bthread::Mutex mutex_;
     std::queue<Message> queue_;
     bthread::ConditionVariable cond_;
+    bool stopped_ = false;
   };
 
  protected:
@@ -297,7 +298,7 @@ class Channel : public IChannel, public std::enable_shared_from_this<Channel> {
 
   MessageQueue msg_queue_;
   std::thread send_thread_;
-  std::atomic<bool> send_thread_stoped_ = false;
+  std::atomic<bool> send_thread_stopped_ = false;
   SendTaskSynchronizer send_sync_;
 
   // chunking related.

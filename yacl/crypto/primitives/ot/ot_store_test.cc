@@ -48,7 +48,7 @@ inline std::pair<OtRecvStore, std::vector<uint128_t>> RandCompactOtRecvStore(
 }
 
 inline std::pair<OtSendStore, std::vector<std::array<uint128_t, 2>>>
-RandOtSendStore(uint64_t num) {
+RandOtSendStore(uint64_t /*num*/) {
   std::vector<std::array<uint128_t, 2>> blocks;
   Prg<uint128_t> prg;
   for (size_t i = 0; i < 25; i++) {

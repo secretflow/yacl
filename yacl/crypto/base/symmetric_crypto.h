@@ -110,12 +110,9 @@ class Sm4CbcCrypto : public SymmetricCrypto {
 
 // in some asymmetric scene
 // may exist parties only need update count by buffer size.
-template <typename T,
-          std::enable_if_t<std::is_standard_layout<T>::value, int> = 0>
-inline uint64_t DummyUpdateRandomCount(uint64_t count, absl::Span<T> out) {
+inline uint64_t DummyUpdateRandomCount(uint64_t count, size_t buffer_size) {
   constexpr size_t block_size = SymmetricCrypto::BlockSize();
-  const size_t nbytes = out.size() * sizeof(T);
-  const size_t nblock = (nbytes + block_size - 1) / block_size;
+  const size_t nblock = (buffer_size + block_size - 1) / block_size;
   return count + nblock;
 }
 

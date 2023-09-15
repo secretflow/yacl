@@ -153,4 +153,29 @@ TEST(TommathExtTest, GetBit) {
   EXPECT_LE(mp_ext_count_bits_fast(new_n), 64);
 }
 
+TEST(TommathExtTest, MpDivd) {
+  uint64_t d = 16294579238595022365ULL;
+  mp_int mp_d;
+  MP_ASSERT_OK(mp_init_u64(&mp_d, d));
+  ON_SCOPE_EXIT([&] { mp_clear(&mp_d); });
+
+  mp_int a;
+  MP_ASSERT_OK(mp_init(&a));
+  ON_SCOPE_EXIT([&] { mp_clear(&a); });
+
+  mp_int mp_res;
+  MP_ASSERT_OK(mp_init(&mp_res));
+  ON_SCOPE_EXIT([&] { mp_clear(&mp_res); });
+
+  for (uint64_t i = 1000; i < 100000; ++i) {
+    mp_ext_rand_bits(&a, i / 10);
+
+    mp_digit res;
+    MP_ASSERT_OK(mp_div_d(&a, d, nullptr, &res));
+    MP_ASSERT_OK(mp_div(&a, &mp_d, nullptr, &mp_res));
+
+    EXPECT_EQ(mp_get_mag_u64(&mp_res), res);
+  }
+}
+
 }  // namespace yacl::math::test

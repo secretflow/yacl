@@ -281,11 +281,11 @@ void OpensslGroup::SerializePoint(const EcPoint &point, PointOctetFormat format,
 }
 
 EcPoint OpensslGroup::DeserializePoint(ByteContainerView buf,
-                                       PointOctetFormat format) const {
+                                       PointOctetFormat) const {
   auto p = MakeOpensslPoint();
   // buf[0] == 0 indicate it's a infinity point, will fail if input len != 1
   SSL_RET_1(EC_POINT_oct2point(group_.get(), CastAny<EC_POINT>(p), buf.data(),
-                               buf.size() > 0 && buf[0] != 0 ? buf.length() : 1,
+                               !buf.empty() && buf[0] != 0 ? buf.length() : 1,
                                ctx_.get()));
   return p;
 }

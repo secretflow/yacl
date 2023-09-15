@@ -76,14 +76,31 @@ std::pair<uint64_t, uint64_t> DecomposeUInt128(uint128_t v);
 
 }  // namespace yacl
 
-#ifdef __GNUC__
+#if !defined(__GNUC__)
+#error "YACL only supports GCC and clang"
+#endif
+
+#if defined(__GLIBCXX_TYPE_INT_N_0) && (__GLIBCXX_TYPE_INT_N_0 == __int128)
+#define WITH_GLIBCXX_INT128
+#endif
+
+#if defined(_LIBCPP_HAS_NO_INT128)
+#define WITHOUT_CLANG_INT128
+#endif
+
+#ifdef __clang__  // clang mode
 #define HAS_INT128_LIMITS
-#if defined(__clang__) || \
-    (defined(__GLIBCXX_TYPE_INT_N_0) && (__GLIBCXX_TYPE_INT_N_0 == __int128))
+#if defined(__GLIBCXX__) || defined(__GLIBCPP__)  // clang with libstdc++
+#ifdef WITH_GLIBCXX_INT128
 #define HAS_INT128_TRAITS
 #endif
-#else
-#error "YACL only supports GCC and clang"
+#elif !defined(WITHOUT_CLANG_INT128)
+#define HAS_INT128_TRAITS
+#endif
+#else  // gcc
+#ifdef WITH_GLIBCXX_INT128
+#define HAS_INT128_TRAITS
+#endif
 #endif
 
 namespace std {

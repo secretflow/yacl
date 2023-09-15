@@ -133,7 +133,7 @@ void Channel::SubmitSendTask(Message&& msg) {
 
 std::optional<Channel::Message> Channel::MessageQueue::Pop(bool block) {
   std::unique_lock<bthread::Mutex> lock(mutex_);
-  if (block && queue_.empty()) {
+  if (block && queue_.empty() && !stopped_) {
     cond_.wait(lock);
   }
 
@@ -147,7 +147,7 @@ std::optional<Channel::Message> Channel::MessageQueue::Pop(bool block) {
 }
 
 void Channel::SendThread() {
-  while (!send_thread_stoped_.load()) {
+  while (!send_thread_stopped_.load()) {
     auto msg = msg_queue_.Pop(true);
     if (!msg.has_value()) {
       continue;
@@ -562,13 +562,17 @@ void Channel::ThrottleWindowWait(size_t wait_count) {
 }
 
 void Channel::WaitAsyncSendToFinish() {
-  send_thread_stoped_.store(true);
+  send_thread_stopped_.store(true);
   msg_queue_.EmptyNotify();
   send_thread_.join();
   send_sync_.WaitAllSendFinished();
 }
 
-void Channel::MessageQueue::EmptyNotify() { cond_.notify_all(); }
+void Channel::MessageQueue::EmptyNotify() {
+  std::unique_lock<bthread::Mutex> lock(mutex_);
+  stopped_ = true;
+  cond_.notify_all();
+}
 
 void Channel::WaitForFinAndFlyingMsg() {
   size_t sent_msg_count = msg_seq_id_;

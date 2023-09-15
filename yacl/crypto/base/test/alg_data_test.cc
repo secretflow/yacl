@@ -58,20 +58,24 @@ void AesTestData(std::string &file_name,
     SymmetricCrypto crypto(crypto_mode, aes_key, 0);
 
     crypto.Encrypt(
-        absl::MakeConstSpan((const uint8_t *)aes_plain.data(),
+        absl::MakeConstSpan(reinterpret_cast<const uint8_t *>(aes_plain.data()),
                             aes_plain.size()),
-        absl::MakeSpan((uint8_t *)aes_cipher.data(), aes_cipher.size()));
+        absl::MakeSpan(reinterpret_cast<uint8_t *>(aes_cipher.data()),
+                       aes_cipher.size()));
     crypto.Decrypt(
-        absl::MakeConstSpan((const uint8_t *)aes_cipher.data(),
-                            aes_cipher.size()),
-        absl::MakeSpan((uint8_t *)aes_decrypt.data(), aes_decrypt.size()));
+        absl::MakeConstSpan(
+            reinterpret_cast<const uint8_t *>(aes_cipher.data()),
+            aes_cipher.size()),
+        absl::MakeSpan(reinterpret_cast<uint8_t *>(aes_decrypt.data()),
+                       aes_decrypt.size()));
 
     out_file << std::endl << "=====" << i << "=====" << std::endl;
 
     out_file << "key(" << sizeof(uint128_t) << "): " << std::endl;
 
-    out_file << absl::BytesToHexString(absl::string_view((const char *)&aes_key,
-                                                         sizeof(uint128_t)))
+    out_file << absl::BytesToHexString(
+                    absl::string_view(reinterpret_cast<const char *>(&aes_key),
+                                      sizeof(uint128_t)))
              << std::endl;
     out_file << "plain(" << aes_plain.length() << "): " << std::endl;
     out_file << absl::BytesToHexString(aes_plain) << std::endl;
@@ -101,7 +105,8 @@ void Sha256TestData(std::string &file_name) {
     out_file << absl::BytesToHexString(hash_data) << std::endl;
     out_file << "hash(" << hash_result.size() << "):" << std::endl;
     out_file << absl::BytesToHexString(std::string_view(
-                    (const char *)hash_result.data(), hash_result.size()))
+                    reinterpret_cast<const char *>(hash_result.data()),
+                    hash_result.size()))
              << std::endl;
   }
 }
@@ -135,30 +140,35 @@ void Curve25519TestData(std::string &file_name) {
     out_file << "=====" << i << "=====" << std::endl;
     out_file << "private x(" << private_x.size() << "):" << std::endl;
     out_file << absl::BytesToHexString(std::string_view(
-                    (const char *)private_x.data(), share_x.size()))
+                    reinterpret_cast<const char *>(private_x.data()),
+                    share_x.size()))
              << std::endl;
     out_file << "public x(" << public_x.size() << "):" << std::endl;
     out_file << absl::BytesToHexString(std::string_view(
-                    (const char *)public_x.data(), share_x.size()))
+                    reinterpret_cast<const char *>(public_x.data()),
+                    share_x.size()))
              << std::endl;
     out_file << "private y(" << private_y.size() << "):" << std::endl;
     out_file << absl::BytesToHexString(std::string_view(
-                    (const char *)private_y.data(), share_x.size()))
+                    reinterpret_cast<const char *>(private_y.data()),
+                    share_x.size()))
              << std::endl;
     out_file << "public y(" << public_y.size() << "):" << std::endl;
     out_file << absl::BytesToHexString(std::string_view(
-                    (const char *)public_y.data(), share_x.size()))
+                    reinterpret_cast<const char *>(public_y.data()),
+                    share_x.size()))
              << std::endl;
     out_file << "share y(" << share_x.size() << "):" << std::endl;
     out_file << absl::BytesToHexString(std::string_view(
-                    (const char *)share_x.data(), share_x.size()))
+                    reinterpret_cast<const char *>(share_x.data()),
+                    share_x.size()))
              << std::endl;
   }
 }
 
 }  // namespace yacl::crypto
 
-int main(int argc, char **argv) {
+int main(int /*argc*/, char ** /*argv*/) {
   std::string aes_ecb_file_name = "aes_ecb_data.txt";
   std::string aes_ctr_file_name = "aes_ctr_data.txt";
   std::string sha256_file_name = "sha256_data.txt";

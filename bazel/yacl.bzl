@@ -23,13 +23,7 @@ WARNING_FLAGS = [
     "-Wall",
     "-Wextra",
     "-Werror",
-    "-Wno-unused-parameter",
-    "-Wnon-virtual-dtor",
-] + select({
-    "@bazel_tools//src/conditions:linux_aarch64": ["-Wno-uninitialized"],
-    "@bazel_tools//src/conditions:darwin": ["-Wunused-const-variable"],
-    "//conditions:default": ["-Wunused-const-variable=1"],
-})
+]
 
 # set `SPDLOG_ACTIVE_LEVEL=1(SPDLOG_LEVEL_DEBUG)` to enable debug level log
 DEBUG_FLAGS = ["-DSPDLOG_ACTIVE_LEVEL=1", "-O0", "-g"]

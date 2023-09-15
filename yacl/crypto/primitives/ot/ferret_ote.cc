@@ -48,7 +48,7 @@ uint128_t GenSyncedSeed(const std::shared_ptr<link::Context>& ctx) {
 
 }  // namespace
 
-uint64_t FerretCotHelper(const LpnParam& lpn_param, uint64_t ot_num) {
+uint64_t FerretCotHelper(const LpnParam& lpn_param, uint64_t /*ot_num*/) {
   uint64_t mpcot_cot = 0;
   if (lpn_param.noise_asm == LpnNoiseAsm::RegularNoise) {
     // for each mpcot invocation,
