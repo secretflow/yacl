@@ -81,9 +81,8 @@ static void BM_AesNiEcb(benchmark::State& state) {
   }
 }
 
-constexpr uint64_t kKeyWidth = 4;
-
 // FIXME: the follwoing causes CI build error, find out why
+// constexpr uint64_t kKeyWidth = 4;
 // static void BM_MultiKeyAesEcb(benchmark::State& state) {
 //   for (auto _ : state) {
 //     state.PauseTiming();
