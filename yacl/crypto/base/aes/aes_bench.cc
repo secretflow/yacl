@@ -206,15 +206,15 @@ BENCHMARK(BM_AesNiEcb)
     ->Arg(81920)
     ->Arg(1 << 24);
 
-BENCHMARK(BM_MultiKeyAesEcb)
-    ->Unit(benchmark::kMillisecond)
-    ->Arg(256)
-    ->Arg(1280)
-    ->Arg(2560)
-    ->Arg(5120)
-    ->Arg(10240)
-    ->Arg(20480)
-    ->Arg(1 << 22);
+// BENCHMARK(BM_MultiKeyAesEcb)
+//     ->Unit(benchmark::kMillisecond)
+//     ->Arg(256)
+//     ->Arg(1280)
+//     ->Arg(2560)
+//     ->Arg(5120)
+//     ->Arg(10240)
+//     ->Arg(20480)
+//     ->Arg(1 << 22);
 
 #ifdef __x86_64
 BENCHMARK(BM_IppcpAes)
