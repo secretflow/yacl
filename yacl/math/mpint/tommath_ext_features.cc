@@ -55,7 +55,7 @@ constexpr uint64_t small_prime_prod = multiply_accumulator(small_primes);
 }  // namespace
 
 bool is_co_prime(uint64_t num, const uint8_t small_primes[], int size) {
-  for (int i = 0; i < size; i++) {
+  for (int i = 0; i < size; ++i) {
     if (num != small_primes[i] && num % small_primes[i] == 0) {
       return false;
     }
@@ -86,17 +86,19 @@ inline bool is_prime_candidate(const mp_int *p) {
 bool is_pocklington_criterion_satisfied(const mp_int *p) {
   mp_int p_minus_one, two, result;
 
-  MPINT_ENFORCE_OK(mp_init(&p_minus_one));
+  MPINT_ENFORCE_OK(mp_init_copy(&p_minus_one, p));
   ON_SCOPE_EXIT([&] { mp_clear(&p_minus_one); });
+  MPINT_ENFORCE_OK(mp_decr(&p_minus_one));
+
   MPINT_ENFORCE_OK(mp_init_u64(&two, 2));
   ON_SCOPE_EXIT([&] { mp_clear(&two); });
   MPINT_ENFORCE_OK(mp_init(&result));
   ON_SCOPE_EXIT([&] { mp_clear(&result); });
-  // p - 1
-  MPINT_ENFORCE_OK(mp_sub_d(p, 1, &p_minus_one));
+
   // 2^(p-1) mod p
   MPINT_ENFORCE_OK(mp_exptmod(&two, &p_minus_one, p, &result));
-  return (mp_cmp_d(&result, 1) == 0);
+
+  return mp_cmp_d(&result, 1) == MP_EQ;
 }
 
 // The algorithm is as follows:
@@ -134,7 +136,7 @@ void mp_ext_safe_prime_rand(mp_int *p, int t, int psize) {
   int maskOR_msb_offset;
   bool res;
   mp_int q;
-  uint64_t mod, original_m;
+  uint64_t original_m;
 
   /* sanity check the input */
   YACL_ENFORCE(psize > 1 && t > 0, "with psize={}, t={}", psize, t);
@@ -185,8 +187,13 @@ void mp_ext_safe_prime_rand(mp_int *p, int t, int psize) {
     MPINT_ENFORCE_OK(mp_mod_d(&q, small_prime_prod, &original_m));
 
     uint64_t last_delta = 0;
-    for (uint64_t delta = 0; delta < (1 << 20); delta += 2) {
+    for (uint64_t delta = 0; delta < (1ULL << 20); delta += 2) {
       uint64_t m = original_m + delta;
+      // If `q = 1 (mod 3)`, then `p` is a multiple of `3` so it's
+      // obviously no prime and such `p` should be rejected.
+      if (m % 3 == 1) {
+        continue;
+      }
       if (!is_co_prime(m, small_primes, std::size(small_primes))) {
         continue;
       }
@@ -194,12 +201,7 @@ void mp_ext_safe_prime_rand(mp_int *p, int t, int psize) {
         MPINT_ENFORCE_OK(mp_add_d(&q, delta - last_delta, &q));
       }
       last_delta = delta;
-      // If `q = 1 (mod 3)`, then `p` is a multiple of `3` so it's
-      // obviously no prime and such `p` should be rejected.
-      MPINT_ENFORCE_OK(mp_mod_d(&q, 3, &mod));
-      if (mod == 1) {
-        continue;
-      }
+
       // p = 2 * q + 1
       MPINT_ENFORCE_OK(mp_mul_2(&q, p));
       MPINT_ENFORCE_OK(mp_incr(p));
@@ -208,15 +210,11 @@ void mp_ext_safe_prime_rand(mp_int *p, int t, int psize) {
         break;
       }
     }
-    // is `q` a prime? try 10 times.
-    MPINT_ENFORCE_OK(mp_prime_is_prime(&q, 10, &res));
-    if (!res) {
-      continue;
-    }
     // test Pocklington Criterion
     if (!is_pocklington_criterion_satisfied(p)) {
       continue;
     }
+
     // final check, if q is prime,
     // then p is 100% prime since Pocklington is deterministic
     MPINT_ENFORCE_OK(mp_prime_is_prime(&q, t, &res));

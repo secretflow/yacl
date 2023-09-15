@@ -164,8 +164,7 @@ EcPoint SodiumGroup::DeserializePoint(ByteContainerView buf,
   return p;
 }
 
-EcPoint SodiumGroup::HashToCurve(HashToCurveStrategy strategy,
-                                 std::string_view str) const {
+EcPoint SodiumGroup::HashToCurve(HashToCurveStrategy, std::string_view) const {
   YACL_THROW("not impl");
 }
 

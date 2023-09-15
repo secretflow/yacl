@@ -208,7 +208,7 @@ TEST_F(ContextTest, SendRecvShouldOk) {
   auto recv_fn = [&](size_t receiver, size_t sender) {
     receive_buffer[sender][receiver] = ctxs_[receiver]->Recv(sender, "tag");
   };
-  auto send_fn = [&](size_t sender, size_t receiver, const Buffer &value) {
+  auto send_fn = [&](size_t sender, size_t receiver, const Buffer & /*value*/) {
     ctxs_[sender]->SendAsync(
         receiver, ByteContainerView(send_buffer_[sender][receiver]), "tag");
   };

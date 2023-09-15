@@ -48,7 +48,7 @@ std::string ToyXGroup::ToString() const {
                      params_.A, params_.p);
 }
 
-EcPoint ToyXGroup::Add(const EcPoint &p1, const EcPoint &p2) const {
+EcPoint ToyXGroup::Add(const EcPoint &, const EcPoint &) const {
   YACL_THROW(
       "{} from {} do not support Add, because p1, p2 only has X-coordinate",
       GetCurveName(), GetLibraryName());

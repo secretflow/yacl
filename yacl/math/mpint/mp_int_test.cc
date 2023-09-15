@@ -231,35 +231,24 @@ TEST_F(MPIntTest, MsgpackWorks) {
 }
 
 TEST_F(MPIntTest, RandPrimeOverWorks) {
-  // basic test
-  int bit_size = 256;
   MPInt x;
-  MPInt::RandPrimeOver(bit_size, &x, PrimeType::Normal);
-  EXPECT_GE(x.BitCount(), bit_size);
-  EXPECT_TRUE(x.IsPrime());
+  for (auto bit_size : {82, 128, 256, 512, 1024}) {
+    MPInt::RandPrimeOver(bit_size, &x, PrimeType::Normal);
+    EXPECT_GE(x.BitCount(), bit_size);
+    EXPECT_TRUE(x.IsPrime());
 
-  MPInt::RandPrimeOver(bit_size, &x, PrimeType::BBS);
-  EXPECT_GE(x.BitCount(), bit_size);
-  EXPECT_TRUE(x.IsPrime());
-  EXPECT_EQ(x % MPInt(4), MPInt(3));
+    MPInt::RandPrimeOver(bit_size, &x, PrimeType::BBS);
+    EXPECT_GE(x.BitCount(), bit_size);
+    EXPECT_TRUE(x.IsPrime());
+    EXPECT_EQ(x % MPInt(4), MPInt(3));
 
-  MPInt::RandPrimeOver(bit_size, &x, PrimeType::FastSafe);
-  EXPECT_GE(x.BitCount(), bit_size);
-  EXPECT_TRUE(x.IsPrime());
-  EXPECT_TRUE((x / MPInt::_2_).IsPrime());
-
-  // test different bit size
-  MPInt::RandPrimeOver(128, &x, PrimeType::FastSafe);
-  EXPECT_TRUE(x.IsPrime());
-  EXPECT_TRUE((x / MPInt::_2_).IsPrime());
-
-  MPInt::RandPrimeOver(512, &x, PrimeType::FastSafe);
-  EXPECT_TRUE(x.IsPrime());
-  EXPECT_TRUE((x / MPInt::_2_).IsPrime());
-
-  MPInt::RandPrimeOver(1024, &x, PrimeType::FastSafe);
-  EXPECT_TRUE(x.IsPrime());
-  EXPECT_TRUE((x / MPInt::_2_).IsPrime());
+    MPInt::RandPrimeOver(bit_size, &x, PrimeType::FastSafe);
+    EXPECT_GE(x.BitCount(), bit_size);
+    MPInt q = x / MPInt::_2_;
+    EXPECT_TRUE(q.IsPrime());
+    EXPECT_TRUE(x.IsPrime())
+        << fmt::format("bit_size = {}\np = {}\nq = {}", bit_size, x, q);
+  }
 }
 
 TEST_F(MPIntTest, RandomWorks) {

@@ -142,8 +142,8 @@ EcPoint ToyWeierstrassGroup::DeserializePoint(ByteContainerView buf,
   return op;
 }
 
-EcPoint ToyWeierstrassGroup::HashToCurve(HashToCurveStrategy strategy,
-                                         std::string_view str) const {
+EcPoint ToyWeierstrassGroup::HashToCurve(HashToCurveStrategy,
+                                         std::string_view) const {
   YACL_THROW("not impl");
 }
 

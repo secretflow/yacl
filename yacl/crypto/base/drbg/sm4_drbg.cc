@@ -208,7 +208,7 @@ void Sm4Drbg::RngUpdate() {
   return;
 }
 
-void Sm4Drbg::ReSeed(absl::Span<const uint8_t> seed,
+void Sm4Drbg::ReSeed(absl::Span<const uint8_t> /*seed*/,
                      absl::Span<const uint8_t> additional_input) {
   min_entropy_ = min_length_;
   entropy_input_ = entropy_source_->GetEntropy(min_entropy_);

@@ -585,7 +585,7 @@ void MPInt::RandomLtN(const MPInt &n, MPInt *r) {
 }
 
 void MPInt::RandPrimeOver(size_t bit_size, MPInt *out, PrimeType prime_type) {
-  YACL_ENFORCE_GT(bit_size, 80u, "bit_size must > 80");
+  YACL_ENFORCE_GT(bit_size, 81U, "bit_size must >= 82");
   int trials = mp_prime_rabin_miller_trials(bit_size);
 
   if (prime_type == PrimeType::FastSafe) {

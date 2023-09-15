@@ -58,7 +58,8 @@ using ENTROPY_CTX = struct entropy_st {
 };
 
 size_t GetEntropy(RAND_DRBG *drbg, unsigned char **pout, int entropy_bits,
-                  size_t min_len, size_t max_len, int prediction_resistance) {
+                  size_t min_len, size_t /*max_len*/,
+                  int /*prediction_resistance*/) {
   auto *ctx = reinterpret_cast<ENTROPY_CTX *>(
       RAND_DRBG_get_ex_data(drbg, NistAesDrbg::app_data_index_));
 
@@ -79,7 +80,7 @@ size_t GetEntropy(RAND_DRBG *drbg, unsigned char **pout, int entropy_bits,
 }
 
 size_t GetNonce(RAND_DRBG *drbg, unsigned char **pout, int nonce_bits,
-                size_t min_len, size_t max_len) {
+                size_t min_len, size_t /*max_len*/) {
   auto *ctx = reinterpret_cast<ENTROPY_CTX *>(
       RAND_DRBG_get_ex_data(drbg, NistAesDrbg::app_data_index_));
 

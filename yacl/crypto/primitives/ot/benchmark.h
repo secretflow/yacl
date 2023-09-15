@@ -38,7 +38,7 @@ namespace yacl::crypto {
 
 class OtBench : public benchmark::Fixture {
  public:
-  void SetUp(const ::benchmark::State& state) override {
+  void SetUp(const ::benchmark::State&) override {
     if (lctxs_.empty()) {
       // lctxs_ = link::test::SetupBrpcWorld(2);
       lctxs_ = link::test::SetupWorld(2);
