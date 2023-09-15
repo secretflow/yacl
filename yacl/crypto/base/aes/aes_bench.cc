@@ -100,14 +100,17 @@ static void BM_MultiKeyAesEcb(benchmark::State& state) {
       plain_block[i] = eb;
     }
 
-    AES_KEY aes_key[kKeyWidth];
+    std::array<AES_KEY, kKeyWidth> aes_key;
+    for (size_t idx = 0; idx < kKeyWidth; ++idx) {
+      aes_key[idx] = AES_set_encrypt_key(idx);
+    }
 
-    AES_opt_key_schedule<kKeyWidth>(keys_block, aes_key);
+    AES_opt_key_schedule<kKeyWidth>(keys_block, aes_key.data());
     size_t n = state.range(0);
     state.ResumeTiming();
 
     for (size_t i = 0; i < n; i++) {
-      ParaEnc<kKeyWidth, 1>(plain_block, aes_key);
+      ParaEnc<kKeyWidth, 1>(plain_block, aes_key.data());
     }
   }
 }
