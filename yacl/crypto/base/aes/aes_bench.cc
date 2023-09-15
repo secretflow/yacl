@@ -86,8 +86,8 @@ constexpr uint64_t kKeyWidth = 4;
 static void BM_MultiKeyAesEcb(benchmark::State& state) {
   for (auto _ : state) {
     state.PauseTiming();
-    uint128_t keys_block[kKeyWidth];
-    uint128_t plain_block[kKeyWidth];
+    std::array<uint128_t, kKeyWidth> uint128_t keys_block;
+    std::array<uint128_t, kKeyWidth> plain_block;
 
     std::random_device rd;
     Prg<uint128_t> prg(rd());
@@ -105,12 +105,12 @@ static void BM_MultiKeyAesEcb(benchmark::State& state) {
       aes_key[idx] = AES_set_encrypt_key(idx);
     }
 
-    AES_opt_key_schedule<kKeyWidth>(keys_block, aes_key.data());
+    AES_opt_key_schedule<kKeyWidth>(keys_block.data(), aes_key.data());
     size_t n = state.range(0);
     state.ResumeTiming();
 
     for (size_t i = 0; i < n; i++) {
-      ParaEnc<kKeyWidth, 1>(plain_block, aes_key.data());
+      ParaEnc<kKeyWidth, 1>(plain_block.data(), aes_key.data());
     }
   }
 }
