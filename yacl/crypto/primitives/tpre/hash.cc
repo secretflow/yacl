@@ -21,7 +21,6 @@
 #include <string>
 #include <vector>
 
-#include "yacl/base/dynamic_bitset.h"
 #include "yacl/crypto/base/hash/hash_utils.h"
 #include "yacl/crypto/primitives/tpre/kdf.h"
 
@@ -30,18 +29,34 @@ namespace yacl::crypto {
 // where n is the degree of EC Group, and x is input
 MPInt CipherHash(ByteContainerView input,
                  const std::unique_ptr<EcGroup>& ecc_group) {
-  std::array<unsigned char, 32> hash_value_0 = Sm3(input);
-  std::array<unsigned char, 32> hash_value_1 = Sm3(hash_value_0);
+  auto hash_value_0 = Sm3(input);
+  auto hash_value_1 = Sm3(hash_value_0);
 
-  dynamic_bitset<uint8_t> binary;
-  binary.append(hash_value_0.begin(), hash_value_0.end());
-  binary.append(hash_value_1.begin(), hash_value_1.end());
-  MPInt hash_bn(binary.to_string(), 2);
+  std::vector<uint8_t> buf;
+  buf.insert(buf.end(), hash_value_0.begin(), hash_value_0.end());
+  buf.insert(buf.end(), hash_value_1.begin(), hash_value_1.end());
 
-  MPInt one_bn(1);
+  MPInt hash_bn;
+  hash_bn.FromMagBytes(buf);
+
   // h_x = 1 + Bignum(sm3(x)||sm3(sm3(x))) mod n-1
-  MPInt h_x = one_bn.AddMod(hash_bn, ecc_group->GetOrder() - one_bn);
+  MPInt h_x = hash_bn.AddMod(1_mp, ecc_group->GetOrder() - 1_mp);
 
   return h_x;
 }
+
+MPInt CipherHash(std::initializer_list<EcPoint> inputs,
+                 const std::unique_ptr<EcGroup>& ecc_group) {
+  auto len = ecc_group->GetSerializeLength();
+  Buffer buf(len * inputs.size());
+
+  uint8_t index = 0;
+  for (const auto& p : inputs) {
+    ecc_group->SerializePoint(p, buf.data<uint8_t>() + index * len, len);
+    index++;
+  }
+
+  return CipherHash(buf, ecc_group);
+}
+
 }  // namespace yacl::crypto

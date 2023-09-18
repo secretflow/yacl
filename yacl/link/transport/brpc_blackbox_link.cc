@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/link/transport/channel_brpc_blackbox.h"
+#include "yacl/link/transport/brpc_blackbox_link.h"
 
 #include <chrono>
 #include <cstddef>
 #include <exception>
 #include <memory>
+#include <optional>
 #include <thread>
 #include <utility>
 
@@ -26,10 +27,10 @@
 
 #include "yacl/base/exception.h"
 #include "yacl/link/transport/blackbox_interconnect/blackbox_service_errorcode.h"
+#include "yacl/link/transport/channel.h"
+#include "yacl/link/transport/default_brpc_retry_policy.h"
 
-#include "interconnection/link/transport.pb.h"
 #include "yacl/link/transport/blackbox_interconnect/blackbox_service.pb.h"
-
 namespace yacl::link::transport {
 
 namespace bb_ic = blackbox_interconnect;
@@ -59,11 +60,40 @@ const auto* const kHttpHeadHost = "host";
 
 }  // namespace
 
+class BlackboxRetryPolicy : public DefaultBrpcRetryPolicy {
+ public:
+  BlackboxRetryPolicy(uint32_t retry_interval_ms, bool aggressive_retry,
+                      uint32_t push_wait_s)
+      : DefaultBrpcRetryPolicy(retry_interval_ms, aggressive_retry),
+        push_wait_s_(push_wait_s) {}
+
+  bool OnRpcSuccess(const brpc::Controller* cntl) const override {
+    bb_ic::TransportOutbound response;
+    if (!response.ParseFromString(cntl->response_attachment().to_string())) {
+      SPDLOG_ERROR("Parse message failed.");
+      return false;
+    }
+
+    if (response.code() == bb_ic::error_code::Code("QueueFull")) {
+      SPDLOG_WARN(
+          "{} push error due to transport service queue is full, try again...",
+          cntl->retried_count());
+      bthread_usleep(push_wait_s_ * 1e6);
+      return true;
+    }
+
+    return false;
+  }
+
+ private:
+  uint32_t push_wait_s_;
+};
+
 ReceiverLoopBlackBox::~ReceiverLoopBlackBox() { Stop(); }
 
 void ReceiverLoopBlackBox::Stop() {
-  for (auto& [_, channel] : listeners_) {
-    channel->StopReceive();
+  for (auto& [_, delegate] : links_) {
+    delegate->StopReceive();
   }
   for (auto& channel_thread : threads_) {
     if (channel_thread.joinable()) {
@@ -73,27 +103,41 @@ void ReceiverLoopBlackBox::Stop() {
 }
 
 void ReceiverLoopBlackBox::Start() {
-  for (auto& [_, channel] : listeners_) {
+  for (auto& [rank, channel] : listeners_) {
+    YACL_ENFORCE(links_.find(rank) != links_.end(), "{} is not in delegates",
+                 rank);
+    auto link = links_[rank];
     threads_.emplace_back(
-        [](std::shared_ptr<ChannelBrpcBlackBox> chn) {
-          chn->StartReceive();
-          while (chn->CanReceive()) {
-            chn->TryReceive();
+        [](std::shared_ptr<Channel> chn,
+           std::shared_ptr<BrpcBlackBoxLink> link) {
+          link->StartReceive();
+          while (link->CanReceive()) {
+            auto request = link->TryReceive();
+            if (request) {
+              ic_pb::PushResponse response;
+              chn->OnRequest(*request, &response);
+              if (response.mutable_header()->error_code() !=
+                  ic::ErrorCode::OK) {
+                SPDLOG_ERROR("OnRequest failed, error_code: {}, error_info: {}",
+                             response.mutable_header()->error_code(),
+                             response.mutable_header()->error_msg());
+              }
+            }
           }
         },
-        channel);
+        channel, link);
   }
 }
 
-void ChannelBrpcBlackBox::StartReceive() { is_recv_.store(true); }
+void BrpcBlackBoxLink::StartReceive() { is_recv_.store(true); }
 
-bool ChannelBrpcBlackBox::CanReceive() { return is_recv_.load(); }
+bool BrpcBlackBoxLink::CanReceive() { return is_recv_.load(); }
 
-void ChannelBrpcBlackBox::StopReceive() { is_recv_.store(false); }
+void BrpcBlackBoxLink::StopReceive() { is_recv_.store(false); }
 
-void ChannelBrpcBlackBox::TryReceive() {
+std::optional<ic_pb::PushRequest> BrpcBlackBoxLink::TryReceive() {
   bb_ic::TransportOutbound response;
-
+  std::optional<ic_pb::PushRequest> ret;
   brpc::Controller cntl;
   SetHttpHeader(&cntl, recv_topic_);
   auto uri_str =
@@ -106,49 +150,39 @@ void ChannelBrpcBlackBox::TryReceive() {
     SPDLOG_ERROR("Rpc failed, error_code: {}, error_info: {}, uri: {}",
                  cntl.ErrorCode(), cntl.ErrorText(), uri_str);
   } else {
-    YACL_ENFORCE(
-        response.ParseFromString(cntl.response_attachment().to_string()),
-        "Parse message failed.");
+    if (!response.ParseFromString(cntl.response_attachment().to_string())) {
+      SPDLOG_ERROR("{} failed, error_code: {}({}), error_info: {}", uri_str,
+                   response.code(), bb_ic::error_code::Desc(response.code()),
+                   response.message());
+      return ret;
+    }
+
     if (response.code() == bb_ic::error_code::Code("ResourceNotFound") ||
         response.payload().empty()) {
       SPDLOG_INFO("We will wait for topic: {}", recv_topic_);
-      return;
     } else if (response.code() != bb_ic::error_code::Code("OK")) {
       SPDLOG_ERROR("{} failed, error_code: {}({}), error_info: {}", uri_str,
                    response.code(), bb_ic::error_code::Desc(response.code()),
                    response.message());
     } else {
-      OnPopResponse(&response);
-      return;
+      ic_pb::PushRequest request;
+
+      if (!request.ParseFromString(response.payload())) {
+        SPDLOG_ERROR("response payload cannot be parsed.");
+      } else {
+        ret = std::move(request);
+      }
     }
   }
 
-  if (exit_if_async_error_) {
-    exit(-1);
-  } else {
-    is_recv_.store(false);
-  }
+  return ret;
 }
 
-void ChannelBrpcBlackBox::OnPopResponse(bb_ic::TransportOutbound* response) {
-  ic_pb::PushRequest request;
-  if (!request.ParseFromString(response->payload())) {
-    SPDLOG_ERROR("response cannot be parsed.");
-    return;
-  }
-
-  ic_pb::PushResponse msg_response;
-  OnRequest(&request, &msg_response);
-  if (msg_response.mutable_header()->error_code() != ic::ErrorCode::OK) {
-    SPDLOG_ERROR("OnRequest failed, error_code: {}, error_info: {}",
-                 msg_response.mutable_header()->error_code(),
-                 msg_response.mutable_header()->error_msg());
-  }
-}
-
-brpc::ChannelOptions ChannelBrpcBlackBox::GetChannelOption(
+brpc::ChannelOptions BrpcBlackBoxLink::GetChannelOption(
     const SSLOptions* ssl_opts) {
   brpc::ChannelOptions options;
+  auto retry_policy = std::make_unique<BlackboxRetryPolicy>(
+      options_.retry_interval_ms, options_.aggressive_retry, push_wait_ms_);
   {
     if (options_.channel_protocol != "http" &&
         options_.channel_protocol != "h2") {
@@ -160,7 +194,8 @@ brpc::ChannelOptions ChannelBrpcBlackBox::GetChannelOption(
     options.connection_type = options_.channel_connection_type;
     options.connect_timeout_ms = 20000;
     options.timeout_ms = options_.http_timeout_ms;
-    options.max_retry = 3;
+    options.max_retry = options_.max_retry;
+    options.retry_policy = retry_policy.get();
     if (ssl_opts != nullptr) {
       options.mutable_ssl_options()->client_cert.certificate =
           ssl_opts->cert.certificate_path;
@@ -172,14 +207,15 @@ brpc::ChannelOptions ChannelBrpcBlackBox::GetChannelOption(
           ssl_opts->verify.ca_file_path;
     }
   }
+  retry_policy_ = std::move(retry_policy);
   return options;
 }
 
-void ChannelBrpcBlackBox::SetPeerHost(const std::string& self_id,
-                                      const std::string& self_node_id,
-                                      const std::string& peer_id,
-                                      const std::string& peer_node_id,
-                                      const SSLOptions* ssl_opts) {
+void BrpcBlackBoxLink::SetPeerHost(const std::string& self_id,
+                                   const std::string& self_node_id,
+                                   const std::string& peer_id,
+                                   const std::string& peer_node_id,
+                                   const SSLOptions* ssl_opts) {
   auto* host = std::getenv(kTransportAddrKey);
   YACL_ENFORCE(host != nullptr, "environment variable {} is not found",
                kTransportAddrKey);
@@ -234,8 +270,8 @@ void ChannelBrpcBlackBox::SetPeerHost(const std::string& self_id,
   http_headers_[kHttpHeadSrcInstId] = local_inst;
 }
 
-void ChannelBrpcBlackBox::SetHttpHeader(brpc::Controller* controller,
-                                        const std::string& topic) {
+void BrpcBlackBoxLink::SetHttpHeader(brpc::Controller* controller,
+                                     const std::string& topic) {
   for (auto& [k, v] : http_headers_) {
     controller->http_request().SetHeader(k, v);
   }
@@ -243,8 +279,8 @@ void ChannelBrpcBlackBox::SetHttpHeader(brpc::Controller* controller,
   controller->http_request().set_method(brpc::HTTP_METHOD_POST);
 }
 
-void ChannelBrpcBlackBox::PushRequest(ic_pb::PushRequest& request,
-                                      uint32_t timeout_ms) {
+void BrpcBlackBoxLink::SendRequest(const ::google::protobuf::Message& request,
+                                   uint32_t timeout_ms) {
   bb_ic::TransportOutbound response;
   auto request_str = request.SerializeAsString();
   int pushs = 0;
@@ -280,7 +316,8 @@ void ChannelBrpcBlackBox::PushRequest(ic_pb::PushRequest& request,
           bb_ic::error_code::Desc(response.code()), response.message());
     } else {
       SPDLOG_WARN(
-          "{} push error due to transport service queue is full, try again...",
+          "{} push error due to transport service queue is full, try "
+          "again...",
           pushs);
       bthread_usleep(push_wait_ms_ * 1000);
     }

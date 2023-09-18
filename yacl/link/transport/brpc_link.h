@@ -24,11 +24,15 @@
 #include "bthread/bthread.h"
 #include "bthread/condition_variable.h"
 
+#include "yacl/base/exception.h"
 #include "yacl/link/ssl_options.h"
 #include "yacl/link/transport/channel.h"
-#include "yacl/link/transport/channel_chunked_base.h"
+#include "yacl/link/transport/default_brpc_retry_policy.h"
+#include "yacl/link/transport/interconnection_link.h"
 
 namespace yacl::link::transport {
+
+class BrpcLink;
 
 class ReceiverLoopBrpc final : public IReceiverLoop {
  public:
@@ -48,33 +52,24 @@ class ReceiverLoopBrpc final : public IReceiverLoop {
   std::string Start(const std::string& host,
                     const SSLOptions* ssl_opts = nullptr);
 
-  void AddListener(size_t rank, std::shared_ptr<ChannelChunkedBase> listener) {
-    auto ret = listeners_.emplace(rank, std::move(listener));
-    if (!ret.second) {
-      YACL_THROW_LOGIC_ERROR("duplicated listener for rank={}", rank);
-    }
-  }
-
  protected:
-  std::map<size_t, std::shared_ptr<ChannelChunkedBase>> listeners_;
   brpc::Server server_;
 
  private:
   void StopImpl();
 };
 
-class ChannelBrpc final : public ChannelChunkedBase {
+class BrpcLink final : public InterconnectionLink {
  public:
-  using ChannelChunkedBase::ChannelChunkedBase;
+  using InterconnectionLink::InterconnectionLink;
 
-  static ChannelChunkedBase::Options GetDefaultOptions() {
-    return ChannelChunkedBase::Options{10 * 1000, 512 * 1024, "baidu_std",
-                                       "single"};
+  static InterconnectionLink::Options GetDefaultOptions() {
+    return InterconnectionLink::Options{10 * 1000, 512 * 1024, "baidu_std",
+                                        "single",  3,          1000};
   }
 
-  // from IChannel
-  void PushRequest(org::interconnection::link::PushRequest& request,
-                   uint32_t timeout) override;
+  void SendRequest(const ::google::protobuf::Message& request,
+                   uint32_t timeout_override_ms) override;
 
   void SetPeerHost(const std::string& peer_host,
                    const SSLOptions* ssl_opts = nullptr);
@@ -82,7 +77,8 @@ class ChannelBrpc final : public ChannelChunkedBase {
  protected:
   // brpc channel related.
   std::string peer_host_;
-  std::shared_ptr<brpc::Channel> channel_;
+  std::unique_ptr<brpc::RetryPolicy> retry_policy_;
+  std::shared_ptr<brpc::Channel> delegate_channel_;
 };
 
 }  // namespace yacl::link::transport

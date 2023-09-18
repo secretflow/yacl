@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef YACL_CRYPTO_PRIMITIVES_TPRE_TPRE_H_
-#define YACL_CRYPTO_PRIMITIVES_TPRE_TPRE_H_
+#pragma once
 
 #include <iostream>
 #include <memory>
@@ -114,6 +113,5 @@ class TPRE {
       const std::pair<std::vector<Capsule::CFrag>, std::vector<uint8_t>>&
           C_prime_set) const;
 };
-}  // namespace yacl::crypto
 
-#endif  // YACL_CRYPTO_PRIMITIVES_TPRE_TPRE_H_
+}  // namespace yacl::crypto

@@ -53,11 +53,10 @@ TEST(ParallelTest, ParallelWithExceptionTest) {
   init_num_threads();
   set_num_threads(4);
 
-  EXPECT_THROW(parallel_for(0, 1000, 1,
-                            [](int64_t beg, int64_t end) {
-                              throw RuntimeError("surprise");
-                            }),
-               RuntimeError);
+  EXPECT_THROW(
+      parallel_for(0, 1000, 1,
+                   [](int64_t, int64_t) { throw RuntimeError("surprise"); }),
+      RuntimeError);
 }
 
 TEST_P(ParallelTest, ParallelReduceTest) {

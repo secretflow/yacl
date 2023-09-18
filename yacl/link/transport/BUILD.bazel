@@ -47,50 +47,59 @@ cc_proto_library(
 )
 
 yacl_cc_library(
-    name = "channel_chunked_base",
-    srcs = ["channel_chunked_base.cc"],
-    hdrs = ["channel_chunked_base.h"],
+    name = "default_brpc_retry_policy",
+    srcs = ["default_brpc_retry_policy.cc"],
+    hdrs = ["default_brpc_retry_policy.h"],
+    deps = [
+        "@com_github_brpc_brpc//:brpc",
+    ],
+)
+
+yacl_cc_library(
+    name = "interconnection_link",
+    srcs = ["interconnection_link.cc"],
+    hdrs = ["interconnection_link.h"],
     deps = [
         ":channel",
         ":ic_transport_proto",
-        "@com_github_brpc_brpc//:brpc",
-        "@com_google_absl//absl/strings",
     ],
 )
 
 yacl_cc_library(
-    name = "channel_brpc",
-    srcs = ["channel_brpc.cc"],
-    hdrs = ["channel_brpc.h"],
+    name = "brpc_link",
+    srcs = ["brpc_link.cc"],
+    hdrs = ["brpc_link.h"],
     deps = [
-        ":channel_chunked_base",
+        ":default_brpc_retry_policy",
+        ":interconnection_link",
+    ],
+)
+
+yacl_cc_test(
+    name = "brpc_link_test",
+    srcs = ["brpc_link_test.cc"],
+    deps = [
+        ":brpc_link",
     ],
 )
 
 yacl_cc_library(
-    name = "channel_brpc_blackbox",
-    srcs = ["channel_brpc_blackbox.cc"],
-    hdrs = ["channel_brpc_blackbox.h"],
+    name = "brpc_blackbox_link",
+    srcs = ["brpc_blackbox_link.cc"],
+    hdrs = ["brpc_blackbox_link.h"],
     deps = [
-        ":channel_chunked_base",
+        ":default_brpc_retry_policy",
+        ":interconnection_link",
         "//yacl/link/transport/blackbox_interconnect:blackbox_service_errorcode",
         "//yacl/link/transport/blackbox_interconnect:blackbox_service_proto",
     ],
 )
 
 yacl_cc_test(
-    name = "channel_brpc_test",
-    srcs = ["channel_brpc_test.cc"],
+    name = "brpc_blackbox_link_test",
+    srcs = ["brpc_blackbox_link_test.cc"],
     deps = [
-        ":channel_brpc",
-    ],
-)
-
-yacl_cc_test(
-    name = "channel_brpc_blackbox_test",
-    srcs = ["channel_brpc_blackbox_test.cc"],
-    deps = [
-        ":channel_brpc_blackbox",
+        ":brpc_blackbox_link",
         "//yacl/link/transport/blackbox_interconnect:blackbox_dummy_service_proto",
     ],
 )

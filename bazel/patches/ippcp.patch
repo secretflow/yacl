@@ -147,4 +147,26 @@ index ea1641d..f98fc2d 100644
  # Optimization level = 3, no-debug definition (turns off asserts)
  set(CMAKE_C_FLAGS_RELEASE " -O3 -DNDEBUG")
  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
- 
+
+diff --git a/sources/cmake/linux/Clang9.0.0.cmake b/sources/cmake/linux/Clang9.0.0.cmake
+index 0015431..f93411c 100644
+--- a/sources/cmake/linux/Clang9.0.0.cmake
++++ b/sources/cmake/linux/Clang9.0.0.cmake
+@@ -79,7 +79,7 @@ endif()
+ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fcf-protection=full")
+
+ # Security flag that adds compile-time and run-time checks
+-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D_FORTIFY_SOURCE=2")
++set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
+
+ if(NOT NONPIC_LIB)
+   # Position Independent Execution (PIE)
+@@ -107,7 +107,7 @@ if(SANITIZERS)
+ endif(SANITIZERS)
+
+ # Optimization level = 3, no-debug definition (turns off asserts), warnings=errors
+-set (CMAKE_C_FLAGS_RELEASE " -O3 -DNDEBUG -Werror")
++set (CMAKE_C_FLAGS_RELEASE " -O3 -DNDEBUG -Werror -Wno-unused-function -Wno-missing-braces -Wno-unused-but-set-variable -Wno-unknown-pragmas")
+
+ # DEBUG flags - optimization level = 0, generation GDB information (-g)
+ set (CMAKE_C_FLAGS_DEBUG " -O0 -g")

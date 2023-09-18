@@ -457,6 +457,11 @@ MPInt MPInt::AddMod(const MPInt &b, const MPInt &mod) const {
   return res;
 }
 
+void MPInt::AddMod(const yacl::math::MPInt &a, const yacl::math::MPInt &b,
+                   const yacl::math::MPInt &mod, yacl::math::MPInt *d) {
+  MPINT_ENFORCE_OK(mp_addmod(&a.n_, &b.n_, &mod.n_, &d->n_));
+}
+
 void MPInt::Sub(const MPInt &a, const MPInt &b, MPInt *c) {
   MPINT_ENFORCE_OK(mp_sub(&a.n_, &b.n_, &c->n_));
 }
@@ -580,7 +585,7 @@ void MPInt::RandomLtN(const MPInt &n, MPInt *r) {
 }
 
 void MPInt::RandPrimeOver(size_t bit_size, MPInt *out, PrimeType prime_type) {
-  YACL_ENFORCE_GT(bit_size, 80u, "bit_size must > 80");
+  YACL_ENFORCE_GT(bit_size, 81U, "bit_size must >= 82");
   int trials = mp_prime_rabin_miller_trials(bit_size);
 
   if (prime_type == PrimeType::FastSafe) {

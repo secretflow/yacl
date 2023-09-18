@@ -16,6 +16,8 @@
 
 #include <string>
 
+#include "yacl/link/link.pb.h"
+
 namespace yacl::link {
 
 struct CertInfo {
@@ -43,6 +45,16 @@ struct SSLOptions {
 
   // Options used to verify the peer's certificate
   VerifyOptions verify;
+
+  SSLOptions() = default;
+
+  SSLOptions(const SSLOptionsProto& pb) {
+    cert.certificate_path = pb.certificate_path();
+    cert.private_key_path = pb.private_key_path();
+
+    verify.verify_depth = pb.verify_depth();
+    verify.ca_file_path = pb.ca_file_path();
+  }
 };
 
 }  // namespace yacl::link

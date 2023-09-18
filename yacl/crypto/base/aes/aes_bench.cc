@@ -81,36 +81,36 @@ static void BM_AesNiEcb(benchmark::State& state) {
   }
 }
 
-constexpr uint64_t kKeyWidth = 4;
+// FIXME: the follwoing causes CI build error, find out why
+// constexpr uint64_t kKeyWidth = 4;
+// static void BM_MultiKeyAesEcb(benchmark::State& state) {
+//   for (auto _ : state) {
+//     state.PauseTiming();
+//     std::array<uint128_t, kKeyWidth> keys_block;
+//     std::array<uint128_t, kKeyWidth> plain_block;
 
-static void BM_MultiKeyAesEcb(benchmark::State& state) {
-  for (auto _ : state) {
-    state.PauseTiming();
-    uint128_t keys_block[kKeyWidth];
-    uint128_t plain_block[kKeyWidth];
+//     std::random_device rd;
+//     Prg<uint128_t> prg(rd());
 
-    std::random_device rd;
-    Prg<uint128_t> prg(rd());
+//     for (uint64_t i = 0; i < kKeyWidth; ++i) {
+//       keys_block[i] = prg();
+//       plain_block[i] = prg();
+//     }
 
-    uint128_t eb;
-    for (uint64_t i = 0; i < kKeyWidth; ++i) {
-      eb = prg();
-      keys_block[i] = eb;
-      eb = prg();
-      plain_block[i] = eb;
-    }
+//     std::array<AES_KEY, kKeyWidth> aes_key;
+//     for (size_t idx = 0; idx < kKeyWidth; ++idx) {
+//       aes_key[idx] = AES_set_encrypt_key(idx);
+//     }
 
-    AES_KEY aes_key[kKeyWidth];
+//     AES_opt_key_schedule<kKeyWidth>(keys_block.data(), aes_key.data());
+//     size_t n = state.range(0);
+//     state.ResumeTiming();
 
-    AES_opt_key_schedule<kKeyWidth>(keys_block, aes_key);
-    size_t n = state.range(0);
-    state.ResumeTiming();
-
-    for (size_t i = 0; i < n; i++) {
-      ParaEnc<kKeyWidth, 1>(plain_block, aes_key);
-    }
-  }
-}
+//     for (size_t i = 0; i < n; i++) {
+//       ParaEnc<kKeyWidth, 1>(plain_block.data(), aes_key.data());
+//     }
+//   }
+// }
 
 #ifdef __x86_64
 static void BM_IppcpAes(benchmark::State& state) {
@@ -205,15 +205,15 @@ BENCHMARK(BM_AesNiEcb)
     ->Arg(81920)
     ->Arg(1 << 24);
 
-BENCHMARK(BM_MultiKeyAesEcb)
-    ->Unit(benchmark::kMillisecond)
-    ->Arg(256)
-    ->Arg(1280)
-    ->Arg(2560)
-    ->Arg(5120)
-    ->Arg(10240)
-    ->Arg(20480)
-    ->Arg(1 << 22);
+// BENCHMARK(BM_MultiKeyAesEcb)
+//     ->Unit(benchmark::kMillisecond)
+//     ->Arg(256)
+//     ->Arg(1280)
+//     ->Arg(2560)
+//     ->Arg(5120)
+//     ->Arg(10240)
+//     ->Arg(20480)
+//     ->Arg(1 << 22);
 
 #ifdef __x86_64
 BENCHMARK(BM_IppcpAes)

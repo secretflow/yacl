@@ -26,7 +26,10 @@
 
 #include "yacl/link/ssl_options.h"
 #include "yacl/link/transport/channel.h"
-#include "yacl/link/transport/channel_chunked_base.h"
+#include "yacl/link/transport/default_brpc_retry_policy.h"
+#include "yacl/link/transport/interconnection_link.h"
+
+#include "interconnection/link/transport.pb.h"
 
 namespace yacl::link::transport::util {
 
@@ -44,9 +47,11 @@ class PopInbound;
 
 namespace yacl::link::transport {
 
-class ChannelBrpcBlackBox;
+class BrpcBlackBoxLink;
 
 class ReceiverLoopBlackBox final : public IReceiverLoop {
+  using IReceiverLoop::AddListener;
+
  public:
   ~ReceiverLoopBlackBox() override;
 
@@ -54,34 +59,39 @@ class ReceiverLoopBlackBox final : public IReceiverLoop {
 
   // start the receiver loop.
   void Start();
-  void AddListener(size_t rank, std::shared_ptr<ChannelBrpcBlackBox> listener) {
-    auto ret = listeners_.emplace(rank, std::move(listener));
+
+  void AddLinkAndChannel(size_t rank, std::shared_ptr<Channel> channel,
+                         std::shared_ptr<BrpcBlackBoxLink> delegate) {
+    YACL_ENFORCE(delegate != nullptr, "delegate is nullptr");
+    AddListener(rank, channel);
+
+    auto ret = links_.emplace(rank, std::move(delegate));
     if (!ret.second) {
-      YACL_THROW_LOGIC_ERROR("duplicated listener for rank={}", rank);
+      YACL_THROW_LOGIC_ERROR("duplicated delegate for rank={}", rank);
     }
   }
 
  protected:
-  std::map<size_t, std::shared_ptr<ChannelBrpcBlackBox>> listeners_;
   std::vector<std::thread> threads_;
+  std::map<size_t, std::shared_ptr<BrpcBlackBoxLink>> links_;
 };
 
-class ChannelBrpcBlackBox final : public ChannelChunkedBase {
+class BrpcBlackBoxLink final : public InterconnectionLink {
  public:
-  static ChannelChunkedBase::Options GetDefaultOptions() {
-    return ChannelChunkedBase::Options{10 * 1000, 512 * 1024, "http", ""};
+  static InterconnectionLink::Options GetDefaultOptions() {
+    return InterconnectionLink::Options{10 * 1000, 512 * 1024, "http",
+                                        "",        3,          1000};
   }
 
- public:
-  using ChannelChunkedBase::ChannelChunkedBase;
+  using InterconnectionLink::InterconnectionLink;
 
-  ~ChannelBrpcBlackBox() override {
+  ~BrpcBlackBoxLink() override {
     if (is_recv_.load()) {
       StopReceive();
     }
   }
 
-  void PushRequest(org::interconnection::link::PushRequest& request,
+  void SendRequest(const ::google::protobuf::Message& request,
                    uint32_t timeout_ms) override;
 
   void SetPeerHost(const std::string& self_id, const std::string& self_node_id,
@@ -99,7 +109,7 @@ class ChannelBrpcBlackBox final : public ChannelChunkedBase {
   // receive related
   void StartReceive();
   bool CanReceive();
-  void TryReceive();
+  std::optional<org::interconnection::link::PushRequest> TryReceive();
   void StopReceive();
   uint32_t GetPopTimeoutS() const { return pop_timeout_s_; }
 
@@ -109,6 +119,7 @@ class ChannelBrpcBlackBox final : public ChannelChunkedBase {
 
  protected:
   // brpc channel related.
+  std::unique_ptr<brpc::RetryPolicy> retry_policy_;
   std::shared_ptr<brpc::Channel> channel_;
   std::string send_topic_;
   std::string recv_topic_;

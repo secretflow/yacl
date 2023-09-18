@@ -20,36 +20,28 @@ namespace yacl::crypto {
 
 std::pair<Keys::PublicKey, Keys::PrivateKey> Keys::GenerateKeyPair(
     const std::unique_ptr<EcGroup>& ecc_group) const {
-  EcPoint g = ecc_group->GetGenerator();
-
   // sample random from ecc group
-  MPInt max = ecc_group->GetOrder();
+  MPInt ecc_group_order = ecc_group->GetOrder();
   MPInt x;
-  MPInt::RandomLtN(max, &x);
+  MPInt::RandomLtN(ecc_group_order, &x);
 
   // compute y = g^x
   EcPoint y = ecc_group->MulBase(x);
   // Assign private key
   Keys::PrivateKey private_key = {x};
   // Assign public key
-  Keys::PublicKey public_key = {g, y};
+  Keys::PublicKey public_key = {ecc_group->GetGenerator(), y};
 
-  std::pair<Keys::PublicKey, Keys::PrivateKey> key_pair;
-  key_pair.first = public_key;
-  key_pair.second = private_key;
-  return key_pair;
+  return {public_key, private_key};
 }
 
-// // Generates re-ecnryption key
+// Generates re-ecnryption key
 std::vector<Keys::KFrag> Keys::GenerateReKey(
     const std::unique_ptr<EcGroup>& ecc_group, const PrivateKey& sk_A,
     const PublicKey& pk_A, const PublicKey& pk_B, int N, int t) const {
-  MPInt zero_bn(0);
-  MPInt one_bn(1);
   MPInt ecc_group_order = ecc_group->GetOrder();
 
   // 1. Select x_A randomly and calculation X_ A=g^{x_A}
-  MPInt max = ecc_group_order;
   MPInt x_A;
   MPInt::RandomLtN(ecc_group_order, &x_A);
 
@@ -58,13 +50,7 @@ std::vector<Keys::KFrag> Keys::GenerateReKey(
   // 2. Compute d = H_3(X_A, pk_B, (pk_B)^{X_A}), where d is the result of a
   // non-interactive Diffie-Hellman key exchange between B's keypair and the
   // ephemeral key pair (x_A, X_A).
-
-  std::string pk_B_str = std::string(ecc_group->SerializePoint(pk_B.y));
-  std::string pk_B_mul_x_A_str =
-      std::string(ecc_group->SerializePoint(ecc_group->Mul(pk_B.y, x_A)));
-  std::string X_A_str = std::string(ecc_group->SerializePoint(X_A));
-
-  MPInt d = CipherHash(X_A_str + pk_B_str + pk_B_mul_x_A_str, ecc_group);
+  MPInt d = CipherHash({X_A, pk_B.y, ecc_group->Mul(pk_B.y, x_A)}, ecc_group);
 
   // 3. Generate random polynomial coefficients {f_1,...,f_{t-1}} and calculate
   // coefficients f_ 0
@@ -78,18 +64,15 @@ std::vector<Keys::KFrag> Keys::GenerateReKey(
   for (int i = 1; i <= t - 1; i++) {
     // Here, t-1 coefficients f_1,...,f_{t-1} are randomly generated.
     MPInt f_i;
-    MPInt::RandomLtN(max, &f_i);
+    MPInt::RandomLtN(ecc_group_order, &f_i);
     coefficients.push_back(f_i);
   }
 
   // 4. Generate a polynomial via coefficient
 
   // 5. Compute D=H_6(pk_A, pk_B, pk^{a}_{B}), where a is the secret key of A
-  std::string pk_A_str = std::string(ecc_group->SerializePoint(pk_A.y));
-  std::string pk_B_mul_a_str =
-      std::string(ecc_group->SerializePoint(ecc_group->Mul(pk_B.y, sk_A.x)));
-
-  MPInt D = CipherHash(pk_A_str + pk_B_str + pk_B_mul_a_str, ecc_group);
+  MPInt D =
+      CipherHash({pk_A.y, pk_B.y, ecc_group->Mul(pk_B.y, sk_A.x)}, ecc_group);
 
   // 6. Compute KFrags
 
@@ -104,16 +87,16 @@ std::vector<Keys::KFrag> Keys::GenerateReKey(
   std::vector<Keys::KFrag> kfrags;
 
   MPInt r_tmp_0;
-  MPInt::RandomLtN(max, &r_tmp_0);
+  MPInt::RandomLtN(ecc_group_order, &r_tmp_0);
   EcPoint U = ecc_group->MulBase(r_tmp_0);
   // Cycle to generate each element of kfrags
   for (int i = 0; i <= N - 1; i++) {
     MPInt r_tmp_1;
-    MPInt::RandomLtN(max, &r_tmp_1);
+    MPInt::RandomLtN(ecc_group_order, &r_tmp_1);
     y.push_back(r_tmp_1);
 
     MPInt r_tmp_2;
-    MPInt::RandomLtN(max, &r_tmp_2);
+    MPInt::RandomLtN(ecc_group_order, &r_tmp_2);
     id.push_back(r_tmp_2);
 
     s_x.push_back(CipherHash(id[i].ToString() + D.ToString(), ecc_group));
@@ -122,8 +105,8 @@ std::vector<Keys::KFrag> Keys::GenerateReKey(
 
     // Compute polynomial to obtain rk[i]
     MPInt rk_tmp = coefficients[0];
-    MPInt s_x_exp_j = zero_bn;
-    MPInt coeff_mul_s_x_exp_j = zero_bn;
+    MPInt s_x_exp_j = 0_mp;
+    MPInt coeff_mul_s_x_exp_j = 0_mp;
 
     for (int j = 1; j <= t - 1; j++) {
       s_x_exp_j = s_x[i];
@@ -156,4 +139,5 @@ std::vector<Keys::KFrag> Keys::GenerateReKey(
 
   return kfrags;
 }
+
 }  // namespace yacl::crypto

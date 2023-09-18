@@ -18,7 +18,8 @@
 
 namespace yacl::link::transport {
 
-ChannelMem::ChannelMem(size_t self_rank, size_t peer_rank, size_t timeout_ms)
+ChannelMem::ChannelMem(size_t /*self_rank*/, size_t /*peer_rank*/,
+                       size_t timeout_ms)
     : recv_timeout_ms_(timeout_ms * std::chrono::milliseconds(1)) {}
 
 void ChannelMem::SetPeer(const std::shared_ptr<ChannelMem>& peer_task) {

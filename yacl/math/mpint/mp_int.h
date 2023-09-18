@@ -118,6 +118,12 @@ class MPInt {
   size_t SizeUsed() { return n_.used * sizeof(mp_digit); }
 
   //================================//
+  //             Hashing            //
+  //================================//
+
+  friend struct std::hash<yacl::math::MPInt>;
+
+  //================================//
   //          Comparators           //
   //================================//
 
@@ -178,7 +184,10 @@ class MPInt {
 
   // (*c) = a + b
   static void Add(const MPInt &a, const MPInt &b, MPInt *c);
+
   MPInt AddMod(const MPInt &b, const MPInt &mod) const;
+  static void AddMod(const MPInt &a, const MPInt &b, const MPInt &mod,
+                     MPInt *d);
 
   // (*c) = a - b
   static void Sub(const MPInt &a, const MPInt &b, MPInt *c);
@@ -375,6 +384,15 @@ inline auto format_as(const MPInt &i) { return fmt::streamed(i); }
 
 yacl::math::MPInt operator""_mp(const char *sz, size_t n);
 yacl::math::MPInt operator""_mp(unsigned long long num);
+
+template <>
+struct std::hash<yacl::math::MPInt> {
+  size_t operator()(const yacl::math::MPInt &x) const {
+    uint64_t h;
+    MPINT_ENFORCE_OK(mp_hash(&x.n_, &h));
+    return h;
+  }
+};
 
 namespace msgpack {
 MSGPACK_API_VERSION_NAMESPACE(MSGPACK_DEFAULT_API_NS) {

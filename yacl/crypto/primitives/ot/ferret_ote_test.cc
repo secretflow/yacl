@@ -83,4 +83,31 @@ INSTANTIATE_TEST_SUITE_P(
                     FerretParams{1 << 24, LpnNoiseAsm::RegularNoise},
                     FerretParams{1 << 25, LpnNoiseAsm::RegularNoise}));
 
+TEST(FerretOtExtEdgeTest, Test) {
+  // GIVEN
+  const int kWorldSize = 2;
+  const auto assumption = LpnNoiseAsm::RegularNoise;
+
+  auto lctxs = link::test::SetupWorld(kWorldSize);  // setup network
+  auto lpn_param = LpnParam(10485760, 452000, 1280, assumption);
+
+  // ot_num < minium size of base_cot
+  const size_t ot_num = FerretCotHelper(lpn_param, 0) - 1;
+  auto cot_num = FerretCotHelper(lpn_param, ot_num);  // make option
+  auto cots_compact = MockCompactOts(cot_num);        // mock cots
+
+  // WHEN
+  auto sender = std::async([&] {
+    ASSERT_THROW(
+        FerretOtExtSend(lctxs[0], cots_compact.send, lpn_param, ot_num),
+        ::yacl::Exception);
+  });
+  auto receiver = std::async([&] {
+    ASSERT_THROW(
+        FerretOtExtRecv(lctxs[1], cots_compact.recv, lpn_param, ot_num),
+        ::yacl::Exception);
+  });
+  sender.get();
+  receiver.get();
+}
 }  // namespace yacl::crypto

@@ -74,7 +74,7 @@ class ChannelMem final : public IChannel {
   // do nothing
   void WaitLinkTaskFinish() final {}
   void SetThrottleWindowSize(size_t) final {}
-  void TestSend(uint32_t timeout) final {}
+  void TestSend(uint32_t /*timeout*/) final {}
   void TestRecv() final {}
   // no affect
 

@@ -48,7 +48,7 @@ uint128_t GenSyncedSeed(const std::shared_ptr<link::Context>& ctx) {
 
 }  // namespace
 
-uint64_t FerretCotHelper(const LpnParam& lpn_param, uint64_t ot_num) {
+uint64_t FerretCotHelper(const LpnParam& lpn_param, uint64_t /*ot_num*/) {
   uint64_t mpcot_cot = 0;
   if (lpn_param.noise_asm == LpnNoiseAsm::RegularNoise) {
     // for each mpcot invocation,
@@ -75,6 +75,10 @@ OtSendStore FerretOtExtSend(const std::shared_ptr<link::Context>& ctx,
   YACL_ENFORCE(ctx->WorldSize() == 2);  // Make sure that OT has two parties
   YACL_ENFORCE(base_cot.Type() == OtStoreType::Compact);
   YACL_ENFORCE(base_cot.Size() >= FerretCotHelper(lpn_param, ot_num));
+  YACL_ENFORCE(ot_num >= FerretCotHelper(lpn_param, ot_num),
+               "ot_num is {}, which should be much greater than the minium "
+               "size of base cot {}",
+               ot_num, FerretCotHelper(lpn_param, ot_num));
 
   // get constants: the number of cot needed for mpcot phase
   const auto mpcot_cot_num = MpCotRNHelper(lpn_param.t, lpn_param.n);
@@ -152,6 +156,10 @@ OtRecvStore FerretOtExtRecv(const std::shared_ptr<link::Context>& ctx,
   YACL_ENFORCE(ctx->WorldSize() == 2);  // Make sure that OT has two parties
   YACL_ENFORCE(base_cot.Type() == OtStoreType::Compact);
   YACL_ENFORCE(base_cot.Size() >= FerretCotHelper(lpn_param, ot_num));
+  YACL_ENFORCE(ot_num >= FerretCotHelper(lpn_param, ot_num),
+               "ot_num is {}, which should be much greater than the minium "
+               "size of base cot {}",
+               ot_num, FerretCotHelper(lpn_param, ot_num));
 
   // get constants: the number of cot needed for mpcot phase
   const auto mpcot_cot_num = MpCotRNHelper(lpn_param.t, lpn_param.n);

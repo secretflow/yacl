@@ -12,13 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/link/transport/channel_brpc.h"
+#include "yacl/link/transport/brpc_link.h"
 
 #include <chrono>
 #include <cstdlib>
 #include <ctime>
 #include <filesystem>
 #include <future>
+#include <memory>
 #include <string>
 #include <thread>
 
@@ -28,6 +29,7 @@
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/exception.h"
+#include "yacl/link/transport/channel.h"
 
 #include "interconnection/link/transport.pb.h"
 
@@ -51,15 +53,20 @@ static std::string RandStr(size_t length) {
   return str;
 }
 
-class ChannelBrpcTest : public ::testing::Test {
+class BrpcLinkTest : public ::testing::Test {
  protected:
   void SetUp() override {
     std::srand(std::time(nullptr));
     const size_t send_rank = 0;
     const size_t recv_rank = 1;
-    auto options = ChannelBrpc::GetDefaultOptions();
-    sender_ = std::make_shared<ChannelBrpc>(send_rank, recv_rank, options);
-    receiver_ = std::make_shared<ChannelBrpc>(recv_rank, send_rank, options);
+    auto options = BrpcLink::GetDefaultOptions();
+    auto sender_delegate =
+        std::make_shared<BrpcLink>(send_rank, recv_rank, options);
+    auto receive_delegate =
+        std::make_shared<BrpcLink>(recv_rank, send_rank, options);
+
+    sender_ = std::make_shared<Channel>(sender_delegate, false);
+    receiver_ = std::make_shared<Channel>(receive_delegate, false);
 
     // let sender rank as 0, receiver rank as 1.
     // receiver_ listen messages from sender(rank 0).
@@ -71,13 +78,12 @@ class ChannelBrpcTest : public ::testing::Test {
     sender_loop_->AddListener(1, sender_);
     sender_host_ = sender_loop_->Start("127.0.0.1:0");
 
-    //
-    sender_->SetPeerHost(receiver_host_);
-    receiver_->SetPeerHost(sender_host_);
+    sender_delegate->SetPeerHost(receiver_host_);
+    receive_delegate->SetPeerHost(sender_host_);
   }
 
   void TearDown() override {
-    auto wait = [](std::shared_ptr<ChannelBrpc>& l) {
+    auto wait = [](std::shared_ptr<Channel>& l) {
       if (l) {
         l->WaitLinkTaskFinish();
       }
@@ -88,15 +94,15 @@ class ChannelBrpcTest : public ::testing::Test {
     f_r.get();
   }
 
-  std::shared_ptr<ChannelBrpc> sender_;
-  std::shared_ptr<ChannelBrpc> receiver_;
+  std::shared_ptr<Channel> sender_;
+  std::shared_ptr<Channel> receiver_;
   std::string receiver_host_;
   std::unique_ptr<ReceiverLoopBrpc> receiver_loop_;
   std::string sender_host_;
   std::unique_ptr<ReceiverLoopBrpc> sender_loop_;
 };
 
-TEST_F(ChannelBrpcTest, Normal_Empty) {
+TEST_F(BrpcLinkTest, Normal_Empty) {
   const std::string key = "key";
   const std::string sent;
   sender_->SendAsync(key, ByteContainerView{sent});
@@ -105,14 +111,14 @@ TEST_F(ChannelBrpcTest, Normal_Empty) {
   EXPECT_EQ(sent, std::string_view(received));
 }
 
-TEST_F(ChannelBrpcTest, Timeout) {
+TEST_F(BrpcLinkTest, Timeout) {
   receiver_->SetRecvTimeout(500U);
   const std::string key = "key";
   std::string received;
   EXPECT_THROW(receiver_->Recv(key), IoError);
 }
 
-TEST_F(ChannelBrpcTest, Normal_Len100) {
+TEST_F(BrpcLinkTest, Normal_Len100) {
   const std::string key = "key";
   const std::string sent = RandStr(100U);
   sender_->SendAsync(key, ByteContainerView{sent});
@@ -121,15 +127,15 @@ TEST_F(ChannelBrpcTest, Normal_Len100) {
   EXPECT_EQ(sent, std::string_view(received));
 }
 
-class ChannelBrpcWithLimitTest
-    : public ChannelBrpcTest,
+class BrpcLinkWithLimitTest
+    : public BrpcLinkTest,
       public ::testing::WithParamInterface<std::tuple<size_t, size_t>> {};
 
-TEST_P(ChannelBrpcWithLimitTest, SendAsync) {
+TEST_P(BrpcLinkWithLimitTest, SendAsync) {
   const size_t size_limit_per_call = std::get<0>(GetParam());
   const size_t size_to_send = std::get<1>(GetParam());
 
-  sender_->SetHttpMaxPayloadSize(size_limit_per_call);
+  sender_->GetLink()->SetMaxBytesPerChunk(size_limit_per_call);
 
   const std::string key = "key";
   const std::string sent = RandStr(size_to_send);
@@ -139,11 +145,11 @@ TEST_P(ChannelBrpcWithLimitTest, SendAsync) {
   EXPECT_EQ(sent, std::string_view(received));
 }
 
-TEST_P(ChannelBrpcWithLimitTest, Unread) {
+TEST_P(BrpcLinkWithLimitTest, Unread) {
   const size_t size_limit_per_call = std::get<0>(GetParam());
   const size_t size_to_send = std::get<1>(GetParam());
 
-  sender_->SetHttpMaxPayloadSize(size_limit_per_call);
+  sender_->GetLink()->SetMaxBytesPerChunk(size_limit_per_call);
 
   const size_t test_size = 128 + (std::rand() % 128);
 
@@ -156,11 +162,11 @@ TEST_P(ChannelBrpcWithLimitTest, Unread) {
   }
 }
 
-TEST_P(ChannelBrpcWithLimitTest, Async) {
+TEST_P(BrpcLinkWithLimitTest, Async) {
   const size_t size_limit_per_call = std::get<0>(GetParam());
   const size_t size_to_send = std::get<1>(GetParam());
   sender_->SetThrottleWindowSize(size_to_send);
-  sender_->SetHttpMaxPayloadSize(size_limit_per_call);
+  sender_->GetLink()->SetMaxBytesPerChunk(size_limit_per_call);
   const size_t test_size = 128 + (std::rand() % 128);
   std::vector<std::string> sended_data(test_size);
 
@@ -193,11 +199,11 @@ TEST_P(ChannelBrpcWithLimitTest, Async) {
   f_r.get();
 }
 
-TEST_P(ChannelBrpcWithLimitTest, AsyncWithThrottleLimit) {
+TEST_P(BrpcLinkWithLimitTest, AsyncWithThrottleLimit) {
   const size_t size_limit_per_call = std::get<0>(GetParam());
   const size_t size_to_send = std::get<1>(GetParam());
   sender_->SetThrottleWindowSize(size_to_send);
-  sender_->SetHttpMaxPayloadSize(size_limit_per_call);
+  sender_->GetLink()->SetMaxBytesPerChunk(size_limit_per_call);
   const size_t test_size = 128 + (std::rand() % 128);
   std::vector<std::string> sended_data(test_size);
 
@@ -233,11 +239,11 @@ TEST_P(ChannelBrpcWithLimitTest, AsyncWithThrottleLimit) {
   f_r.get();
 }
 
-TEST_P(ChannelBrpcWithLimitTest, ThrottleWindowUnread) {
+TEST_P(BrpcLinkWithLimitTest, ThrottleWindowUnread) {
   const size_t size_limit_per_call = std::get<0>(GetParam());
   const size_t size_to_send = std::get<1>(GetParam());
   sender_->SetThrottleWindowSize(size_to_send);
-  sender_->SetHttpMaxPayloadSize(size_limit_per_call);
+  sender_->GetLink()->SetMaxBytesPerChunk(size_limit_per_call);
   const size_t test_size = 128 + (std::rand() % 128);
   std::vector<std::string> sended_data(test_size);
 
@@ -276,11 +282,11 @@ TEST_P(ChannelBrpcWithLimitTest, ThrottleWindowUnread) {
   receiver_.reset();
 }
 
-TEST_P(ChannelBrpcWithLimitTest, Send) {
+TEST_P(BrpcLinkWithLimitTest, Send) {
   const size_t size_limit_per_call = std::get<0>(GetParam());
   const size_t size_to_send = std::get<1>(GetParam());
 
-  sender_->SetHttpMaxPayloadSize(size_limit_per_call);
+  sender_->GetLink()->SetMaxBytesPerChunk(size_limit_per_call);
 
   const std::string key = "key";
   const std::string sent = RandStr(size_to_send);
@@ -291,17 +297,16 @@ TEST_P(ChannelBrpcWithLimitTest, Send) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    Normal_Instances, ChannelBrpcWithLimitTest,
+    Normal_Instances, BrpcLinkWithLimitTest,
     testing::Combine(testing::Values(9, 17),
                      testing::Values(1, 2, 9, 10, 11, 20, 19, 21, 1001)),
-    [](const testing::TestParamInfo<ChannelBrpcWithLimitTest::ParamType>&
-           info) {
+    [](const testing::TestParamInfo<BrpcLinkWithLimitTest::ParamType>& info) {
       std::string name = fmt::format("Limit_{}_Len_{}", std::get<0>(info.param),
                                      std::get<1>(info.param));
       return name;
     });
 
-class ChannelBrpcSSLTest : public ::testing::Test {
+class BrpcLinkSSLTest : public ::testing::Test {
  protected:
   void SetUp() override {
     // ca
@@ -346,9 +351,9 @@ class ChannelBrpcSSLTest : public ::testing::Test {
     YACL_ENFORCE(system(crt_cmd.c_str()) == 0);
   }
 
-  void WaitChannelEnd(const std::shared_ptr<ChannelBrpc>& receiver,
-                      const std::shared_ptr<ChannelBrpc>& sender) {
-    auto wait = [](const std::shared_ptr<ChannelBrpc>& l) {
+  void WaitChannelEnd(const std::shared_ptr<Channel>& receiver,
+                      const std::shared_ptr<Channel>& sender) {
+    auto wait = [](const std::shared_ptr<Channel>& l) {
       if (l) {
         l->WaitLinkTaskFinish();
       }
@@ -360,18 +365,20 @@ class ChannelBrpcSSLTest : public ::testing::Test {
   }
 
  protected:
-  ChannelBrpc::Options channel_options_ = ChannelBrpc::GetDefaultOptions();
+  BrpcLink::Options channel_options_ = BrpcLink::GetDefaultOptions();
 };
 
-TEST_F(ChannelBrpcSSLTest, OneWaySSL) {
+TEST_F(BrpcLinkSSLTest, OneWaySSL) {
   std::srand(std::time(nullptr));
   const size_t send_rank = 0;
   const size_t recv_rank = 1;
 
-  auto sender =
-      std::make_shared<ChannelBrpc>(send_rank, recv_rank, channel_options_);
-  auto receiver =
-      std::make_shared<ChannelBrpc>(recv_rank, send_rank, channel_options_);
+  auto sender_delegate =
+      std::make_shared<BrpcLink>(send_rank, recv_rank, channel_options_);
+  auto receiver_delegate =
+      std::make_shared<BrpcLink>(recv_rank, send_rank, channel_options_);
+  auto sender = std::make_shared<Channel>(sender_delegate, false);
+  auto receiver = std::make_shared<Channel>(receiver_delegate, false);
 
   // let sender rank as 0, receiver rank as 1.
   // receiver listen messages from sender(rank 0).
@@ -394,8 +401,8 @@ TEST_F(ChannelBrpcSSLTest, OneWaySSL) {
   SSLOptions client_ssl_opts;
   client_ssl_opts.verify.verify_depth = 1;
   client_ssl_opts.verify.ca_file_path = "./ca.crt";
-  sender->SetPeerHost(receiver_host, &client_ssl_opts);
-  receiver->SetPeerHost(sender_host, &client_ssl_opts);
+  sender_delegate->SetPeerHost(receiver_host, &client_ssl_opts);
+  receiver_delegate->SetPeerHost(sender_host, &client_ssl_opts);
 
   const std::string key = "key";
   const std::string sent = RandStr(100U);
@@ -407,15 +414,17 @@ TEST_F(ChannelBrpcSSLTest, OneWaySSL) {
   WaitChannelEnd(receiver, sender);
 }
 
-TEST_F(ChannelBrpcSSLTest, TwoWaySSL) {
+TEST_F(BrpcLinkSSLTest, TwoWaySSL) {
   std::srand(std::time(nullptr));
   const size_t send_rank = 0;
   const size_t recv_rank = 1;
 
-  auto sender =
-      std::make_shared<ChannelBrpc>(send_rank, recv_rank, channel_options_);
-  auto receiver =
-      std::make_shared<ChannelBrpc>(recv_rank, send_rank, channel_options_);
+  auto sender_delegate =
+      std::make_shared<BrpcLink>(send_rank, recv_rank, channel_options_);
+  auto receiver_delegate =
+      std::make_shared<BrpcLink>(recv_rank, send_rank, channel_options_);
+  auto sender = std::make_shared<Channel>(sender_delegate, false);
+  auto receiver = std::make_shared<Channel>(receiver_delegate, false);
 
   // let sender rank as 0, receiver rank as 1.
   // receiver listen messages from sender(rank 0).
@@ -443,14 +452,14 @@ TEST_F(ChannelBrpcSSLTest, TwoWaySSL) {
   s_client_ssl_opts.cert.private_key_path = "./test_0/client.key";
   s_client_ssl_opts.verify.verify_depth = 1;
   s_client_ssl_opts.verify.ca_file_path = "./ca.crt";
-  sender->SetPeerHost(receiver_host, &s_client_ssl_opts);
+  sender_delegate->SetPeerHost(receiver_host, &s_client_ssl_opts);
 
   SSLOptions r_client_ssl_opts;
   r_client_ssl_opts.cert.certificate_path = "./test_1/client.crt";
   r_client_ssl_opts.cert.private_key_path = "./test_1/client.key";
   r_client_ssl_opts.verify.verify_depth = 1;
   r_client_ssl_opts.verify.ca_file_path = "./ca.crt";
-  receiver->SetPeerHost(sender_host, &r_client_ssl_opts);
+  receiver_delegate->SetPeerHost(sender_host, &r_client_ssl_opts);
 
   const std::string key = "key";
   const std::string sent = RandStr(100U);
@@ -461,65 +470,5 @@ TEST_F(ChannelBrpcSSLTest, TwoWaySSL) {
 
   WaitChannelEnd(receiver, sender);
 }
-
-using namespace yacl::link;
-namespace ic_pb = org::interconnection::link;
-namespace ic = org::interconnection;
-
-class DelayReceiverServiceImpl : public ic_pb::ReceiverService {
- public:
-  DelayReceiverServiceImpl() = default;
-
-  void Push(::google::protobuf::RpcController* /*cntl_base*/,
-            const ic_pb::PushRequest* request, ic_pb::PushResponse* response,
-            ::google::protobuf::Closure* done) override {
-    brpc::ClosureGuard done_guard(done);
-    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-    response->mutable_header()->set_error_code(ic::ErrorCode::OK);
-    response->mutable_header()->set_error_msg("");
-  }
-};
-
-class DummyReceiverLoopBrpc final : public IReceiverLoop {
- public:
-  ~DummyReceiverLoopBrpc() override { Stop(); }
-
-  virtual void AddListener(size_t rank,
-                           std::shared_ptr<ChannelChunkedBase> listener) {
-    auto ret = listeners_.emplace(rank, std::move(listener));
-    if (!ret.second) {
-      YACL_THROW_LOGIC_ERROR("duplicated listener for rank={}", rank);
-    }
-  }
-
-  void Stop() override {
-    server_.Stop(0);
-    server_.Join();
-  }
-
-  std::string Start(const std::string& host) {
-    if (server_.IsRunning()) {
-      YACL_THROW_LOGIC_ERROR("brpc server is already running");
-    }
-
-    auto svc = std::make_unique<DelayReceiverServiceImpl>();
-    if (server_.AddService(svc.get(), brpc::SERVER_OWNS_SERVICE) == 0) {
-      static_cast<void>(svc.release());
-    } else {
-      YACL_THROW_IO_ERROR("brpc server failed to add msg service");
-    }
-
-    brpc::ServerOptions options;
-    if (server_.Start(host.data(), &options) != 0) {
-      YACL_THROW_IO_ERROR("brpc server failed start");
-    }
-
-    return butil::endpoint2str(server_.listen_address()).c_str();
-  }
-
- protected:
-  std::map<size_t, std::shared_ptr<ChannelChunkedBase>> listeners_;
-  brpc::Server server_;
-};
 
 }  // namespace yacl::link::transport::test

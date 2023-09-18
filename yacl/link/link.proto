@@ -1,0 +1,114 @@
+// Copyright 2023 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+syntax = "proto3";
+
+package yacl.link;
+
+message PartyProto {
+  string id = 1;
+
+  string host = 2;
+}
+
+// SSL options.
+message SSLOptionsProto {
+  // Certificate file path
+  string certificate_path = 1;
+
+  // Private key file path
+  string private_key_path = 2;
+
+  // Set the maximum depth of the certificate chain for verification
+  // If 0, turn off the verification
+  int32 verify_depth = 3;
+  // Set the trusted CA file to verify the peer's certificate
+  // If empty, use the system default CA files
+  string ca_file_path = 4;
+}
+
+// Configuration for link config.
+message ContextDescProto {
+  // the UUID of this communication.
+  // optional
+  string id = 1;
+
+  // party description, describes the world.
+  repeated PartyProto parties = 2;
+
+  // connect to mesh retry time.
+  uint32 connect_retry_times = 3;
+
+  // connect to mesh retry interval.
+  uint32 connect_retry_interval_ms = 4;
+
+  // recv timeout in milliseconds.
+  //
+  // 'recv time' is the max time that a party will wait for a given event.
+  // for example:
+  //
+  //      begin recv                 end recv
+  // |--------|-------recv-time----------|------------------| alice's timeline
+  //
+  //                         begin send     end send
+  // |-----busy-work-------------|-------------|------------| bob's timeline
+  //
+  // in above case, when alice begins recv for a specific event, bob is still
+  // busy doing its job, when alice's wait time exceed wait_timeout_ms, it raise
+  // exception, although bob now is starting to send data.
+  //
+  // so for long time work(that one party may wait for the others for very long
+  // time), this value should be changed accordingly.
+  uint64 recv_timeout_ms = 5;
+
+  // http max payload size, if a single http request size is greater than this
+  // limit, it will be unpacked into small chunks then reassembled.
+  //
+  // This field does affect performance. Please choose wisely.
+  uint32 http_max_payload_size = 6;
+
+  // a single http request timetout.
+  uint32 http_timeout_ms = 7;
+
+  // throttle window size for channel. if there are more than limited size
+  // messages are flying, `SendAsync` will block until messages are processed or
+  // throw exception after wait for `recv_timeout_ms`
+  uint32 throttle_window_size = 8;
+
+  // BRPC client channel protocol.
+  string brpc_channel_protocol = 9;
+
+  // BRPC client channel connection type.
+  string brpc_channel_connection_type = 10;
+
+  // ssl options for link channel.
+  bool enable_ssl = 11;
+
+  // ssl configs for channel
+  // this config is ignored if enable_ssl == false;
+  SSLOptionsProto client_ssl_opts = 12;
+
+  // ssl configs for service
+  // this config is ignored if enable_ssl == false;
+  SSLOptionsProto server_ssl_opts = 13;
+
+  // max retry count
+  uint32 brpc_retry_count = 14;
+  // the time between retries
+  uint32 brpc_retry_interval_ms = 15;
+  // do aggressive retry， this means that retries will be made on additional
+  // error codes
+  bool brpc_aggressive_retry = 16;
+}

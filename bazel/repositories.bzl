@@ -301,11 +301,11 @@ def _com_github_dltcollab_sse2neon():
     maybe(
         http_archive,
         name = "com_github_dltcollab_sse2neon",
-        sha256 = "06f4693219deccb91b457135d836fc514a1c0a57e9fa66b143982901d2d19677",
-        strip_prefix = "sse2neon-1.6.0",
+        sha256 = "66e3d92571bfc9ce05dc1737421ba2f68e1fcb4552def866055676619955bdaa",
+        strip_prefix = "sse2neon-fb160a53e5a4ba5bc21e1a7cb80d0bd390812442",
         type = "tar.gz",
         urls = [
-            "https://github.com/DLTcollab/sse2neon/archive/refs/tags/v1.6.0.tar.gz",
+            "https://github.com/DLTcollab/sse2neon/archive/fb160a53e5a4ba5bc21e1a7cb80d0bd390812442.tar.gz",
         ],
         build_file = "@yacl//bazel:sse2neon.BUILD",
     )
@@ -314,15 +314,15 @@ def _com_github_libtom_libtommath():
     maybe(
         http_archive,
         name = "com_github_libtom_libtommath",
-        sha256 = "60f9955270032bc548b5ba1823ace419f704df280b4570d508c3fb8e73bdf012",
+        sha256 = "da0759723645d974b82f134a26a1933a08fee887580132f55482c606ec688188",
         type = "tar.gz",
-        strip_prefix = "libtommath-0df542cb70f621bbeec207be1949832fb1442479",
+        strip_prefix = "libtommath-7f96509df1a6b44867bbda56bbf2cb92524be8ef",
         patch_args = ["-p1"],
         patches = [
             "@yacl//bazel:patches/libtommath.patch",
         ],
         urls = [
-            "https://github.com/libtom/libtommath/archive/0df542cb70f621bbeec207be1949832fb1442479.tar.gz",
+            "https://github.com/libtom/libtommath/archive/7f96509df1a6b44867bbda56bbf2cb92524be8ef.tar.gz",
         ],
         build_file = "@yacl//bazel:libtommath.BUILD",
     )
