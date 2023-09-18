@@ -60,7 +60,7 @@ void Sm4Drbg::Instantiate(ByteContainerView personal_string) {
   seed_material_ = RngDf(seed_material_);
 
   std::memset(key_.data(), 0, key_.size());
-  std::memset(v_.data(), 0, key_.size());
+  std::memset(v_.data(), 0, v_.size());
 
   const EVP_CIPHER* cipher = GetEvpCipher(crypto_type_);
 
