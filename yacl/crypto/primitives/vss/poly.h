@@ -8,12 +8,6 @@ namespace yacl::crypto {
 class Polynomial {
  public:
   /**
-   * @brief Construct a new Polynomial object
-   *
-   */
-  Polynomial(){};
-
-  /**
    * @brief Construct a new Polynomial object with modulus
    *
    * @param modulus
@@ -34,8 +28,7 @@ class Polynomial {
    * @param threshold
    * @param modulus
    */
-  void CreatePolynomial(const math::MPInt& zero_value, const size_t threshold,
-                        const math::MPInt& modulus);
+  void CreatePolynomial(const math::MPInt& zero_value, size_t threshold);
 
   /**
    * @brief Horner's method, also known as Horner's rule or Horner's scheme, is

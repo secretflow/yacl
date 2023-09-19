@@ -100,7 +100,7 @@ class VerifiableSecretSharing {
    * @param poly
    * @return math::MPInt
    */
-  math::MPInt RecoverSecret(std::vector<Share> shares);
+  math::MPInt RecoverSecret(absl::Span<const Share> shares);
 
   // New name for the type representing the result of GenerateShareWithCommits
   // function.

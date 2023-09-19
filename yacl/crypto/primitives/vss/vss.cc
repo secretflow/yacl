@@ -10,7 +10,7 @@ VerifiableSecretSharing::CreateShare(const math::MPInt& secret,
   // Create a polynomial with the secret as the constant term and random
   // coefficients.
   std::vector<math::MPInt> coefficients(this->GetThreshold());
-  poly.CreatePolynomial(secret, this->GetThreshold(), this->GetPrime());
+  poly.CreatePolynomial(secret, this->GetThreshold());
 
   std::vector<math::MPInt> xs(this->GetTotal());
   std::vector<math::MPInt> ys(this->GetTotal());
@@ -43,7 +43,7 @@ VerifiableSecretSharing::CreateShareWithCommits(
     const std::unique_ptr<yacl::crypto::EcGroup>& ecc_group, Polynomial& poly) {
   // Create a polynomial with the secret as the constant term and random
   // coefficients.
-  poly.CreatePolynomial(secret, this->threshold_, this->prime_);
+  poly.CreatePolynomial(secret, this->threshold_);
 
   std::vector<math::MPInt> xs(this->total_);
   std::vector<math::MPInt> ys(this->total_);
@@ -69,7 +69,7 @@ VerifiableSecretSharing::CreateShareWithCommits(
 
 // Recover the secret from the shares using Lagrange interpolation.
 math::MPInt VerifiableSecretSharing::RecoverSecret(
-    std::vector<VerifiableSecretSharing::Share> shares) {
+    absl::Span<const VerifiableSecretSharing::Share> shares) {
   YACL_ENFORCE(shares.size() == threshold_);
 
   math::MPInt secret(0);

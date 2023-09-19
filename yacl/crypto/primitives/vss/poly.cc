@@ -5,8 +5,7 @@ namespace yacl::crypto {
 // Generate a random polynomial with the given zero value, threshold, and
 // modulus_.
 void Polynomial::CreatePolynomial(const math::MPInt& zero_value,
-                                  const size_t threshold,
-                                  const math::MPInt& modulus) {
+                                  size_t threshold) {
   // Create a vector to hold the polynomial coefficients.
   std::vector<math::MPInt> coefficients(threshold);
 
@@ -21,11 +20,10 @@ void Polynomial::CreatePolynomial(const math::MPInt& zero_value,
 
     // Generate a random integer less than modulus_ and assign it to
     // coefficient_i.
-    math::MPInt::RandomLtN(modulus, &coefficient_i);
+    math::MPInt::RandomLtN(this->modulus_, &coefficient_i);
 
     // Set the current coefficient to the generated random value.
     coefficients[i] = coefficient_i;
-    modulus_ = modulus;
   }
 
   // Set the generated coefficients as the coefficients of the polynomial.

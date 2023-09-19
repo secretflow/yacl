@@ -24,7 +24,7 @@ TEST(VerifiableSecretSharingTest, TestCreateAndVerifyShares) {
   yacl::crypto::VerifiableSecretSharing vss(20, 10, modulus);
 
   // Initialize a polynomial for the secret sharing scheme
-  yacl::crypto::Polynomial polynomial;
+  yacl::crypto::Polynomial polynomial(modulus);
 
   // Generate shares and commitments for the secret
   using ShareAndCommitPair =
@@ -41,7 +41,6 @@ TEST(VerifiableSecretSharingTest, TestCreateAndVerifyShares) {
 
   // Reconstruct the secret using the shares and the polynomial
   math::MPInt reconstructed_secret = vss.RecoverSecret(shares);
-  SPDLOG_INFO("reconstructed_secret is : {}", reconstructed_secret);
   // Check if the reconstructed secret matches the original secret
   EXPECT_EQ(reconstructed_secret, original_secret);
 
