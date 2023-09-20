@@ -118,8 +118,8 @@ class EcGroup {
   virtual std::string GetLibraryName() const = 0;
 
   // The h, cofactor.
-  // Cofactor is the number of non-overlapping subgroups of points, which
-  // together hold all curve points
+  // Cofactor is the number of cosets, and the number of non-overlapping
+  // subsets of points, which together hold all curve points
   virtual MPInt GetCofactor() const = 0;
 
   // The field size of curve
