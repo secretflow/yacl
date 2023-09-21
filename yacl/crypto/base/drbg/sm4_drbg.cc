@@ -244,7 +244,6 @@ std::vector<uint8_t> Sm4Drbg::Generate(
   YACL_ENFORCE(rand_length <= kBlockSize);
 
   if (reseed_counter_ > reseed_interval_) {
-    entropy_input_ = entropy_source_->GetEntropy(min_entropy_);
 
     ReSeed(absl::MakeSpan(reinterpret_cast<uint8_t*>(entropy_input_.data()),
                           entropy_input_.length()),
