@@ -29,7 +29,7 @@ class MockPheSpi {
   virtual ~MockPheSpi(){};
 };
 
-SpiArgKey<int> KeySize("key_size");
+DEFINE_ARG_int(KeySize);
 
 // Define sub factory
 
@@ -54,11 +54,11 @@ class MockPaillierLib : public MockPheSpi {
   static std::unique_ptr<MockPheSpi> Create(const std::string &phe_name,
                                             const SpiArgs &args) {
     YACL_ENFORCE(phe_name == "paillier");
-    return std::make_unique<MockPaillierLib>(args.Get(KeySize, 2048));
+    return std::make_unique<MockPaillierLib>(args.Get(ArgKeySize, 2048));
   }
 
   static bool Check(const std::string &phe_name, const SpiArgs &args) {
-    return phe_name == "paillier" && args.Get(KeySize, 2048) <= 4096;
+    return phe_name == "paillier" && args.Get(ArgKeySize, 2048) <= 4096;
   }
 
   std::string ToString() override {
@@ -106,8 +106,8 @@ REGISTER_MOCK_LIBRARY("mock_quantum_lib", 20, MockQuantumLib::Check,
 // DO TEST
 
 TEST(SpiFactoryTest, TestArg) {
-  ASSERT_EQ((Lib = "ABC").Value<std::string>(), "abc");
-  ASSERT_EQ((KeySize = 100).Value<int>(), 100);
+  ASSERT_EQ((ArgLib = "ABC").Value<std::string>(), "abc");
+  ASSERT_EQ((ArgKeySize = 100).Value<int>(), 100);
 }
 
 TEST(SpiFactoryTest, TestListLibs) {
@@ -120,13 +120,13 @@ TEST(SpiFactoryTest, TestListLibs) {
   ASSERT_EQ(libs.size(), 1);
   ASSERT_TRUE(libs[0] == "mock_paillier_lib");
 
-  libs =
-      MockPheSpiFactory::Instance().ListLibraries("paillier", KeySize = 2048);
+  libs = MockPheSpiFactory::Instance().ListLibraries("paillier",
+                                                     ArgKeySize = 2048);
   ASSERT_EQ(libs.size(), 1);
   ASSERT_TRUE(libs[0] == "mock_paillier_lib");
 
-  libs =
-      MockPheSpiFactory::Instance().ListLibraries("paillier", KeySize = 100000);
+  libs = MockPheSpiFactory::Instance().ListLibraries("paillier",
+                                                     ArgKeySize = 100000);
   ASSERT_EQ(libs.size(), 0);
 
   libs =
@@ -142,8 +142,16 @@ TEST(SpiFactoryTest, TestCreate) {
   auto lib = MockPheSpiFactory::Instance().Create("paillier");
   ASSERT_EQ(lib->ToString(), "mock_paillier_lib: key_size=2048");
 
-  lib = MockPheSpiFactory::Instance().Create("paillier", KeySize = 3000ULL);
+  lib = MockPheSpiFactory::Instance().Create("paillier",
+                                             ArgLib = "mock_paillier_lib");
+  ASSERT_EQ(lib->ToString(), "mock_paillier_lib: key_size=2048");
+
+  lib = MockPheSpiFactory::Instance().Create("paillier", ArgKeySize = 3000ULL);
   ASSERT_EQ(lib->ToString(), "mock_paillier_lib: key_size=3000");
+
+  // mock_quantum_lib does not support paillier
+  EXPECT_ANY_THROW(lib = MockPheSpiFactory::Instance().Create(
+                       "paillier", ArgLib = "mock_quantum_lib"));
 }
 
 }  // namespace yacl::test

@@ -449,7 +449,7 @@ std::vector<CurveMeta> kPredefinedCurves = {
     {"Fp254n2BNa", {}, CurveForm::Weierstrass, FieldType::Extension, 254},
     // Curve used in
     // https://www.iacr.org/archive/eurocrypt2011/66320047/66320047.pdf
-    {"Fp254BNb", {"bn/bn254"}, CurveForm::Weierstrass, FieldType::Prime, 127},
+    {"Fp254BNb", {"bn254"}, CurveForm::Weierstrass, FieldType::Prime, 100},
     // Curve described in https://www.iso.org/standard/80241.html
     {"Fp224BN", {}, CurveForm::Weierstrass, FieldType::Prime, 112},
     // Curve described in https://www.iso.org/standard/80241.html
@@ -619,43 +619,47 @@ std::vector<CurveMeta> kPredefinedCurves = {
     // Curve from Zexe paper: https://eprint.iacr.org/2018/962, params taken
     // from: https://eips.ethereum.org/EIPS/eip-2539 where they are explicitly
     // listed.
-    {"BLS12-377", {}, CurveForm::Weierstrass, FieldType::Prime, 188},
+    {"BLS12-377", {}, CurveForm::Weierstrass, FieldType::Prime, 128},
     // Curve from https://electriccoin.co/blog/new-snark-curve/. As used in
     // ZCash.
-    {"BLS12-381", {}, CurveForm::Weierstrass, FieldType::Prime, 190},
+    {"BLS12-381", {}, CurveForm::Weierstrass, FieldType::Prime, 128},
     // Curve from https://github.com/relic-toolkit/relic.
-    {"BLS12-446", {}, CurveForm::Weierstrass, FieldType::Prime, 223},
+    {"BLS12-446", {}, CurveForm::Weierstrass, FieldType::Prime, 128},
     // Curve from https://github.com/relic-toolkit/relic.
-    {"BLS12-455", {}, CurveForm::Weierstrass, FieldType::Prime, 227},
+    {"BLS12-455", {}, CurveForm::Weierstrass, FieldType::Prime, 128},
+    // Curve from https://github.com/relic-toolkit/relic. Also in
+
+    // https://eprint.iacr.org/2012/232.pdf.
+    // Actually, 128 < BLS12-638 < 192
+    {"BLS12-638", {}, CurveForm::Weierstrass, FieldType::Prime, 128},
     // Curve from https://github.com/relic-toolkit/relic. Also in
     // https://eprint.iacr.org/2012/232.pdf.
-    {"BLS12-638", {}, CurveForm::Weierstrass, FieldType::Prime, 319},
-    // Curve from https://github.com/relic-toolkit/relic. Also in
-    // https://eprint.iacr.org/2012/232.pdf.
-    {"BLS24-477", {}, CurveForm::Weierstrass, FieldType::Prime, 238},
+    {"BLS24-477", {}, CurveForm::Weierstrass, FieldType::Prime, 192},
     // Curve from
     // https://ethresear.ch/t/introducing-bandersnatch-a-fast-elliptic-curve-built-over-the-bls12-381-scalar-field/9957
-    {"Bandersnatch", {}, CurveForm::TwistedEdwards, FieldType::Prime, 127},
+    // https://eprint.iacr.org/2021/1152.pdf
+    {"Bandersnatch", {}, CurveForm::TwistedEdwards, FieldType::Prime, 128},
 
     // Category: Barreto-Naehrig
     // BN (Barreto, Naehrig curves) from: A Family of Implementation-Friendly BN
     // Elliptic Curves - <https://eprint.iacr.org/2010/429.pdf>.
-    {"bn158", {}, CurveForm::Weierstrass, FieldType::Prime, 79},
-    {"bn190", {}, CurveForm::Weierstrass, FieldType::Prime, 95},
-    {"bn222", {}, CurveForm::Weierstrass, FieldType::Prime, 111},
-    {"bn254", {"Fp254BNb"}, CurveForm::Weierstrass, FieldType::Prime, 127},
-    {"bn286", {}, CurveForm::Weierstrass, FieldType::Prime, 143},
-    {"bn318", {}, CurveForm::Weierstrass, FieldType::Prime, 159},
-    {"bn350", {}, CurveForm::Weierstrass, FieldType::Prime, 175},
-    {"bn382", {}, CurveForm::Weierstrass, FieldType::Prime, 191},
-    {"bn414", {}, CurveForm::Weierstrass, FieldType::Prime, 207},
-    {"bn446", {}, CurveForm::Weierstrass, FieldType::Prime, 223},
-    {"bn478", {}, CurveForm::Weierstrass, FieldType::Prime, 239},
-    {"bn510", {}, CurveForm::Weierstrass, FieldType::Prime, 255},
-    {"bn542", {}, CurveForm::Weierstrass, FieldType::Prime, 271},
-    {"bn574", {}, CurveForm::Weierstrass, FieldType::Prime, 287},
-    {"bn606", {}, CurveForm::Weierstrass, FieldType::Prime, 303},
-    {"bn638", {}, CurveForm::Weierstrass, FieldType::Prime, 319},
+    {"bn158", {}, CurveForm::Weierstrass, FieldType::Prime, 70},
+    {"bn190", {}, CurveForm::Weierstrass, FieldType::Prime, 80},
+    {"bn222", {}, CurveForm::Weierstrass, FieldType::Prime, 80},
+    {"bn254", {"Fp254BNb"}, CurveForm::Weierstrass, FieldType::Prime, 100},
+    {"bn286", {}, CurveForm::Weierstrass, FieldType::Prime, 100},
+    {"bn318", {}, CurveForm::Weierstrass, FieldType::Prime, 100},
+    {"bn350", {}, CurveForm::Weierstrass, FieldType::Prime, 100},
+    {"bn382", {}, CurveForm::Weierstrass, FieldType::Prime, 100},
+    {"bn414", {}, CurveForm::Weierstrass, FieldType::Prime, 100},
+    {"bn446", {}, CurveForm::Weierstrass, FieldType::Prime, 128},
+    {"bn478", {}, CurveForm::Weierstrass, FieldType::Prime, 128},
+    // Actually, 128 < bn5xx,bn6xx < 192
+    {"bn510", {}, CurveForm::Weierstrass, FieldType::Prime, 128},
+    {"bn542", {}, CurveForm::Weierstrass, FieldType::Prime, 128},
+    {"bn574", {}, CurveForm::Weierstrass, FieldType::Prime, 128},
+    {"bn606", {}, CurveForm::Weierstrass, FieldType::Prime, 128},
+    {"bn638", {}, CurveForm::Weierstrass, FieldType::Prime, 128},
 
     // Category: WTLS
     // Wireless Application Protocol - Wireless Transport Layer Security

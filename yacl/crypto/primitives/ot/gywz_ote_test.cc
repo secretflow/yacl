@@ -110,7 +110,8 @@ TEST_P(GywzParamTest, FerretSpCotWork) {
 }
 
 INSTANTIATE_TEST_SUITE_P(TestWork, GywzParamTest,
-                         testing::Values(TestParams{4},        //
+                         testing::Values(TestParams{2},        // Edge Test
+                                         TestParams{3},        //
                                          TestParams{5},        //
                                          TestParams{7},        //
                                          TestParams{1024},     //

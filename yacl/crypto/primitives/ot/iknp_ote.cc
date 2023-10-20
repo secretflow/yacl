@@ -69,8 +69,9 @@ void IknpOtExtSend(const std::shared_ptr<link::Context>& ctx,
   for (size_t i = 0; i < block_num; ++i) {
     const size_t batch_offset = i * kBatchSize / 128;  // in num of blocks
 
-    std::array<uint128_t, kBatchSize> batch0;
-    std::array<uint128_t, kBatchSize> batch1;
+    // AVX need to be aligned to 32 bytes.
+    alignas(32) std::array<uint128_t, kBatchSize> batch0;
+    alignas(32) std::array<uint128_t, kBatchSize> batch1;
     auto buf = ctx->Recv(ctx->NextRank(), fmt::format("IKNP:{}", i));
     std::memcpy(batch0.data(), buf.data(), buf.size());
 
@@ -89,7 +90,7 @@ void IknpOtExtSend(const std::shared_ptr<link::Context>& ctx,
     }
 
     // Transpose.
-    SseTranspose128(&batch0);
+    MatrixTranspose128(&batch0);
 
     auto tmp_choice = base_ot.CopyChoice();
     batch1 = XorBatchedBlock(absl::MakeSpan(batch0),
@@ -147,8 +148,9 @@ void IknpOtExtRecv(const std::shared_ptr<link::Context>& ctx,
     // get the choices for this batch
     uint128_t batch_choice = *(choices_copy.data() + i);
 
-    std::array<uint128_t, kKappa> batch_data;
-    std::array<uint128_t, kKappa> batch;
+    // AVX need to be aligned to 32 bytes.
+    alignas(32) std::array<uint128_t, kKappa> batch_data;
+    alignas(32) std::array<uint128_t, kKappa> batch;
     // const auto* batch_ptr = recv_blocks.data() + i * kBatchSize;
 
     for (size_t k = 0; k < kKappa; ++k) {
@@ -167,7 +169,7 @@ void IknpOtExtRecv(const std::shared_ptr<link::Context>& ctx,
                    fmt::format("IKNP:{}", i));
 
     // Transpose.
-    SseTranspose128(&batch);
+    MatrixTranspose128(&batch);
     // NaiveTranspose(&t);
 
     // Break correlation.

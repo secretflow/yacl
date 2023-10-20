@@ -48,19 +48,43 @@
 // - SoftSpokenOT https://eprint.iacr.org/2022/192
 // - KOS security proof (asymptotic) https://eprint.iacr.org/2022/1371.pdf
 //
-// [SECURITY WARNING] Consistency check should be in F2k, not ring2k,
-// therefore our implementation has potential security flaws, we will fix
-// this in the near future.
 
 namespace yacl::crypto {
 
 void KosOtExtSend(const std::shared_ptr<link::Context>& ctx,
                   const OtRecvStore& base_ot,
-                  absl::Span<std::array<uint128_t, 2>> send_blocks);
+                  absl::Span<std::array<uint128_t, 2>> send_blocks,
+                  bool cot = false);
 
 void KosOtExtRecv(const std::shared_ptr<link::Context>& ctx,
                   const OtSendStore& base_ot,
                   const dynamic_bitset<uint128_t>& choices,
-                  absl::Span<uint128_t> recv_blocks);
+                  absl::Span<uint128_t> recv_blocks, bool cot = false);
+
+// ==================== //
+//   Support OT Store   //
+// ==================== //
+
+inline OtSendStore KosOtExtSend(const std::shared_ptr<link::Context>& ctx,
+                                const OtRecvStore& base_ot, uint32_t ot_num,
+                                bool cot = false) {
+  std::vector<std::array<uint128_t, 2>> blocks(ot_num);
+  KosOtExtSend(ctx, base_ot, absl::MakeSpan(blocks), cot);
+  auto ret = MakeOtSendStore(blocks);
+  if (cot) {
+    auto tmp_choice = base_ot.CopyChoice();
+    ret.SetDelta(static_cast<uint128_t>(*tmp_choice.data()));
+  }
+  return ret;  // FIXME: Drop explicit copy
+}
+
+inline OtRecvStore KosOtExtRecv(const std::shared_ptr<link::Context>& ctx,
+                                const OtSendStore& base_ot,
+                                const dynamic_bitset<uint128_t>& choices,
+                                uint32_t ot_num, bool cot = false) {
+  std::vector<uint128_t> blocks(ot_num);
+  KosOtExtRecv(ctx, base_ot, choices, absl::MakeSpan(blocks), cot);
+  return MakeOtRecvStore(choices, blocks);  // FIXME: Drop explicit copy
+}
 
 }  // namespace yacl::crypto

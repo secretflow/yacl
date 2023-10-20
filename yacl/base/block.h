@@ -87,6 +87,17 @@ struct alignas(16) block {
     return _mm_srli_epi64(*this, rhs);
   }
 
+  inline bool operator==(const block& rhs) const {
+    auto& x = as<std::uint64_t>();
+    auto& y = rhs.as<std::uint64_t>();
+    return x[0] == y[0] && x[1] == y[1];
+  }
+  inline bool operator!=(const block& rhs) const {
+    auto& x = as<std::uint64_t>();
+    auto& y = rhs.as<std::uint64_t>();
+    return x[0] != y[0] || x[1] != y[1];
+  }
+
   inline int movemask_epi8() const { return _mm_movemask_epi8(*this); }
 
   template <typename T>
@@ -124,5 +135,7 @@ inline block toBlock(std::uint64_t low_uint64) {
 inline block toBlock(const std::uint8_t* data) {
   return toBlock(((std::uint64_t*)data)[1], ((std::uint64_t*)data)[0]);
 }
+
+inline uint128_t toU128(block data) { return data.as<uint128_t>()[0]; }
 
 }  // namespace yacl

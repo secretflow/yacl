@@ -53,10 +53,15 @@ class EccBencher {
 
     // for small func
     benchmark::IterationCount n = 1000;
-    benchmark::RegisterBenchmark(
-        fmt::format("{}/BM_HashPoint", prefix).c_str(),
-        [this](benchmark::State& st) { BenchHashPoint(st); })
-        ->Iterations(n);
+    // mcl not support hash point now
+    if (absl::AsciiStrToLower(ec_->GetLibraryName()) != "libmcl") {
+      benchmark::RegisterBenchmark(
+          fmt::format("{}/BM_HashPoint", prefix).c_str(),
+          [this](benchmark::State& st) { BenchHashPoint(st); })
+          ->Iterations(n);
+    } else {
+      fmt::print("\t{} not supports BM_HashPoint\n", ec_->GetLibraryName());
+    }
     benchmark::RegisterBenchmark(
         fmt::format("{}/BM_PointEqual", prefix).c_str(),
         [this](benchmark::State& st) { BenchPointEqual(st); })
@@ -64,7 +69,6 @@ class EccBencher {
     benchmark::RegisterBenchmark(fmt::format("{}/BM_Add", prefix).c_str(),
                                  [this](benchmark::State& st) { BenchAdd(st); })
         ->Iterations(n);
-    ;
   }
 
   void BenchMulBase(benchmark::State& state) {
@@ -159,13 +163,13 @@ void InitAndRunBenchmarks() {
   for (const std::string& curve : curves) {
     if (!FLAGS_lib.empty()) {
       benchers.emplace_back(
-          EcGroupFactory::Instance().Create(curve, Lib = FLAGS_lib));
+          EcGroupFactory::Instance().Create(curve, ArgLib = FLAGS_lib));
       continue;
     }
 
     for (const auto& lib : EcGroupFactory::Instance().ListLibraries(curve)) {
       benchers.emplace_back(
-          EcGroupFactory::Instance().Create(curve, Lib = lib));
+          EcGroupFactory::Instance().Create(curve, ArgLib = lib));
     }
   }
 

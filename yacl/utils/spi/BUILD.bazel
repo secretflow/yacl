@@ -26,15 +26,6 @@ yacl_cc_library(
 )
 
 yacl_cc_library(
-    name = "argument",
-    srcs = ["argument.cc"],
-    hdrs = ["argument.h"],
-    deps = [
-        "//yacl/base:exception",
-    ],
-)
-
-yacl_cc_library(
     name = "item",
     hdrs = ["item.h"],
     deps = [
@@ -55,7 +46,7 @@ yacl_cc_library(
     name = "spi_factory",
     hdrs = ["spi_factory.h"],
     deps = [
-        ":argument",
+        "//yacl/utils/spi/argument",
     ],
 )
 

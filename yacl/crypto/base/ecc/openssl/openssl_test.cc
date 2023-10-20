@@ -100,7 +100,8 @@ TEST(OpensslTest, AddInplaceWorks) {
 
 TEST(OpensslMemLeakTest, MulBaseLeaks) {
   std::shared_ptr<yacl::crypto::EcGroup> ec =
-      yacl::crypto::EcGroupFactory::Instance().Create("sm2", Lib = "openssl");
+      yacl::crypto::EcGroupFactory::Instance().Create("sm2",
+                                                      ArgLib = "openssl");
 
   yacl::parallel_for(0, 2, 1, [&](int64_t, int64_t) {
     // no memory leak here, but the same code in ecc_test.cc leaks.

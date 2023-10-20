@@ -21,6 +21,7 @@
 
 #include "gtest/gtest.h"
 
+#include "yacl/base/aligned_vector.h"
 #include "yacl/base/dynamic_bitset.h"
 #include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
@@ -74,16 +75,61 @@ TEST_P(FerretOtExtTest, Works) {
   }
 }
 
+TEST_P(FerretOtExtTest, CheetahWorks) {
+  // GIVEN
+  const int kWorldSize = 2;
+  const size_t ot_num = GetParam().ot_num;
+  const auto assumption = GetParam().assumption;
+
+  auto lctxs = link::test::SetupWorld(kWorldSize);  // setup network
+  auto lpn_param = LpnParam(10485760, 452000, 1280, assumption);
+  auto cot_num = FerretCotHelper(lpn_param, ot_num);  // make option
+  auto cots_compact = MockCompactOts(cot_num);        // mock cots
+  auto delta = cots_compact.send.GetDelta();
+
+  auto send_out = AlignedVector<uint128_t>(ot_num);
+  auto recv_out = AlignedVector<uint128_t>(ot_num);
+  // WHEN
+  auto sender = std::async([&] {
+    FerretOtExtSend_Cheetah(lctxs[0], cots_compact.send, lpn_param, ot_num,
+                            absl::MakeSpan(send_out));
+  });
+  auto receiver = std::async([&] {
+    FerretOtExtRecv_Cheetah(lctxs[1], cots_compact.recv, lpn_param, ot_num,
+                            absl::MakeSpan(recv_out));
+  });
+  receiver.get();
+  sender.get();
+
+  auto ot_recv = MakeCompactOtRecvStore(std::move(recv_out));
+  auto ot_send = MakeCompactOtSendStore(std::move(send_out), delta);
+
+  // THEN
+  auto zero = MakeUint128(0, 0);
+  for (size_t i = 0; i < ot_num; ++i) {
+    EXPECT_EQ(ot_send.GetBlock(i, ot_recv.GetChoice(i)),
+              ot_recv.GetBlock(i));  // correctness
+    EXPECT_EQ(ot_send.GetBlock(i, 0) ^ ot_send.GetBlock(i, 1),
+              delta);  // correctness
+    EXPECT_NE(ot_send.GetBlock(i, ot_recv.GetChoice(i)),
+              zero);  // ot block can not be zero
+    EXPECT_NE(ot_send.GetBlock(i, 1 - ot_recv.GetChoice(i)),
+              zero);  // ot block can not be zero
+  }
+}
+
 INSTANTIATE_TEST_SUITE_P(
     Works_Instances, FerretOtExtTest,
-    testing::Values(FerretParams{1 << 20, LpnNoiseAsm::RegularNoise},
+    testing::Values(FerretParams{10485760, LpnNoiseAsm::RegularNoise},
+                    FerretParams{10485761, LpnNoiseAsm::RegularNoise},
+                    FerretParams{1 << 20, LpnNoiseAsm::RegularNoise},
                     FerretParams{1 << 21, LpnNoiseAsm::RegularNoise},
                     FerretParams{1 << 22, LpnNoiseAsm::RegularNoise},
                     FerretParams{1 << 23, LpnNoiseAsm::RegularNoise},
                     FerretParams{1 << 24, LpnNoiseAsm::RegularNoise},
                     FerretParams{1 << 25, LpnNoiseAsm::RegularNoise}));
 
-TEST(FerretOtExtEdgeTest, Test) {
+TEST(FerretOtExtEdgeTest, Test1) {
   // GIVEN
   const int kWorldSize = 2;
   const auto assumption = LpnNoiseAsm::RegularNoise;
@@ -92,7 +138,7 @@ TEST(FerretOtExtEdgeTest, Test) {
   auto lpn_param = LpnParam(10485760, 452000, 1280, assumption);
 
   // ot_num < minium size of base_cot
-  const size_t ot_num = FerretCotHelper(lpn_param, 0) - 1;
+  const size_t ot_num = 2 * lpn_param.t - 1;
   auto cot_num = FerretCotHelper(lpn_param, ot_num);  // make option
   auto cots_compact = MockCompactOts(cot_num);        // mock cots
 
@@ -109,5 +155,41 @@ TEST(FerretOtExtEdgeTest, Test) {
   });
   sender.get();
   receiver.get();
+}
+
+TEST(FerretOtExtEdgeTest, Test2) {
+  // Given
+  const int kWorldSize = 2;
+  const auto assumption = LpnNoiseAsm::RegularNoise;
+
+  auto lctxs = link::test::SetupWorld(kWorldSize);  // setup network
+  auto lpn_param = LpnParam(10485760, 452000, 1280, assumption);
+  auto ot_num = 2 * lpn_param.t;
+  auto cot_num = FerretCotHelper(lpn_param, ot_num);  // make option
+  auto cots_compact = MockCompactOts(cot_num);        // mock cots
+
+  // WHEN
+  auto sender = std::async([&] {
+    return FerretOtExtSend(lctxs[0], cots_compact.send, lpn_param, ot_num);
+  });
+  auto receiver = std::async([&] {
+    return FerretOtExtRecv(lctxs[1], cots_compact.recv, lpn_param, ot_num);
+  });
+  auto ot_recv = receiver.get();
+  auto ot_send = sender.get();
+
+  // THEN
+  auto zero = MakeUint128(0, 0);
+  auto delta = ot_send.GetDelta();
+  for (size_t i = 0; i < ot_num; ++i) {
+    EXPECT_EQ(ot_send.GetBlock(i, ot_recv.GetChoice(i)),
+              ot_recv.GetBlock(i));  // correctness
+    EXPECT_EQ(ot_send.GetBlock(i, 0) ^ ot_send.GetBlock(i, 1),
+              delta);  // correctness
+    EXPECT_NE(ot_send.GetBlock(i, ot_recv.GetChoice(i)),
+              zero);  // ot block can not be zero
+    EXPECT_NE(ot_send.GetBlock(i, 1 - ot_recv.GetChoice(i)),
+              zero);  // ot block can not be zero
+  }
 }
 }  // namespace yacl::crypto

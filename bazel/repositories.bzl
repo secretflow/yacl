@@ -46,6 +46,7 @@ def yacl_deps():
     _com_github_intel_ipp()
     _com_github_libsodium()
     _com_github_libtom_libtommath()
+    _com_github_herumi_mcl()
 
     maybe(
         git_repository,
@@ -338,4 +339,19 @@ def _com_github_msgpack_msgpack():
             "https://github.com/msgpack/msgpack-c/archive/refs/tags/cpp-3.3.0.tar.gz",
         ],
         build_file = "@yacl//bazel:msgpack.BUILD",
+    )
+
+def _com_github_herumi_mcl():
+    maybe(
+        http_archive,
+        name = "com_github_herumi_mcl",
+        strip_prefix = "mcl-1.84.0",
+        sha256 = "dc655c2eb5b2426736d8ab92ed501de0ac78472f1ee7083919a98a8aca3e76a3",
+        type = "tar.gz",
+        build_file = "@yacl//bazel:mcl.BUILD",
+        patch_args = ["-p1"],
+        patches = [
+            "@yacl//bazel:patches/mcl.patch",
+        ],
+        urls = ["https://github.com/herumi/mcl/archive/refs/tags/v1.84.0.tar.gz"],
     )

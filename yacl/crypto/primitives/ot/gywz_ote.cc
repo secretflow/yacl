@@ -39,7 +39,11 @@ void CggmFullEval(uint128_t delta, uint128_t seed, uint32_t n,
                   absl::Span<uint128_t> left_sums, uint128_t one = one128) {
   uint32_t height = math::Log2Ceil(n);
   YACL_ENFORCE(height == left_sums.size());
-  AlignedVector<uint128_t> extra_buff((uint32_t)1 << (height - 1));
+  YACL_ENFORCE(all_msgs.size() >= n);
+  // if n is power of two,
+  // all_msgs would have enough space to store the leaves
+  bool is_two_power = (n == (static_cast<uint32_t>(1) << height));
+  AlignedVector<uint128_t> extra_buff;
   auto& working_seeds = all_msgs;
 
   // first level
@@ -56,8 +60,9 @@ void CggmFullEval(uint128_t delta, uint128_t seed, uint32_t n,
     uint128_t left_child_sum = 0;
     auto left_side = working_seeds.subspan(0, prev_size);
     auto right_side = working_seeds.subspan(prev_size, prev_size);
-    if (level == height - 1) {
+    if (!is_two_power && level == height - 1) {
       // all_msgs doesn't have enough space to store all leaves
+      extra_buff.resize((uint32_t)1 << (height - 1));
       right_side = absl::MakeSpan(extra_buff.data(), prev_size);
     }
 
@@ -74,15 +79,22 @@ void CggmFullEval(uint128_t delta, uint128_t seed, uint32_t n,
     left_sums[level] = left_child_sum;
   }
   // copy right side leaves to all_msgs
-  memcpy(all_msgs.data() + prev_size, extra_buff.data(),
-         (n - prev_size) * sizeof(uint128_t));
+  if (!is_two_power) {
+    memcpy(all_msgs.data() + prev_size, extra_buff.data(),
+           (n - prev_size) * sizeof(uint128_t));
+  }
 }
 
 void CggmPuncFullEval(uint32_t index, absl::Span<const uint128_t> sibling_sums,
                       uint32_t n, absl::Span<uint128_t> punctured_msgs,
                       uint128_t one = one128) {
+  YACL_ENFORCE(punctured_msgs.size() >= n);
   uint32_t height = sibling_sums.size();
-  AlignedVector<uint128_t> extra_buff((uint32_t)1 << (height - 1));
+  AlignedVector<uint128_t> extra_buff;
+
+  // if n is power of two,
+  // punctured_msgs would have enough space to store all leaves
+  bool is_two_power = (n == (static_cast<uint32_t>(1) << (height)));
   auto& working_seeds = punctured_msgs;
 
   //  first level
@@ -99,8 +111,9 @@ void CggmPuncFullEval(uint32_t index, absl::Span<const uint128_t> sibling_sums,
     uint128_t right_side_sum = sibling_sums[level];
     auto left_side = working_seeds.subspan(0, prev_size);
     auto right_side = working_seeds.subspan(prev_size, prev_size);
-    if (level == height - 1) {
+    if (!is_two_power && level == height - 1) {
       // punctured_msgs doesn't have enough space to store all leaves
+      extra_buff.resize((uint32_t)1 << (height - 1));
       right_side = absl::MakeSpan(extra_buff.data(), prev_size);
     }
 
@@ -121,8 +134,10 @@ void CggmPuncFullEval(uint32_t index, absl::Span<const uint128_t> sibling_sums,
     punctured_idx |= index & mask;
   }
   // copy right side leaves to punctured_msgs
-  memcpy(punctured_msgs.data() + prev_size, extra_buff.data(),
-         (n - prev_size) * sizeof(uint128_t));
+  if (!is_two_power) {
+    memcpy(punctured_msgs.data() + prev_size, extra_buff.data(),
+           (n - prev_size) * sizeof(uint128_t));
+  }
 }
 
 }  // namespace

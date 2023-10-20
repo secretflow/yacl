@@ -250,6 +250,7 @@ yacl_cc_library(
     name = "kos_ote",
     srcs = ["kos_ote.cc"],
     hdrs = ["kos_ote.h"],
+    copts = AES_COPT_FLAGS,
     deps = [
         ":ot_store",
         "//yacl/base:dynamic_bitset",
@@ -259,6 +260,7 @@ yacl_cc_library(
         "//yacl/crypto/tools:random_permutation",
         "//yacl/crypto/utils:rand",
         "//yacl/link",
+        "//yacl/math/f2k",
         "//yacl/utils:matrix_utils",
     ],
 )

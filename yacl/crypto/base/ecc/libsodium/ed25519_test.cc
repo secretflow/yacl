@@ -43,7 +43,7 @@ std::ostream& operator<<(std::ostream& os, const EcPoint& p) {
 class SodiumTest : public ::testing::Test {
  protected:
   std::unique_ptr<EcGroup> ec_ =
-      EcGroupFactory::Instance().Create("ed25519", Lib = "libsodium");
+      EcGroupFactory::Instance().Create("ed25519", ArgLib = "libsodium");
 };
 
 TEST_F(SodiumTest, CopyPointWorks) {

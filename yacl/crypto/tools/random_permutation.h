@@ -58,7 +58,7 @@ class RandomPerm {
   void Gen(absl::Span<const uint128_t> x, absl::Span<uint128_t> out) const;
 
   // generate (block vector) x's random permutation, and inplace
-  void GenInplace(absl::Span<uint128_t> inout);
+  void GenInplace(absl::Span<uint128_t> inout) const;
 
   // Example: const auto rp = RandomPerm::GetDefault();
   static RandomPerm& GetDefault() {
@@ -66,6 +66,11 @@ class RandomPerm {
     // blocks, but when you want to encrypt a single block, please use ECB or
     // CBC
     static RandomPerm rp(Ctype::AES128_CBC, 0x12345678);
+    return rp;
+  }
+
+  static const RandomPerm& GetCrDefault() {
+    const static RandomPerm rp(Ctype::AES128_ECB, 0x12345678);
     return rp;
   }
 

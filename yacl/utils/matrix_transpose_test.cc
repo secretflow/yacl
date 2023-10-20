@@ -115,6 +115,26 @@ TEST(MatrixTranspose, SseTransposeTest) {
   EXPECT_EQ(matrix, matrixT2);
 }
 
+#ifdef YACL_ENABLE_BMI2
+TEST(MatrixTranspose, AvxTransposeTest) {
+  auto matrix = MakeMatrix128();
+
+  alignas(32) std::array<uint128_t, 128> matrixTranspose;
+  memcpy(matrixTranspose.data(), matrix.data(),
+         matrix.size() * sizeof(uint128_t));
+
+  AvxTranspose128(&matrixTranspose);
+
+  std::array<uint128_t, 128> matrixT2;
+
+  memcpy(matrixT2.data(), matrixTranspose.data(),
+         matrixTranspose.size() * sizeof(uint128_t));
+  NaiveTranspose(&matrixT2);
+
+  EXPECT_EQ(matrix, matrixT2);
+}
+#endif
+
 TEST(MatrixTranspose, MatrixTransposeTest128x1024) {
   auto matrix = MakeMatrix128x1024();
 

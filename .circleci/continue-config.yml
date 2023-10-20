@@ -71,7 +71,8 @@ jobs:
             - run:
                 name: "Install homebrew dependencies"
                 command: |
-                  brew install bazelisk cmake ninja libomp wget md5sha1sum
+                  brew install bazel cmake ninja libomp wget md5sha1sum
+                  (cd /opt/homebrew/Cellar/bazel/*.*.*/libexec/bin && curl -fLO https://github.com/bazelbuild/bazel/releases/download/6.2.1/bazel-6.2.1-darwin-arm64 && chmod +x bazel-6.2.1-darwin-arm64)
             - run:
                 name: "test"
                 command: |

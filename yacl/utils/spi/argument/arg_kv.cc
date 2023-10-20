@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/utils/spi/argument.h"
+#include "yacl/utils/spi/argument/arg_kv.h"
 
 namespace yacl {
 
@@ -20,10 +20,14 @@ const std::string& SpiArg::Key() const { return key_; }
 
 bool SpiArg::HasValue() const { return value_.has_value(); }
 
-SpiArgs::SpiArgs(std::initializer_list<SpiArg> args) {
-  for (const auto& item : args) {
-    insert({item.Key(), item});
-  }
+SpiArg SpiArg::operator=(const char* value) {
+  value_ = absl::AsciiStrToLower(std::string(value));
+  return *this;
+}
+
+SpiArg SpiArg::operator=(const std::string& value) {
+  value_ = absl::AsciiStrToLower(value);
+  return *this;
 }
 
 }  // namespace yacl

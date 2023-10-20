@@ -1,0 +1,105 @@
+# Copyright 2023 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+yacl_cc_library(
+    name = "ecc",
+    srcs = [
+        "mcl_ec_factory.cc",
+        "mcl_ec_group.cc",
+    ],
+    hdrs = ["mcl_ec_group.h"],
+    deps = [
+        ":pairing_header",
+        ":util",
+        "//yacl/crypto/base/ecc:spi",
+        "//yacl/crypto/base/hash:blake3",
+        "//yacl/crypto/base/hash:ssl_hash",
+    ],
+    alwayslink = 1,
+)
+
+yacl_cc_test(
+    name = "ecc_test",
+    srcs = ["mcl_ec_test.cc"],
+    deps = [
+        ":ecc",
+    ],
+)
+
+yacl_cc_library(
+    name = "pairing_header",
+    hdrs = ["pairing_header.h"],
+    copts = [
+    ],
+    defines = [
+        # Macro `MCL_ALL_PAIRING_FOR_YACL` enables libmcl's all pairing curves
+        # and not that they are not standard pairing instances.
+        # !Only for test and don't recommmand!
+        # "MCL_ALL_PAIRING_FOR_YACL",
+    ],
+    deps = ["@com_github_herumi_mcl//:mcl"],
+)
+
+yacl_cc_library(
+    name = "pairing",
+    srcs = [
+        "mcl_pairing_bls12_381.cc",
+        "mcl_pairing_bls12_381.h",
+        "mcl_pairing_factory.cc",
+        "mcl_pairing_group.cc",
+    ],
+    hdrs = [
+        "mcl_pairing_group.h",
+    ],
+    deps = [
+        ":ecc",
+        ":pairing_header",
+        "//yacl/crypto/base/ecc:pairing_spi",
+        "//yacl/crypto/base/field/mcl:field",
+    ],
+    alwayslink = 1,
+)
+
+yacl_cc_test(
+    name = "pairing_test",
+    srcs = ["mcl_pairing_test.cc"],
+    deps = [
+        ":pairing",
+        "//yacl/crypto/utils:rand",
+    ],
+)
+
+yacl_cc_library(
+    name = "util",
+    srcs = [
+        "mcl_util.cc",
+    ],
+    hdrs = ["mcl_util.h"],
+    deps = [
+        "//yacl/math/mpint",
+        "@com_github_herumi_mcl//:mcl",
+    ],
+)
+
+yacl_cc_test(
+    name = "util_test",
+    srcs = ["mcl_util_test.cc"],
+    deps = [
+        ":util",
+    ],
+)

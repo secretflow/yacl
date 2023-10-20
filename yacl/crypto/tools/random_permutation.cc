@@ -14,6 +14,9 @@
 
 #include "yacl/crypto/tools/random_permutation.h"
 
+#include <cstdint>
+
+#include "yacl/base/int128.h"
 #include "yacl/crypto/base/symmetric_crypto.h"
 
 namespace yacl::crypto {
@@ -51,7 +54,7 @@ std::vector<uint128_t> RandomPerm::Gen(absl::Span<const uint128_t> x) const {
   return res;
 }
 
-void RandomPerm::GenInplace(absl::Span<uint128_t> inout) {
+void RandomPerm::GenInplace(absl::Span<uint128_t> inout) const {
   sym_alg_.Encrypt(inout, inout);
 }
 
@@ -65,9 +68,10 @@ uint128_t CrHash_128(uint128_t x) {
   return RP.Gen(x) ^ x;
 }
 
+// FIXME: Rename to BatchCrHash_128
 std::vector<uint128_t> ParaCrHash_128(absl::Span<const uint128_t> x) {
   std::vector<uint128_t> out(x.size());
-  const auto& RP = RandomPerm(Ctype::AES128_ECB, 0x12345678);
+  const auto& RP = RandomPerm::GetCrDefault();
   RP.Gen(x, absl::MakeSpan(out));
   for (uint64_t i = 0; i < x.size(); ++i) {
     out[i] ^= x[i];
@@ -75,17 +79,35 @@ std::vector<uint128_t> ParaCrHash_128(absl::Span<const uint128_t> x) {
   return out;
 }
 
+// FIXME: Rename to BatchCrHashInplace_128
 void ParaCrHashInplace_128(absl::Span<uint128_t> inout) {
-  std::vector<uint128_t> tmp(inout.size());
-  const auto& RP = RandomPerm(Ctype::AES128_ECB, 0x12345678);
-  RP.Gen(inout, absl::MakeSpan(tmp));
-  for (uint64_t i = 0; i < inout.size(); ++i) {
-    inout[i] ^= tmp[i];
+  const auto& RP = RandomPerm::GetCrDefault();
+  // TODO: add dynamic batch size
+  alignas(32) std::array<uint128_t, 128> tmp;
+  auto tmp_span = absl::MakeSpan(tmp);
+  const uint64_t size = inout.size();
+
+  uint64_t offset = 0;
+  for (; offset + 128 <= size; offset += 128) {
+    auto inout_span = inout.subspan(offset, 128);
+    RP.Gen(inout_span, tmp_span);
+    for (uint64_t i = 0; i < 128; ++i) {
+      inout_span[i] ^= tmp[i];
+    }
+  }
+  uint64_t remain = size - offset;
+  if (remain > 0) {
+    auto inout_span = inout.subspan(offset, remain);
+    RP.Gen(inout_span, tmp_span.subspan(0, remain));
+    for (uint64_t i = 0; i < remain; ++i) {
+      inout_span[i] ^= tmp[i];
+    }
   }
 }
 
 uint128_t CcrHash_128(uint128_t x) { return CrHash_128(Sigma(x)); }
 
+// FIXME: Rename to BatchCcrHash_128
 std::vector<uint128_t> ParaCcrHash_128(absl::Span<const uint128_t> x) {
   std::vector<uint128_t> tmp(x.size());
   for (uint64_t i = 0; i < x.size(); ++i) {
@@ -95,6 +117,7 @@ std::vector<uint128_t> ParaCcrHash_128(absl::Span<const uint128_t> x) {
   return tmp;
 }
 
+// FIXME: Rename to BatchCcrHashInplace_128
 void ParaCcrHashInplace_128(absl::Span<uint128_t> inout) {
   for (auto& e : inout) {
     e = Sigma(e);

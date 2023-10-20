@@ -30,7 +30,7 @@ std::vector<uint8_t> KDF(ByteContainerView Z, size_t key_len) {
       C[0] = (counter >> 24) & 0xFF;
       C[1] = (counter >> 16) & 0xFF;
       C[2] = (counter >> 8) & 0xFF;
-      C[3] = (counter)&0xFF;
+      C[3] = counter & 0xFF;
     }
 
     std::string C_str(reinterpret_cast<char*>(C), 4);

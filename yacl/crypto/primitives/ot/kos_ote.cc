@@ -15,14 +15,18 @@
 #include "yacl/crypto/primitives/ot/kos_ote.h"
 
 #include <algorithm>
+#include <array>
+#include <chrono>
 #include <utility>
 #include <vector>
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/int128.h"
+#include "yacl/crypto/base/drbg/sm4_drbg.h"
 #include "yacl/crypto/tools/prg.h"
 #include "yacl/crypto/tools/random_permutation.h"
 #include "yacl/crypto/utils/rand.h"
+#include "yacl/math/f2k/f2k.h"
 #include "yacl/utils/matrix_utils.h"
 #include "yacl/utils/serialize.h"
 
@@ -113,7 +117,7 @@ inline dynamic_bitset<uint128_t> ExtendChoice(
 
 void KosOtExtSend(const std::shared_ptr<link::Context>& ctx,
                   const OtRecvStore& base_ot,
-                  absl::Span<std::array<uint128_t, 2>> send_blocks) {
+                  absl::Span<std::array<uint128_t, 2>> send_blocks, bool cot) {
   static_assert(kS == 64,
                 "Currently, KOS only support statistical "
                 "security = 64 bit");
@@ -130,27 +134,16 @@ void KosOtExtSend(const std::shared_ptr<link::Context>& ctx,
   std::vector<uint128_t> q_ext(ot_num_ext);
   auto ot_ext = ExtendBaseOt(base_ot, block_num);
 
-  // Prepare for consistency check
-  std::array<uint64_t, kKappa> q_check{0};
-
-  // Sender generates a random seed and sends it to receiver.
-  uint128_t seed = SecureRandSeed();
-  ctx->SendAsync(ctx->NextRank(), SerializeUint128(seed),
-                 fmt::format("KOS-Seed"));
-
-  std::vector<uint64_t> rand_samples(batch_num * 2);
-  PrgAesCtr(seed, absl::Span<uint64_t>(rand_samples));
-
   // Note the following is identical to the IKNP protocol without the final hash
   // code partically copied from yacl/crypto-primitives/ot/extension/kkrt_ote.cc
   // For every batch
   for (size_t i = 0; i < batch_num; ++i) {
-    std::array<uint128_t, kBatchSize> recv_msg;
+    // std::array<uint128_t, kBatchSize> recv_msg;
     const size_t offset = i * kBatchSize / 128;  // block offsets
 
     auto buf = ctx->Recv(ctx->NextRank(), fmt::format("KOS:{}", i));
-    std::memcpy(recv_msg.data(), buf.data(), buf.size());
-
+    auto recv_msg = absl::MakeSpan(reinterpret_cast<uint128_t*>(buf.data()),
+                                   buf.size() / sizeof(uint128_t));
     // Q = (u & s) ^ G(K_s) = ((G(K_0) ^ G(K_1) ^ r)) & s) ^ G(K_s)
     // Q = G(K_0) when s is 0
     // Q = G(K_0) ^ r when s is 1
@@ -158,38 +151,29 @@ void KosOtExtSend(const std::shared_ptr<link::Context>& ctx,
     //  s == 0, the sender receives T = G(K_0)
     //  s == 1, the sender receives U = G(K_0) ^ r = T ^ r
     for (size_t k = 0; k < kKappa; ++k) {
-      const auto& ot_slice = ot_ext[k][offset];
-
       if (base_ot.GetChoice(k)) {
-        recv_msg[k] ^= ot_slice;
-      } else {
-        recv_msg[k] = ot_slice;
+        ot_ext[k][offset] ^= recv_msg[k];
       }
-
-      // Security Warning: Consistency check should be in F2k, not ring2k,
-      // therefore our implementation has potential security flaws, we will fix
-      // this in the near future.
-      // FIXME(@shanzhu): Add F2k support
-      // =================== CONSISTENCY CHECK ===================
-      const auto& recv_msg_u64 = DecomposeUInt128(recv_msg[k]);
-      q_check[k] ^= recv_msg_u64.first & rand_samples[2 * i];
-      q_check[k] ^= recv_msg_u64.second & rand_samples[2 * i + 1];
-      // =================== CONSISTENCY CHECK ===================
-    }
-
-    // Transpose.
-    SseTranspose128(&recv_msg);
-
-    // Finalize (without crhash)
-    const size_t limit = std::min(kBatchSize, ot_num_ext - i * kBatchSize);
-    for (size_t j = 0; j < limit; ++j) {
-      q_ext[i * kBatchSize + j] = recv_msg[j];
     }
   }
 
-  uint128_t delta = static_cast<uint128_t>(*base_ot.CopyChoice().data());
+  // Prepare for consistency check
+  std::array<uint64_t, kKappa> q_check{0};
 
+  // Sender generates a random seed and sends it to receiver.
+  uint128_t seed = SecureRandSeed();
+  ctx->SendAsync(ctx->NextRank(), SerializeUint128(seed),
+                 fmt::format("KOS-Seed"));
+  // Generate the coefficent for consistency check
+  std::vector<uint64_t> rand_samples(batch_num * 2);
+  PrgAesCtr(seed, absl::MakeSpan(rand_samples));
   // =================== CONSISTENCY CHECK ===================
+  for (size_t k = 0; k < kKappa; ++k) {
+    auto k_msg_span = absl::MakeSpan(
+        reinterpret_cast<uint64_t*>(ot_ext[k].data()), 2 * batch_num);
+    q_check[k] = GfMul64(absl::MakeSpan(rand_samples), k_msg_span);
+  }
+
   CheckMsg check_msgs;
   check_msgs.Unpack(ctx->Recv(ctx->NextRank(), fmt::format("KOS-CHECK")));
 
@@ -204,9 +188,34 @@ void KosOtExtSend(const std::shared_ptr<link::Context>& ctx,
   }
   // =================== CONSISTENCY CHECK ===================
 
+  for (size_t i = 0; i < batch_num; ++i) {
+    // AVX need to be aligned to 32 bytes.
+    alignas(32) std::array<uint128_t, kBatchSize> recv_msg;
+    const size_t offset = i * kBatchSize / 128;  // block offsets
+
+    for (size_t k = 0; k < kKappa; ++k) {
+      const auto& ot_slice = ot_ext[k][offset];
+      recv_msg[k] = ot_slice;
+    }
+
+    MatrixTranspose128(&recv_msg);
+
+    // Finalize(without crhash)
+    const size_t limit = std::min(kBatchSize, ot_num_ext - i * kBatchSize);
+    for (size_t j = 0; j < limit; ++j) {
+      q_ext[i * kBatchSize + j] = recv_msg[j];
+    }
+  }
+
+  uint128_t delta = static_cast<uint128_t>(*base_ot.CopyChoice().data());
   q_ext.resize(ot_num_valid);
-  auto batch0 = ParaCrHash_128(absl::MakeSpan(q_ext));
-  auto batch1 = ParaCrHash_128(VecXorMonochrome(absl::MakeSpan(q_ext), delta));
+  auto& batch0 = q_ext;
+  auto batch1 = VecXorMonochrome(absl::MakeSpan(q_ext), delta);
+
+  if (cot == false) {
+    ParaCrHashInplace_128(absl::MakeSpan(batch0));
+    ParaCrHashInplace_128(absl::MakeSpan(batch1));
+  }
 
   for (size_t i = 0; i < ot_num_valid; i++) {
     send_blocks[i][0] = batch0[i];
@@ -217,7 +226,7 @@ void KosOtExtSend(const std::shared_ptr<link::Context>& ctx,
 void KosOtExtRecv(const std::shared_ptr<link::Context>& ctx,
                   const OtSendStore& base_ot,
                   const dynamic_bitset<uint128_t>& choices,
-                  absl::Span<uint128_t> recv_blocks) {
+                  absl::Span<uint128_t> recv_blocks, bool cot) {
   static_assert(kS == 64,
                 "Currently, KOS only support statistical "
                 "security = 64 bit");
@@ -236,57 +245,61 @@ void KosOtExtRecv(const std::shared_ptr<link::Context>& ctx,
   auto choice_ext = ExtendChoice(choices, batch_num * kBatchSize);
   auto ot_ext = ExtendBaseOt(base_ot, block_num);
 
+  // Note the following is identical to the IKNP protocol without the final
+  // hash code partically copied from
+  // yacl/crypto-primitives/ot/extension/kkrt_ote.cc For a task of
+  // generating 129 OTs, we actually generates 128 * 2 = 256 OTs.
+  for (size_t i = 0; i < batch_num; ++i) {
+    const size_t offset = i * kBatchSize / 128;  // block offsets
+    uint128_t choice_slice = *(choice_ext.data() + offset);
+    std::array<uint128_t, kKappa> send_msg;
+    for (size_t k = 0; k < kKappa; ++k) {
+      const auto& ot_slice0 = ot_ext.first[k][offset];
+      const auto& ot_slice1 = ot_ext.second[k][offset];
+      send_msg[k] = ot_slice0 ^ ot_slice1 ^ choice_slice;
+    }
+    ctx->SendAsync(
+        ctx->NextRank(),
+        ByteContainerView(send_msg.data(), send_msg.size() * sizeof(uint128_t)),
+        fmt::format("KOS:{}", i));
+  }
+
   // Prepare for consistency check
   CheckMsg check_msgs;
 
   // Recevies the random seed from sender
   uint128_t seed =
       DeserializeUint128(ctx->Recv(ctx->NextRank(), fmt::format("KOS-Seed")));
-
+  // Generate coefficent for consistency check
   std::vector<uint64_t> rand_samples(batch_num * 2);
   PrgAesCtr(seed, absl::Span<uint64_t>(rand_samples));
 
-  // Note the following is identical to the IKNP protocol without the final
-  // hash code partically copied from
-  // yacl/crypto-primitives/ot/extension/kkrt_ote.cc For a task of
-  // generating 129 OTs, we actually generates 128 * 2 = 256 OTs.
+  // =================== CONSISTENCY CHECK ===================
+  auto choice_span = absl::MakeSpan(
+      reinterpret_cast<uint64_t*>(choice_ext.data()), batch_num * 2);
+  check_msgs.x = GfMul64(absl::MakeSpan(rand_samples), choice_span);
+
+  for (size_t k = 0; k < kKappa; ++k) {
+    check_msgs.t[k] = GfMul64(
+        absl::MakeSpan(rand_samples),
+        absl::MakeSpan(reinterpret_cast<uint64_t*>(ot_ext.first[k].data()),
+                       batch_num * 2));
+  }
+
+  auto buf = check_msgs.Pack();
+  ctx->SendAsync(ctx->NextRank(), buf, fmt::format("KOS-CHECK"));
+  // =================== CONSISTENCY CHECK ===================
+
   for (size_t i = 0; i < batch_num; ++i) {
-    std::array<uint128_t, kKappa> send_msg;
-    std::array<uint128_t, kKappa> t;
-
+    // AVX need to be aligned to 32 bytes.
+    alignas(32) std::array<uint128_t, kKappa> t;
     const size_t offset = i * kBatchSize / 128;  // block offsets
-    uint128_t choice_slice = *(choice_ext.data() + offset);
-
-    // Security Warning: Consistency check should be in F2k, not ring2k,
-    // therefore our implementation has potential security flaws, we will fix
-    // this in the near future.
-    // FIXME(@shanzhu): Add F2k support
-    // =================== CONSISTENCY CHECK ===================
-    const auto& choice_slice_u64 = DecomposeUInt128(choice_slice);
-    check_msgs.x ^= choice_slice_u64.first & rand_samples[2 * i];
-    check_msgs.x ^= choice_slice_u64.second & rand_samples[2 * i + 1];
-    // =================== CONSISTENCY CHECK ===================
-
     for (size_t k = 0; k < kKappa; ++k) {
-      const auto& ot_slice0 = ot_ext.first[k][offset];
-      const auto& ot_slice1 = ot_ext.second[k][offset];
-      send_msg[k] = ot_slice0 ^ ot_slice1 ^ choice_slice;
-      t[k] = ot_slice0;
-
-      // =================== CONSISTENCY CHECK ===================
-      const auto& tk_u64 = DecomposeUInt128(t[k]);
-      check_msgs.t[k] ^= tk_u64.first & rand_samples[2 * i];
-      check_msgs.t[k] ^= tk_u64.second & rand_samples[2 * i + 1];
-      // =================== CONSISTENCY CHECK ===================
+      t[k] = ot_ext.first[k][offset];
     }
 
-    ctx->SendAsync(
-        ctx->NextRank(),
-        ByteContainerView(send_msg.data(), send_msg.size() * sizeof(uint128_t)),
-        fmt::format("KOS:{}", i));
-
     // Transpose.
-    SseTranspose128(&t);
+    MatrixTranspose128(&t);
 
     // Finalize (without crhash)
     const size_t limit = std::min(kBatchSize, ot_num_ext - i * kBatchSize);
@@ -295,13 +308,10 @@ void KosOtExtRecv(const std::shared_ptr<link::Context>& ctx,
     }
   }
 
-  // =================== CONSISTENCY CHECK ===================
-  auto buf = check_msgs.Pack();
-  ctx->SendAsync(ctx->NextRank(), buf, fmt::format("KOS-CHECK"));
-  // =================== CONSISTENCY CHECK ===================
-
   t_ext.resize(ot_num_valid);
-  ParaCrHashInplace_128(absl::MakeSpan(t_ext));
+  if (cot == false) {
+    ParaCrHashInplace_128(absl::MakeSpan(t_ext));
+  }
   for (size_t i = 0; i < ot_num_valid; i++) {
     recv_blocks[i] = t_ext[i];
   }

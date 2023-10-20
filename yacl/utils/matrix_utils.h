@@ -65,6 +65,10 @@ void EklundhTranspose128(std::array<uint128_t, 128>* inout);
 
 void SseTranspose128(std::array<uint128_t, 128>* inout);
 
+void AvxTranspose128(std::array<uint128_t, 128>* inout);
+
+// void AvxTranspose128x1024(std::array<std::array<uint128_t, 8>, 128>* inout);
+
 void SseTranspose128x1024(std::array<std::array<block, 8>, 128>& inout);
 void SseTranspose128x1024(std::array<std::array<uint128_t, 8>, 128>* inout);
 

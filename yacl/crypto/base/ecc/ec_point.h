@@ -49,6 +49,10 @@ enum class PointOctetFormat {
   // format. It's designated by 0x06 and 0x07 in the first byte, and they have
   // the same meaning as 0x02 and 0x03 in compressed.
   X962Hybrid,
+
+  // ZCash serialization format for Pairing curve BLS12-381
+  // https://www.ietf.org/archive/id/draft-irtf-cfrg-pairing-friendly-curves-11.html#appendix-C
+  ZCash_BLS12_381,
 };
 
 // Points represented in human-readable format

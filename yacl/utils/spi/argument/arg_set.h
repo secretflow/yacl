@@ -14,82 +14,9 @@
 
 #pragma once
 
-#include <any>
-#include <functional>
-#include <map>
-#include <memory>
-#include <string>
-#include <type_traits>
-#include <utility>
-
-#include "absl/strings/ascii.h"
-#include "spdlog/spdlog.h"
-
-#include "yacl/base/exception.h"
+#include "yacl/utils/spi/argument/arg_k.h"
 
 namespace yacl {
-
-class SpiArg {
- public:
-  explicit SpiArg(const std::string &key) : key_(absl::AsciiStrToLower(key)) {}
-
-  template <typename T>
-  SpiArg(const std::string &key, T &&value) : key_(absl::AsciiStrToLower(key)) {
-    operator=(std::forward<T>(value));
-  }
-
-  SpiArg operator=(const char *value) {
-    value_ = absl::AsciiStrToLower(std::string(value));
-    return *this;
-  }
-
-  SpiArg operator=(const std::string &value) {
-    value_ = absl::AsciiStrToLower(value);
-    return *this;
-  }
-
-  template <typename T>
-  SpiArg operator=(const T &value) {
-    value_ = value;
-    return *this;
-  }
-
-  const std::string &Key() const;
-
-  bool HasValue() const;
-
-  template <typename T>
-  T Value() const {
-    try {
-      return std::any_cast<T>(value_);
-    } catch (const std::bad_any_cast &e) {
-      YACL_THROW("Get SPI arg {}: Cannot cast from {} to {}", key_,
-                 value_.type().name(), typeid(T).name());
-    }
-  }
-
- private:
-  std::string key_;
-  std::any value_;
-};
-
-template <typename T>
-class SpiArgKey {
- public:
-  explicit SpiArgKey(const std::string &key)
-      : key_(absl::AsciiStrToLower(key)) {}
-
-  const std::string &Key() const & { return key_; }
-
-  SpiArg operator=(T &&value) const { return {key_, std::forward<T>(value)}; }
-  SpiArg operator=(const T &value) const { return {key_, value}; }
-
- private:
-  std::string key_;
-};
-
-// Pre-defined args..
-const SpiArgKey<std::string> Lib("lib");
 
 class SpiArgs : public std::map<std::string, SpiArg> {
  public:
@@ -121,6 +48,8 @@ class SpiArgs : public std::map<std::string, SpiArg> {
   }
 
   // Get an optional argument.
+  // After getting the SpiArg, you can use SpiArg.HasValue() to check if it
+  // contains a value
   template <typename T>
   SpiArg GetOptional(const SpiArgKey<T> &key) const {
     auto it = find(key.Key());

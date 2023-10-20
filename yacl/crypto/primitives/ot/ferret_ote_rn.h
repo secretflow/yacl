@@ -35,13 +35,14 @@ void MpCotRNSend(const std::shared_ptr<link::Context>& ctx,
   const auto full_size = idx_range;
   const auto batch_num = idx_num;
   const auto batch_size = full_size / batch_num;
+  const auto last_size = full_size - (batch_num - 1) * batch_size;
 
   // for each bin, call single-point cot
   for (uint64_t i = 0; i < batch_num; ++i) {
-    const uint64_t this_size =
-        (i == batch_num - 1) ? full_size - i * batch_size : batch_size;
-    const auto& cot_slice = cot.Slice(i * math::Log2Ceil(this_size),
-                                      (i + 1) * math::Log2Ceil(this_size));
+    const uint64_t this_size = (i == batch_num - 1) ? last_size : batch_size;
+    const auto& cot_slice =
+        cot.Slice(i * math::Log2Ceil(batch_size),
+                  i * math::Log2Ceil(batch_size) + math::Log2Ceil(this_size));
 
     FerretGywzOtExtSend(ctx, cot_slice, this_size,
                         out.subspan(i * batch_size, this_size));
@@ -54,13 +55,14 @@ void MpCotRNRecv(const std::shared_ptr<link::Context>& ctx,
   const auto full_size = idx_range;
   const auto batch_num = idx_num;
   const auto batch_size = full_size / batch_num;
+  const auto last_size = full_size - (batch_num - 1) * batch_size;
 
   // for each bin, call single-point cot
   for (uint64_t i = 0; i < batch_num; ++i) {
-    const uint64_t this_size =
-        (i == batch_num - 1) ? full_size - i * batch_size : batch_size;
-    const auto cot_slice = cot.Slice(i * math::Log2Ceil(this_size),
-                                     (i + 1) * math::Log2Ceil(this_size));
+    const uint64_t this_size = (i == batch_num - 1) ? last_size : batch_size;
+    const auto cot_slice =
+        cot.Slice(i * math::Log2Ceil(batch_size),
+                  i * math::Log2Ceil(batch_size) + math::Log2Ceil(this_size));
     FerretGywzOtExtRecv(ctx, cot_slice, this_size,
                         out.subspan(i * batch_size, this_size));
   }
