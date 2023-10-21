@@ -82,4 +82,15 @@ class AlignedAllocator {
 template <typename T, std::size_t ALIGNMENT_IN_BYTES = 16>
 using AlignedVector = std::vector<T, AlignedAllocator<T, ALIGNMENT_IN_BYTES> >;
 
+template <typename T, std::size_t A>
+bool operator==(AlignedAllocator<T, A> const& a0,
+                AlignedAllocator<T, A> const& a1) {
+  return a0.ALIGNMENT == a1.ALIGNMENT;
+}
+
+template <typename T, size_t A>
+bool operator!=(AlignedAllocator<T, A> const& a0,
+                AlignedAllocator<T, A> const& a1) {
+  return !(a0 == a1);
+}
 }  // namespace yacl

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 """
-warpper bazel cc_xx to modify flags.
+wrapper bazel cc_xx to modify flags.
 """
 
 load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test")
@@ -35,6 +35,7 @@ AES_COPT_FLAGS = select({
     "//conditions:default": [
         "-mavx",
         "-maes",
+        "-mpclmul",
     ],
 })
 
@@ -47,22 +48,18 @@ def _yacl_copts():
     }) + WARNING_FLAGS
 
 def yacl_cc_binary(
-        linkopts = [],
         copts = [],
         **kargs):
     cc_binary(
-        linkopts = linkopts + ["-lm"],
         copts = copts + _yacl_copts(),
         **kargs
     )
 
 def yacl_cc_library(
-        linkopts = [],
         copts = [],
         deps = [],
         **kargs):
     cc_library(
-        linkopts = linkopts,
         copts = _yacl_copts() + copts,
         deps = deps + [
             "@com_github_gabime_spdlog//:spdlog",
@@ -81,14 +78,11 @@ def yacl_configure_make(**attrs):
     return configure_make(**attrs)
 
 def yacl_cc_test(
-        linkopts = [],
         copts = [],
         deps = [],
         linkstatic = True,
         **kwargs):
     cc_test(
-        # -lm for tcmalloc
-        linkopts = linkopts + ["-lm"],
         copts = _yacl_copts() + copts,
         deps = deps + [
             "@com_google_googletest//:gtest_main",

@@ -20,6 +20,7 @@ yacl_cc_library(
     name = "ecc",
     deps = [
         "//yacl/crypto/base/ecc/libsodium",
+        "//yacl/crypto/base/ecc/mcl:ecc",
         "//yacl/crypto/base/ecc/openssl",
         "//yacl/crypto/base/ecc/toy",
     ],
@@ -86,6 +87,33 @@ yacl_cc_test(
     deps = [
         ":ecc",
         "@com_github_fmtlib_fmt//:fmtlib",
+        "@yacl//yacl/utils:parallel",
+    ],
+)
+
+yacl_cc_library(
+    name = "pairing_spi",
+    srcs = ["pairing_spi.cc"],
+    hdrs = ["pairing_spi.h"],
+    deps = [
+        ":spi",
+        "//yacl/crypto/base/field:field_spi",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+yacl_cc_library(
+    name = "pairing",
+    deps = [
+        "//yacl/crypto/base/ecc/mcl:pairing",
+    ],
+)
+
+yacl_cc_test(
+    name = "pairing_test",
+    srcs = ["pairing_test.cc"],
+    deps = [
+        ":pairing",
         "@yacl//yacl/utils:parallel",
     ],
 )

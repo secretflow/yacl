@@ -153,6 +153,21 @@ yacl_cc_library(
     hdrs = [
         "matrix_utils.h",
     ],
+    copts = select({
+        "@platforms//cpu:aarch64": [
+        ],
+        "//conditions:default": [
+            "-march=haswell",
+            "-mavx2",
+        ],
+    }),
+    defines = select({
+        "@platforms//cpu:aarch64": [
+        ],
+        "//conditions:default": [
+            "YACL_ENABLE_BMI2",
+        ],
+    }),
     deps = [
         "//yacl/base:block",
         "//yacl/base:byte_container_view",

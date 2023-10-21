@@ -19,6 +19,10 @@
 #include <string>
 #include <type_traits>
 
+#ifdef YACL_ENABLE_BMI2
+#include "immintrin.h"
+#endif
+
 #include "yacl/base/block.h"
 
 #ifdef __x86_64
@@ -337,6 +341,9 @@ void SseTranspose128x1024(std::array<std::array<uint128_t, 8>, 128>* inout) {
 }
 
 void MatrixTranspose128(std::array<uint128_t, 128>* inout) {
+#ifdef YACL_ENABLE_BMI2
+  return AvxTranspose128(inout);
+#endif
   if (kCPUSupportsSSE2) {
     return SseTranspose128(inout);
   }
@@ -351,5 +358,194 @@ void MatrixTranspose128x1024(std::array<std::array<block, 8>, 128>& inout) {
 
   return EklundhTranspose128x1024(inout);
 }
+
+#ifdef YACL_ENABLE_BMI2
+// avx_* function from
+// https://github.com/osu-crypto/libOTe/blob/master/libOTe/Tools/Tools.cpp
+// libOTe License:
+// This project has been placed in the public domain. As such, you are
+// unrestricted in how you use it, commercial or otherwise.
+
+//  Templates are used for loop unrolling.
+// Base case for the following function.
+template <size_t blockSizeShift, size_t blockRowsShift, size_t j = 0>
+static inline typename std::enable_if<j == (1 << blockSizeShift)>::type
+avx_transpose_block_iter1([[maybe_unused]] __m256i* inOut) {}
+
+// Transpose the order of the 2^blockSizeShift by 2^blockSizeShift blocks (but
+// not within each block) within each 2^(blockSizeShift+1) by
+// 2^(blockSizeShift+1) matrix in a nRows by 2^7 matrix. Only handles the first
+// two rows out of every 2^blockRowsShift rows in each block, starting j *
+// 2^blockRowsShift rows into the block. When blockRowsShift == 1 this does the
+// transposes within the 2 by 2 blocks as well.
+template <size_t blockSizeShift, size_t blockRowsShift, size_t j = 0>
+static inline
+    typename std::enable_if<(j < (1 << blockSizeShift)) &&
+                            (blockSizeShift > 0) && (blockSizeShift < 6) &&
+                            (blockRowsShift >= 1)>::type
+    avx_transpose_block_iter1(__m256i* inOut) {
+  avx_transpose_block_iter1<blockSizeShift, blockRowsShift,
+                            j + (1 << blockRowsShift)>(inOut);
+
+  // Mask consisting of alternating 2^blockSizeShift 0s and 2^blockSizeShift 1s.
+  // Least significant bit is 0.
+  uint64_t mask = ((uint64_t)-1) << 32;
+  for (int k = 4; k >= (int)blockSizeShift; --k)
+    mask = mask ^ (mask >> (1 << k));
+
+  __m256i& x = inOut[j / 2];
+  __m256i& y = inOut[j / 2 + (1 << (blockSizeShift - 1))];
+
+  // Handle the 2x2 blocks as well. Each block is within a single 256-bit
+  // vector, so it works differently from the other cases.
+  if (blockSizeShift == 1) {
+    // transpose 256 bit blocks so that two can be done in parallel.
+    __m256i u = _mm256_permute2x128_si256(x, y, 0x20);
+    __m256i v = _mm256_permute2x128_si256(x, y, 0x31);
+
+    __m256i diff = _mm256_xor_si256(u, _mm256_slli_epi16(v, 1));
+    diff = _mm256_and_si256(diff, _mm256_set1_epi16(0xaaaa));
+    u = _mm256_xor_si256(u, diff);
+    v = _mm256_xor_si256(v, _mm256_srli_epi16(diff, 1));
+
+    // Transpose again to switch back.
+    x = _mm256_permute2x128_si256(u, v, 0x20);
+    y = _mm256_permute2x128_si256(u, v, 0x31);
+  }
+
+  __m256i diff =
+      _mm256_xor_si256(x, _mm256_slli_epi64(y, (uint64_t)1 << blockSizeShift));
+  diff = _mm256_and_si256(diff, _mm256_set1_epi64x(mask));
+  x = _mm256_xor_si256(x, diff);
+  y = _mm256_xor_si256(y,
+                       _mm256_srli_epi64(diff, (uint64_t)1 << blockSizeShift));
+}
+
+// Special case to use the unpack* instructions.
+template <size_t blockSizeShift, size_t blockRowsShift, size_t j = 0>
+static inline typename std::enable_if<(j < (1 << blockSizeShift)) &&
+                                      (blockSizeShift == 6)>::type
+avx_transpose_block_iter1(__m256i* inOut) {
+  avx_transpose_block_iter1<blockSizeShift, blockRowsShift,
+                            j + (1 << blockRowsShift)>(inOut);
+
+  __m256i& x = inOut[j / 2];
+  __m256i& y = inOut[j / 2 + (1 << (blockSizeShift - 1))];
+  __m256i outX = _mm256_unpacklo_epi64(x, y);
+  __m256i outY = _mm256_unpackhi_epi64(x, y);
+  x = outX;
+  y = outY;
+}
+
+// Base case for the following function.
+template <size_t blockSizeShift, size_t blockRowsShift, size_t nRows>
+static inline typename std::enable_if<nRows == 0>::type
+avx_transpose_block_iter2([[maybe_unused]] __m256i* inOut) {}
+
+// Transpose the order of the 2^blockSizeShift by 2^blockSizeShift blocks (but
+// not within each block) within each 2^(blockSizeShift+1) by
+// 2^(blockSizeShift+1) matrix in a nRows by 2^7 matrix. Only handles the first
+// two rows out of every 2^blockRowsShift rows in each block. When
+// blockRowsShift == 1 this does the transposes within the 2 by 2 blocks as
+// well.
+template <size_t blockSizeShift, size_t blockRowsShift, size_t nRows>
+static inline typename std::enable_if<(nRows > 0)>::type
+avx_transpose_block_iter2(__m256i* inOut) {
+  constexpr size_t matSize = 1 << (blockSizeShift + 1);
+  static_assert(nRows % matSize == 0,
+                "Can't transpose a fractional number of matrices");
+
+  constexpr size_t i = nRows - matSize;
+  avx_transpose_block_iter2<blockSizeShift, blockRowsShift, i>(inOut);
+  avx_transpose_block_iter1<blockSizeShift, blockRowsShift>(inOut + i / 2);
+}
+
+// Base case for the following function.
+template <size_t blockSizeShift, size_t matSizeShift, size_t blockRowsShift,
+          size_t matRowsShift>
+static inline typename std::enable_if<blockSizeShift == matSizeShift>::type
+avx_transpose_block([[maybe_unused]] __m256i* inOut) {}
+
+// Transpose the order of the 2^blockSizeShift by 2^blockSizeShift blocks (but
+// not within each block) within each 2^matSizeShift by 2^matSizeShift matrix in
+// a 2^(matSizeShift + matRowsShift) by 2^7 matrix. Only handles the first two
+// rows out of every 2^blockRowsShift rows in each block. When blockRowsShift ==
+// 1 this does the transposes within the 2 by 2 blocks as well.
+template <size_t blockSizeShift, size_t matSizeShift, size_t blockRowsShift,
+          size_t matRowsShift>
+static inline typename std::enable_if<(blockSizeShift < matSizeShift)>::type
+avx_transpose_block(__m256i* inOut) {
+  avx_transpose_block_iter2<blockSizeShift, blockRowsShift,
+                            (1 << (matRowsShift + matSizeShift))>(inOut);
+  avx_transpose_block<blockSizeShift + 1, matSizeShift, blockRowsShift,
+                      matRowsShift>(inOut);
+}
+
+static constexpr size_t avxBlockShift = 4;
+static constexpr size_t avxBlockSize = 1 << avxBlockShift;
+
+// Base case for the following function.
+template <size_t iter = 7>
+static inline typename std::enable_if<iter <= avxBlockShift + 1>::type
+avx_transpose(__m256i* inOut) {
+  for (size_t i = 0; i < 64; i += avxBlockSize)
+    avx_transpose_block<1, iter, 1, avxBlockShift + 1 - iter>(inOut + i);
+}
+
+// Algorithm roughly from "Extension of Eklundh's matrix transposition algorithm
+// and its application in digital image processing". Transpose each block of
+// size 2^iter by 2^iter inside a 2^7 by 2^7 matrix.
+template <size_t iter = 7>
+static inline typename std::enable_if<(iter > avxBlockShift + 1)>::type
+avx_transpose(__m256i* inOut) {
+  assert((uint64_t)inOut % 32 == 0);
+  avx_transpose<iter - avxBlockShift>(inOut);
+
+  constexpr size_t blockSizeShift = iter - avxBlockShift;
+  size_t mask = (1 << (iter - 1)) - (1 << (blockSizeShift - 1));
+  if (iter == 7)
+    // Simpler (but equivalent) iteration for when iter == 7, which means that
+    // it doesn't need to count on both sides of the range of bits specified in
+    // mask.
+    for (size_t i = 0; i < (1 << (blockSizeShift - 1)); ++i)
+      avx_transpose_block<blockSizeShift, iter, blockSizeShift, 0>(inOut + i);
+  else
+    // Iteration trick adapted from "Hacker's Delight".
+    for (size_t i = 0; i < 64; i = (i + mask + 1) & ~mask)
+      avx_transpose_block<blockSizeShift, iter, blockSizeShift, 0>(inOut + i);
+}
+
+void AvxTranspose128(std::array<uint128_t, 128>* inOut) {
+  avx_transpose((__m256i*)inOut);
+}
+
+// // input is 128 rows off 8 blocks each.
+// void AvxTranspose128x1024(std::array<uint128_t, 128>* inOut) {
+//   assert((uint64_t)inOut % 32 == 0);
+//   AlignedArray<block, 128 * 8> buff;
+//   for (uint64_t i = 0; i < 8; ++i) {
+//     // AlignedArray<block, 128> sub;
+//     auto sub = &buff[128 * i];
+//     for (uint64_t j = 0; j < 128; ++j) {
+//       sub[j] = inOut[j * 8 + i];
+//     }
+
+//     // for (uint64_t j = 0; j < 128; ++j)
+//     //{
+//     //     buff[128 * i + j] = inOut[i + j * 8];
+//     // }
+
+//     avx_transpose128(&buff[128 * i]);
+//   }
+
+//   for (uint64_t i = 0; i < 8; ++i) {
+//     // AlignedArray<block, 128> sub;
+//     auto sub = &buff[128 * i];
+//     for (uint64_t j = 0; j < 128; ++j) {
+//       inOut[j * 8 + i] = sub[j];
+//     }
+//   }
+// }
+#endif
 
 }  // namespace yacl

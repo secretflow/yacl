@@ -129,6 +129,8 @@ void OtRecvStore::ConsistencyCheck() const {
   }
 }
 
+// FIX ME: a const OtRecvStore could execute "Slice" to get a non-const
+// OtRecvStore, which could change Block Value by "SetBlock"
 OtRecvStore OtRecvStore::Slice(uint64_t begin, uint64_t end) const {
   // Recall: A new slice looks like the follwoing:
   //
@@ -212,7 +214,7 @@ dynamic_bitset<uint128_t> OtRecvStore::CopyChoice() const {
 
 AlignedVector<uint128_t> OtRecvStore::CopyBlocks() const {
   return {blk_buf_->begin() + internal_use_ctr_,
-          blk_buf_->begin() + internal_use_size_};
+          blk_buf_->begin() + internal_use_ctr_ + internal_use_size_};
 }
 
 OtRecvStore MakeOtRecvStore(const dynamic_bitset<uint128_t>& choices,
@@ -333,6 +335,8 @@ void OtSendStore::ConsistencyCheck() const {
                blk_buf_->size(), internal_buf_size_);
 }
 
+// FIX ME: a const OtSendStore could execute "Slice" to get a non-const
+// OtSendStore, which could change Block Value by "SetBlock"
 OtSendStore OtSendStore::Slice(uint64_t begin, uint64_t end) const {
   const uint64_t ot_blk_num = (type_ == OtStoreType::Compact) ? 1 : 2;
   // Recall: A new slice looks like the follwoing:
@@ -432,7 +436,7 @@ AlignedVector<uint128_t> OtSendStore::CopyCotBlocks() const {
   YACL_ENFORCE(type_ == OtStoreType::Compact,
                "CopyCotBlocks() is only allowed in compact mode");
   return {blk_buf_->begin() + internal_buf_ctr_,
-          blk_buf_->begin() + internal_use_size_};
+          blk_buf_->begin() + internal_buf_ctr_ + internal_use_size_};
 }
 
 OtSendStore MakeOtSendStore(

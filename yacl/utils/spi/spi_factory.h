@@ -26,7 +26,7 @@
 #include "spdlog/spdlog.h"
 
 #include "yacl/base/exception.h"
-#include "yacl/utils/spi/argument.h"
+#include "yacl/utils/spi/argument/argument.h"
 
 namespace yacl {
 
@@ -58,8 +58,9 @@ class SpiFactoryBase {
   std::unique_ptr<SPI_T> Create(const std::string &feature_name,
                                 T &&...extra_args) const {
     SpiArgs args({std::forward<T>(extra_args)...});
-    auto lib_name = args.GetOptional(Lib);
+    auto lib_name = args.GetOptional(ArgLib);
     if (!lib_name.HasValue()) {
+      // auto select best lib
       for (const auto &perf_item : performance_map_) {
         if (checker_map_.at(perf_item.second)(feature_name, args)) {
           lib_name = perf_item.second;
@@ -68,10 +69,18 @@ class SpiFactoryBase {
         SPDLOG_DEBUG("SPI lib {} does not support feature {}, try next ...",
                      perf_item.second, feature_name);
       }
+    } else {
+      // The user has specified lib
+      auto lib_it = checker_map_.find(lib_name.Value<std::string>());
+      YACL_ENFORCE(lib_it != checker_map_.end(), "Lib {} not exist",
+                   lib_name.Value<std::string>());
+      YACL_ENFORCE(lib_it->second(feature_name, args),
+                   "Lib {} does not support feature {} or args",
+                   lib_name.Value<std::string>(), feature_name);
     }
 
     YACL_ENFORCE(lib_name.HasValue(),
-                 "There is no lib supports {}, please use other feature/args",
+                 "There are no lib supports {}, please use other feature/args",
                  feature_name);
     YACL_ENFORCE(creator_map_.count(lib_name.Value<std::string>()) > 0,
                  "Create {} instance fail, spi lib not found",
@@ -124,8 +133,11 @@ class SpiFactoryBase {
   SpiFactoryBase() = default;
 
  private:
+  // performance/priority -> lib name
   std::map<uint64_t, std::string, std::greater<>> performance_map_;
+  // lib name -> lib factory
   std::map<std::string, SpiCreatorT<SPI_T>> creator_map_;
+  // lib name -> lib factory
   std::map<std::string, SpiCheckerT> checker_map_;
 };
 

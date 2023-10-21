@@ -8,8 +8,13 @@ All notable changes to this project will be documented in this file.
 > - Add `[Bugfix]` prefix for bug fixes
 > - Add `[API]` prefix for API changes
 
-## Staging
-> please add your unreleased change here.
+## 2023-10-20
+- [YACL] 0.4.1 release
+- [Feature] Add Sigma-type ZKP Protocols (An unified implementation)
+- [Feature] Add ECC Pairing SPI and support to libmcl(ecc, pairing)
+- [Feature] Add Multiplication for GF(2^64) and GF(2^128)
+- [Bugfix] fix KOS OTe security flaws
+- [Feature] Add AVX2 Matrix Transpose
 
 ## 2023-05-25
 - [YACL] 0.3.3 release
