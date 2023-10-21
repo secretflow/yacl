@@ -77,3 +77,7 @@ bazel test //... --config=asan -c dbg
 bazel build //... -c dbg --config=macos-asan
 bazel test //... --config=macos-asan -c dbg
 ```
+
+# License
+
+See [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md)
