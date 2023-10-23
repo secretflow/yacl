@@ -1,6 +1,6 @@
 # YACL (Yet Another Common crypto Library)
 
-## MOOC test only
+## MOOC Test Only
 
 [![CircleCI](https://dl.circleci.com/status-badge/img/gh/secretflow/yacl/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/secretflow/yacl/tree/main)
 
