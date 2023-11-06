@@ -29,9 +29,8 @@ namespace yacl::io {
 
 template <class S>
 S FloatNormalization(S v) {
-  if (YACL_UNLIKELY(v != 0 && std::abs(v) < std::numeric_limits<S>::min())) {
-    // see:
-    // https://stackoverflow.com/questions/39746861/is-dbl-min-the-smallest-positive-double
+  // see: misra 6-2-2
+  if (YACL_UNLIKELY(std::fabs(v) <= std::numeric_limits<S>::epsilon())) {
     return 0;
   }
   return v;

@@ -15,21 +15,40 @@
 #pragma once
 
 #include "mcl/fp.hpp"
+#include "mcl/fp_tower.hpp"
 
+#include "yacl/crypto/base/ecc/mcl/pairing_header.h"
 #include "yacl/crypto/base/field/field_spi.h"
 
 namespace yacl::crypto::hmcl {
 
 using yacl::math::MPInt;
 
-// Fields(FpT) template in libmcl are uniquely instanced by `tag` and
-// `maxBitSize` ---- `template<class tag, size_t maxBitSize> class FpT`. The
-// instanced field class (tag + maxBitSize) could have only a singleton object
-// since it is globally initialized by `FpT<...>::init(...)`.
-// Warning! constructor of same field(specified by same tag & maxBitSize) of is
-// **not thread-safe**.
-template <typename T_ = mcl::FpT<mcl::FpTag, MCL_MAX_BIT_SIZE>>
+// class `MclField` have specific template parameters from libmcl,
+// checker `is_supported_mcl_field` helps avoid misuse of class `MclField`
+template <typename T, size_t degree>
+struct is_supported_mcl_field {
+  static constexpr bool value = false;
+};
+
+// Support template params check in template class `MclField`
+// ! NOT suggest use DECLARE_SUPPORT.
+//  Developers should be aware of the specific field type `T` from libmcl and
+//  the field extension degree of `T` if use macro DECLARE_SUPPORT.
+#define DECLARE_SUPPORT(T, degree)           \
+  template <>                                \
+  struct is_supported_mcl_field<T, degree> { \
+    static constexpr bool value = true;      \
+  };
+
+template <typename T_, size_t degree_>
 class MclField : public Field {
+ private:
+  //  Only declared field from libmcl could be instantiated in this class.
+  template <
+      typename = std::enable_if_t<is_supported_mcl_field<T_, degree_>::value>>
+  MclField() {}
+
  public:
   using T = T_;
 
@@ -85,9 +104,6 @@ class MclField : public Field {
   Buffer Serialize(const FElement& x) const override;
   FElement Deserialize(ByteContainerView buffer) const override;
 
- private:
-  explicit MclField();
-
  public:
   explicit MclField(const MPInt& order, bool is_sub_field);
   // xi_a is used for Fp2::mul_xi(), where xi = xi_a + i and i^2 = -1, see
@@ -95,10 +111,32 @@ class MclField : public Field {
   explicit MclField(const MPInt& base_prime_p,
                     mcl::fp::Mode mode = mcl::fp::FP_AUTO, int xi_a = 1);
 
- protected:
+ private:
   MPInt order_;
   bool is_sub_field_;
-  int64_t degree_;
 };
+
+DECLARE_SUPPORT(mcl::bls12::GT, 12);
+
+#ifdef MCL_FIELD_YACL_TEST
+DECLARE_SUPPORT(mcl::FpT<>, 1);
+typedef mcl::FpT<mcl::FpTag, 256> fqt256;
+DECLARE_SUPPORT(fqt256, 1);
+DECLARE_SUPPORT(mcl::Fp2T<mcl::FpT<>>, 2);
+DECLARE_SUPPORT(mcl::Fp6T<mcl::FpT<>>, 6);
+DECLARE_SUPPORT(mcl::Fp12T<mcl::FpT<>>, 12);
+#endif
+
+#ifdef MCL_ALL_PAIRING_FOR_YACL
+DECLARE_SUPPORT(mcl::bn254::GT, 12);
+DECLARE_SUPPORT(mcl::bn382m::GT, 12);
+DECLARE_SUPPORT(mcl::bn382r::GT, 12);
+DECLARE_SUPPORT(mcl::bn462::GT, 12);
+DECLARE_SUPPORT(mcl::bnsnark::GT, 12);
+DECLARE_SUPPORT(mcl::bn160::GT, 12);
+DECLARE_SUPPORT(mcl::bls123::GT, 12);
+DECLARE_SUPPORT(mcl::bls124::GT, 12);
+DECLARE_SUPPORT(mcl::bn256::GT, 12);
+#endif
 
 }  // namespace yacl::crypto::hmcl

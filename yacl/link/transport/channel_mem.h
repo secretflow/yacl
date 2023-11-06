@@ -76,6 +76,7 @@ class ChannelMem final : public IChannel {
   void SetThrottleWindowSize(size_t) final {}
   void TestSend(uint32_t /*timeout*/) final {}
   void TestRecv() final {}
+  void SetChunkParallelSendSize(size_t) final {}
   // no affect
 
  private:

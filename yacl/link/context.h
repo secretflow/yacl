@@ -43,6 +43,7 @@ struct ContextDesc {
       1024 * 1024;                                              //  1M Bytes
   static constexpr uint32_t kDefaultHttpTimeoutMs = 20 * 1000;  // 20 seconds.
   static constexpr uint32_t kDefaultThrottleWindowSize = 10;
+  static constexpr uint32_t kDefaultChunkParallelSendSize = 8;
   static constexpr char kDefaultBrpcChannelProtocol[] = "baidu_std";
   static constexpr char kDefaultLinkType[] = "normal";
   static constexpr uint32_t kDefaultBrpcRetryCount = 3;
@@ -110,6 +111,10 @@ struct ContextDesc {
   // throw exception after wait for `recv_timeout_ms`
   uint32_t throttle_window_size = kDefaultThrottleWindowSize;
 
+  // chunk parallel send size for channel. if need chunked send when send
+  // message, the max paralleled send size is chunk_parallel_send_size
+  uint32_t chunk_parallel_send_size = kDefaultChunkParallelSendSize;
+
   // BRPC client channel protocol.
   std::string brpc_channel_protocol = kDefaultBrpcChannelProtocol;
 
@@ -166,6 +171,9 @@ struct ContextDesc {
         throttle_window_size(pb.throttle_window_size()
                                  ? pb.throttle_window_size()
                                  : kDefaultThrottleWindowSize),
+        chunk_parallel_send_size(pb.chunk_parallel_send_size()
+                                     ? pb.chunk_parallel_send_size()
+                                     : kDefaultChunkParallelSendSize),
         brpc_channel_protocol(pb.brpc_channel_protocol().size()
                                   ? pb.brpc_channel_protocol()
                                   : kDefaultBrpcChannelProtocol),
@@ -285,6 +293,8 @@ class Context {
   void WaitLinkTaskFinish();
 
   void SetThrottleWindowSize(size_t);
+
+  void SetChunkParallelSendSize(size_t);
 
   // for internal algorithms.
   void SendAsyncInternal(size_t dst_rank, const std::string& key,

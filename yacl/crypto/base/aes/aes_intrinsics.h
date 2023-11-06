@@ -84,7 +84,7 @@ inline uint128_t m128i_cast_uint128(__m128i x) {
 
 struct AES_KEY {
   __m128i rd_key[11];
-  unsigned int rounds;
+  unsigned int rounds = 0;
 };
 
 // set aes encryption key

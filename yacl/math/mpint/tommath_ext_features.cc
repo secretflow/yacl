@@ -255,10 +255,6 @@ void mp_ext_rand_bits(mp_int *out, int64_t bits) {
 
 // "De Bruijn" Algorithm
 // Original paper: http://supertech.csail.mit.edu/papers/debruijn.pdf
-// However, the original "De Bruijn" Algorithm only works with uint32_t
-// This 64-bits version borrows from:
-// https://stackoverflow.com/questions/21888140/de-bruijn-algorithm-binary-digit-count-64bits-c-sharp
-//
 // Note: "De Bruijn" is the fastest portable algorithms.
 // Other ways such as std:__lg(), __builtin_clz or _BitScanReverse are not
 // portable
@@ -281,6 +277,12 @@ int count_bits_debruijn(uint64_t v) {
   v |= v >> 8;
   v |= v >> 16;
   v |= v >> 32;
+  // This is a variant of De Bruijn's algorithm. Now the 'v' is not power of
+  // 2, but 2^n -1. The multiplication of 'v' and magic number cannot simply be
+  // regarded as a left shift operation, so it is just a coincidence that the
+  // following method works.
+  // This method is borrowed from:
+  // https://stackoverflow.com/questions/21888140/de-bruijn-algorithm-binary-digit-count-64bits-c-sharp
   return bitPatternToLog2[(v * 0x6c04f118e9966f6bULL) >> 57];
 }
 

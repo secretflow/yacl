@@ -137,16 +137,16 @@ class MclFieldTest : public ::testing::Test {
 };
 
 #ifdef MCL_FIELD_YACL_TEST
-#define DEFAULT_FIELD_TEST(intern_type)                            \
-  class Mcl##intern_type##Test : public MclFieldTest {             \
-    void SetUp() override {                                        \
-      auto child_ptr = std::make_unique<MclField<intern_type>>(    \
-          "0xffffffffffffffffffffffffffffffffffffffffffffff13"_mp, \
-          mcl::fp::FP_AUTO);                                       \
-      field_ = std::move(child_ptr);                               \
-      filed_name_ = #intern_type;                                  \
-    }                                                              \
-  };                                                               \
+#define DEFAULT_FIELD_TEST(intern_type, degree)                         \
+  class Mcl##intern_type##Test : public MclFieldTest {                  \
+    void SetUp() override {                                             \
+      auto child_ptr = std::make_unique<MclField<intern_type, degree>>( \
+          "0xffffffffffffffffffffffffffffffffffffffffffffff13"_mp,      \
+          mcl::fp::FP_AUTO);                                            \
+      field_ = std::move(child_ptr);                                    \
+      filed_name_ = #intern_type;                                       \
+    }                                                                   \
+  };                                                                    \
   TEST_F(Mcl##intern_type##Test, Works) { RunAllTests(); }
 
 using DefaultFp = mcl::FpT<>;
@@ -155,11 +155,11 @@ using DefaultFp2 = mcl::Fp2T<mcl::FpT<>>;
 using DefaultFp6 = mcl::Fp6T<mcl::FpT<>>;
 using DefaultFp12 = mcl::Fp12T<mcl::FpT<>>;
 
-DEFAULT_FIELD_TEST(DefaultFp);
-DEFAULT_FIELD_TEST(DefaultFpWithSize256);
-DEFAULT_FIELD_TEST(DefaultFp2);
-DEFAULT_FIELD_TEST(DefaultFp6);
-DEFAULT_FIELD_TEST(DefaultFp12);
+DEFAULT_FIELD_TEST(DefaultFp, 1);
+DEFAULT_FIELD_TEST(DefaultFpWithSize256, 1);
+DEFAULT_FIELD_TEST(DefaultFp2, 2);
+DEFAULT_FIELD_TEST(DefaultFp6, 6);
+DEFAULT_FIELD_TEST(DefaultFp12, 12);
 #endif
 
 // TODO: temporarily disable mcl pairing test, since its weird error on Intel
@@ -176,5 +176,16 @@ DEFAULT_FIELD_TEST(DefaultFp12);
   TEST_F(MclPairing##classname##GTTest, DISABLED_Works) { RunAllTests(); }
 
 DECLARE_PAIRING_FIELD_TEST_CLASS(Bls12381, "bls12-381");
+
+#ifdef MCL_ALL_PAIRING_FOR_YACL
+DECLARE_PAIRING_FIELD_TEST_CLASS(BN254, "bn254");
+DECLARE_PAIRING_FIELD_TEST_CLASS(BN384M, "bn382m");
+DECLARE_PAIRING_FIELD_TEST_CLASS(BN384R, "bn382r");
+DECLARE_PAIRING_FIELD_TEST_CLASS(BN462, "bn462");
+DECLARE_PAIRING_FIELD_TEST_CLASS(BNSnark, "bn_snark1");
+DECLARE_PAIRING_FIELD_TEST_CLASS(BN160, "bn160");
+DECLARE_PAIRING_FIELD_TEST_CLASS(Bls12461, "bls12-461");
+DECLARE_PAIRING_FIELD_TEST_CLASS(BN256, "bn256");
+#endif
 
 }  // namespace yacl::crypto::hmcl::test

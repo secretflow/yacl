@@ -21,7 +21,7 @@ namespace yacl::crypto::hmcl {
 std::map<PairingName, int> Name2MclPairingEnum = {
     {"bls12-381", MCL_BLS12_381},
 #ifdef MCL_ALL_PAIRING_FOR_YACL
-    {"bn254n", MCL_BN254},        {"bn382m", MCL_BN381_1},
+    {"bn254", MCL_BN254},         {"bn382m", MCL_BN381_1},
     {"bn382r", MCL_BN381_2},      {"bn462", MCL_BN462},
     {"bn_snark1", MCL_BN_SNARK1}, {"bn160", MCL_BN160},
     {"bls12-377", MCL_BLS12_377}, {"bls12-461", MCL_BLS12_461},

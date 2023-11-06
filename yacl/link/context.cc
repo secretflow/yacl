@@ -119,6 +119,14 @@ void Context::SetThrottleWindowSize(size_t w) {
   }
 }
 
+void Context::SetChunkParallelSendSize(size_t size) {
+  for (const auto& l : channels_) {
+    if (l) {
+      l->SetChunkParallelSendSize(size);
+    }
+  }
+}
+
 void Context::WaitLinkTaskFinish() {
   YACL_ENFORCE(is_sub_world_ == false,
                "DO NOT call WaitLinkTaskFinish on sub world link");

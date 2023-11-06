@@ -14,6 +14,12 @@
 
 #pragma once
 
+#ifndef HAS_OT_INTERFACE
+#define HAS_OT_INTERFACE
+#else
+#error "OT interface already defined"
+#endif
+
 #include "yacl/crypto/primitives/ot/base_ot_interface.h"
 
 namespace yacl::crypto {

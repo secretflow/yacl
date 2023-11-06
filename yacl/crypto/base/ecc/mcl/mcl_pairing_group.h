@@ -38,7 +38,7 @@ class MclPGFactory {
       MclGroupT<mcl::curve_name::Fp, mcl::curve_name::Fr>;  \
   using MclPairing##classname##G2 =                         \
       MclGroupT<mcl::curve_name::Fp2, mcl::curve_name::Fr>; \
-  using MclPairing##classname##GT = MclField<mcl::curve_name::GT>;
+  using MclPairing##classname##GT = MclField<mcl::curve_name::GT, 12>;
 
 PAIRING_CURVE_ALIAS(BN254, bn254);
 PAIRING_CURVE_ALIAS(BN384M, bn382m);
