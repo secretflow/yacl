@@ -69,7 +69,7 @@ void X86AsmOtInterface::Recv(const std::shared_ptr<link::Context> &ctx,
       // even though there's already a hash in sender_keygen_check, we need to
       // hash again with the index i to ensure security
       // ref: https://eprint.iacr.org/2021/682
-      Buffer buf(&messages[j][0], sizeof(uint128_t));
+      ByteContainerView buf(&messages[j][0], sizeof(uint128_t));
       recv_blocks[i + j] = RO.Gen<uint128_t>(buf, i + j);
     }
   }
@@ -107,8 +107,8 @@ void X86AsmOtInterface::Send(const std::shared_ptr<link::Context> &ctx,
       // even though there's already a hash in sender_keygen_check, we need to
       // hash again with the index i to ensure security
       // ref: https://eprint.iacr.org/2021/682
-      Buffer buf0(&messages[0][j][0], sizeof(uint128_t));
-      Buffer buf1(&messages[1][j][0], sizeof(uint128_t));
+      ByteContainerView buf0(&messages[0][j][0], sizeof(uint128_t));
+      ByteContainerView buf1(&messages[1][j][0], sizeof(uint128_t));
 
       send_blocks[i + j][0] = RO.Gen<uint128_t>(buf0, i + j);
       send_blocks[i + j][1] = RO.Gen<uint128_t>(buf1, i + j);

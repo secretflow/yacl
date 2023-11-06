@@ -272,8 +272,8 @@ void Channel::SendChunked(const std::string& key, ByteContainerView value) {
   const size_t num_bytes = value.size();
   const size_t num_chunks = (num_bytes + bytes_per_chunk - 1) / bytes_per_chunk;
 
-  constexpr uint32_t kParallelSize = 8;
-  auto window = std::make_shared<SendChunkedWindow>(kParallelSize);
+  uint32_t parallel_size = chunk_parallel_send_size_;
+  auto window = std::make_shared<SendChunkedWindow>(parallel_size);
 
   for (size_t chunk_idx = 0; chunk_idx < num_chunks; chunk_idx++) {
     const size_t chunk_offset = chunk_idx * bytes_per_chunk;

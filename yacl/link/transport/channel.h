@@ -87,6 +87,9 @@ class IChannel {
 
   // wait for dummy msg from peer, timeout by recv_timeout_ms_.
   virtual void TestRecv() = 0;
+
+  // set chunk parallel send size
+  virtual void SetChunkParallelSendSize(size_t size) = 0;
 };
 
 class TransportLink {
@@ -204,6 +207,10 @@ class Channel : public IChannel, public std::enable_shared_from_this<Channel> {
   void OnRequest(const ::google::protobuf::Message& request,
                  ::google::protobuf::Message* response);
 
+  void SetChunkParallelSendSize(size_t size) final {
+    chunk_parallel_send_size_ = size;
+  }
+
  protected:
   void SendChunked(const std::string& key, ByteContainerView value);
 
@@ -304,6 +311,7 @@ class Channel : public IChannel, public std::enable_shared_from_this<Channel> {
   // chunking related.
   bthread::Mutex chunked_values_mutex_;
   std::map<std::string, std::shared_ptr<ChunkedMessage>> chunked_values_;
+  std::atomic<uint32_t> chunk_parallel_send_size_ = 8;
 
   // message database related.
   bthread::Mutex msg_mutex_;

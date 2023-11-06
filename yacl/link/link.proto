@@ -111,4 +111,7 @@ message ContextDescProto {
   // do aggressive retry， this means that retries will be made on additional
   // error codes
   bool brpc_aggressive_retry = 16;
+  // chunk parallel send size for channel. if need chunked send when send
+  // message, the max paralleled send size is chunk_parallel_send_size
+  uint32 chunk_parallel_send_size = 17;
 }

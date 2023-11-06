@@ -79,7 +79,6 @@ yacl_cc_library(
     srcs = ["base_ot.cc"],
     hdrs = ["base_ot.h"],
     deps = [
-        ":portable_ot_interface",
         "//yacl/base:exception",
         "//yacl/crypto/primitives/ot:ot_store",
         "//yacl/link",
@@ -87,9 +86,10 @@ yacl_cc_library(
     ] + select({
         "@bazel_tools//src/conditions:linux_x86_64": [
             ":x86_asm_ot_interface",
-            "@com_github_google_cpu_features//:cpu_features",
         ],
-        "//conditions:default": [],
+        "//conditions:default": [
+            ":portable_ot_interface",
+        ],
     }),
 )
 

@@ -24,7 +24,7 @@ namespace yacl::crypto::hmcl {
 
 using MclPairingBls12381G1 = MclGroupT<mcl::bls12::Fp, mcl::bls12::Fr>;
 using MclPairingBls12381G2 = MclGroupT<mcl::bls12::Fp2, mcl::bls12::Fr>;
-using MclPairingBls12381GT = MclField<mcl::bls12::GT>;
+using MclPairingBls12381GT = MclField<mcl::bls12::GT, 12>;
 
 class MclPairingBls12381 : public PairingGroup {
  public:

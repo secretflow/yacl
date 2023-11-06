@@ -15,13 +15,12 @@
 #include "yacl/crypto/primitives/ot/base_ot.h"
 
 #if defined(__linux__) && defined(__x86_64)
-#include "cpu_features/cpuinfo_x86.h"
-
 #include "yacl/crypto/primitives/ot/x86_asm_ot_interface.h"
+#else
+#include "yacl/crypto/primitives/ot/portable_ot_interface.h"
 #endif
 
 #include "yacl/base/exception.h"
-#include "yacl/crypto/primitives/ot/portable_ot_interface.h"
 
 namespace yacl::crypto {
 namespace {
@@ -29,12 +28,10 @@ namespace {
 std::unique_ptr<BaseOTInterface> GetOtInterface() {
 #if defined(__linux__) && defined(__x86_64)
   // x86 asm ot does not support macOS
-  static const auto features = cpu_features::GetX86Info().features;
-  if (features.avx) {
-    return std::make_unique<X86AsmOtInterface>();
-  }
-#endif
+  return std::make_unique<X86AsmOtInterface>();
+#else
   return std::make_unique<PortableOtInterface>();
+#endif
 }
 
 }  // namespace
