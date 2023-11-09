@@ -64,32 +64,30 @@ jobs:
     resource_class: macos.m1.medium.gen1
     steps:
       - checkout
-      - when:
-          steps:
-            - run:
-                name: "Install homebrew dependencies"
-                command: |
-                  brew install bazel cmake ninja libomp wget md5sha1sum
-                  (cd /opt/homebrew/Cellar/bazel/*.*.*/libexec/bin && curl -fLO https://github.com/bazelbuild/bazel/releases/download/6.2.1/bazel-6.2.1-darwin-arm64 && chmod +x bazel-6.2.1-darwin-arm64)
-            - run:
-                name: "test"
-                command: |
-                  set +e
-                  declare -i test_status
-                  bazel test //... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; test_status=${PIPESTATUS[0]}
-                  
-                  git clone https://github.com/secretflow/devtools.git
-                  sh devtools/rename-junit-xml.sh
-                  
-                  find bazel-bin/ -perm +111 -type f -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar.gz
-                  find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz
-                  exit ${test_status}
-            - store_test_results:
-                path: test-results
-            - store_artifacts:
-                path: test_binary.tar.gz
-            - store_artifacts:
-                path: test_logs.tar.gz
+      - run:
+          name: "Install homebrew dependencies"
+          command: |
+            brew install bazel cmake ninja libomp wget md5sha1sum
+            (cd /opt/homebrew/Cellar/bazel/*.*.*/libexec/bin && curl -fLO https://github.com/bazelbuild/bazel/releases/download/6.2.1/bazel-6.2.1-darwin-arm64 && chmod +x bazel-6.2.1-darwin-arm64)
+      - run:
+          name: "test"
+          command: |
+            set +e
+            declare -i test_status
+            bazel test //... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; test_status=${PIPESTATUS[0]}
+            
+            git clone https://github.com/secretflow/devtools.git
+            sh devtools/rename-junit-xml.sh
+            
+            find bazel-bin/ -perm +111 -type f -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar.gz
+            find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz
+            exit ${test_status}
+      - store_test_results:
+          path: test-results
+      - store_artifacts:
+          path: test_binary.tar.gz
+      - store_artifacts:
+          path: test_logs.tar.gz
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
