@@ -80,9 +80,7 @@ std::shared_ptr<Context> FactoryBrpcBlackBox::CreateContext(
   auto options = transport::BrpcBlackBoxLink::GetDefaultOptions();
   options = transport::BrpcBlackBoxLink::MakeOptions(
       options, desc.http_timeout_ms, desc.http_max_payload_size,
-      desc.brpc_channel_protocol, desc.brpc_channel_connection_type,
-      desc.brpc_retry_count, desc.brpc_retry_interval_ms,
-      desc.brpc_aggressive_retry);
+      desc.brpc_channel_protocol, desc.brpc_channel_connection_type);
 
   if (options.channel_protocol != "http" && options.channel_protocol != "h2") {
     YACL_THROW_LOGIC_ERROR(
@@ -105,7 +103,7 @@ std::shared_ptr<Context> FactoryBrpcBlackBox::CreateContext(
                           desc.enable_ssl ? &desc.client_ssl_opts : nullptr);
 
     auto channel = std::make_shared<transport::Channel>(
-        delegate, desc.recv_timeout_ms, false);
+        delegate, desc.recv_timeout_ms, false, desc.retry_opts);
     channel->SetThrottleWindowSize(desc.throttle_window_size);
     msg_loop->AddLinkAndChannel(rank, channel, delegate);
 

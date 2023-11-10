@@ -41,7 +41,8 @@ class SpiArgs : public std::map<std::string, SpiArg> {
   // If the user sets this parameter, but the type is not T, then an exception
   // is thrown
   template <typename T>
-  T GetRequired(const SpiArgKey<T> &key) const {
+  auto GetRequired(const SpiArgKey<T> &key) const ->
+      typename SpiArgKey<T>::ValueType {
     auto it = find((key.Key()));
     YACL_ENFORCE(it != end(), "Missing required argument {}", key.Key());
     return it->second.template Value<T>();

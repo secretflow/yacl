@@ -34,12 +34,38 @@ DECLARE_int32(h2_client_stream_window_size);
 
 namespace yacl::link::transport {
 
+void ThrowLinkErrorByBrpcCntl(const brpc::Controller& cntl) {
+  int code = cntl.ErrorCode();
+  int http_code = 0;
+  if (code == brpc::EHTTP) {
+    http_code = cntl.http_response().status_code();
+  }
+  const auto& response_header = cntl.http_response();
+  std::string http_headers;
+  constexpr size_t kMaxResponsePrefix = 20;
+  std::string http_response;
+  if (cntl.has_http_request()) {
+    for (auto it = response_header.HeaderBegin();
+         it != response_header.HeaderEnd(); ++it) {
+      http_headers += fmt::format("[{}]:[{}];", it->first, it->second);
+    }
+    http_response =
+        cntl.response_attachment().to_string().substr(0, kMaxResponsePrefix);
+  }
+
+  YACL_THROW_LINK_ERROR(code, http_code,
+                        "cntl ErrorCode '{}', http status code '{}', response "
+                        "header '{}', response body '{}', error msg '{}'",
+                        code, http_code, http_headers, http_response,
+                        cntl.ErrorText());
+}
+
 namespace ic = org::interconnection;
 namespace ic_pb = org::interconnection::link;
 
 std::unique_ptr<::google::protobuf::Message>
 InterconnectionLink::PackMonoRequest(const std::string& key,
-                                     ByteContainerView value) {
+                                     ByteContainerView value) const {
   auto request = std::make_unique<ic_pb::PushRequest>();
   {
     request->set_sender_rank(self_rank_);
@@ -53,7 +79,7 @@ InterconnectionLink::PackMonoRequest(const std::string& key,
 std::unique_ptr<::google::protobuf::Message>
 InterconnectionLink::PackChunkedRequest(const std::string& key,
                                         ByteContainerView value, size_t offset,
-                                        size_t total_length) {
+                                        size_t total_length) const {
   auto request = std::make_unique<ic_pb::PushRequest>();
   {
     request->set_sender_rank(self_rank_);
@@ -68,7 +94,7 @@ InterconnectionLink::PackChunkedRequest(const std::string& key,
 
 void InterconnectionLink::UnpackMonoRequest(
     const ::google::protobuf::Message& request, std::string* key,
-    ByteContainerView* value) {
+    ByteContainerView* value) const {
   YACL_ENFORCE(key != nullptr, "key should not be null");
   YACL_ENFORCE(value != nullptr, "value should not be null");
   auto real_request = static_cast<const ic_pb::PushRequest*>(&request);
@@ -78,7 +104,7 @@ void InterconnectionLink::UnpackMonoRequest(
 
 void InterconnectionLink::UnpackChunckRequest(
     const ::google::protobuf::Message& request, std::string* key,
-    ByteContainerView* value, size_t* offset, size_t* total_length) {
+    ByteContainerView* value, size_t* offset, size_t* total_length) const {
   YACL_ENFORCE(key != nullptr, "key should not be null");
   YACL_ENFORCE(value != nullptr, "value should not be null");
   YACL_ENFORCE(offset != nullptr, "offset should not be null");
@@ -93,7 +119,7 @@ void InterconnectionLink::UnpackChunckRequest(
 
 void InterconnectionLink::FillResponseOk(
     const ::google::protobuf::Message& /*request*/,
-    ::google::protobuf::Message* response) {
+    ::google::protobuf::Message* response) const {
   YACL_ENFORCE(response != nullptr, "response should not be null");
 
   auto real_response = static_cast<ic_pb::PushResponse*>(response);
@@ -103,7 +129,7 @@ void InterconnectionLink::FillResponseOk(
 
 void InterconnectionLink::FillResponseError(
     const ::google::protobuf::Message& request,
-    ::google::protobuf::Message* response) {
+    ::google::protobuf::Message* response) const {
   YACL_ENFORCE(response != nullptr, "response should not be null");
 
   auto real_response = static_cast<ic_pb::PushResponse*>(response);
@@ -117,13 +143,13 @@ void InterconnectionLink::FillResponseError(
 }
 
 bool InterconnectionLink::IsChunkedRequest(
-    const ::google::protobuf::Message& request) {
+    const ::google::protobuf::Message& request) const {
   return static_cast<const ic_pb::PushRequest*>(&request)->trans_type() ==
          ic_pb::TransType::CHUNKED;
 }
 
 bool InterconnectionLink::IsMonoRequest(
-    const ::google::protobuf::Message& request) {
+    const ::google::protobuf::Message& request) const {
   return static_cast<const ic_pb::PushRequest*>(&request)->trans_type() ==
          ic_pb::TransType::MONO;
 }
@@ -131,8 +157,7 @@ bool InterconnectionLink::IsMonoRequest(
 auto InterconnectionLink::MakeOptions(
     Options& default_opt, uint32_t http_timeout_ms,
     uint32_t http_max_payload_bytes, const std::string& brpc_channel_protocol,
-    const std::string& brpc_channel_connection_type, uint32_t retry_count,
-    uint32_t retry_interval, bool aggressive_retry) -> Options {
+    const std::string& brpc_channel_connection_type) -> Options {
   auto opts = default_opt;
   if (http_timeout_ms != 0) {
     opts.http_timeout_ms = http_timeout_ms;
@@ -143,18 +168,6 @@ auto InterconnectionLink::MakeOptions(
   if (!brpc_channel_protocol.empty()) {
     opts.channel_protocol = brpc_channel_protocol;
   }
-  if (retry_count != 0) {
-    opts.max_retry = retry_count;
-  }
-  if (retry_interval != 0) {
-    opts.retry_interval_ms = retry_interval;
-  }
-  opts.aggressive_retry = aggressive_retry;
-
-  YACL_ENFORCE(
-      opts.http_timeout_ms >= (opts.max_retry * opts.retry_interval_ms),
-      "retry_count() * retry_interval() should less than timeout({})",
-      opts.max_retry, opts.retry_interval_ms, opts.http_timeout_ms);
 
   if (absl::StartsWith(opts.channel_protocol, "h2")) {
     YACL_ENFORCE(opts.http_max_payload_bytes > 4096,

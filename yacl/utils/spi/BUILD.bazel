@@ -27,9 +27,12 @@ yacl_cc_library(
 
 yacl_cc_library(
     name = "item",
+    srcs = ["item.cc"],
     hdrs = ["item.h"],
     deps = [
         "//yacl/base:exception",
+        "//yacl/base:int128",
+        "//yacl/math/mpint",
         "@com_google_absl//absl/types:span",
     ],
 )

@@ -24,6 +24,7 @@
 #include <thread>
 #include <utility>
 
+#include "brpc/controller.h"
 #include "bthread/bthread.h"
 #include "bthread/condition_variable.h"
 #include "google/protobuf/message.h"
@@ -32,6 +33,7 @@
 #include "yacl/base/buffer.h"
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/exception.h"
+#include "yacl/link/retry_options.h"
 #include "yacl/utils/segment_tree.h"
 
 namespace yacl::link::transport {
@@ -93,36 +95,36 @@ class IChannel {
 };
 
 class TransportLink {
+ public:
   using Request = ::google::protobuf::Message;
   using Response = ::google::protobuf::Message;
 
- public:
   TransportLink(size_t self_rank, size_t peer_rank)
       : self_rank_(self_rank), peer_rank_(peer_rank) {}
 
   virtual ~TransportLink() = default;
 
-  virtual size_t GetMaxBytesPerChunk() = 0;
+  virtual size_t GetMaxBytesPerChunk() const = 0;
   virtual void SetMaxBytesPerChunk(size_t bytes) = 0;
-  virtual std::unique_ptr<Request> PackMonoRequest(const std::string& key,
-                                                   ByteContainerView value) = 0;
-  virtual std::unique_ptr<Request> PackChunkedRequest(const std::string& key,
-                                                      ByteContainerView value,
-                                                      size_t offset,
-                                                      size_t total_length) = 0;
+  virtual std::unique_ptr<Request> PackMonoRequest(
+      const std::string& key, ByteContainerView value) const = 0;
+  virtual std::unique_ptr<Request> PackChunkedRequest(
+      const std::string& key, ByteContainerView value, size_t offset,
+      size_t total_length) const = 0;
   virtual void UnpackMonoRequest(const Request& request, std::string* key,
-                                 ByteContainerView* value) = 0;
+                                 ByteContainerView* value) const = 0;
   virtual void UnpackChunckRequest(const Request& request, std::string* key,
                                    ByteContainerView* value, size_t* offset,
-                                   size_t* total_length) = 0;
-  virtual void FillResponseOk(const Request& request, Response* response) = 0;
+                                   size_t* total_length) const = 0;
+  virtual void FillResponseOk(const Request& request,
+                              Response* response) const = 0;
   virtual void FillResponseError(const Request& request,
-                                 Response* response) = 0;
-  virtual bool IsChunkedRequest(const Request& request) = 0;
-  virtual bool IsMonoRequest(const Request& request) = 0;
+                                 Response* response) const = 0;
+  virtual bool IsChunkedRequest(const Request& request) const = 0;
+  virtual bool IsMonoRequest(const Request& request) const = 0;
 
   virtual void SendRequest(const Request& request,
-                           uint32_t timeout_override_ms) = 0;
+                           uint32_t timeout_override_ms) const = 0;
 
   size_t LocalRank() const { return self_rank_; }
   size_t RemoteRank() const { return peer_rank_; }
@@ -137,15 +139,19 @@ class ChunkedMessage;
 
 class Channel : public IChannel, public std::enable_shared_from_this<Channel> {
  public:
-  Channel(std::shared_ptr<TransportLink> delegate, bool exit_if_async_error)
-      : exit_if_async_error_(exit_if_async_error), link_(std::move(delegate)) {
+  Channel(std::shared_ptr<TransportLink> delegate, bool exit_if_async_error,
+          const RetryOptions& retry_options)
+      : exit_if_async_error_(exit_if_async_error),
+        link_(std::move(delegate)),
+        retry_options_(retry_options) {
     StartSendThread();
   }
   Channel(std::shared_ptr<TransportLink> delegate, size_t recv_timeout_ms,
-          bool exit_if_async_error)
+          bool exit_if_async_error, const RetryOptions& retry_options)
       : recv_timeout_ms_(recv_timeout_ms),
         exit_if_async_error_(exit_if_async_error),
-        link_(std::move(delegate)) {
+        link_(std::move(delegate)),
+        retry_options_(retry_options) {
     StartSendThread();
   }
 
@@ -211,24 +217,31 @@ class Channel : public IChannel, public std::enable_shared_from_this<Channel> {
     chunk_parallel_send_size_ = size;
   }
 
- protected:
-  void SendChunked(const std::string& key, ByteContainerView value);
+  void SendRequestWithRetry(
+      const ::google::protobuf::Message& request, uint32_t timeout_override_ms,
+      spdlog::level::level_enum log_level = spdlog::level::info) const;
 
-  void SendImpl(const std::string& key, ByteContainerView value) {
-    SendImpl(key, value, 0);
+ protected:
+  void SendChunked(const std::string& key, ByteContainerView value) const;
+
+  void SendMono(const std::string& key, ByteContainerView value,
+                uint32_t timeout_override_ms,
+                spdlog::level::level_enum log_level) const;
+
+  void SendImpl(const std::string& key, ByteContainerView value) const {
+    SendImpl(key, value, 0, spdlog::level::info);
   }
 
   void SendImpl(const std::string& key, ByteContainerView value,
-                uint32_t timeout_override_ms) {
+                uint32_t timeout_override_ms,
+                spdlog::level::level_enum log_level) const {
     YACL_ENFORCE(link_ != nullptr, "delegate has not been setted.");
     SPDLOG_DEBUG("{} send {}", link_->LocalRank(), key);
     if (value.size() > link_->GetMaxBytesPerChunk()) {
       SendChunked(key, value);
-      return;
+    } else {
+      SendMono(key, value, timeout_override_ms, log_level);
     }
-
-    auto request = link_->PackMonoRequest(key, value);
-    link_->SendRequest(*request, timeout_override_ms);
   }
 
  private:
@@ -303,7 +316,7 @@ class Channel : public IChannel, public std::enable_shared_from_this<Channel> {
  protected:
   uint64_t recv_timeout_ms_ = 3UL * 60 * 1000;  // 3 minites
 
-  MessageQueue msg_queue_;
+  MessageQueue send_msgs_;
   std::thread send_thread_;
   std::atomic<bool> send_thread_stopped_ = false;
   SendTaskSynchronizer send_sync_;
@@ -317,7 +330,7 @@ class Channel : public IChannel, public std::enable_shared_from_this<Channel> {
   bthread::Mutex msg_mutex_;
   bthread::ConditionVariable msg_db_cond_;
   // msg_key -> <value, seq_id>
-  std::map<std::string, std::pair<Buffer, size_t>> msg_db_;
+  std::map<std::string, std::pair<Buffer, size_t>> recv_msgs_;
 
   // for Throttle Window
   std::atomic<size_t> throttle_window_size_ = 0;
@@ -341,6 +354,8 @@ class Channel : public IChannel, public std::enable_shared_from_this<Channel> {
   const bool exit_if_async_error_;
 
   std::shared_ptr<TransportLink> link_;
+
+  RetryOptions retry_options_;
 };
 
 // A receiver loop is a thread loop which receives messages from the world.

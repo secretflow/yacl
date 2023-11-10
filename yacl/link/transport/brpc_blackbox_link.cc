@@ -28,7 +28,6 @@
 #include "yacl/base/exception.h"
 #include "yacl/link/transport/blackbox_interconnect/blackbox_service_errorcode.h"
 #include "yacl/link/transport/channel.h"
-#include "yacl/link/transport/default_brpc_retry_policy.h"
 
 #include "yacl/link/transport/blackbox_interconnect/blackbox_service.pb.h"
 namespace yacl::link::transport {
@@ -59,35 +58,6 @@ const auto* const kHttpHeadTopic = "x-ptp-topic";
 const auto* const kHttpHeadHost = "host";
 
 }  // namespace
-
-class BlackboxRetryPolicy : public DefaultBrpcRetryPolicy {
- public:
-  BlackboxRetryPolicy(uint32_t retry_interval_ms, bool aggressive_retry,
-                      uint32_t push_wait_s)
-      : DefaultBrpcRetryPolicy(retry_interval_ms, aggressive_retry),
-        push_wait_s_(push_wait_s) {}
-
-  bool OnRpcSuccess(const brpc::Controller* cntl) const override {
-    bb_ic::TransportOutbound response;
-    if (!response.ParseFromString(cntl->response_attachment().to_string())) {
-      SPDLOG_ERROR("Parse message failed.");
-      return false;
-    }
-
-    if (response.code() == bb_ic::error_code::Code("QueueFull")) {
-      SPDLOG_WARN(
-          "{} push error due to transport service queue is full, try again...",
-          cntl->retried_count());
-      bthread_usleep(push_wait_s_ * 1e6);
-      return true;
-    }
-
-    return false;
-  }
-
- private:
-  uint32_t push_wait_s_;
-};
 
 ReceiverLoopBlackBox::~ReceiverLoopBlackBox() { Stop(); }
 
@@ -181,8 +151,6 @@ std::optional<ic_pb::PushRequest> BrpcBlackBoxLink::TryReceive() {
 brpc::ChannelOptions BrpcBlackBoxLink::GetChannelOption(
     const SSLOptions* ssl_opts) {
   brpc::ChannelOptions options;
-  auto retry_policy = std::make_unique<BlackboxRetryPolicy>(
-      options_.retry_interval_ms, options_.aggressive_retry, push_wait_ms_);
   {
     if (options_.channel_protocol != "http" &&
         options_.channel_protocol != "h2") {
@@ -194,8 +162,7 @@ brpc::ChannelOptions BrpcBlackBoxLink::GetChannelOption(
     options.connection_type = options_.channel_connection_type;
     options.connect_timeout_ms = 20000;
     options.timeout_ms = options_.http_timeout_ms;
-    options.max_retry = options_.max_retry;
-    options.retry_policy = retry_policy.get();
+    options.max_retry = 0;
     if (ssl_opts != nullptr) {
       options.mutable_ssl_options()->client_cert.certificate =
           ssl_opts->cert.certificate_path;
@@ -207,7 +174,6 @@ brpc::ChannelOptions BrpcBlackBoxLink::GetChannelOption(
           ssl_opts->verify.ca_file_path;
     }
   }
-  retry_policy_ = std::move(retry_policy);
   return options;
 }
 
@@ -271,7 +237,7 @@ void BrpcBlackBoxLink::SetPeerHost(const std::string& self_id,
 }
 
 void BrpcBlackBoxLink::SetHttpHeader(brpc::Controller* controller,
-                                     const std::string& topic) {
+                                     const std::string& topic) const {
   for (auto& [k, v] : http_headers_) {
     controller->http_request().SetHeader(k, v);
   }
@@ -279,8 +245,8 @@ void BrpcBlackBoxLink::SetHttpHeader(brpc::Controller* controller,
   controller->http_request().set_method(brpc::HTTP_METHOD_POST);
 }
 
-void BrpcBlackBoxLink::SendRequest(const ::google::protobuf::Message& request,
-                                   uint32_t timeout_ms) {
+void BrpcBlackBoxLink::SendRequest(const Request& request,
+                                   uint32_t timeout_ms) const {
   bb_ic::TransportOutbound response;
   auto request_str = request.SerializeAsString();
   int pushs = 0;
@@ -298,8 +264,7 @@ void BrpcBlackBoxLink::SendRequest(const ::google::protobuf::Message& request,
 
     channel_->CallMethod(nullptr, &cntl, nullptr, nullptr, nullptr);
     if (cntl.Failed()) {
-      YACL_THROW_NETWORK_ERROR("send, rpc failed={}, message={}",
-                               cntl.ErrorCode(), cntl.ErrorText());
+      ThrowLinkErrorByBrpcCntl(cntl);
     }
 
     YACL_ENFORCE(
@@ -311,9 +276,7 @@ void BrpcBlackBoxLink::SendRequest(const ::google::protobuf::Message& request,
     }
 
     if (response.code() != bb_ic::error_code::Code("QueueFull")) {
-      YACL_THROW_NETWORK_ERROR(
-          "response with error, code={}({}) message={}", response.code(),
-          bb_ic::error_code::Desc(response.code()), response.message());
+      ThrowLinkErrorByBrpcCntl(cntl);
     } else {
       SPDLOG_WARN(
           "{} push error due to transport service queue is full, try "

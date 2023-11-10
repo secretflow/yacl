@@ -34,6 +34,8 @@ class PushResponse;
 
 namespace yacl::link::transport {
 
+void ThrowLinkErrorByBrpcCntl(const brpc::Controller& cntl);
+
 class InterconnectionLink : public TransportLink {
  public:
   struct Options {
@@ -41,41 +43,43 @@ class InterconnectionLink : public TransportLink {
     uint32_t http_max_payload_bytes = 512 * 1024;  // 512k bytes
     std::string channel_protocol;
     std::string channel_connection_type;
-    uint32_t max_retry = 3;
-    uint32_t retry_interval_ms = 1000;
-    bool aggressive_retry = true;
   };
+
   static Options MakeOptions(Options& default_opt, uint32_t http_timeout_ms,
                              uint32_t http_max_payload_size,
                              const std::string& brpc_channel_protocol,
-                             const std::string& brpc_channel_connection_type,
-                             uint32_t retry_count, uint32_t retry_interval,
-                             bool aggressive_retry);
+                             const std::string& brpc_channel_connection_type);
 
   InterconnectionLink(size_t self_rank, size_t peer_rank, Options options)
       : TransportLink(self_rank, peer_rank), options_(std::move(options)) {}
   void SetMaxBytesPerChunk(size_t bytes) override {
     options_.http_max_payload_bytes = bytes;
   }
-  size_t GetMaxBytesPerChunk() override {
+  size_t GetMaxBytesPerChunk() const override {
     return options_.http_max_payload_bytes;
   }
+
   std::unique_ptr<::google::protobuf::Message> PackMonoRequest(
-      const std::string& key, ByteContainerView value) override;
+      const std::string& key, ByteContainerView value) const override;
   std::unique_ptr<::google::protobuf::Message> PackChunkedRequest(
       const std::string& key, ByteContainerView value, size_t offset,
-      size_t total_length) override;
+      size_t total_length) const override;
   void UnpackMonoRequest(const ::google::protobuf::Message& request,
-                         std::string* key, ByteContainerView* value) override;
+                         std::string* key,
+                         ByteContainerView* value) const override;
   void UnpackChunckRequest(const ::google::protobuf::Message& request,
                            std::string* key, ByteContainerView* value,
-                           size_t* offset, size_t* total_length) override;
+                           size_t* offset, size_t* total_length) const override;
   void FillResponseOk(const ::google::protobuf::Message& request,
-                      ::google::protobuf::Message* response) override;
+                      ::google::protobuf::Message* response) const override;
   void FillResponseError(const ::google::protobuf::Message& request,
-                         ::google::protobuf::Message* response) override;
-  bool IsChunkedRequest(const ::google::protobuf::Message& request) override;
-  bool IsMonoRequest(const ::google::protobuf::Message& request) override;
+                         ::google::protobuf::Message* response) const override;
+  bool IsChunkedRequest(
+      const ::google::protobuf::Message& request) const override;
+  bool IsMonoRequest(const ::google::protobuf::Message& request) const override;
+
+  // void SendRequest(const Request& request,
+  //                  uint32_t timeout_override_ms) const override;
 
  protected:
   Options options_;

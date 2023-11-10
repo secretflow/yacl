@@ -114,8 +114,9 @@ class BlackBoxLinkTest : public ::testing::Test {
         std::make_shared<BrpcBlackBoxLink>(send_rank, recv_rank, options);
     auto receiver_delegate =
         std::make_shared<BrpcBlackBoxLink>(recv_rank, send_rank, options);
-    sender_ = std::make_shared<Channel>(sender_delegate, false);
-    receiver_ = std::make_shared<Channel>(receiver_delegate, false);
+    sender_ = std::make_shared<Channel>(sender_delegate, false, RetryOptions());
+    receiver_ =
+        std::make_shared<Channel>(receiver_delegate, false, RetryOptions());
 
     std::string server_addr = "127.0.0.1:0";
 

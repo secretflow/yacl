@@ -41,7 +41,7 @@ void mp_ext_from_mag_bytes(mp_int *num, const uint8_t *buf, size_t buf_len,
 int mp_ext_count_bits_fast(const mp_int &a);
 
 size_t mp_ext_serialize_size(const mp_int &num);
-void mp_ext_serialize(const mp_int &num, uint8_t *buf, size_t buf_len);
+size_t mp_ext_serialize(const mp_int &num, uint8_t *buf, size_t buf_len);
 void mp_ext_deserialize(mp_int *num, const uint8_t *buf, size_t buf_len);
 
 // return 0 or 1

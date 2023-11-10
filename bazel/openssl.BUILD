@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_foreign_cc//foreign_cc:defs.bzl", "configure_make")
+load("@yacl//bazel:yacl.bzl", "yacl_configure_make")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -28,7 +28,7 @@ config_setting(
     visibility = ["//visibility:private"],
 )
 
-configure_make(
+yacl_configure_make(
     name = "openssl",
     configure_command = select(
         {
@@ -66,10 +66,7 @@ configure_make(
         "libcrypto.a",
     ],
     targets = [
-        # NOTE: $(nproc --all) returns host number of cpus in ANT ACI pod
-        # Hence we choose a fixed number of 4.
-        # "make -j`nproc --all`",
-        "-s -j4",
+        "-s",
         "-s install_sw",
     ],
 )

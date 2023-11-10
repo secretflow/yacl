@@ -170,3 +170,81 @@ index 0015431..f93411c 100644
 
  # DEBUG flags - optimization level = 0, generation GDB information (-g)
  set (CMAKE_C_FLAGS_DEBUG " -O0 -g")
+
+diff --git a/sources/include/dispatcher.h b/sources/include/dispatcher.h
+index 8290df6..a2f93d7 100644
+--- a/sources/include/dispatcher.h
++++ b/sources/include/dispatcher.h
+@@ -92,9 +92,13 @@ extern "C" {
+   #define LIB_W7 LIB_S8
+ #elif defined( _ARCH_EM64T ) && !defined( OSXEM64T ) && !defined( WIN32E ) /* Linux* OS Intel64 supports N0 */
+   enum lib_enum {
+-     LIB_M7=0, LIB_N8=1, LIB_Y8=2, LIB_E9=3, LIB_L9=4, LIB_N0=5, LIB_K0=6, LIB_K1=7,LIB_NOMORE
++     LIB_E9=0, LIB_L9=1, LIB_K0=2, LIB_K1=3,LIB_NOMORE
+   };
+-  #define LIB_PX LIB_M7
++  #define LIB_PX LIB_E9
++  #define LIB_M7 LIB_E9
++  #define LIB_N8 LIB_E9
++  #define LIB_Y8 LIB_E9
++  #define LIB_N0 LIB_L9
+ #elif defined( _ARCH_EM64T ) && !defined( OSXEM64T ) /* Windows* OS Intel64 doesn't support N0 */
+   enum lib_enum {
+      LIB_M7=0, LIB_N8=1, LIB_Y8=2, LIB_E9=3, LIB_L9=4, LIB_K0=5, LIB_K1=6, LIB_NOMORE
+@@ -103,11 +107,12 @@ extern "C" {
+   #define LIB_N0 LIB_L9
+ #elif defined( OSXEM64T )
+   enum lib_enum {
+-     LIB_Y8=0, LIB_E9=1, LIB_L9=2, LIB_K0=3, LIB_K1=4, LIB_NOMORE
++     LIB_E9=0, LIB_L9=1, LIB_K0=2, LIB_K1=3, LIB_NOMORE
+   };
+-  #define LIB_PX LIB_Y8
+-  #define LIB_M7 LIB_Y8
+-  #define LIB_N8 LIB_Y8
++  #define LIB_PX LIB_E9
++  #define LIB_M7 LIB_E9
++  #define LIB_N8 LIB_E9
++  #define LIB_Y8 LIB_E9
+   #define LIB_N0 LIB_L9
+ #elif defined( _ARCH_LRB2 )
+   enum lib_enum {
+diff --git a/sources/include/owndefs.h b/sources/include/owndefs.h
+index dcc1ede..7c1e93e 100644
+--- a/sources/include/owndefs.h
++++ b/sources/include/owndefs.h
+@@ -632,14 +632,14 @@ extern double            __intel_castu64_f64(unsigned __int64 val);
+
+       #elif defined(linux)
+          /* LIN-32, LIN-64 */
+-         #if ( defined(_W7) || defined(_M7) )
++         #if ( defined(_W7) || defined(_E9) )
+          #define _IPP_DATA 1
+          #endif
+
+
+       /* OSX-32, OSX-64 */
+       #elif defined(OSX32) || defined(OSXEM64T)
+-         #if ( defined(_Y8) )
++         #if ( defined(_E9) )
+          #define _IPP_DATA 1
+          #endif
+       #endif
+diff --git a/sources/ippcp/CMakeLists.txt b/sources/ippcp/CMakeLists.txt
+index 315d1a3..8b11c7a 100644
+--- a/sources/ippcp/CMakeLists.txt
++++ b/sources/ippcp/CMakeLists.txt
+@@ -40,12 +40,12 @@ if(WIN32)
+ endif(WIN32)
+ if(UNIX)
+   if(APPLE)
+-    set(BASE_PLATFORM_LIST ${BASE_PLATFORM_LIST} y8 e9 l9 k0 k1)
++    set(BASE_PLATFORM_LIST ${BASE_PLATFORM_LIST} e9 l9 k0 k1)
+   else()
+     if (${ARCH} MATCHES "ia32")
+       set(BASE_PLATFORM_LIST ${BASE_PLATFORM_LIST} w7 s8 p8 g9 h9)
+     else()
+-      set(BASE_PLATFORM_LIST ${BASE_PLATFORM_LIST} m7 n8 y8 e9 l9 n0 k0 k1)
++      set(BASE_PLATFORM_LIST ${BASE_PLATFORM_LIST} e9 l9 k0 k1)
+     endif(${ARCH} MATCHES "ia32")
+   endif(APPLE)
+ endif(UNIX)

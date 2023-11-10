@@ -135,6 +135,23 @@ class NetworkError : public IoError {
   using IoError::IoError;
 };
 
+class LinkError : public NetworkError {
+ public:
+  LinkError() = delete;
+  explicit LinkError(const std::string& msg, int code, int http_code = 0)
+      : NetworkError(msg), code_(code), http_code_(http_code) {}
+  explicit LinkError(const std::string& msg, void** stacks, int dep, int code,
+                     int http_code = 0)
+      : NetworkError(msg, stacks, dep), code_(code), http_code_(http_code) {}
+
+  int code() const noexcept { return code_; }
+  int http_code() const noexcept { return http_code_; }
+
+ private:
+  int code_;
+  int http_code_;
+};
+
 #define YACL_ERROR_MSG(...) \
   fmt::format("[{}:{}] {}", __FILE__, __LINE__, fmt::format(__VA_ARGS__))
 
@@ -181,6 +198,15 @@ using stacktrace_t = std::array<void*, ::yacl::internal::kMaxStackTraceDep>;
                                   ::yacl::internal::kMaxStackTraceDep, 0); \
     throw ::yacl::NetworkError(YACL_ERROR_MSG(__VA_ARGS__), stacks.data(), \
                                dep);                                       \
+  } while (false)
+
+#define YACL_THROW_LINK_ERROR(code, http_code, ...)                          \
+  do {                                                                       \
+    ::yacl::stacktrace_t stacks;                                             \
+    int dep = absl::GetStackTrace(stacks.data(),                             \
+                                  ::yacl::internal::kMaxStackTraceDep, 0);   \
+    throw ::yacl::LinkError(YACL_ERROR_MSG(__VA_ARGS__), stacks.data(), dep, \
+                            code, http_code);                                \
   } while (false)
 
 #define YACL_THROW_INVALID_FORMAT(...)                                      \

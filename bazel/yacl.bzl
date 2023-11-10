@@ -74,7 +74,7 @@ def yacl_cmake_external(**attrs):
 
 def yacl_configure_make(**attrs):
     if "args" not in attrs:
-        attrs["args"] = ["-j 4"]
+        attrs["args"] = ["-j 8"]
     return configure_make(**attrs)
 
 def yacl_cc_test(

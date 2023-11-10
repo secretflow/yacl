@@ -58,7 +58,7 @@ class DummyBlackBoxServiceImpl
   std::string peer_url_;
   std::mutex msg_mtx_;
   std::condition_variable msg_cond_;
-  std::map<std::string, std::queue<std::string>> msg_db_;
+  std::map<std::string, std::queue<std::string>> recv_msgs_;
   uint32_t invoke_max_retry_cnt_ = 10;
   uint32_t invoke_retry_interval_ms_ = 1000;
 };
