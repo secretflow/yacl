@@ -217,7 +217,7 @@ class SendChunkedWindow
     std::unique_lock<bthread::Mutex> lock(mutex_);
     running_push_++;
 
-    while (running_push_ >= parallel_limit_) {
+    while (running_push_ > parallel_limit_) {
       cond_.wait(lock);
       if (async_exception_.has_value()) {
         throw async_exception_.value();
