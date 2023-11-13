@@ -21,16 +21,11 @@ yacl_cc_binary(
     srcs = [
         "alg_data_test.cc",
     ],
-    defines = ["CURVE25519_DONNA"] + select({
-        "@bazel_tools//src/conditions:darwin": ["USE_LIBDISPATCH"],
-        "//conditions:default": [],
-    }),
     deps = [
         "//yacl/base:int128",
         "//yacl/crypto/base:symmetric_crypto",
         "//yacl/crypto/base/hash:ssl_hash",
         "//yacl/crypto/tools:prg",
-        "@com_github_floodyberry_curve25519_donna//:curve25519_donna",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
         "@com_google_googletest//:gtest",

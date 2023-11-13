@@ -25,10 +25,12 @@ yacl_cmake_external(
     name = "msgpack",
     cache_entries = {
         "MSGPACK_CXX17": "ON",
+        "MSGPACK_USE_BOOST": "OFF",
         "MSGPACK_BUILD_EXAMPLES": "OFF",
         "BUILD_SHARED_LIBS": "OFF",
         "MSGPACK_BUILD_TESTS": "OFF",
     },
+    defines = ["MSGPACK_NO_BOOST"],
     lib_source = ":all_srcs",
     out_headers_only = True,
 )

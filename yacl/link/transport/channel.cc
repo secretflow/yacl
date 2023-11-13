@@ -94,7 +94,7 @@ class SendTask {
     std::unique_ptr<SendTask> task(static_cast<SendTask*>(args));
     try {
       task->channel_->SendImpl(task->msg_.msg_key_, task->msg_.value_);
-    } catch (const yacl::Exception& e) {
+    } catch (const std::exception& e) {
       SPDLOG_ERROR("SendImpl error {}", e.what());
       if (task->exit_if_async_error_) {
         exit(-1);
@@ -148,7 +148,7 @@ std::optional<Channel::Message> Channel::MessageQueue::Pop(bool block) {
 
 void Channel::SendThread() {
   while (!send_thread_stopped_.load()) {
-    auto msg = msg_queue_.Pop(true);
+    auto msg = send_msgs_.Pop(true);
     if (!msg.has_value()) {
       continue;
     }
@@ -159,7 +159,7 @@ void Channel::SendThread() {
 
   // link is closing, send all pending msgs
   while (true) {
-    auto msg = msg_queue_.Pop(false);
+    auto msg = send_msgs_.Pop(false);
     if (!msg.has_value()) {
       break;
     }
@@ -174,11 +174,11 @@ class SendChunkedWindow
     YACL_ENFORCE(parallel_limit_ > 0);
   }
 
-  void OnPushDone(std::optional<std::exception> e) noexcept {
+  void OnPushDone(std::unique_ptr<std::exception> e) noexcept {
     std::unique_lock<bthread::Mutex> lock(mutex_);
     running_push_--;
 
-    if (e.has_value()) {
+    if (e) {
       async_exception_ = std::move(e);
     }
     cond_.notify_all();
@@ -188,8 +188,8 @@ class SendChunkedWindow
     std::unique_lock<bthread::Mutex> lock(mutex_);
     while (running_push_ != 0) {
       cond_.wait(lock);
-      if (async_exception_.has_value()) {
-        throw async_exception_.value();
+      if (async_exception_) {
+        throw yacl::Exception(async_exception_->what());
       }
     }
   }
@@ -199,28 +199,27 @@ class SendChunkedWindow
     explicit Token(std::shared_ptr<SendChunkedWindow> window)
         : window_(std::move(window)) {}
 
-    void SetException(std::optional<std::exception>& e) {
-      if (!e.has_value()) {
-        return;
+    void SetException(std::unique_ptr<std::exception> e) {
+      if (e) {
+        exception_ = std::move(e);
       }
-      exception_ = std::move(e);
     }
 
-    ~Token() { window_->OnPushDone(exception_); }
+    ~Token() { window_->OnPushDone(std::move(exception_)); }
 
    private:
     std::shared_ptr<SendChunkedWindow> window_;
-    std::optional<std::exception> exception_;
+    std::unique_ptr<std::exception> exception_;
   };
 
   std::unique_ptr<Token> GetToken() {
     std::unique_lock<bthread::Mutex> lock(mutex_);
     running_push_++;
 
-    while (running_push_ >= parallel_limit_) {
+    while (running_push_ > parallel_limit_) {
       cond_.wait(lock);
-      if (async_exception_.has_value()) {
-        throw async_exception_.value();
+      if (async_exception_) {
+        throw(*async_exception_);
       }
     }
 
@@ -232,42 +231,42 @@ class SendChunkedWindow
   int64_t running_push_ = 0;
   bthread::Mutex mutex_;
   bthread::ConditionVariable cond_;
-  std::optional<std::exception> async_exception_;
+  std::unique_ptr<std::exception> async_exception_;
 };
 
 class SendChunkedTask {
  public:
-  SendChunkedTask(std::shared_ptr<TransportLink> delegate,
+  SendChunkedTask(std::shared_ptr<const Channel> channel,
                   std::unique_ptr<SendChunkedWindow::Token> token,
                   std::unique_ptr<::google::protobuf::Message> request)
-      : link_(std::move(delegate)),
+      : channel_(std::move(channel)),
         token_(std::move(token)),
         request_(std::move(request)) {
     YACL_ENFORCE(request_, "request is null");
     YACL_ENFORCE(token_, "token is null");
-    YACL_ENFORCE(link_, "channel is null");
+    YACL_ENFORCE(channel_, "channel is null");
   }
 
   static void* Proc(void* param) {
     std::unique_ptr<SendChunkedTask> task(static_cast<SendChunkedTask*>(param));
-    std::optional<std::exception> except;
+    std::unique_ptr<std::exception> except;
     try {
-      task->link_->SendRequest(*(task->request_), 0);
-    } catch (Exception& e) {
-      except = e;
-      task->token_->SetException(except);
+      task->channel_->SendRequestWithRetry(*(task->request_), 0);
+    } catch (const Exception& e) {
+      except = std::make_unique<Exception>(e);
+      task->token_->SetException(std::move(except));
     }
-
     return nullptr;
-  };
+  }
 
  private:
-  std::shared_ptr<TransportLink> link_;
+  std::shared_ptr<const Channel> channel_;
   std::unique_ptr<SendChunkedWindow::Token> token_;
   std::unique_ptr<::google::protobuf::Message> request_;
 };
 
-void Channel::SendChunked(const std::string& key, ByteContainerView value) {
+void Channel::SendChunked(const std::string& key,
+                          ByteContainerView value) const {
   const size_t bytes_per_chunk = link_->GetMaxBytesPerChunk();
   const size_t num_bytes = value.size();
   const size_t num_chunks = (num_bytes + bytes_per_chunk - 1) / bytes_per_chunk;
@@ -285,8 +284,8 @@ void Channel::SendChunked(const std::string& key, ByteContainerView value) {
             std::min(bytes_per_chunk, value.size() - chunk_offset)),
         chunk_offset, num_bytes);
 
-    auto task = std::make_unique<SendChunkedTask>(link_, window->GetToken(),
-                                                  std::move(request));
+    auto task = std::make_unique<SendChunkedTask>(
+        this->shared_from_this(), window->GetToken(), std::move(request));
     bthread_t tid;
     if (bthread_start_background(&tid, nullptr, SendChunkedTask::Proc,
                                  task.get()) == 0) {
@@ -297,6 +296,61 @@ void Channel::SendChunked(const std::string& key, ByteContainerView value) {
     }
   }
   window->Finished();
+}
+
+void Channel::SendMono(const std::string& key, ByteContainerView value,
+                       uint32_t timeout_override_ms,
+                       spdlog::level::level_enum log_level) const {
+  auto request = link_->PackMonoRequest(key, value);
+  SendRequestWithRetry(*request, timeout_override_ms, log_level);
+}
+
+void Channel::SendRequestWithRetry(const ::google::protobuf::Message& request,
+                                   uint32_t timeout_override_ms,
+                                   spdlog::level::level_enum log_level) const {
+  uint32_t retry_count = 0;
+  while (true) {
+    try {
+      link_->SendRequest(request, timeout_override_ms);
+      break;
+    } catch (const yacl::LinkError& e) {
+      auto should_retry = [&](const RetryOptions& retry_options) -> bool {
+        if (retry_options.aggressive_retry) {
+          return true;
+        }
+        if (retry_options.error_codes.empty() ||
+            retry_options.error_codes.count(e.code())) {
+          return true;
+        }
+
+        if (e.http_code() && (retry_options.http_codes.empty() ||
+                              retry_options.http_codes.count(e.http_code()))) {
+          return true;
+        }
+        return false;
+      };
+
+      if (!should_retry(retry_options_)) {
+        SPDLOG_WARN("send request failed and no retry, message={}", e.what());
+        throw e;
+      }
+
+      if (retry_count >= retry_options_.max_retry) {
+        throw e;
+      }
+      uint32_t interval_ms =
+          std::min(retry_options_.retry_interval_ms +
+                       retry_count * retry_options_.retry_interval_incr_ms,
+                   retry_options_.max_retry_interval_ms);
+      retry_count++;
+      SPDLOG_LOGGER_CALL(
+          spdlog::default_logger_raw(), log_level,
+          "send request failed and retry, retry_count={}, max_retry={}, "
+          "interval_ms={}, message={}",
+          retry_count, retry_options_.max_retry, interval_ms, e.what());
+      std::this_thread::sleep_for(std::chrono::milliseconds(interval_ms));
+    }
+  }
 }
 
 void Channel::SendTaskSynchronizer::SendTaskStartNotify() {
@@ -335,12 +389,12 @@ Buffer Channel::Recv(const std::string& msg_key) {
   {
     std::unique_lock<bthread::Mutex> lock(msg_mutex_);
     auto stop_waiting = [&] {
-      auto itr = this->msg_db_.find(msg_key);
-      if (itr == this->msg_db_.end()) {
+      auto itr = this->recv_msgs_.find(msg_key);
+      if (itr == this->recv_msgs_.end()) {
         return false;
       } else {
         std::tie(value, seq_id) = std::move(itr->second);
-        this->msg_db_.erase(itr);
+        this->recv_msgs_.erase(itr);
         return true;
       }
     };
@@ -379,7 +433,7 @@ void Channel::OnNormalMessage(const std::string& key, T&& v) {
 
   if (!waiting_finish_.load()) {
     auto pair =
-        msg_db_.emplace(msg_key, std::make_pair(std::forward<T>(v), seq_id));
+        recv_msgs_.emplace(msg_key, std::make_pair(std::forward<T>(v), seq_id));
     if (seq_id > 0 && !pair.second) {
       YACL_THROW(
           "For developer: BUG! PLS do not use same key for multiple msg, "
@@ -504,7 +558,7 @@ void Channel::SendAsync(const std::string& msg_key, Buffer&& value) {
   NormalMessageKeyEnforce(msg_key);
   size_t seq_id = msg_seq_id_.fetch_add(1) + 1;
   auto key = BuildChannelKey(msg_key, seq_id);
-  msg_queue_.Push(Message(seq_id, std::move(key), std::move(value)));
+  send_msgs_.Push(Message(seq_id, std::move(key), std::move(value)));
 }
 
 void Channel::Send(const std::string& msg_key, ByteContainerView value) {
@@ -513,7 +567,7 @@ void Channel::Send(const std::string& msg_key, ByteContainerView value) {
   NormalMessageKeyEnforce(msg_key);
   size_t seq_id = msg_seq_id_.fetch_add(1) + 1;
   auto key = BuildChannelKey(msg_key, seq_id);
-  msg_queue_.Push(Message(seq_id, std::move(key), value));
+  send_msgs_.Push(Message(seq_id, std::move(key), value));
   send_sync_.WaitSeqIdSendFinished(seq_id);
 }
 
@@ -528,7 +582,7 @@ void Channel::SendAsyncThrottled(const std::string& msg_key, Buffer&& value) {
   NormalMessageKeyEnforce(msg_key);
   size_t seq_id = msg_seq_id_.fetch_add(1) + 1;
   auto key = BuildChannelKey(msg_key, seq_id);
-  msg_queue_.Push(Message(seq_id, std::move(key), std::move(value)));
+  send_msgs_.Push(Message(seq_id, std::move(key), std::move(value)));
   ThrottleWindowWait(seq_id);
 }
 
@@ -537,7 +591,7 @@ void Channel::TestSend(uint32_t timeout) {
                "TestSend is not allowed when channel is closing");
   const auto msg_key = fmt::format("connect_{}", link_->LocalRank());
   const auto key = BuildChannelKey(msg_key, 0);
-  SendImpl(key, "", timeout);
+  SendImpl(key, "", timeout, spdlog::level::debug);
 }
 
 void Channel::TestRecv() {
@@ -563,7 +617,7 @@ void Channel::ThrottleWindowWait(size_t wait_count) {
 
 void Channel::WaitAsyncSendToFinish() {
   send_thread_stopped_.store(true);
-  msg_queue_.EmptyNotify();
+  send_msgs_.EmptyNotify();
   send_thread_.join();
   send_sync_.WaitAllSendFinished();
 }
@@ -601,13 +655,13 @@ void Channel::WaitForFinAndFlyingMsg() {
 void Channel::StopReceivingAndAckUnreadMsgs() {
   std::unique_lock<bthread::Mutex> lock(msg_mutex_);
   waiting_finish_.store(true);
-  for (auto& msg : msg_db_) {
+  for (auto& msg : recv_msgs_) {
     auto seq_id = msg.second.second;
     SPDLOG_WARN("Asymmetric logic exist, clear unread key {}, seq_id {}",
                 msg.first, seq_id);
     SendAck(seq_id);
   }
-  msg_db_.clear();
+  recv_msgs_.clear();
 }
 
 void Channel::WaitForFlyingAck() {
@@ -628,7 +682,7 @@ void Channel::WaitForFlyingAck() {
 
 void Channel::WaitLinkTaskFinish() {
   // 4 steps to total stop link.
-  // send ack for msg exist in msg_db_ that unread by up layer logic.
+  // send ack for msg exist in recv_msgs_ that unread by up layer logic.
   // stop OnMessage & auto ack all normal msg from now on.
   StopReceivingAndAckUnreadMsgs();
   // wait for last fin msg contain peer's send msg count.

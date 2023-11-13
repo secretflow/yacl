@@ -48,10 +48,17 @@ constexpr bool is_const_t =
 template <class T>
 using remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
 
+enum class OperandType : int {
+  Scalar2Scalar = 0b00,
+  Scalar2Vector = 0b01,
+  Vector2Scalar = 0b10,
+  Vector2Vector = 0b11,
+};
+
 class Item {
  public:
   template <typename T, typename _ = std::enable_if_t<!is_container_v<T>>>
-  Item(T&& value) : v_(std::forward<T>(value)) {
+  /* implicit */ Item(T&& value) : v_(std::forward<T>(value)) {
     Setup(false, false, false);
   }
 
@@ -83,12 +90,29 @@ class Item {
   }
 
   template <typename T>
+  explicit operator T() const& {
+    YACL_ENFORCE(v_.type() == typeid(T), "Type mismatch: convert {} to {} fail",
+                 v_.type().name(), typeid(T).name());
+    return As<T>();
+  }
+
+  template <typename T>
+  explicit operator T() && {
+    YACL_ENFORCE(v_.type() == typeid(T),
+                 "Type mismatch: convert rvalue {} to {} fail",
+                 v_.type().name(), typeid(T).name());
+    return As<T&&>();
+  }
+
+  template <typename T>
   std::enable_if_t<!std::is_pointer_v<T>, T>& As() & {
     try {
       return std::any_cast<T&>(v_);
     } catch (const std::bad_any_cast& e) {
-      YACL_THROW("Item as lvalue: cannot cast from {} to {}", v_.type().name(),
-                 typeid(T).name());
+      YACL_THROW(
+          "{}, Item as lvalue: cannot cast from {} to {}, please use 'c++filt "
+          "-t <symbol>' tool to see a human-readable name.",
+          ToString(), v_.type().name(), typeid(T&).name());
     }
   }
 
@@ -97,8 +121,10 @@ class Item {
     try {
       return std::any_cast<T&&>(std::move(v_));
     } catch (const std::bad_any_cast& e) {
-      YACL_THROW("Item as rvalue: cannot cast from {} to {}", v_.type().name(),
-                 typeid(T).name());
+      YACL_THROW(
+          "{}, Item as rvalue: cannot cast from {} to {}, please use 'c++filt "
+          "-t <symbol>' tool to see a human-readable name",
+          ToString(), v_.type().name(), typeid(T&&).name());
     }
   }
 
@@ -107,8 +133,10 @@ class Item {
     try {
       return std::any_cast<const T&>(v_);
     } catch (const std::bad_any_cast& e) {
-      YACL_THROW("Item as const ref: cannot cast from {} to {}",
-                 v_.type().name(), typeid(T).name());
+      YACL_THROW(
+          "{}, Item as a const ref: cannot cast from {} to {}, please use "
+          "'c++filt -t <symbol>' tool to see a human-readable name. ",
+          ToString(), v_.type().name(), typeid(const T&).name());
     }
   }
 
@@ -117,14 +145,26 @@ class Item {
     try {
       return std::any_cast<std::remove_pointer_t<T>>(&v_);
     } catch (const std::bad_any_cast& e) {
-      YACL_THROW("Item as pointer: cannot cast from {} to {}", v_.type().name(),
-                 typeid(T).name());
+      YACL_THROW(
+          "{}, Item as a pointer: cannot cast from {} to {}, please use "
+          "'c++filt -t <symbol>' tool to see a human-readable name",
+          ToString(), v_.type().name(),
+          typeid(std::remove_pointer_t<T>).name());
     }
   }
 
   template <typename T>
   absl::Span<T> AsSpan() {
-    YACL_ENFORCE(IsArray(), "Item is not an array");
+    if (!IsArray()) {
+      // single element as span
+      YACL_ENFORCE(!IsReadOnly(), "Single const T is not supported now");
+
+      return absl::MakeSpan(&As<T>(), 1);
+    }
+
+    using RawT = std::remove_cv_t<T>;
+
+    // const array case
     if (IsReadOnly()) {
       YACL_ENFORCE(
           is_const_t<T>,
@@ -135,22 +175,27 @@ class Item {
         return As<absl::Span<T>>();
       } else {
         // vector
-        return absl::MakeSpan(As<std::vector<std::remove_cv_t<T>>>());
+        return absl::MakeSpan(As<std::vector<RawT>>());
       }
     }
 
-    // non-const value -> (const) T
+    // non-const array case
     if (IsView()) {
-      return As<absl::Span<std::remove_cv_t<T>>>();
+      // span
+      return As<absl::Span<RawT>>();
     } else {
       // vector
-      return absl::MakeSpan(As<std::vector<std::remove_cv_t<T>>>());
+      return absl::MakeSpan(As<std::vector<RawT>>());
     }
   }
 
   template <typename T>
   absl::Span<const T> AsSpan() const {
-    YACL_ENFORCE(IsArray(), "Item is not an array");
+    if (!IsArray()) {
+      // single element as span
+      return absl::MakeSpan(&As<T>(), 1);
+    }
+
     using RawT = std::remove_cv_t<T>;
 
     if (IsView()) {
@@ -191,6 +236,10 @@ class Item {
     return !operator==(other);
   }
 
+  OperandType operator,(const Item& other) const {
+    return static_cast<OperandType>(((meta_ & 1) << 1) | (other.meta_ & 1));
+  };
+
   // operations only for array
   template <typename T>
   Item SubSpan(size_t pos, size_t len = absl::Span<T>::npos) {
@@ -210,6 +259,8 @@ class Item {
     return SubConstSpanImpl<remove_cvref_t<T>>(pos, len);
   }
 
+  std::string ToString() const;
+
  private:
   constexpr Item() {}
 
@@ -219,8 +270,9 @@ class Item {
     meta_ |= static_cast<int>(is_readonly) << 2;
   }
 
+  // For developer: This is not a const func. DO NOT add const qualifier
   template <typename T>
-  Item SubSpanImpl(size_t pos, size_t len) const {
+  Item SubSpanImpl(size_t pos, size_t len) {
     YACL_ENFORCE(!IsReadOnly(),
                  "Cannot make a read-write subspan of a const span");
 
@@ -264,5 +316,7 @@ class Item {
   uint8_t meta_ = 0;
   std::any v_;
 };
+
+std::ostream& operator<<(std::ostream& os, const Item& a);
 
 }  // namespace yacl

@@ -53,18 +53,22 @@ std::map<CurveName, int> kName2Nid = {
     {"secp160r1", NID_secp160r1},
     {"secp160r2", NID_secp160r2},
     {"secp192k1", NID_secp192k1},
+    // SECG secp192r1 is the same as X9.62 prime192v1 and NIST P-192. Openssl
+    // use NID_X9_62_prime192v1 to indicate them
+    {"secp192r1", NID_X9_62_prime192v1},
     {"secp224k1", NID_secp224k1},
     {"secp224r1", NID_secp224r1},
+    // SECG secp256r1 is the same as X9.62 prime256v1 and NIST P-256. Openssl
+    // use NID_X9_62_prime256v1 to indicate them
+    {"secp256r1", NID_X9_62_prime256v1},
     {"secp256k1", NID_secp256k1},
     {"secp384r1", NID_secp384r1},
     {"secp521r1", NID_secp521r1},
-    {"secp192r1", NID_X9_62_prime192v1},
     {"prime192v2", NID_X9_62_prime192v2},
     {"prime192v3", NID_X9_62_prime192v3},
     {"prime239v1", NID_X9_62_prime239v1},
     {"prime239v2", NID_X9_62_prime239v2},
     {"prime239v3", NID_X9_62_prime239v3},
-    {"secp256r1", NID_X9_62_prime256v1},
     {"sect113r1", NID_sect113r1},
     {"sect113r2", NID_sect113r2},
     {"sect131r1", NID_sect131r1},
@@ -82,6 +86,8 @@ std::map<CurveName, int> kName2Nid = {
     {"sect409k1", NID_sect409k1},
     {"sect409r1", NID_sect409r1},
     {"sect571k1", NID_sect571k1},
+    // SECG sect571r1 is the same as ANSI X9.63 ansit571r1 and NIST B-571.
+    // Openssl use NID_sect571r1 to indicate them
     {"sect571r1", NID_sect571r1},
     {"c2pnb163v1", NID_X9_62_c2pnb163v1},
     {"c2pnb163v2", NID_X9_62_c2pnb163v2},
@@ -110,6 +116,9 @@ std::map<CurveName, int> kName2Nid = {
     {"wap-wsg-idm-ecid-wtls10", NID_wap_wsg_idm_ecid_wtls10},
     {"wap-wsg-idm-ecid-wtls11", NID_wap_wsg_idm_ecid_wtls11},
     {"wap-wsg-idm-ecid-wtls12", NID_wap_wsg_idm_ecid_wtls12},
+    {"Oakley Group 3", NID_ipsec3},
+    {"Oakley Group 4", NID_ipsec4},
+    {"brainpoolP160r1", NID_brainpoolP160r1},
     {"brainpoolP160t1", NID_brainpoolP160t1},
     {"brainpoolP192r1", NID_brainpoolP192r1},
     {"brainpoolP192t1", NID_brainpoolP192t1},

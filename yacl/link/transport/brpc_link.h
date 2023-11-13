@@ -27,7 +27,6 @@
 #include "yacl/base/exception.h"
 #include "yacl/link/ssl_options.h"
 #include "yacl/link/transport/channel.h"
-#include "yacl/link/transport/default_brpc_retry_policy.h"
 #include "yacl/link/transport/interconnection_link.h"
 
 namespace yacl::link::transport {
@@ -65,11 +64,10 @@ class BrpcLink final : public InterconnectionLink {
 
   static InterconnectionLink::Options GetDefaultOptions() {
     return InterconnectionLink::Options{10 * 1000, 512 * 1024, "baidu_std",
-                                        "single",  3,          1000};
+                                        "single"};
   }
-
   void SendRequest(const ::google::protobuf::Message& request,
-                   uint32_t timeout_override_ms) override;
+                   uint32_t timeout_override_ms) const override;
 
   void SetPeerHost(const std::string& peer_host,
                    const SSLOptions* ssl_opts = nullptr);
@@ -77,7 +75,6 @@ class BrpcLink final : public InterconnectionLink {
  protected:
   // brpc channel related.
   std::string peer_host_;
-  std::unique_ptr<brpc::RetryPolicy> retry_policy_;
   std::shared_ptr<brpc::Channel> delegate_channel_;
 };
 

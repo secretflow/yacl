@@ -43,6 +43,7 @@ class MPInt {
   // Pre-defined variables ...
   // WARNING: Do not use these variables in the global environment. Your global
   // variables may be initialized earlier than these.
+  static const MPInt _0_;
   static const MPInt _1_;
   static const MPInt _2_;
 
@@ -65,8 +66,8 @@ class MPInt {
   }
 
   // if radix == 0, the real radix will be auto-detected:
-  //  - if num is start with 0x, the radix is 16
-  //  - if num is start with 0 , the radix is 8
+  //  - if num is started with 0x, the radix is 16
+  //  - if num is started with 0, the radix is 8
   //  - otherwise radix is 10
   // Plus and minus signs are supported, e.g. MPInt("-0xFF") is -255
   explicit MPInt(const std::string &num, size_t radix = 0);
@@ -97,7 +98,17 @@ class MPInt {
   void Set(const std::string &num, int radix = 0);
 
   void SetZero();
-  [[nodiscard]] bool IsZero() const;
+  [[nodiscard]] bool IsZero() const { return mp_iszero(&n_); }
+  [[nodiscard]] bool IsOne() const { return mp_isone(&n_); }
+  [[nodiscard]] bool IsNegative() const { return mp_isneg(&n_); }
+  // is natural number (>= 0)
+  [[nodiscard]] bool IsNatural() const { return !mp_isneg(&n_); }
+  [[nodiscard]] bool IsPositive() const {
+    return !mp_iszero(&n_) && !mp_isneg(&n_);
+  }
+
+  [[nodiscard]] bool IsOdd() const { return mp_isodd(&n_); }
+  [[nodiscard]] bool IsEven() const { return mp_iseven(&n_); }
 
   // Get the i'th bit. Always return 0 or 1
   uint8_t operator[](int idx) const;
@@ -105,14 +116,6 @@ class MPInt {
   void SetBit(int idx, uint8_t bit);
 
   [[nodiscard]] size_t BitCount() const;
-
-  [[nodiscard]] bool IsNegative() const { return mp_isneg(&n_); }
-  [[nodiscard]] bool IsPositive() const {
-    return !mp_iszero(&n_) && !mp_isneg(&n_);
-  }
-
-  [[nodiscard]] bool IsOdd() const { return mp_isodd(&n_); }
-  [[nodiscard]] bool IsEven() const { return mp_iseven(&n_); }
 
   size_t SizeAllocated() { return n_.alloc * sizeof(mp_digit); }
   size_t SizeUsed() { return n_.used * sizeof(mp_digit); }
@@ -191,7 +194,10 @@ class MPInt {
 
   // (*c) = a - b
   static void Sub(const MPInt &a, const MPInt &b, MPInt *c);
+
   MPInt SubMod(const MPInt &b, const MPInt &mod) const;
+  static void SubMod(const MPInt &a, const MPInt &b, const MPInt &mod,
+                     MPInt *d);
 
   // (*c) = a * b
   static void Mul(const MPInt &a, const MPInt &b, MPInt *c);
@@ -203,12 +209,13 @@ class MPInt {
                      MPInt *d);
 
   // *d = (a**b) mod c
-  static void PowMod(const MPInt &a, const MPInt &b, const MPInt &mod,
-                     MPInt *d);
   static void Pow(const MPInt &a, uint32_t b, MPInt *c);
-  MPInt PowMod(const MPInt &b, const MPInt &mod) const;
   MPInt Pow(uint32_t b) const;
   void PowInplace(uint32_t b);
+
+  static void PowMod(const MPInt &a, const MPInt &b, const MPInt &mod,
+                     MPInt *d);
+  MPInt PowMod(const MPInt &b, const MPInt &mod) const;
 
   /* a/b => cb + d == a */
   static void Div(const MPInt &a, const MPInt &b, MPInt *c, MPInt *d);
@@ -298,6 +305,12 @@ class MPInt {
   friend std::ostream &operator<<(std::ostream &os, const MPInt &an_int);
 
   [[nodiscard]] yacl::Buffer Serialize() const;
+  // serialize mpint to already allocated buffer.
+  // if buf is nullptr, then calc serialize size only
+  // @return: the actual size of serialized buffer
+  // @throw: if buf_len is too small, an exception will be thrown
+  size_t Serialize(uint8_t *buf, size_t buf_len) const;
+
   void Deserialize(yacl::ByteContainerView buffer);
   [[nodiscard]] std::string ToString() const;
   [[nodiscard]] std::string ToHexString() const;

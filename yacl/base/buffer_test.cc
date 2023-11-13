@@ -22,7 +22,7 @@
 
 namespace yacl::test {
 
-TEST(BufferTest, BasicWorks) {
+TEST(BufferTest, ParallelWorks) {
   std::vector<Buffer> v;
   v.resize(100000);
   parallel_for(0, v.size(), 1, [&](int64_t beg, int64_t end) {
@@ -30,6 +30,21 @@ TEST(BufferTest, BasicWorks) {
       v[i] = Buffer(fmt::format("hello_{}", i));
     }
   });
+}
+
+TEST(BufferTest, ReserveWorks) {
+  Buffer buf("abc\0", 4);
+  ASSERT_EQ(buf.size(), 4);
+
+  buf.reserve(10);
+  EXPECT_EQ(buf.size(), 4);
+  EXPECT_EQ(buf.capacity(), 10);
+  EXPECT_STREQ(buf.data<char>(), "abc");
+
+  EXPECT_ANY_THROW(buf.reserve(1));
+  EXPECT_NO_THROW(buf.resize(1));
+  EXPECT_EQ(buf.size(), 1);
+  EXPECT_EQ(buf.capacity(), 10);
 }
 
 }  // namespace yacl::test

@@ -26,9 +26,19 @@ yacl_cc_library(
         "//yacl/base:buffer",
         "//yacl/base:byte_container_view",
         "//yacl/base:exception",
+        "//yacl/link:retry_options",
         "//yacl/link:ssl_options",
         "//yacl/utils:segment_tree",
         "@com_github_brpc_brpc//:brpc",
+    ],
+)
+
+yacl_cc_test(
+    name = "channel_test",
+    srcs = ["channel_test.cc"],
+    deps = [
+        ":channel",
+        ":ic_transport_proto",
     ],
 )
 
@@ -47,15 +57,6 @@ cc_proto_library(
 )
 
 yacl_cc_library(
-    name = "default_brpc_retry_policy",
-    srcs = ["default_brpc_retry_policy.cc"],
-    hdrs = ["default_brpc_retry_policy.h"],
-    deps = [
-        "@com_github_brpc_brpc//:brpc",
-    ],
-)
-
-yacl_cc_library(
     name = "interconnection_link",
     srcs = ["interconnection_link.cc"],
     hdrs = ["interconnection_link.h"],
@@ -70,7 +71,6 @@ yacl_cc_library(
     srcs = ["brpc_link.cc"],
     hdrs = ["brpc_link.h"],
     deps = [
-        ":default_brpc_retry_policy",
         ":interconnection_link",
     ],
 )
@@ -88,7 +88,6 @@ yacl_cc_library(
     srcs = ["brpc_blackbox_link.cc"],
     hdrs = ["brpc_blackbox_link.h"],
     deps = [
-        ":default_brpc_retry_policy",
         ":interconnection_link",
         "//yacl/link/transport/blackbox_interconnect:blackbox_service_errorcode",
         "//yacl/link/transport/blackbox_interconnect:blackbox_service_proto",

@@ -430,29 +430,44 @@ void mp_ext_from_mag_bytes(mp_int *num, const uint8_t *buf, size_t buf_len,
   mp_clamp(num);
 }
 
+// The mpint serialize protocol:
+// The value is stored in little-endian format, and the MSB of the last byte is
+// the sign bit.
+//
+//      +--------+--------+--------+--------+
+//      |DDDDDDDD|DDDDDDDD|DDDDDDDD|SDDDDDDD|
+//      +--------+--------+--------+--------+
+//                                  ▲
+//                                  │
+//                               sign bit
+// D = data/payload; S = sign bit
 size_t mp_ext_serialize_size(const mp_int &num) {
-  return mp_ext_mag_bytes_size(num) + 1;  // we add an extra meta byte
+  return mp_ext_count_bits_fast(num) / CHAR_BIT + 1;
 }
 
-void mp_ext_serialize(const mp_int &num, uint8_t *buf, size_t buf_len) {
-  YACL_ENFORCE(buf_len > 0, "buf_len is zero");
-
-  // buf[0] is meta byte
-  if (mp_isneg(&num)) {
-    buf[0] = 1;
-  } else {
-    buf[0] = 0;
-  }
+size_t mp_ext_serialize(const mp_int &num, uint8_t *buf, size_t buf_len) {
+  auto total_buf = mp_ext_serialize_size(num);
+  YACL_ENFORCE(buf_len >= total_buf,
+               "buf is too small, min required={}, actual={}", total_buf,
+               buf_len);
 
   // store num in Little-Endian
-  mp_ext_to_mag_bytes(num, buf + 1, buf_len - 1, Endian::little);
+  buf[total_buf - 1] = 0;
+  auto value_buf = mp_ext_to_mag_bytes(num, buf, buf_len, Endian::little);
+  YACL_ENFORCE(total_buf == value_buf || total_buf == value_buf + 1,
+               "bug: buf len mismatch, {} vs {}", total_buf, value_buf);
+  // write sign bit
+  uint8_t sign = (mp_isneg(&num) ? 1 : 0) << 7;
+  buf[total_buf - 1] |= sign;
+  return total_buf;
 }
 
 void mp_ext_deserialize(mp_int *num, const uint8_t *buf, size_t buf_len) {
   YACL_ENFORCE(buf_len > 0, "mp_int deserialize: empty buffer");
-
-  mp_ext_from_mag_bytes(num, buf + 1, buf_len - 1, Endian::little);
-  num->sign = buf[0] == 0 ? MP_ZPOS : MP_NEG;
+  // since buf is const, we cannot clear the sign bit
+  mp_ext_from_mag_bytes(num, buf, buf_len, Endian::little);
+  num->sign = ((buf[buf_len - 1] >> 7) == 1 ? MP_NEG : MP_ZPOS);
+  mp_ext_set_bit(num, buf_len * CHAR_BIT - 1, 0);  // clear sign bit
 }
 
 uint8_t mp_ext_get_bit(const mp_int &a, int index) {

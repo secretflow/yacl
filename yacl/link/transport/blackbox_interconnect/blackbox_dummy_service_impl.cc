@@ -56,7 +56,7 @@ void DummyBlackBoxServiceImpl::OnInvoke(const std::string* topic,
                                         std::string request) {
   SPDLOG_INFO("invoke: topic {}", *topic);
   std::lock_guard<std::mutex> guard(msg_mtx_);
-  msg_db_[*topic].push(std::move(request));
+  recv_msgs_[*topic].push(std::move(request));
   msg_cond_.notify_all();
 }
 
@@ -128,10 +128,10 @@ void DummyBlackBoxServiceImpl::OnPop(brpc::Controller* cntl,
   }
   std::unique_lock<std::mutex> lock(msg_mtx_);
   msg_cond_.wait_for(lock, std::chrono::seconds(timeout),
-                     [&] { return !msg_db_[*topic].empty(); });
-  if (!msg_db_[*topic].empty()) {
-    response.set_payload(msg_db_[*topic].front());
-    msg_db_[*topic].pop();
+                     [&] { return !recv_msgs_[*topic].empty(); });
+  if (!recv_msgs_[*topic].empty()) {
+    response.set_payload(recv_msgs_[*topic].front());
+    recv_msgs_[*topic].pop();
   } else {
     // return OK when timeout, but payload is empty.
     response.set_code(bb_ic::error_code::Code("OK"));

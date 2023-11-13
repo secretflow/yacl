@@ -1,11 +1,11 @@
 # Copyright 2023 Ant Group Co., Ltd.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #   http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -43,7 +43,7 @@ jobs:
             set +e
             declare -i test_status
             bazel test //... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors --jobs 16 | tee test_result.log; test_status=${PIPESTATUS[0]}
-            
+
             git clone https://github.com/secretflow/devtools.git
             sh devtools/rename-junit-xml.sh
 
@@ -75,10 +75,10 @@ jobs:
             set +e
             declare -i test_status
             bazel test //... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; test_status=${PIPESTATUS[0]}
-            
+
             git clone https://github.com/secretflow/devtools.git
             sh devtools/rename-junit-xml.sh
-            
+
             find bazel-bin/ -perm +111 -type f -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar.gz
             find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz
             exit ${test_status}
@@ -93,7 +93,7 @@ jobs:
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
 workflows:
   unittest:
-    when: << pipeline.parameters.build-and-run >> 
+    when: << pipeline.parameters.build-and-run >>
     jobs:
       - linux_ut:
           matrix:

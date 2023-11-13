@@ -40,6 +40,14 @@ yacl_cc_library(
 )
 
 yacl_cc_library(
+    name = "retry_options",
+    hdrs = ["retry_options.h"],
+    deps = [
+        ":link_cc_proto",
+    ],
+)
+
+yacl_cc_library(
     name = "ssl_options",
     hdrs = ["ssl_options.h"],
     deps = [
@@ -53,6 +61,7 @@ yacl_cc_library(
     hdrs = ["context.h"],
     deps = [
         ":link_cc_proto",
+        ":retry_options",
         ":ssl_options",
         ":trace",
         "//yacl/base:byte_container_view",

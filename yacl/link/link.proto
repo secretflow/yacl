@@ -39,6 +39,29 @@ message SSLOptionsProto {
   string ca_file_path = 4;
 }
 
+// Retry options.
+message RetryOptionsProto {
+  // max retry count
+  // default 3
+  uint32 max_retry = 1;
+  // time between retries at first retry
+  // default 1 second
+  uint32 retry_interval_ms = 2;
+  // The amount of time to increase the interval between retries
+  // default 2s
+  uint32 retry_interval_incr_ms = 3;
+  // The maximum interval between retries
+  // default 10s
+  uint32 max_retry_interval_ms = 4;
+  // retry on these brpc error codes, if empty, retry on all codes
+  repeated uint32 error_codes = 5;
+  // retry on these http codes, if empty, retry on all http codes
+  repeated uint32 http_codes = 6;
+  // do aggressive retry， this means that retries will be made on additional
+  // error codes
+  bool aggressive_retry = 7;
+}
+
 // Configuration for link config.
 message ContextDescProto {
   // the UUID of this communication.
@@ -104,14 +127,10 @@ message ContextDescProto {
   // this config is ignored if enable_ssl == false;
   SSLOptionsProto server_ssl_opts = 13;
 
-  // max retry count
-  uint32 brpc_retry_count = 14;
-  // the time between retries
-  uint32 brpc_retry_interval_ms = 15;
-  // do aggressive retry， this means that retries will be made on additional
-  // error codes
-  bool brpc_aggressive_retry = 16;
   // chunk parallel send size for channel. if need chunked send when send
   // message, the max paralleled send size is chunk_parallel_send_size
   uint32 chunk_parallel_send_size = 17;
+
+  // retry options
+  RetryOptionsProto retry_opts = 14;
 }

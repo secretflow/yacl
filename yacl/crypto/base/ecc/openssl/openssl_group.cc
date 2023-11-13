@@ -307,7 +307,7 @@ EcPoint OpensslGroup::HashToCurve(HashToCurveStrategy strategy,
       }
       break;
     case HashToCurveStrategy::TryAndRehash_SHA3:
-      YACL_THROW("Openssl lib does not support TryAndRehash_SHA3 strategy now");
+      YACL_THROW("Openssl does not support TryAndRehash_SHA3 strategy now");
       break;
     case HashToCurveStrategy::TryAndRehash_SM:
       hash_algorithm = HashAlgorithm::SM3;
@@ -317,9 +317,8 @@ EcPoint OpensslGroup::HashToCurve(HashToCurveStrategy strategy,
       hash_algorithm = HashAlgorithm::BLAKE3;
       break;
     default:
-      YACL_THROW(
-          "Openssl lib only supports TryAndRehash strategy now. select={}",
-          (int)strategy);
+      YACL_THROW("Openssl only supports TryAndRehash strategy now. select={}",
+                 (int)strategy);
   }
 
   auto point = MakeOpensslPoint();

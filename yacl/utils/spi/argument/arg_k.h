@@ -24,6 +24,8 @@ namespace yacl {
 template <typename T>
 class SpiArgKey {
  public:
+  using ValueType = T;
+
   explicit SpiArgKey(const std::string &key)
       : key_(absl::AsciiStrToLower(key)) {}
 

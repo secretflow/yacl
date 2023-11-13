@@ -65,8 +65,9 @@ class BrpcLinkTest : public ::testing::Test {
     auto receive_delegate =
         std::make_shared<BrpcLink>(recv_rank, send_rank, options);
 
-    sender_ = std::make_shared<Channel>(sender_delegate, false);
-    receiver_ = std::make_shared<Channel>(receive_delegate, false);
+    sender_ = std::make_shared<Channel>(sender_delegate, false, RetryOptions());
+    receiver_ =
+        std::make_shared<Channel>(receive_delegate, false, RetryOptions());
 
     // let sender rank as 0, receiver rank as 1.
     // receiver_ listen messages from sender(rank 0).
@@ -129,11 +130,15 @@ TEST_F(BrpcLinkTest, Normal_Len100) {
 
 class BrpcLinkWithLimitTest
     : public BrpcLinkTest,
-      public ::testing::WithParamInterface<std::tuple<size_t, size_t>> {};
+      public ::testing::WithParamInterface<std::tuple<size_t, size_t, size_t>> {
+};
 
 TEST_P(BrpcLinkWithLimitTest, SendAsync) {
   const size_t size_limit_per_call = std::get<0>(GetParam());
   const size_t size_to_send = std::get<1>(GetParam());
+  const size_t parallel_size = std::get<2>(GetParam());
+  sender_->SetChunkParallelSendSize(parallel_size);
+  receiver_->SetChunkParallelSendSize(parallel_size);
 
   sender_->GetLink()->SetMaxBytesPerChunk(size_limit_per_call);
 
@@ -148,6 +153,9 @@ TEST_P(BrpcLinkWithLimitTest, SendAsync) {
 TEST_P(BrpcLinkWithLimitTest, Unread) {
   const size_t size_limit_per_call = std::get<0>(GetParam());
   const size_t size_to_send = std::get<1>(GetParam());
+  const size_t parallel_size = std::get<2>(GetParam());
+  sender_->SetChunkParallelSendSize(parallel_size);
+  receiver_->SetChunkParallelSendSize(parallel_size);
 
   sender_->GetLink()->SetMaxBytesPerChunk(size_limit_per_call);
 
@@ -165,6 +173,10 @@ TEST_P(BrpcLinkWithLimitTest, Unread) {
 TEST_P(BrpcLinkWithLimitTest, Async) {
   const size_t size_limit_per_call = std::get<0>(GetParam());
   const size_t size_to_send = std::get<1>(GetParam());
+  const size_t parallel_size = std::get<2>(GetParam());
+  sender_->SetChunkParallelSendSize(parallel_size);
+  receiver_->SetChunkParallelSendSize(parallel_size);
+
   sender_->SetThrottleWindowSize(size_to_send);
   sender_->GetLink()->SetMaxBytesPerChunk(size_limit_per_call);
   const size_t test_size = 128 + (std::rand() % 128);
@@ -202,6 +214,9 @@ TEST_P(BrpcLinkWithLimitTest, Async) {
 TEST_P(BrpcLinkWithLimitTest, AsyncWithThrottleLimit) {
   const size_t size_limit_per_call = std::get<0>(GetParam());
   const size_t size_to_send = std::get<1>(GetParam());
+  const size_t parallel_size = std::get<2>(GetParam());
+  sender_->SetChunkParallelSendSize(parallel_size);
+  receiver_->SetChunkParallelSendSize(parallel_size);
   sender_->SetThrottleWindowSize(size_to_send);
   sender_->GetLink()->SetMaxBytesPerChunk(size_limit_per_call);
   const size_t test_size = 128 + (std::rand() % 128);
@@ -242,6 +257,10 @@ TEST_P(BrpcLinkWithLimitTest, AsyncWithThrottleLimit) {
 TEST_P(BrpcLinkWithLimitTest, ThrottleWindowUnread) {
   const size_t size_limit_per_call = std::get<0>(GetParam());
   const size_t size_to_send = std::get<1>(GetParam());
+  const size_t parallel_size = std::get<2>(GetParam());
+  sender_->SetChunkParallelSendSize(parallel_size);
+  receiver_->SetChunkParallelSendSize(parallel_size);
+
   sender_->SetThrottleWindowSize(size_to_send);
   sender_->GetLink()->SetMaxBytesPerChunk(size_limit_per_call);
   const size_t test_size = 128 + (std::rand() % 128);
@@ -285,6 +304,9 @@ TEST_P(BrpcLinkWithLimitTest, ThrottleWindowUnread) {
 TEST_P(BrpcLinkWithLimitTest, Send) {
   const size_t size_limit_per_call = std::get<0>(GetParam());
   const size_t size_to_send = std::get<1>(GetParam());
+  const size_t parallel_size = std::get<2>(GetParam());
+  sender_->SetChunkParallelSendSize(parallel_size);
+  receiver_->SetChunkParallelSendSize(parallel_size);
 
   sender_->GetLink()->SetMaxBytesPerChunk(size_limit_per_call);
 
@@ -299,10 +321,12 @@ TEST_P(BrpcLinkWithLimitTest, Send) {
 INSTANTIATE_TEST_SUITE_P(
     Normal_Instances, BrpcLinkWithLimitTest,
     testing::Combine(testing::Values(9, 17),
-                     testing::Values(1, 2, 9, 10, 11, 20, 19, 21, 1001)),
+                     testing::Values(1, 2, 9, 10, 11, 20, 19, 21, 1001),
+                     testing::Values(1, 8)),
     [](const testing::TestParamInfo<BrpcLinkWithLimitTest::ParamType>& info) {
-      std::string name = fmt::format("Limit_{}_Len_{}", std::get<0>(info.param),
-                                     std::get<1>(info.param));
+      std::string name =
+          fmt::format("Limit_{}_Len_{}_parallel_{}", std::get<0>(info.param),
+                      std::get<1>(info.param), std::get<2>(info.param));
       return name;
     });
 
@@ -377,8 +401,10 @@ TEST_F(BrpcLinkSSLTest, OneWaySSL) {
       std::make_shared<BrpcLink>(send_rank, recv_rank, channel_options_);
   auto receiver_delegate =
       std::make_shared<BrpcLink>(recv_rank, send_rank, channel_options_);
-  auto sender = std::make_shared<Channel>(sender_delegate, false);
-  auto receiver = std::make_shared<Channel>(receiver_delegate, false);
+  auto sender =
+      std::make_shared<Channel>(sender_delegate, false, RetryOptions());
+  auto receiver =
+      std::make_shared<Channel>(receiver_delegate, false, RetryOptions());
 
   // let sender rank as 0, receiver rank as 1.
   // receiver listen messages from sender(rank 0).
@@ -423,8 +449,10 @@ TEST_F(BrpcLinkSSLTest, TwoWaySSL) {
       std::make_shared<BrpcLink>(send_rank, recv_rank, channel_options_);
   auto receiver_delegate =
       std::make_shared<BrpcLink>(recv_rank, send_rank, channel_options_);
-  auto sender = std::make_shared<Channel>(sender_delegate, false);
-  auto receiver = std::make_shared<Channel>(receiver_delegate, false);
+  auto sender =
+      std::make_shared<Channel>(sender_delegate, false, RetryOptions());
+  auto receiver =
+      std::make_shared<Channel>(receiver_delegate, false, RetryOptions());
 
   // let sender rank as 0, receiver rank as 1.
   // receiver listen messages from sender(rank 0).

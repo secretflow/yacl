@@ -24,7 +24,7 @@
 
 namespace yacl {
 
-// A buffer is a RAII object which represents an in memory buffer.
+// A buffer is a RAII object that represents an in memory buffer.
 class Buffer final {
   std::byte* ptr_{nullptr};
   int64_t size_{0};
@@ -44,6 +44,14 @@ class Buffer final {
     ptr_ = new std::byte[size];
   }
 
+  Buffer(int64_t size, int64_t cap) : size_(size), capacity_(cap) {
+    YACL_ENFORCE(size >= 0 && cap >= size,
+                 "Illegal size & cap, size={}, cap={}", size, cap);
+    // C++17 ensures alignment of allocated memory is >=
+    // __STDCPP_DEFAULT_NEW_ALIGNMENT__ Which should be 16
+    ptr_ = new std::byte[cap];
+  }
+
   template <typename ByteContainer,
             std::enable_if_t<sizeof(typename ByteContainer::value_type) == 1,
                              bool> = true>
@@ -57,7 +65,7 @@ class Buffer final {
     }
   }
 
-  // Construct Buffer object from a block of already allocated memory
+  // Construct a Buffer object from a block of already allocated memory
   // Buffer will take the ownership of ptr
   Buffer(void* ptr, size_t size, const std::function<void(void*)>& deleter) {
     YACL_ENFORCE(reinterpret_cast<uintptr_t>(ptr) % 16 == 0,
@@ -124,7 +132,7 @@ class Buffer final {
     }
 
     std::byte* new_ptr = nullptr;
-    if (new_size != 0) {
+    if (new_size > 0) {
       new_ptr = new std::byte[new_size];
       if (ptr_ != nullptr) {
         std::copy(ptr_, ptr_ + std::min(new_size, size_), new_ptr);
@@ -137,6 +145,29 @@ class Buffer final {
     size_ = new_size;
     capacity_ = new_size;
     YACL_ENFORCE(size_ == 0 || ptr_ != nullptr, "new size = {}", new_size);
+  }
+
+  void reserve(int64_t new_cap) {
+    YACL_ENFORCE(new_cap >= size_,
+                 "reserve() cannot be used to reduce the size of Buffer,to "
+                 "that end resize() is provided. size()={}, new_cap={}",
+                 size_, new_cap);
+
+    if (new_cap <= capacity_) {
+      return;
+    }
+
+    auto* new_ptr = new std::byte[new_cap];
+    if (ptr_ != nullptr && size_ > 0) {
+      std::copy(ptr_, ptr_ + size_, new_ptr);
+    }
+
+    auto sz = size_;
+    reset();
+
+    ptr_ = new_ptr;
+    size_ = sz;
+    capacity_ = new_cap;
   }
 
   void* release() {
