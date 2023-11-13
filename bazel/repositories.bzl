@@ -41,7 +41,6 @@ def yacl_deps():
 
     # crypto related
     _com_github_openssl_openssl()
-    _com_github_floodyberry_curve25519_donna()
     _com_github_blake3team_blake3()
     _com_github_intel_ipp()
     _com_github_libsodium()
@@ -67,17 +66,16 @@ def _com_github_brpc_brpc():
     maybe(
         http_archive,
         name = "com_github_brpc_brpc",
-        sha256 = "d286d520ec4d317180d91ea3970494c1b8319c8867229e5c4784998c4536718f",
-        strip_prefix = "brpc-1.6.0",
+        sha256 = "48668cbc943edd1b72551e99c58516249d15767b46ea13a843eb8df1d3d1bc42",
+        strip_prefix = "brpc-1.7.0",
         type = "tar.gz",
         patch_args = ["-p1"],
         patches = [
             "@yacl//bazel:patches/brpc.patch",
             "@yacl//bazel:patches/brpc_m1.patch",
-            "@yacl//bazel:patches/brpc-2324.patch",
         ],
         urls = [
-            "https://github.com/apache/brpc/archive/refs/tags/1.6.0.tar.gz",
+            "https://github.com/apache/brpc/archive/refs/tags/1.7.0.tar.gz",
         ],
     )
 
@@ -137,11 +135,11 @@ def _com_google_absl():
     maybe(
         http_archive,
         name = "com_google_absl",
-        sha256 = "5366d7e7fa7ba0d915014d387b66d0d002c03236448e1ba9ef98122c13b35c36",
+        sha256 = "987ce98f02eefbaf930d6e38ab16aa05737234d7afbab2d5c4ea7adbe50c28ed",
         type = "tar.gz",
-        strip_prefix = "abseil-cpp-20230125.3",
+        strip_prefix = "abseil-cpp-20230802.1",
         urls = [
-            "https://github.com/abseil/abseil-cpp/archive/refs/tags/20230125.3.tar.gz",
+            "https://github.com/abseil/abseil-cpp/archive/refs/tags/20230802.1.tar.gz",
         ],
     )
 
@@ -162,11 +160,11 @@ def _com_github_fmtlib_fmt():
     maybe(
         http_archive,
         name = "com_github_fmtlib_fmt",
-        strip_prefix = "fmt-10.0.0",
-        sha256 = "ede1b6b42188163a3f2e0f25ad5c0637eca564bd8df74d02e31a311dd6b37ad8",
+        strip_prefix = "fmt-10.1.1",
+        sha256 = "78b8c0a72b1c35e4443a7e308df52498252d1cefc2b08c9a97bc9ee6cfe61f8b",
         build_file = "@yacl//bazel:fmtlib.BUILD",
         urls = [
-            "https://github.com/fmtlib/fmt/archive/refs/tags/10.0.0.tar.gz",
+            "https://github.com/fmtlib/fmt/archive/refs/tags/10.1.1.tar.gz",
         ],
     )
 
@@ -219,6 +217,7 @@ def _com_github_blake3team_blake3():
         ],
     )
 
+# Required by protobuf
 def _rule_python():
     maybe(
         http_archive,
@@ -234,23 +233,10 @@ def _rules_foreign_cc():
     maybe(
         http_archive,
         name = "rules_foreign_cc",
-        sha256 = "2a4d07cd64b0719b39a7c12218a3e507672b82a97b98c6a89d38565894cf7c51",
-        strip_prefix = "rules_foreign_cc-0.9.0",
+        sha256 = "476303bd0f1b04cc311fc258f1708a5f6ef82d3091e53fd1977fa20383425a6a",
+        strip_prefix = "rules_foreign_cc-0.10.1",
         urls = [
-            "https://github.com/bazelbuild/rules_foreign_cc/archive/refs/tags/0.9.0.tar.gz",
-        ],
-    )
-
-def _com_github_floodyberry_curve25519_donna():
-    maybe(
-        http_archive,
-        name = "com_github_floodyberry_curve25519_donna",
-        strip_prefix = "curve25519-donna-2fe66b65ea1acb788024f40a3373b8b3e6f4bbb2",
-        sha256 = "ba57d538c241ad30ff85f49102ab2c8dd996148456ed238a8c319f263b7b149a",
-        type = "tar.gz",
-        build_file = "@yacl//bazel:curve25519-donna.BUILD",
-        urls = [
-            "https://github.com/floodyberry/curve25519-donna/archive/2fe66b65ea1acb788024f40a3373b8b3e6f4bbb2.tar.gz",
+            "https://github.com/bazelbuild/rules_foreign_cc/archive/refs/tags/0.10.1.tar.gz",
         ],
     )
 
@@ -287,14 +273,12 @@ def _com_github_google_cpu_features():
     maybe(
         http_archive,
         name = "com_github_google_cpu_features",
-        strip_prefix = "cpu_features-0.8.0",
+        strip_prefix = "cpu_features-0.9.0",
         type = "tar.gz",
-        sha256 = "7021729f2db97aa34f218d12727314f23e8b11eaa2d5a907e8426bcb41d7eaac",
         build_file = "@yacl//bazel:cpu_features.BUILD",
-        patch_args = ["-p1"],
-        patches = ["@yacl//bazel:patches/cpu_features.patch"],
+        sha256 = "bdb3484de8297c49b59955c3b22dba834401bc2df984ef5cfc17acbe69c5018e",
         urls = [
-            "https://github.com/google/cpu_features/archive/refs/tags/v0.8.0.tar.gz",
+            "https://github.com/google/cpu_features/archive/refs/tags/v0.9.0.tar.gz",
         ],
     )
 
@@ -333,10 +317,10 @@ def _com_github_msgpack_msgpack():
         http_archive,
         name = "com_github_msgpack_msgpack",
         type = "tar.gz",
-        strip_prefix = "msgpack-c-cpp-3.3.0",
-        sha256 = "754c3ace499a63e45b77ef4bcab4ee602c2c414f58403bce826b76ffc2f77d0b",
+        strip_prefix = "msgpack-c-cpp-6.1.0",
+        sha256 = "5e63e4d9b12ab528fccf197f7e6908031039b1fc89cd8da0e97fbcbf5a6c6d3a",
         urls = [
-            "https://github.com/msgpack/msgpack-c/archive/refs/tags/cpp-3.3.0.tar.gz",
+            "https://github.com/msgpack/msgpack-c/archive/refs/tags/cpp-6.1.0.tar.gz",
         ],
         build_file = "@yacl//bazel:msgpack.BUILD",
     )

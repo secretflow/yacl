@@ -39,12 +39,12 @@ Buffer ChannelMem::Recv(const std::string& key) {
   {
     std::unique_lock lock(msg_mutex_);
     auto stop_waiting = [&] {
-      auto itr = this->msg_db_.find(key);
-      if (itr == this->msg_db_.end()) {
+      auto itr = this->recv_msgs_.find(key);
+      if (itr == this->recv_msgs_.end()) {
         return false;
       } else {
         value = std::move(itr->second);
-        this->msg_db_.erase(itr);
+        this->recv_msgs_.erase(itr);
         return true;
       }
     };
@@ -60,7 +60,7 @@ void ChannelMem::OnMessage(const std::string& msg_key,
                            ByteContainerView value) {
   {
     std::unique_lock lock(msg_mutex_);
-    msg_db_.emplace(msg_key, value);
+    recv_msgs_.emplace(msg_key, value);
   }
   msg_db_cond_.notify_all();
 }

@@ -48,9 +48,7 @@ std::shared_ptr<Context> FactoryBrpc::CreateContext(const ContextDesc& desc,
   auto opts = transport::BrpcLink::GetDefaultOptions();
   opts = transport::BrpcLink::MakeOptions(
       opts, desc.http_timeout_ms, desc.http_max_payload_size,
-      desc.brpc_channel_protocol, desc.brpc_channel_connection_type,
-      desc.brpc_retry_count, desc.brpc_retry_interval_ms,
-      desc.brpc_aggressive_retry);
+      desc.brpc_channel_protocol, desc.brpc_channel_connection_type);
 
   auto msg_loop = std::make_unique<transport::ReceiverLoopBrpc>();
   std::vector<std::shared_ptr<transport::IChannel>> channels(world_size);
@@ -65,7 +63,8 @@ std::shared_ptr<Context> FactoryBrpc::CreateContext(const ContextDesc& desc,
                           desc.enable_ssl ? &desc.client_ssl_opts : nullptr);
 
     auto channel = std::make_shared<transport::Channel>(
-        delegate, desc.recv_timeout_ms, desc.exit_if_async_error);
+        delegate, desc.recv_timeout_ms, desc.exit_if_async_error,
+        desc.retry_opts);
     channel->SetThrottleWindowSize(desc.throttle_window_size);
     msg_loop->AddListener(rank, channel);
     channels[rank] = std::move(channel);

@@ -23,14 +23,8 @@
 #include "yacl/crypto/base/symmetric_crypto.h"
 #include "yacl/crypto/tools/prg.h"
 
-extern "C" {
-
-#include "curve25519.h"
-}
-
 namespace yacl::crypto {
 
-constexpr int kCurve25519ElemSize = 32;
 constexpr int kDataNum = 10;
 std::vector<int> aes_data_len = {16, 16, 16, 32, 32, 32, 48, 48, 48, 64};
 std::vector<int> sha256_data_len = {3, 6, 9, 12, 15, 16, 16, 16, 32, 32};
@@ -111,61 +105,6 @@ void Sha256TestData(std::string &file_name) {
   }
 }
 
-void Curve25519TestData(std::string &file_name) {
-  std::ofstream out_file;
-  out_file.open(file_name, std::ios::out /*| std::ios::app*/);
-
-  // prg
-  Prg<uint64_t> prg(0, PRG_MODE::kNistAesCtrDrbg);
-
-  for (size_t i = 0; i < sha256_data_len.size(); ++i) {
-    std::array<uint8_t, kCurve25519ElemSize> private_x;
-    std::array<uint8_t, kCurve25519ElemSize> public_x;
-    std::array<uint8_t, kCurve25519ElemSize> private_y;
-    std::array<uint8_t, kCurve25519ElemSize> public_y;
-    std::array<uint8_t, kCurve25519ElemSize> share_x;
-    std::array<uint8_t, kCurve25519ElemSize> share_y;
-
-    prg.Fill(absl::MakeSpan(private_x.data(), private_x.size()));
-    prg.Fill(absl::MakeSpan(private_y.data(), private_y.size()));
-
-    curve25519_donna_basepoint(public_x.data(), private_x.data());
-    curve25519_donna_basepoint(public_y.data(), private_y.data());
-
-    curve25519_donna(share_x.data(), private_x.data(), public_y.data());
-    curve25519_donna(share_y.data(), private_y.data(), public_x.data());
-
-    EXPECT_EQ(share_x, share_y);
-
-    out_file << "=====" << i << "=====" << std::endl;
-    out_file << "private x(" << private_x.size() << "):" << std::endl;
-    out_file << absl::BytesToHexString(std::string_view(
-                    reinterpret_cast<const char *>(private_x.data()),
-                    share_x.size()))
-             << std::endl;
-    out_file << "public x(" << public_x.size() << "):" << std::endl;
-    out_file << absl::BytesToHexString(std::string_view(
-                    reinterpret_cast<const char *>(public_x.data()),
-                    share_x.size()))
-             << std::endl;
-    out_file << "private y(" << private_y.size() << "):" << std::endl;
-    out_file << absl::BytesToHexString(std::string_view(
-                    reinterpret_cast<const char *>(private_y.data()),
-                    share_x.size()))
-             << std::endl;
-    out_file << "public y(" << public_y.size() << "):" << std::endl;
-    out_file << absl::BytesToHexString(std::string_view(
-                    reinterpret_cast<const char *>(public_y.data()),
-                    share_x.size()))
-             << std::endl;
-    out_file << "share y(" << share_x.size() << "):" << std::endl;
-    out_file << absl::BytesToHexString(std::string_view(
-                    reinterpret_cast<const char *>(share_x.data()),
-                    share_x.size()))
-             << std::endl;
-  }
-}
-
 }  // namespace yacl::crypto
 
 int main(int /*argc*/, char ** /*argv*/) {
@@ -179,7 +118,6 @@ int main(int /*argc*/, char ** /*argv*/) {
   AesTestData(aes_ctr_file_name,
               yacl::crypto::SymmetricCrypto::CryptoType::AES128_CTR);
   yacl::crypto::Sha256TestData(sha256_file_name);
-  yacl::crypto::Curve25519TestData(curve25519_file_name);
 
   return 0;
 }

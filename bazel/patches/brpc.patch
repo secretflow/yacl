@@ -142,15 +142,3 @@ index a2eea9cf..d5c7372f 100644
      "//conditions:default": [
          "test_file_util_linux.cc",
          "proc_maps_linux_unittest.cc",
-diff --git a/BUILD.bazel b/BUILD.bazel
-index 58e8863d..1b35348a 100644
---- a/BUILD.bazel
-+++ b/BUILD.bazel
-@@ -256,6 +256,7 @@ objc_library(
-         "src/butil/memory/scoped_ptr.h",
-         "src/butil/move.h",
-         "src/butil/port.h",
-+        "src/butil/string_printf.h",
-         "src/butil/posix/eintr_wrapper.h",
-         "src/butil/scoped_generic.h",
-         "src/butil/strings/string16.h",

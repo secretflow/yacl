@@ -31,6 +31,7 @@ yacl::math::MPInt operator""_mp(unsigned long long num) {
 
 namespace yacl::math {
 
+const MPInt MPInt::_0_(0);
 const MPInt MPInt::_1_(1);
 const MPInt MPInt::_2_(2);
 
@@ -276,8 +277,6 @@ void MPInt::Set(const std::string &num, int radix) {
   }
 }
 
-bool MPInt::IsZero() const { return mp_iszero(&n_); }
-
 void MPInt::SetZero() { mp_zero(&n_); }
 
 uint8_t MPInt::operator[](int idx) const { return GetBit(idx); }
@@ -472,6 +471,10 @@ MPInt MPInt::SubMod(const MPInt &b, const MPInt &mod) const {
   return res;
 }
 
+void MPInt::SubMod(const MPInt &a, const MPInt &b, const MPInt &mod, MPInt *d) {
+  MPINT_ENFORCE_OK(mp_submod(&a.n_, &b.n_, &mod.n_, &d->n_));
+}
+
 void MPInt::Mul(const MPInt &a, const MPInt &b, MPInt *c) {
   MPINT_ENFORCE_OK(mp_mul(&a.n_, &b.n_, &c->n_));
 }
@@ -624,6 +627,14 @@ yacl::Buffer MPInt::Serialize() const {
   yacl::Buffer buffer(size);
   mp_ext_serialize(n_, buffer.data<uint8_t>(), size);
   return buffer;
+}
+
+size_t MPInt::Serialize(uint8_t *buf, size_t buf_len) const {
+  if (buf == nullptr) {
+    return mp_ext_serialize_size(n_);
+  }
+
+  return mp_ext_serialize(n_, buf, buf_len);
 }
 
 void MPInt::Deserialize(yacl::ByteContainerView buffer) {

@@ -22,7 +22,6 @@
 
 #include "yacl/base/exception.h"
 #include "yacl/link/transport/channel.h"
-#include "yacl/link/transport/default_brpc_retry_policy.h"
 
 #include "interconnection/link/transport.pb.h"
 
@@ -30,35 +29,6 @@ namespace yacl::link::transport {
 
 namespace ic = org::interconnection;
 namespace ic_pb = org::interconnection::link;
-
-class BrpcRetryPolicy : public DefaultBrpcRetryPolicy {
- public:
-  using DefaultBrpcRetryPolicy::DefaultBrpcRetryPolicy;
-  bool OnRpcSuccess(const brpc::Controller* cntl) const override {
-    if (cntl->response() == nullptr) {
-      SPDLOG_ERROR("response is null");
-      return false;
-    }
-
-    if (cntl->response()->GetDescriptor() !=
-        ic_pb::PushResponse::descriptor()) {
-      SPDLOG_ERROR("unexpected response typename: {}",
-                   cntl->response()->GetTypeName());
-      return false;
-    }
-
-    auto* response = static_cast<ic_pb::PushResponse*>(cntl->response());
-    auto error_code = response->header().error_code();
-    if (error_code == ic::ErrorCode::NETWORK_ERROR) {
-      SPDLOG_INFO("NETWORK_ERROR, sleep={}us and retry", retry_interval_us_);
-      bthread_usleep(retry_interval_us_);
-      return true;
-    } else {
-      return false;
-    }
-  }
-};
-
 namespace internal {
 
 class ReceiverServiceImpl : public ic_pb::ReceiverService {
@@ -137,17 +107,13 @@ void BrpcLink::SetPeerHost(const std::string& peer_host,
                            const SSLOptions* ssl_opts) {
   auto brpc_channel = std::make_unique<brpc::Channel>();
   const auto load_balancer = "";
-  auto retry_policy = std::make_unique<BrpcRetryPolicy>(
-      options_.retry_interval_ms, options_.aggressive_retry);
   brpc::ChannelOptions options;
   {
     options.protocol = options_.channel_protocol;
     options.connection_type = options_.channel_connection_type;
     options.connect_timeout_ms = 20000;
     options.timeout_ms = options_.http_timeout_ms;
-
-    options.max_retry = options_.max_retry;
-    options.retry_policy = retry_policy.get();
+    options.max_retry = 0;
 
     if (ssl_opts != nullptr) {
       options.mutable_ssl_options()->client_cert.certificate =
@@ -167,12 +133,10 @@ void BrpcLink::SetPeerHost(const std::string& peer_host,
   }
 
   delegate_channel_ = std::move(brpc_channel);
-  retry_policy_ = std::move(retry_policy);
   peer_host_ = peer_host;
 }
 
-void BrpcLink::SendRequest(const ::google::protobuf::Message& request,
-                           uint32_t timeout) {
+void BrpcLink::SendRequest(const Request& request, uint32_t timeout) const {
   ic_pb::PushResponse response;
   brpc::Controller cntl;
   cntl.ignore_eovercrowded();
@@ -184,9 +148,9 @@ void BrpcLink::SendRequest(const ::google::protobuf::Message& request,
             nullptr);
   // handle failures.
   if (cntl.Failed()) {
-    YACL_THROW_NETWORK_ERROR("send, rpc failed={}, message={}",
-                             cntl.ErrorCode(), cntl.ErrorText());
+    ThrowLinkErrorByBrpcCntl(cntl);
   }
+
   if (response.header().error_code() != ic::ErrorCode::OK) {
     YACL_THROW("send, peer failed message={}", response.header().error_msg());
   }

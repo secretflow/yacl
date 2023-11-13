@@ -26,7 +26,6 @@
 
 #include "yacl/link/ssl_options.h"
 #include "yacl/link/transport/channel.h"
-#include "yacl/link/transport/default_brpc_retry_policy.h"
 #include "yacl/link/transport/interconnection_link.h"
 
 #include "interconnection/link/transport.pb.h"
@@ -79,8 +78,7 @@ class ReceiverLoopBlackBox final : public IReceiverLoop {
 class BrpcBlackBoxLink final : public InterconnectionLink {
  public:
   static InterconnectionLink::Options GetDefaultOptions() {
-    return InterconnectionLink::Options{10 * 1000, 512 * 1024, "http",
-                                        "",        3,          1000};
+    return InterconnectionLink::Options{10 * 1000, 512 * 1024, "http", ""};
   }
 
   using InterconnectionLink::InterconnectionLink;
@@ -92,7 +90,7 @@ class BrpcBlackBoxLink final : public InterconnectionLink {
   }
 
   void SendRequest(const ::google::protobuf::Message& request,
-                   uint32_t timeout_ms) override;
+                   uint32_t timeout_ms) const override;
 
   void SetPeerHost(const std::string& self_id, const std::string& self_node_id,
                    const std::string& peer_id, const std::string& peer_node_id,
@@ -103,7 +101,8 @@ class BrpcBlackBoxLink final : public InterconnectionLink {
   brpc::ChannelOptions GetChannelOption(const SSLOptions* ssl_opts);
   uint32_t GetQueueFullWaitTime() const { return push_wait_ms_; }
 
-  void SetHttpHeader(brpc::Controller* controller, const std::string& topic);
+  void SetHttpHeader(brpc::Controller* controller,
+                     const std::string& topic) const;
   void OnPopResponse(blackbox_interconnect::TransportOutbound* response);
 
   // receive related
@@ -119,7 +118,6 @@ class BrpcBlackBoxLink final : public InterconnectionLink {
 
  protected:
   // brpc channel related.
-  std::unique_ptr<brpc::RetryPolicy> retry_policy_;
   std::shared_ptr<brpc::Channel> channel_;
   std::string send_topic_;
   std::string recv_topic_;

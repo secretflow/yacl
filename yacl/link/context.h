@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "yacl/base/byte_container_view.h"
+#include "yacl/link/retry_options.h"
 #include "yacl/link/ssl_options.h"
 #include "yacl/link/transport/channel.h"
 #include "yacl/utils/hash.h"
@@ -46,8 +47,6 @@ struct ContextDesc {
   static constexpr uint32_t kDefaultChunkParallelSendSize = 8;
   static constexpr char kDefaultBrpcChannelProtocol[] = "baidu_std";
   static constexpr char kDefaultLinkType[] = "normal";
-  static constexpr uint32_t kDefaultBrpcRetryCount = 3;
-  static constexpr uint32_t kDefaultBrpcRetryInterval = 1000;
 
   struct Party {
     std::string id;
@@ -139,13 +138,7 @@ struct ContextDesc {
   // "blackbox" or "normal", default: "normal"
   std::string link_type = kDefaultLinkType;
 
-  // request retry count
-  uint32_t brpc_retry_count = kDefaultBrpcRetryCount;
-  // request retry interval
-  uint32_t brpc_retry_interval_ms = kDefaultBrpcRetryInterval;  // 1 seconds.
-  // do aggressive retry， this means that retries will be made on additional
-  // error codes
-  bool brpc_aggressive_retry = true;
+  RetryOptions retry_opts;
 
   bool operator==(const ContextDesc& other) const {
     return (id == other.id) && (parties == other.parties);
@@ -182,12 +175,7 @@ struct ContextDesc {
         client_ssl_opts(pb.client_ssl_opts()),
         server_ssl_opts(pb.server_ssl_opts()),
         link_type(kDefaultLinkType),
-        brpc_retry_count(pb.brpc_retry_count() ? pb.brpc_retry_count()
-                                               : kDefaultBrpcRetryCount),
-        brpc_retry_interval_ms(pb.brpc_retry_interval_ms()
-                                   ? pb.brpc_retry_interval_ms()
-                                   : kDefaultBrpcRetryInterval),
-        brpc_aggressive_retry(pb.brpc_aggressive_retry()) {
+        retry_opts(pb.retry_opts()) {
     for (const auto& party_pb : pb.parties()) {
       parties.emplace_back(party_pb);
     }
@@ -207,9 +195,7 @@ struct ContextDescHasher {
                         desc.connect_retry_interval_ms, desc.recv_timeout_ms,
                         desc.http_max_payload_size, desc.http_timeout_ms,
                         desc.throttle_window_size, desc.brpc_channel_protocol,
-                        desc.brpc_channel_connection_type, desc.link_type,
-                        desc.brpc_retry_count, desc.brpc_retry_interval_ms,
-                        desc.brpc_aggressive_retry);
+                        desc.brpc_channel_connection_type, desc.link_type);
 
     return seed;
   }

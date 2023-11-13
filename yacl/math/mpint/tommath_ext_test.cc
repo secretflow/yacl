@@ -32,7 +32,7 @@ std::string Info(const mp_int& n) {
   output.resize(size);
   MP_ASSERT_OK(mp_to_radix(&n, output.data(), size, nullptr, 16));
   output.pop_back();  // remove tailing '\0'
-  return fmt::format("[used={}, bits={}, dp={}]", n.used, mp_count_bits(&n),
+  return fmt::format("[used={}, bits={}, value={}]", n.used, mp_count_bits(&n),
                      output);
 }
 

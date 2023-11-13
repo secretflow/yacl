@@ -39,26 +39,26 @@ class InputStream {
 
   /**
    * read line from file.
-   * raise exception if any error happend except EOF.
+   * raise exception if any error happened except EOF.
    */
   virtual InputStream& GetLine(std::string* ret, char delim) = 0;
   virtual InputStream& GetLine(std::string* ret) { return GetLine(ret, '\n'); }
 
   /**
    * Read length bytes from the file.
-   * raise exception if any error happend except EOF.
+   * raise exception if any error happened except EOF.
    */
   virtual InputStream& Read(void* buf, size_t length) = 0;
 
   /**
    * Sets input position.
-   * raise exception if any error happend.
+   * raise exception if any error happened.
    */
   virtual InputStream& Seekg(size_t pos) = 0;
 
   /**
    * Sets input position.
-   * raise exception if any error happend.
+   * raise exception if any error happened.
    */
   virtual size_t Tellg() = 0;
 
@@ -91,7 +91,7 @@ class InputStream {
 };
 
 /**
- * Always trunc file if target file exist.
+ * Always trunc file if target file exists.
  */
 class OutputStream {
  public:
@@ -99,7 +99,7 @@ class OutputStream {
 
   /**
    * Write/Append length bytes pointed by buf to the file stream
-   * raise exception if any error happend.
+   * raise exception if any error happened.
    */
   virtual void Write(const void* buf, size_t length) = 0;
   virtual void Write(std::string_view buf) = 0;
