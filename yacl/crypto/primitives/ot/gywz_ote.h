@@ -18,19 +18,20 @@
 
 #include "absl/types/span.h"
 
+#include "yacl/base/int128.h"
 #include "yacl/crypto/primitives/ot/gywz_ote.h"
 #include "yacl/crypto/primitives/ot/ot_store.h"
 #include "yacl/crypto/utils/rand.h"
+#include "yacl/crypto/utils/secparam.h"
 #include "yacl/link/link.h"
 
 namespace yacl::crypto {
-
 //
 // GYWZ OT Extension (Half Tree) Implementation
 //
-// Implementation of (n-1)-out-of-n Correlated OT (also called single point COT
-// ), for more theoretical details, see https://eprint.iacr.org/2022/1431.pdf,
-// Figure 3 and Figure 4.
+// Implementation of (n-1)-out-of-n Correlated OT (also called single point
+// COT, SpCot), for more theoretical details, see
+// https://eprint.iacr.org/2022/1431.pdf, Figure 3 and Figure 4.
 //
 //                 +---------+    +----------+
 //                 |   COT   | => |  SP-COT  |
@@ -44,6 +45,7 @@ namespace yacl::crypto {
 //   - Circular correlation-robust Hash, for more details
 //     see yacl/crypto/tools/random_permutation.h
 //
+YACL_MODULE_DECLARE("gywz_ote", SecParam::C::INF, SecParam::S::INF);
 
 void GywzOtExtRecv(const std::shared_ptr<link::Context>& ctx,
                    const OtRecvStore& cot, uint32_t n, uint32_t index,
@@ -57,15 +59,36 @@ void GywzOtExtSend(const std::shared_ptr<link::Context>& ctx,
 // Random single-point COT, where punctured index is determined by cot choices
 // The output for sender and receiver would be SAME, when punctured
 // index is greater than n.
-// So, please don't use "FerretGywzOtExtRecv" and "FerretGywzOtExtSend", unless
-// you know what you are doing
-void FerretGywzOtExtRecv(const std::shared_ptr<link::Context>& ctx,
-                         const OtRecvStore& cot, uint32_t n,
-                         absl::Span<uint128_t> output);
+// So, please don't use "GywzOtExtRecv_ferret" and "GywzOtExtSend_ferret",
+// unless you know what you are doing
+void GywzOtExtRecv_ferret(const std::shared_ptr<link::Context>& ctx,
+                          const OtRecvStore& cot, uint32_t n,
+                          absl::Span<uint128_t> output);
 
 // [Warning] For ferretOTe only
-void FerretGywzOtExtSend(const std::shared_ptr<link::Context>& ctx,
-                         const OtSendStore& cot, uint32_t n,
-                         absl::Span<uint128_t> output);
+void GywzOtExtSend_ferret(const std::shared_ptr<link::Context>& ctx,
+                          const OtSendStore& cot, uint32_t n,
+                          absl::Span<uint128_t> output);
+
+// Notice that:
+//  > In such cases, punctured index would be the choice of cot
+//  > punctured index might be greater than n
+void GywzOtExtRecv_fixindex(const std::shared_ptr<link::Context>& ctx,
+                            const OtRecvStore& cot, uint32_t n,
+                            absl::Span<uint128_t> output);
+
+void GywzOtExtSend_fixindex(const std::shared_ptr<link::Context>& ctx,
+                            const OtSendStore& cot, uint32_t n,
+                            absl::Span<uint128_t> output);
+
+// non-interactive function, Receiver should receive "recv_msgs" from Sender
+void GywzOtExtRecv_fixindex(const OtRecvStore& cot, uint32_t n,
+                            absl::Span<uint128_t> output,
+                            absl::Span<uint128_t> recv_msgs);
+
+// non-interactive function, Sender should send "send_msgs" to Receiver
+void GywzOtExtSend_fixindex(const OtSendStore& cot, uint32_t n,
+                            absl::Span<uint128_t> output,
+                            absl::Span<uint128_t> send_msgs);
 
 }  // namespace yacl::crypto

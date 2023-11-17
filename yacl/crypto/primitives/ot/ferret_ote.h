@@ -76,12 +76,12 @@ OtRecvStore FerretOtExtRecv(const std::shared_ptr<link::Context>& ctx,
                             const OtRecvStore& base_cot,
                             const LpnParam& lpn_param, uint64_t ot_num);
 
-void FerretOtExtSend_Cheetah(const std::shared_ptr<link::Context>& ctx,
+void FerretOtExtSend_cheetah(const std::shared_ptr<link::Context>& ctx,
                              const OtSendStore& base_cot,
                              const LpnParam& lpn_param, uint64_t ot_num,
                              absl::Span<uint128_t> out);
 
-void FerretOtExtRecv_Cheetah(const std::shared_ptr<link::Context>& ctx,
+void FerretOtExtRecv_cheetah(const std::shared_ptr<link::Context>& ctx,
                              const OtRecvStore& base_cot,
                              const LpnParam& lpn_param, uint64_t ot_num,
                              absl::Span<uint128_t> out);

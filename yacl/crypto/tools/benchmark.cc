@@ -19,7 +19,20 @@
 namespace yacl::crypto {
 
 void BM_DefaultArguments(benchmark::internal::Benchmark* b) {
-  b->Unit(benchmark::kMillisecond)->Arg(1 << 10)->Arg(1 << 15)->Arg(1 << 20);
+  b->Unit(benchmark::kMillisecond)
+      ->Arg(1 << 10)
+      ->Arg(1 << 15)
+      ->Arg(1 << 20)
+      ->Arg(22437250);
+}
+
+void BM_DualEncodeArguments(benchmark::internal::Benchmark* b) {
+  b->Unit(benchmark::kMillisecond)
+      ->Iterations(10)
+      ->Arg(100000)
+      ->Arg(1000000)   // one million
+      ->Arg(10000000)  // ten million
+      ->Arg(22437250);
 }
 
 // Register benchmarks for local linear code
@@ -28,10 +41,15 @@ BENCHMARK_REGISTER_F(ToolBench, LLC)
     ->Iterations(10)
     ->Args({10485760, 452000});
 
-// ->Unit(benchmark::kMillisecond)
-// ->Arg(1 << 10)
-// ->Arg(1 << 15)
-// ->Arg(1 << 20);
+// Register benchmarks for dual LPN
+BENCHMARK_REGISTER_F(ToolBench, Silver5)->Apply(BM_DualEncodeArguments);
+BENCHMARK_REGISTER_F(ToolBench, Silver5Inplace)->Apply(BM_DualEncodeArguments);
+BENCHMARK_REGISTER_F(ToolBench, Silver11)->Apply(BM_DualEncodeArguments);
+BENCHMARK_REGISTER_F(ToolBench, Silver11Inplace)->Apply(BM_DualEncodeArguments);
+BENCHMARK_REGISTER_F(ToolBench, ExAcc7)->Apply(BM_DualEncodeArguments);
+BENCHMARK_REGISTER_F(ToolBench, ExAcc11)->Apply(BM_DualEncodeArguments);
+BENCHMARK_REGISTER_F(ToolBench, ExAcc21)->Apply(BM_DualEncodeArguments);
+BENCHMARK_REGISTER_F(ToolBench, ExAcc40)->Apply(BM_DualEncodeArguments);
 
 // BENCHMARK(BM_RP)->Apply(BM_DefaultArguments);
 // BENCHMARK(BM_CrHash)->Apply(BM_DefaultArguments);

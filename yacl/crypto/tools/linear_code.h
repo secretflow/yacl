@@ -22,7 +22,9 @@
 
 #include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
+#include "yacl/crypto/tools/code_interface.h"
 #include "yacl/crypto/tools/random_permutation.h"
+#include "yacl/math/gadget.h"
 
 #ifndef __aarch64__
 // sse
@@ -38,22 +40,6 @@ namespace yacl::crypto {
 
 constexpr uint32_t kLcBatchSize = 1024;  // linear code batch size
 
-// Linear code interface in F2k
-class LinearCodeInterface {
- public:
-  LinearCodeInterface(const LinearCodeInterface &) = delete;
-  LinearCodeInterface &operator=(const LinearCodeInterface &) = delete;
-  LinearCodeInterface() = default;
-  virtual ~LinearCodeInterface() = default;
-
-  // Get the dimention / length
-  virtual uint32_t GetDimention() const = 0;
-  virtual uint32_t GetLength() const = 0;
-
-  // (maybe randomly) Generate generator matrix
-  // virtual void GenGenerator() const = 0;
-};
-
 // Implementation of d-local linear code in F2k, for more details, see original
 // paper: https://arxiv.org/pdf/2102.00597.pdf
 //
@@ -67,7 +53,7 @@ class LinearCodeInterface {
 // https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html
 
 template <size_t d = 10>
-class LocalLinearCode : LinearCodeInterface {
+class LocalLinearCode : public LinearCodeInterface {
  public:
   // constructor
   LocalLinearCode(uint128_t seed, size_t n, size_t k)
@@ -79,13 +65,13 @@ class LocalLinearCode : LinearCodeInterface {
       mask_ = mask_ | 0x1;
     }
 
-    uint64_t mask64 = ((uint64_t)mask_ << 32 | mask_);
+    uint64_t mask64 = (static_cast<uint64_t>(mask_) << 32 | mask_);
     extend_mask_ = MakeUint128(mask64, mask64);
 
-    uint64_t k64 = ((uint64_t)k_ << 32 | k_);
+    uint64_t k64 = (static_cast<uint64_t>(k_) << 32 | k_);
     extend_k_ = MakeUint128(k64, k64);
 
-    uint64_t cmp64 = ((uint64_t)(k_ - 1) << 32 | (k_ - 1));
+    uint64_t cmp64 = (static_cast<uint64_t>(k_ - 1) << 32 | (k_ - 1));
     extend_cmp_ = MakeUint128(cmp64, cmp64);
   }
 
@@ -94,52 +80,153 @@ class LocalLinearCode : LinearCodeInterface {
   uint32_t GetLength() const override { return n_; }
 
   // Encode a message (input) into a codeword (output)
-  void Encode(absl::Span<const uint128_t> in, absl::Span<uint128_t> out) {
+  void Encode(absl::Span<const uint128_t> in, absl::Span<uint128_t> out) const {
     YACL_ENFORCE_EQ(in.size(), k_);
     // YACL_ENFORCE_EQ(out.size(), n_);
 
-    constexpr uint32_t tmp_size = kLcBatchSize * d / 4;
+    constexpr uint32_t tmp_size = math::DivCeil(kLcBatchSize * d, 4);
     alignas(16) std::array<uint128_t, tmp_size> tmp;
-
-    auto mask_tmp =
-        _mm_loadu_si128((reinterpret_cast<__m128i *>(&extend_mask_)));
-    auto k_tmp = _mm_loadu_si128((reinterpret_cast<__m128i *>(&extend_k_)));
-    auto cmp_tmp = _mm_loadu_si128((reinterpret_cast<__m128i *>(&extend_cmp_)));
 
     for (uint32_t i = 0; i < out.size(); i += kLcBatchSize) {
       const uint32_t limit =
           std::min(kLcBatchSize, static_cast<uint32_t>(out.size()) - i);
-      const uint32_t block_num = limit * d / 4;
+      const uint32_t block_num = math::DivCeil(limit * d, 4);
 
-      for (uint32_t j = 0; j < block_num; ++j) {
-        _mm_store_si128(reinterpret_cast<__m128i *>(&tmp[j]),
-                        _mm_set_epi32(i, 0, j, 0));
-      }
+      // generate non-zero indexes
+      GenIndexes(i, block_num, absl::MakeSpan(tmp));
 
-      rp_.GenInplace(absl::MakeSpan(reinterpret_cast<uint128_t *>(tmp.data()),
-                                    block_num));  // kBatchSize * 10 / 4
-
-      // SIMD
-      for (uint32_t j = 0; j < block_num; ++j) {
-        auto idx128 = _mm_load_si128(reinterpret_cast<__m128i *>(&tmp[j]));
-        idx128 = _mm_and_si128(idx128, mask_tmp);
-        // compare idx128 and cmp_tmp
-        // return 0xFFFF if true, return 0x0000 otherwise.
-        auto sub = _mm_cmpgt_epi32(idx128, cmp_tmp);
-        // return k_tmp if idx128 greater than or equal to k
-        // return 0x0000 otherwise
-        sub = _mm_and_si128(sub, k_tmp);
-        idx128 = _mm_sub_epi32(idx128, sub);
-        _mm_store_si128(reinterpret_cast<__m128i *>(&tmp[j]), idx128);
-      }
-
-      auto *ptr = reinterpret_cast<uint32_t *>(tmp.data());
+      const auto *ptr = reinterpret_cast<const uint32_t *>(tmp.data());
       for (uint32_t j = 0; j < limit; ++j) {
-        auto tmp = _mm_loadu_si128(reinterpret_cast<__m128i *>(&out[i + j]));
+        auto val = _mm_loadu_si128(reinterpret_cast<__m128i *>(&out[i + j]));
         for (uint32_t k = 0; k < d; ++k, ++ptr) {
-          tmp = _mm_xor_si128(tmp, reinterpret_cast<__m128i>(in[*ptr]));
+          val = _mm_xor_si128(val, reinterpret_cast<__m128i>(in[*ptr]));
         }
-        _mm_storeu_si128(reinterpret_cast<__m128i *>(&out[i + j]), tmp);
+        _mm_storeu_si128(reinterpret_cast<__m128i *>(&out[i + j]), val);
+      }
+    }
+  }
+
+  void Encode2(absl::Span<const uint128_t> in0, absl::Span<uint128_t> out0,
+               absl::Span<const uint128_t> in1,
+               absl::Span<uint128_t> out1) const {
+    YACL_ENFORCE_EQ(in0.size(), k_);
+    YACL_ENFORCE_EQ(in1.size(), k_);
+
+    auto size = std::min(out0.size(), out1.size());
+    // YACL_ENFORCE_EQ(out.size(), n_);
+
+    constexpr uint32_t tmp_size = math::DivCeil(kLcBatchSize * d, 4);
+    alignas(16) std::array<uint128_t, tmp_size> tmp;
+
+    for (uint32_t i = 0; i < size; i += kLcBatchSize) {
+      const uint32_t limit =
+          std::min(kLcBatchSize, static_cast<uint32_t>(size) - i);
+      const uint32_t block_num = math::DivCeil(limit * d, 4);
+
+      GenIndexes(i, block_num, absl::MakeSpan(tmp));
+
+      const auto *ptr = reinterpret_cast<const uint32_t *>(tmp.data());
+      for (uint32_t j = 0; j < limit; ++j) {
+        auto val0 = _mm_loadu_si128(reinterpret_cast<__m128i *>(&out0[i + j]));
+        auto val1 = _mm_loadu_si128(reinterpret_cast<__m128i *>(&out1[i + j]));
+        for (uint32_t k = 0; k < d; ++k, ++ptr) {
+          val0 = _mm_xor_si128(val0, reinterpret_cast<__m128i>(in0[*ptr]));
+          val1 = _mm_xor_si128(val1, reinterpret_cast<__m128i>(in1[*ptr]));
+        }
+        _mm_storeu_si128(reinterpret_cast<__m128i *>(&out0[i + j]), val0);
+        _mm_storeu_si128(reinterpret_cast<__m128i *>(&out1[i + j]), val1);
+      }
+    }
+  }
+
+  // Encode a message (input) into a codeword (output)
+  void Encode(absl::Span<const uint64_t> in, absl::Span<uint64_t> out) const {
+    YACL_ENFORCE_EQ(in.size(), k_);
+    // YACL_ENFORCE_EQ(out.size(), n_);
+
+    constexpr uint32_t tmp_size = math::DivCeil(kLcBatchSize * d, 4);
+    alignas(16) std::array<uint128_t, tmp_size> tmp;
+
+    for (uint32_t i = 0; i < out.size(); i += kLcBatchSize) {
+      const uint32_t limit =
+          std::min(kLcBatchSize, static_cast<uint32_t>(out.size()) - i);
+      const uint32_t block_num = math::DivCeil(limit * d, 4);
+
+      GenIndexes(i, block_num, absl::MakeSpan(tmp));
+
+      const auto *ptr = reinterpret_cast<const uint32_t *>(tmp.data());
+      for (uint32_t j = 0; j < limit; ++j) {
+        auto val = out[i + j];
+        for (uint32_t k = 0; k < d; ++k, ++ptr) {
+          val ^= in[*ptr];
+        }
+        out[i + j] = val;
+      }
+    }
+  }
+
+  void Encode2(absl::Span<const uint64_t> in0, absl::Span<uint64_t> out0,
+               absl::Span<const uint64_t> in1,
+               absl::Span<uint64_t> out1) const {
+    YACL_ENFORCE_EQ(in0.size(), k_);
+    YACL_ENFORCE_EQ(in1.size(), k_);
+
+    auto size = std::min(out0.size(), out1.size());
+    // YACL_ENFORCE_EQ(out.size(), n_);
+
+    constexpr uint32_t tmp_size = math::DivCeil(kLcBatchSize * d, 4);
+    alignas(16) std::array<uint128_t, tmp_size> tmp;
+
+    for (uint32_t i = 0; i < size; i += kLcBatchSize) {
+      const uint32_t limit =
+          std::min(kLcBatchSize, static_cast<uint32_t>(size) - i);
+      const uint32_t block_num = math::DivCeil(limit * d, 4);
+
+      GenIndexes(i, block_num, absl::MakeSpan(tmp));
+
+      const auto *ptr = reinterpret_cast<const uint32_t *>(tmp.data());
+      for (uint32_t j = 0; j < limit; ++j) {
+        auto val0 = out0[i + j];
+        auto val1 = out1[i + j];
+        for (uint32_t k = 0; k < d; ++k, ++ptr) {
+          val0 ^= in0[*ptr];
+          val1 ^= in1[*ptr];
+        }
+        out0[i + j] = val0;
+        out1[i + j] = val1;
+      }
+    }
+  }
+
+  void Encode2(absl::Span<const uint64_t> in0, absl::Span<uint64_t> out0,
+               absl::Span<const uint128_t> in1,
+               absl::Span<uint128_t> out1) const {
+    YACL_ENFORCE_EQ(in0.size(), k_);
+    YACL_ENFORCE_EQ(in1.size(), k_);
+
+    auto size = std::min(out0.size(), out1.size());
+    // YACL_ENFORCE_EQ(out.size(), n_);
+
+    constexpr uint32_t tmp_size = math::DivCeil(kLcBatchSize * d, 4);
+    alignas(16) std::array<uint128_t, tmp_size> tmp;
+
+    for (uint32_t i = 0; i < size; i += kLcBatchSize) {
+      const uint32_t limit =
+          std::min(kLcBatchSize, static_cast<uint32_t>(size) - i);
+      const uint32_t block_num = math::DivCeil(limit * d, 4);
+
+      GenIndexes(i, block_num, absl::MakeSpan(tmp));
+
+      const auto *ptr = reinterpret_cast<const uint32_t *>(tmp.data());
+      for (uint32_t j = 0; j < limit; ++j) {
+        auto val0 = out0[i + j];
+        auto val1 = _mm_loadu_si128(reinterpret_cast<__m128i *>(&out1[i + j]));
+        for (uint32_t k = 0; k < d; ++k, ++ptr) {
+          val0 ^= in0[*ptr];
+          val1 = _mm_xor_si128(val1, reinterpret_cast<__m128i>(in1[*ptr]));
+        }
+        out0[i + j] = val0;
+        _mm_storeu_si128(reinterpret_cast<__m128i *>(&out1[i + j]), val1);
       }
     }
   }
@@ -152,6 +239,39 @@ class LocalLinearCode : LinearCodeInterface {
   uint128_t extend_mask_;
   uint128_t extend_k_;
   uint128_t extend_cmp_;
+
+  // Generate non-zero indexes
+  inline void GenIndexes(uint32_t i, uint32_t block_num,
+                         absl::Span<uint128_t> tmp) const {
+    for (uint32_t j = 0; j < block_num; ++j) {
+      _mm_store_si128(reinterpret_cast<__m128i *>(&tmp[j]),
+                      _mm_set_epi32(i, 0, j, 0));
+    }
+    // Generate random indexes by Random Permutation
+    rp_.GenInplace(absl::MakeSpan(reinterpret_cast<uint128_t *>(tmp.data()),
+                                  block_num));  // kBatchSize * 10 / 4
+
+    auto mask_tmp =
+        _mm_loadu_si128((reinterpret_cast<const __m128i *>(&extend_mask_)));
+    auto k_tmp =
+        _mm_loadu_si128((reinterpret_cast<const __m128i *>(&extend_k_)));
+    auto cmp_tmp =
+        _mm_loadu_si128((reinterpret_cast<const __m128i *>(&extend_cmp_)));
+
+    // SIMD
+    for (uint32_t j = 0; j < block_num; ++j) {
+      auto idx128 = _mm_load_si128(reinterpret_cast<__m128i *>(&tmp[j]));
+      idx128 = _mm_and_si128(idx128, mask_tmp);
+      // compare idx128 and cmp_tmp
+      // return 0xFFFF if true, return 0x0000 otherwise.
+      auto sub = _mm_cmpgt_epi32(idx128, cmp_tmp);
+      // return k_tmp if idx128 greater than or equal to k
+      // return 0x0000 otherwise
+      sub = _mm_and_si128(sub, k_tmp);
+      idx128 = _mm_sub_epi32(idx128, sub);
+      _mm_store_si128(reinterpret_cast<__m128i *>(&tmp[j]), idx128);
+    }
+  }
 };
 
 }  // namespace yacl::crypto

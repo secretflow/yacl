@@ -34,6 +34,8 @@ struct TestParams {
 class IknpOtExtTest : public ::testing::TestWithParam<TestParams> {};
 class IknpCotExtTest : public ::testing::TestWithParam<TestParams> {};
 
+TEST(SecParamTest, Works) { YACL_PRINT_MODULE_SUMMARY(); }
+
 TEST_P(IknpOtExtTest, Works) {
   // GIVEN
   const int kWorldSize = 2;

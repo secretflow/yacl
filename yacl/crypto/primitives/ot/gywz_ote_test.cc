@@ -80,17 +80,53 @@ TEST_P(GywzParamTest, FerretSpCotWork) {
   // TODO: fix it
   uint32_t index = 0;
   for (uint32_t i = 0; i < math::Log2Ceil(n); ++i) {
-    index |= (!base_ot.recv.GetChoice(i)) << i;
+    index |= (base_ot.recv.GetChoice(i)) << i;
   }
 
   std::vector<uint128_t> send_out(n);
   std::vector<uint128_t> recv_out(n);
 
   std::future<void> sender = std::async([&] {
-    FerretGywzOtExtRecv(lctxs[0], base_ot.recv, n, absl::MakeSpan(recv_out));
+    GywzOtExtRecv_ferret(lctxs[0], base_ot.recv, n, absl::MakeSpan(recv_out));
   });
   std::future<void> receiver = std::async([&] {
-    FerretGywzOtExtSend(lctxs[1], base_ot.send, n, absl::MakeSpan(send_out));
+    GywzOtExtSend_ferret(lctxs[1], base_ot.send, n, absl::MakeSpan(send_out));
+  });
+  sender.get();
+  receiver.get();
+
+  EXPECT_EQ(send_out.size(), n);
+  EXPECT_EQ(recv_out.size(), n);
+
+  for (size_t i = 0; i < n; ++i) {
+    EXPECT_NE(recv_out[i], 0);
+    EXPECT_NE(send_out[i], 0);
+    if (index != i) {
+      EXPECT_EQ(send_out[i], recv_out[i]);
+    } else {
+      EXPECT_EQ(send_out[i] ^ delta, recv_out[i]);
+    }
+  }
+}
+
+TEST_P(GywzParamTest, FixIndexSpCotWork) {
+  size_t n = GetParam().n;
+
+  auto lctxs = link::test::SetupWorld(2);
+
+  uint128_t delta = SecureRandSeed();
+  auto base_ot = MockCots(math::Log2Ceil(n), delta);  // mock many base OTs
+
+  uint32_t index = base_ot.recv.CopyChoice().data()[0];
+
+  std::vector<uint128_t> send_out(n);
+  std::vector<uint128_t> recv_out(n);
+
+  std::future<void> sender = std::async([&] {
+    GywzOtExtRecv_fixindex(lctxs[0], base_ot.recv, n, absl::MakeSpan(recv_out));
+  });
+  std::future<void> receiver = std::async([&] {
+    GywzOtExtSend_fixindex(lctxs[1], base_ot.send, n, absl::MakeSpan(send_out));
   });
   sender.get();
   receiver.get();
@@ -110,8 +146,9 @@ TEST_P(GywzParamTest, FerretSpCotWork) {
 }
 
 INSTANTIATE_TEST_SUITE_P(TestWork, GywzParamTest,
-                         testing::Values(TestParams{2},        // Edge Test
+                         testing::Values(TestParams{2},        // edge
                                          TestParams{3},        //
+                                         TestParams{4},        //
                                          TestParams{5},        //
                                          TestParams{7},        //
                                          TestParams{1024},     //

@@ -30,6 +30,7 @@
 #include "yacl/crypto/primitives/ot/kos_ote.h"
 #include "yacl/crypto/primitives/ot/ot_store.h"
 #include "yacl/crypto/primitives/ot/sgrr_ote.h"
+#include "yacl/crypto/primitives/ot/softspoken_ote.h"
 #include "yacl/crypto/utils/rand.h"
 #include "yacl/link/test_util.h"
 #include "yacl/utils/matrix_utils.h"
@@ -233,6 +234,55 @@ BENCHMARK_DEFINE_F(OtBench, GywzOTe)(benchmark::State& state) {
   }
 }
 
+#define DELCARE_SOFTSPOKEN_BENCH(K)                                         \
+  BENCHMARK_DEFINE_F(OtBench, SoftspokenOTe##K)(benchmark::State & state) { \
+    YACL_ENFORCE(lctxs_.size() == 2);                                       \
+    for (auto _ : state) {                                                  \
+      state.PauseTiming();                                                  \
+      {                                                                     \
+        const auto num_ot = state.range(0);                                 \
+        std::vector<std::array<uint128_t, 2>> send_blocks(num_ot);          \
+        std::vector<uint128_t> recv_blocks(num_ot);                         \
+        auto choices = RandBits<dynamic_bitset<uint128_t>>(num_ot);         \
+        auto base_ot = MockRots(128);                                       \
+        auto ssSenderTask = std::async([&] {                                \
+          auto ssSender = SoftspokenOtExtSender(K);                         \
+          ssSender.OneTimeSetup(lctxs_[0], base_ot.recv);                   \
+          return ssSender;                                                  \
+        });                                                                 \
+        auto ssReceiverTask = std::async([&] {                              \
+          auto ssReceiver = SoftspokenOtExtReceiver(K);                     \
+          ssReceiver.OneTimeSetup(lctxs_[1], base_ot.send);                 \
+          return ssReceiver;                                                \
+        });                                                                 \
+        auto ssSender = ssSenderTask.get();                                 \
+        auto ssReceiver = ssReceiverTask.get();                             \
+        state.ResumeTiming();                                               \
+        /* true (default) for COT, false for ROT */                         \
+        auto sender = std::async([&] {                                      \
+          ssSender.Send(lctxs_[0], absl::MakeSpan(send_blocks), true);      \
+        });                                                                 \
+        auto receiver = std::async([&] {                                    \
+          ssReceiver.Recv(lctxs_[1], choices, absl::MakeSpan(recv_blocks),  \
+                          true);                                            \
+        });                                                                 \
+        sender.get();                                                       \
+        receiver.get();                                                     \
+        state.PauseTiming();                                                \
+      }                                                                     \
+      state.ResumeTiming();                                                 \
+    }                                                                       \
+  }
+
+DELCARE_SOFTSPOKEN_BENCH(1)
+DELCARE_SOFTSPOKEN_BENCH(2)
+DELCARE_SOFTSPOKEN_BENCH(3)
+DELCARE_SOFTSPOKEN_BENCH(4)
+DELCARE_SOFTSPOKEN_BENCH(5)
+DELCARE_SOFTSPOKEN_BENCH(6)
+DELCARE_SOFTSPOKEN_BENCH(7)
+DELCARE_SOFTSPOKEN_BENCH(8)
+
 BENCHMARK_DEFINE_F(OtBench, FerretOTe)(benchmark::State& state) {
   YACL_ENFORCE(lctxs_.size() == 2);
   for (auto _ : state) {
@@ -280,15 +330,26 @@ BENCHMARK_DEFINE_F(OtBench, FerretOTe)(benchmark::State& state) {
 #define BM_REGISTER_GYWZ_OTE(Arguments) \
   BENCHMARK_REGISTER_F(OtBench, GywzOTe)->Apply(Arguments);
 
+#define BM_REGISTER_SOFTSPOKEN_OTE(Arguments)                      \
+  BENCHMARK_REGISTER_F(OtBench, SoftspokenOTe1)->Apply(Arguments); \
+  BENCHMARK_REGISTER_F(OtBench, SoftspokenOTe2)->Apply(Arguments); \
+  BENCHMARK_REGISTER_F(OtBench, SoftspokenOTe3)->Apply(Arguments); \
+  BENCHMARK_REGISTER_F(OtBench, SoftspokenOTe4)->Apply(Arguments); \
+  BENCHMARK_REGISTER_F(OtBench, SoftspokenOTe5)->Apply(Arguments); \
+  BENCHMARK_REGISTER_F(OtBench, SoftspokenOTe6)->Apply(Arguments); \
+  BENCHMARK_REGISTER_F(OtBench, SoftspokenOTe7)->Apply(Arguments); \
+  BENCHMARK_REGISTER_F(OtBench, SoftspokenOTe8)->Apply(Arguments);
+
 #define BM_REGISTER_FERRET_OTE(Arguments) \
   BENCHMARK_REGISTER_F(OtBench, FerretOTe)->Apply(Arguments);
 
-#define BM_REGISTER_ALL_OT(Arguments) \
-  BM_REGISTER_SIMPLEST_OT(Arguments)  \
-  BM_REGISTER_IKNP_OTE(Arguments)     \
-  BM_REGISTER_KOS_OTE(Arguments)      \
-  BM_REGISTER_KKRT_OTE(Arguments)     \
-  BM_REGISTER_SGRR_OTE(Arguments)     \
-  BM_REGISTER_GYWZ_OTE(Arguments)     \
+#define BM_REGISTER_ALL_OT(Arguments)   \
+  BM_REGISTER_SIMPLEST_OT(Arguments)    \
+  BM_REGISTER_IKNP_OTE(Arguments)       \
+  BM_REGISTER_KOS_OTE(Arguments)        \
+  BM_REGISTER_KKRT_OTE(Arguments)       \
+  BM_REGISTER_SGRR_OTE(Arguments)       \
+  BM_REGISTER_GYWZ_OTE(Arguments)       \
+  BM_REGISTER_SOFTSPOKEN_OTE(Arguments) \
   BM_REGISTER_FERRET_OTE(Arguments)
 }  // namespace yacl::crypto

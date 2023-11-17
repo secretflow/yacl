@@ -36,8 +36,8 @@ namespace {
 
 // For convenience, we use 128 bit computational security parameter and 64 bit
 // statistical security parameter
-constexpr size_t kKappa = 128;  // computational security parameter
-constexpr size_t kS = 64;       // statistical security parameter
+constexpr size_t kKappa = YACL_MODULE_SECPARAM_C_UINT("kos_ote");
+constexpr size_t kS = YACL_MODULE_SECPARAM_S_UINT("kos_ote");
 constexpr size_t kBatchSize = 128;
 
 struct CheckMsg {

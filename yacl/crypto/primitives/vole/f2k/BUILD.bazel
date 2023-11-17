@@ -1,0 +1,132 @@
+# Copyright 2022 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:yacl.bzl", "AES_COPT_FLAGS", "yacl_cc_binary", "yacl_cc_library", "yacl_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+yacl_cc_library(
+    name = "base_vole",
+    hdrs = ["base_vole.h"],
+    copts = AES_COPT_FLAGS,
+    deps = [
+        "//yacl/base:aligned_vector",
+        "//yacl/base:dynamic_bitset",
+        "//yacl/base:int128",
+        "//yacl/crypto/primitives/ot:ot_store",
+        "//yacl/crypto/primitives/ot:softspoken_ote",
+        "//yacl/crypto/utils:rand",
+        "//yacl/math:gadget",
+        "//yacl/math/f2k",
+        "//yacl/utils:serialize",
+    ],
+)
+
+yacl_cc_test(
+    name = "base_vole_test",
+    srcs = ["base_vole_test.cc"],
+    copts = AES_COPT_FLAGS,
+    deps = [
+        ":base_vole",
+        "//yacl/crypto/utils:rand",
+        "//yacl/link:test_util",
+        "//yacl/math:gadget",
+        "//yacl/math/f2k",
+    ],
+)
+
+yacl_cc_library(
+    name = "sparse_vole",
+    srcs = ["sparse_vole.cc"],
+    hdrs = ["sparse_vole.h"],
+    copts = AES_COPT_FLAGS,
+    deps = [
+        "//yacl/base:aligned_vector",
+        "//yacl/base:dynamic_bitset",
+        "//yacl/base:int128",
+        "//yacl/crypto/primitives/ot:ferret_ote",
+        "//yacl/crypto/primitives/ot:ot_store",
+        "//yacl/crypto/primitives/ot:sgrr_ote",
+        "//yacl/crypto/primitives/ot:softspoken_ote",
+        "//yacl/crypto/utils:rand",
+        "//yacl/math:gadget",
+        "//yacl/math/f2k",
+        "//yacl/utils:serialize",
+    ],
+)
+
+yacl_cc_test(
+    name = "sparse_vole_test",
+    srcs = ["sparse_vole_test.cc"],
+    copts = AES_COPT_FLAGS,
+    deps = [
+        ":sparse_vole",
+        "//yacl/crypto/utils:rand",
+        "//yacl/link:test_util",
+        "//yacl/math:gadget",
+        "//yacl/math/f2k",
+    ],
+)
+
+yacl_cc_library(
+    name = "silent_vole",
+    srcs = ["silent_vole.cc"],
+    hdrs = ["silent_vole.h"],
+    copts = AES_COPT_FLAGS,
+    deps = [
+        ":base_vole",
+        ":sparse_vole",
+        "//yacl/base:aligned_vector",
+        "//yacl/base:dynamic_bitset",
+        "//yacl/base:int128",
+        "//yacl/crypto/primitives/ot:ferret_ote",
+        "//yacl/crypto/primitives/ot:ot_store",
+        "//yacl/crypto/primitives/ot:softspoken_ote",
+        "//yacl/crypto/tools:code_interface",
+        "//yacl/crypto/tools:expand_accumulate_code",
+        "//yacl/crypto/tools:silver_code",
+        "//yacl/link:context",
+        "//yacl/math:gadget",
+    ],
+)
+
+yacl_cc_test(
+    name = "silent_vole_test",
+    srcs = ["silent_vole_test.cc"],
+    copts = AES_COPT_FLAGS,
+    deps = [
+        ":silent_vole",
+        "//yacl/crypto/utils:rand",
+        "//yacl/link:test_util",
+        "//yacl/math:gadget",
+        "//yacl/math/f2k",
+    ],
+)
+
+yacl_cc_binary(
+    name = "benchmark",
+    srcs = [
+        "benchmark.cc",
+    ],
+    copts = AES_COPT_FLAGS,
+    deps = [
+        ":base_vole",
+        ":silent_vole",
+        ":sparse_vole",
+        "//yacl/crypto/utils:rand",
+        "//yacl/link:test_util",
+        "@com_github_google_benchmark//:benchmark_main",
+        "@com_google_absl//absl/numeric:bits",
+    ],
+)

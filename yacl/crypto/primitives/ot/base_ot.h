@@ -22,9 +22,12 @@
 #include "yacl/base/dynamic_bitset.h"
 #include "yacl/base/int128.h"
 #include "yacl/crypto/primitives/ot/ot_store.h"
+#include "yacl/crypto/utils/secparam.h"
 #include "yacl/link/link.h"
 
 namespace yacl::crypto {
+
+YACL_MODULE_DECLARE("base_ot", SecParam::C::k128, SecParam::S::INF);
 
 using Block = uint128_t;
 

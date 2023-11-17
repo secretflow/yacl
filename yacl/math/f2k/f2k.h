@@ -201,4 +201,25 @@ inline uint64_t GfMul64(absl::Span<uint64_t> x, absl::Span<uint64_t> y) {
 // uint64_t Reduce(uint128_t x,uint64_t k);
 // // multiplication over Galois Field F_{2^k}
 // uint64_t GfMul(uint64_t x, uint64_t y, uint64_t k);
+
+inline std::array<uint128_t, 128> GenGf128Basis() {
+  std::array<uint128_t, 128> basis = {0};
+  uint128_t one = yacl::MakeUint128(0, 1);
+  for (size_t i = 0; i < 128; ++i) {
+    basis[i] = one << i;
+  }
+  return basis;
+}
+
+inline std::array<uint64_t, 64> GenGf64Basis() {
+  std::array<uint64_t, 64> basis = {0};
+  uint128_t one = yacl::MakeUint128(0, 1);
+  for (size_t i = 0; i < 64; ++i) {
+    basis[i] = one << i;
+  }
+  return basis;
+}
+
+static std::array<uint64_t, 64> gf64_basis = GenGf64Basis();
+static std::array<uint128_t, 128> gf128_basis = GenGf128Basis();
 };  // namespace yacl

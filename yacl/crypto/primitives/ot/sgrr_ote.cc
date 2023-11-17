@@ -122,9 +122,12 @@ void SgrrOtExtRecv(const std::shared_ptr<link::Context>& ctx,
       "SGRR_OTE:SEND-CHOICE");
 
   // receive masked messages from sender
-  std::vector<std::array<uint128_t, 2>> recv_msgs(ot_num);
   auto recv_buf = ctx->Recv(ctx->NextRank(), "SGRR_OTE:RECV-CORR");
-  std::memcpy(recv_msgs.data(), recv_buf.data(), recv_buf.size());
+  YACL_ENFORCE(recv_buf.size() >=
+               static_cast<int64_t>(ot_num * 2 * sizeof(uint128_t)));
+  // reuse, avoid copying
+  auto recv_msgs = absl::MakeSpan(
+      reinterpret_cast<std::array<uint128_t, 2>*>(recv_buf.data()), ot_num);
 
   // for each level
   for (uint32_t i = 0; i < ot_num; ++i) {
@@ -197,6 +200,113 @@ void SgrrOtExtSend(const std::shared_ptr<link::Context>& ctx,
       ctx->NextRank(),
       ByteContainerView(send_msgs.data(), ot_num * 2 * sizeof(uint128_t)),
       "SGRR_OTE:SEND-CORR");
+}
+
+// Notice that:
+//  > In such case, punctured index would be the choice of cot
+//  > punctured index might be greater than n
+// So, please do NOT use "FixIndexSgrrOtExtRecv" and "FixIndexSgrrOtExtSend",
+// unless you are certainly sure how do these algorithms work.
+void SgrrOtExtRecv_fixindex(const std::shared_ptr<link::Context>& ctx,
+                            const OtRecvStore& base_ot, uint32_t n,
+                            absl::Span<uint128_t> output) {
+  uint32_t ot_num = math::Log2Ceil(n);
+  auto recv_buf = ctx->Recv(ctx->NextRank(), "SGRR_OTE:RECV-CORR");
+  YACL_ENFORCE(recv_buf.size() >=
+               static_cast<int64_t>(ot_num * 2 * sizeof(uint128_t)));
+  auto recv_msgs = absl::MakeSpan(
+      reinterpret_cast<std::array<uint128_t, 2>*>(recv_buf.data()), ot_num);
+  SgrrOtExtRecv_fixindex(base_ot, n, output, absl::MakeSpan(recv_msgs));
+}
+
+void SgrrOtExtSend_fixindex(const std::shared_ptr<link::Context>& ctx,
+                            const OtSendStore& base_ot, uint32_t n,
+                            absl::Span<uint128_t> output) {
+  uint32_t ot_num = math::Log2Ceil(n);
+  std::vector<std::array<uint128_t, 2>> send_msgs(ot_num);
+  SgrrOtExtSend_fixindex(base_ot, n, output, absl::MakeSpan(send_msgs));
+
+  ctx->SendAsync(
+      ctx->NextRank(),
+      ByteContainerView(send_msgs.data(), ot_num * 2 * sizeof(uint128_t)),
+      "SGRR_OTE:SEND-CORR");
+}
+
+void SgrrOtExtRecv_fixindex(const OtRecvStore& base_ot, uint32_t n,
+                            absl::Span<uint128_t> output,
+                            absl::Span<std::array<uint128_t, 2>> recv_msgs) {
+  uint32_t ot_num = math::Log2Ceil(n);
+  YACL_ENFORCE_GE(n, (uint32_t)1);                 // range should > 1
+  YACL_ENFORCE_GE((uint32_t)128, base_ot.Size());  // base ot num < 128
+  YACL_ENFORCE_GE(base_ot.Size(), ot_num);         //
+  YACL_ENFORCE_GE(recv_msgs.size(), ot_num);
+
+  // we need log(n) 1-2 OTs from log(n) ROTs
+  // most significant bit first
+  dynamic_bitset<uint128_t> choice = base_ot.CopyChoice();
+
+  // for each level
+  for (uint32_t i = 0; i < ot_num; ++i) {
+    auto punctured_idx = GetPuncturedIndex(choice, i);
+    auto inserted_idx = GetInsertedIndex(choice, i);
+
+    // unmask and get the seed for this level
+    uint128_t insert_val = recv_msgs[i][1 - choice[i]] ^ base_ot.GetBlock(i);
+
+    // generate all already knows seeds for this level
+    if (i != 0) {
+      const uint32_t iter_num = 1 << i;
+      auto splits = SplitAllSeeds(output.subspan(0, iter_num));
+      for (uint32_t j = 0; j < std::min(iter_num, n); ++j) {
+        if (j == punctured_idx || j == inserted_idx) {
+          continue;
+        }
+        splits[j] ^= output[j];
+        splits[j + iter_num] ^= output[j];
+        insert_val ^= choice[i] ? splits[j] : splits[j + iter_num];
+      }
+      memcpy(output.data(), splits.data(),
+             std::min(2 * iter_num, n) * sizeof(uint128_t));
+    }
+    if (punctured_idx < n) {
+      output[punctured_idx] = 0;
+    }
+    if (inserted_idx < n) {
+      output[inserted_idx] = insert_val;
+    }
+  }
+}
+
+void SgrrOtExtSend_fixindex(const OtSendStore& base_ot, uint32_t n,
+                            absl::Span<uint128_t> output,
+                            absl::Span<std::array<uint128_t, 2>> send_msgs) {
+  uint32_t ot_num = math::Log2Ceil(n);
+  YACL_ENFORCE_GE(base_ot.Size(), ot_num);
+  YACL_ENFORCE_GE(n, (uint32_t)1);
+  YACL_ENFORCE_GE(send_msgs.size(), ot_num);
+
+  output[0] = SecureRandSeed();
+
+  // generate the final level seeds based on master_seed
+  for (uint32_t i = 0; i < ot_num; ++i) {
+    //  for each seeds in level i
+    const uint32_t iter_num = 1 << i;
+    auto splits = SplitAllSeeds(output.subspan(0, iter_num));
+    for (uint32_t j = 0; j < std::min(iter_num, n); ++j) {
+      splits[j] ^= output[j];
+      splits[j + iter_num] ^= output[j];
+      send_msgs[i][0] ^= splits[j];             // left
+      send_msgs[i][1] ^= splits[j + iter_num];  // right
+    }
+    memcpy(output.data(), splits.data(),
+           std::min(2 * iter_num, n) * sizeof(uint128_t));
+  }
+
+  // mask the ROT messages and send back
+  for (uint32_t i = 0; i < ot_num; ++i) {
+    send_msgs[i][0] ^= base_ot.GetBlock(i, 1);
+    send_msgs[i][1] ^= base_ot.GetBlock(i, 0);
+  }
 }
 
 }  // namespace yacl::crypto

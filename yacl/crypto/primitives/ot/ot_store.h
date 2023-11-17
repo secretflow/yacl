@@ -278,7 +278,10 @@ class MockOtStore {
 
 // Locally mock ots
 MockOtStore MockRots(uint64_t num);
+MockOtStore MockRots(uint64_t num, dynamic_bitset<uint128_t> choices);
 MockOtStore MockCots(uint64_t num, uint128_t delta);
+MockOtStore MockCots(uint64_t num, uint128_t delta,
+                     dynamic_bitset<uint128_t> choices);
 
 // Note: Compact ot is correlated-ot (or called delta-ot)
 MockOtStore MockCompactOts(uint64_t num);

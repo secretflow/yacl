@@ -30,4 +30,12 @@ inline uint64_t Log2Ceil(uint64_t x) {
   return Log2Floor(x - 1) + 1;
 }
 
+constexpr uint64_t DivCeil(uint64_t x, uint64_t y) {
+  return x == 0 ? 0 : 1 + ((x - 1) / y);  // x-1 avoid overflow
+}
+
+constexpr uint64_t RoundUpTo(uint64_t x, uint64_t y) {
+  return DivCeil(x, y) * y;
+}
+
 }  // namespace yacl::math
