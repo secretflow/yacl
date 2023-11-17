@@ -22,10 +22,13 @@
 #include "yacl/crypto/primitives/ot/ferret_ote.h"
 #include "yacl/crypto/primitives/ot/gywz_ote.h"
 #include "yacl/crypto/tools/random_permutation.h"
+#include "yacl/crypto/utils/secparam.h"
 #include "yacl/math/gadget.h"
 #include "yacl/utils/cuckoo_index.h"
 
 namespace yacl::crypto {
+
+YACL_MODULE_DECLARE("ferret_ote_un", SecParam::C::k128, SecParam::S::INF);
 
 using FerretSimpleMap = std::vector<std::unordered_map<uint64_t, uint64_t>>;
 

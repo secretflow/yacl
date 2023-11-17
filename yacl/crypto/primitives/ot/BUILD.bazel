@@ -70,6 +70,7 @@ yacl_cc_library(
         "//yacl/base:exception",
         "//yacl/crypto/tools:random_oracle",
         "//yacl/link",
+        "//yacl/math:gadget",
         "@simplest_ot//:simplest_ot_x86_asm",
     ],
 )
@@ -81,6 +82,7 @@ yacl_cc_library(
     deps = [
         "//yacl/base:exception",
         "//yacl/crypto/primitives/ot:ot_store",
+        "//yacl/crypto/utils:secparam",
         "//yacl/link",
         "@com_google_absl//absl/types:span",
     ] + select({
@@ -109,10 +111,9 @@ yacl_cc_library(
     hdrs = ["iknp_ote.h"],
     deps = [
         ":ot_store",
-        "//yacl/base:exception",
-        "//yacl/base:int128",
         "//yacl/crypto/tools:prg",
         "//yacl/crypto/tools:random_permutation",
+        "//yacl/crypto/utils:secparam",
         "//yacl/link",
         "//yacl/utils:matrix_utils",
     ],
@@ -143,6 +144,7 @@ yacl_cc_library(
         "//yacl/crypto/tools:random_oracle",
         "//yacl/crypto/tools:random_permutation",
         "//yacl/crypto/utils:rand",
+        "//yacl/crypto/utils:secparam",
         "//yacl/link",
         "//yacl/utils:matrix_utils",
     ],
@@ -169,6 +171,7 @@ yacl_cc_library(
         "//yacl/crypto/tools:prg",
         "//yacl/crypto/tools:random_permutation",
         "//yacl/crypto/utils:rand",
+        "//yacl/crypto/utils:secparam",
         "//yacl/link",
         "//yacl/math:gadget",
         "@com_google_absl//absl/numeric:bits",
@@ -197,6 +200,7 @@ yacl_cc_library(
         "//yacl/crypto/tools:prg",
         "//yacl/crypto/tools:random_permutation",
         "//yacl/crypto/utils:rand",
+        "//yacl/crypto/utils:secparam",
         "//yacl/link",
         "//yacl/math:gadget",
         "@com_google_absl//absl/numeric:bits",
@@ -230,6 +234,7 @@ yacl_cc_library(
         "//yacl/crypto/tools:prg",
         "//yacl/crypto/tools:random_permutation",
         "//yacl/crypto/utils:rand",
+        "//yacl/crypto/utils:secparam",
         "//yacl/link",
         "//yacl/math:gadget",
         "//yacl/utils:cuckoo_index",
@@ -259,6 +264,7 @@ yacl_cc_library(
         "//yacl/crypto/tools:prg",
         "//yacl/crypto/tools:random_permutation",
         "//yacl/crypto/utils:rand",
+        "//yacl/crypto/utils:secparam",
         "//yacl/link",
         "//yacl/math/f2k",
         "//yacl/utils:matrix_utils",
@@ -270,6 +276,39 @@ yacl_cc_test(
     srcs = ["kos_ote_test.cc"],
     deps = [
         ":kos_ote",
+        "//yacl/crypto/utils:rand",
+        "//yacl/link:test_util",
+    ],
+)
+
+yacl_cc_library(
+    name = "softspoken_ote",
+    srcs = ["softspoken_ote.cc"],
+    hdrs = ["softspoken_ote.h"],
+    copts = AES_COPT_FLAGS,
+    deps = [
+        ":base_ot",
+        ":ot_store",
+        ":sgrr_ote",
+        "//yacl/base:exception",
+        "//yacl/base:int128",
+        "//yacl/crypto/tools:prg",
+        "//yacl/crypto/tools:random_permutation",
+        "//yacl/link",
+        "//yacl/utils:matrix_utils",
+    ] + select({
+        "@platforms//cpu:aarch64": [
+            "@com_github_dltcollab_sse2neon//:sse2neon",
+        ],
+        "//conditions:default": [],
+    }),
+)
+
+yacl_cc_test(
+    name = "softspoken_ote_test",
+    srcs = ["softspoken_ote_test.cc"],
+    deps = [
+        ":softspoken_ote",
         "//yacl/crypto/utils:rand",
         "//yacl/link:test_util",
     ],
@@ -289,6 +328,7 @@ yacl_cc_binary(
         ":kkrt_ote",
         ":kos_ote",
         ":sgrr_ote",
+        ":softspoken_ote",
         "//yacl/crypto/utils:rand",
         "//yacl/link:test_util",
         "@com_github_google_benchmark//:benchmark_main",

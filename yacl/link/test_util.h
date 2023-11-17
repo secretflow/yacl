@@ -25,6 +25,38 @@
 
 namespace yacl::link::test {
 
+inline std::vector<std::shared_ptr<Context>> SetupBrpcWorld(
+    const std::string& id, size_t world_size) {
+  ContextDesc ctx_desc;
+  // ctx_desc.id = id;
+  for (size_t rank = 0; rank < world_size; rank++) {
+    const auto party_id = fmt::format("{}-{}", id, rank);
+    const auto host = fmt::format("127.0.0.1:{}", 10086 + rank);
+    ctx_desc.parties.push_back({party_id, host});
+  }
+
+  std::vector<std::shared_ptr<Context>> contexts(world_size);
+  for (size_t rank = 0; rank < world_size; rank++) {
+    contexts[rank] = FactoryBrpc().CreateContext(ctx_desc, rank);
+  }
+
+  auto proc = [&](size_t rank) { contexts[rank]->ConnectToMesh(); };
+  std::vector<std::future<void>> jobs(world_size);
+  for (size_t rank = 0; rank < world_size; rank++) {
+    jobs[rank] = std::async(proc, rank);
+  }
+
+  for (size_t rank = 0; rank < world_size; rank++) {
+    jobs[rank].get();
+  }
+  return contexts;
+}
+
+inline std::vector<std::shared_ptr<Context>> SetupBrpcWorld(size_t world_size) {
+  auto id = fmt::format("world_{}", world_size);
+  return SetupBrpcWorld(id, world_size);
+}
+
 inline std::vector<std::shared_ptr<Context>> SetupWorld(const std::string& id,
                                                         size_t world_size) {
   ContextDesc ctx_desc;

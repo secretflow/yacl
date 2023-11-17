@@ -18,10 +18,12 @@
 #include "benchmark/benchmark.h"
 
 #include "yacl/base/aligned_vector.h"
+#include "yacl/crypto/tools/expand_accumulate_code.h"
 #include "yacl/crypto/tools/linear_code.h"
 #include "yacl/crypto/tools/prg.h"
 #include "yacl/crypto/tools/random_oracle.h"
 #include "yacl/crypto/tools/random_permutation.h"
+#include "yacl/crypto/tools/silver_code.h"
 #include "yacl/crypto/utils/rand.h"
 
 namespace yacl::crypto {
@@ -50,6 +52,70 @@ BENCHMARK_DEFINE_F(ToolBench, LLC)(benchmark::State& state) {
     state.ResumeTiming();
   }
 }
+
+// 1st arg = n (output size)
+#define DELCARE_SLV_INPLACE_BENCH(weight)                \
+  BENCHMARK_DEFINE_F(ToolBench, Silver##weight##Inplace) \
+  (benchmark::State & state) {                           \
+    for (auto _ : state) {                               \
+      state.PauseTiming();                               \
+      {                                                  \
+        auto n = state.range(0);                         \
+        SilverCode slv(n, weight);                       \
+        auto input = RandVec<uint128_t>(n * 2);          \
+        state.ResumeTiming();                            \
+        slv.DualEncodeInplace(absl::MakeSpan(input));    \
+        state.PauseTiming();                             \
+      }                                                  \
+      state.ResumeTiming();                              \
+    }                                                    \
+  }
+
+// 1st arg = n (output size)
+#define DELCARE_SLV_BENCH(weight)                                           \
+  BENCHMARK_DEFINE_F(ToolBench, Silver##weight)(benchmark::State & state) { \
+    for (auto _ : state) {                                                  \
+      state.PauseTiming();                                                  \
+      {                                                                     \
+        auto n = state.range(0);                                            \
+        SilverCode slv(n, weight);                                          \
+        auto input = RandVec<uint128_t>(n * 2);                             \
+        auto output = std::vector<uint128_t>(n);                            \
+        state.ResumeTiming();                                               \
+        slv.DualEncode(absl::MakeSpan(input), absl::MakeSpan(output));      \
+        state.PauseTiming();                                                \
+      }                                                                     \
+      state.ResumeTiming();                                                 \
+    }                                                                       \
+  }
+
+DELCARE_SLV_BENCH(5);
+DELCARE_SLV_INPLACE_BENCH(5);
+DELCARE_SLV_BENCH(11);
+DELCARE_SLV_INPLACE_BENCH(11);
+
+// 1st arg = n (output size)
+#define DELCARE_EXACC_BENCH(weight)                                        \
+  BENCHMARK_DEFINE_F(ToolBench, ExAcc##weight)(benchmark::State & state) { \
+    for (auto _ : state) {                                                 \
+      state.PauseTiming();                                                 \
+      {                                                                    \
+        auto n = state.range(0);                                           \
+        ExAccCode<weight> acc(n);                                          \
+        auto input = RandVec<uint128_t>(n * 2);                            \
+        auto output = std::vector<uint128_t>(n);                           \
+        state.ResumeTiming();                                              \
+        acc.DualEncode(absl::MakeSpan(input), absl::MakeSpan(output));     \
+        state.PauseTiming();                                               \
+      }                                                                    \
+      state.ResumeTiming();                                                \
+    }                                                                      \
+  }
+
+DELCARE_EXACC_BENCH(7);
+DELCARE_EXACC_BENCH(11);
+DELCARE_EXACC_BENCH(21);
+DELCARE_EXACC_BENCH(40);
 
 // 1st arg = prg type
 BENCHMARK_DEFINE_F(ToolBench, PRG)(benchmark::State& state) {

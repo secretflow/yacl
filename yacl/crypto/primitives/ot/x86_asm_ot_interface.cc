@@ -21,8 +21,10 @@
 #include "simplest_ot_x86_asm/ot_receiver.h"
 #include "simplest_ot_x86_asm/ot_sender.h"
 
+#include "yacl/base/byte_container_view.h"
 #include "yacl/base/exception.h"
 #include "yacl/crypto/tools/random_oracle.h"
+#include "yacl/math/gadget.h"
 
 namespace yacl::crypto {
 
@@ -46,11 +48,14 @@ void X86AsmOtInterface::Recv(const std::shared_ptr<link::Context> &ctx,
 
   const auto &RO = RandomOracle::GetDefault();
 
+  const auto batch_num = math::DivCeil(kNumOt, 4);
+  std::vector<std::array<unsigned char, 4 * PACKBYTES>> send_msgs(batch_num);
+
   for (int i = 0; i < kNumOt; i += 4) {
     const int batch_size = std::min(4, kNumOt - i);
 
     unsigned char messages[4][HASHBYTES];
-    unsigned char rs_pack[4 * PACKBYTES];
+    auto *rs_pack = reinterpret_cast<unsigned char *>(send_msgs[i / 4].data());
     unsigned char batch_choices[4] = {0, 0, 0, 0};
 
     for (int j = 0; j < batch_size; j++) {
@@ -58,7 +63,6 @@ void X86AsmOtInterface::Recv(const std::shared_ptr<link::Context> &ctx,
     }
 
     receiver_rsgen(receiver.get(), rs_pack, batch_choices);
-    ctx->Send(ctx->NextRank(), rs_pack, fmt::format("BASE_OT:{}", i));
 
     receiver_keygen(receiver.get(), &messages[0]);
     for (int j = 0; j < batch_size; ++j) {
@@ -73,6 +77,10 @@ void X86AsmOtInterface::Recv(const std::shared_ptr<link::Context> &ctx,
       recv_blocks[i + j] = RO.Gen<uint128_t>(buf, i + j);
     }
   }
+
+  ctx->SendAsync(ctx->NextRank(),
+                 ByteContainerView(send_msgs.data(), batch_num * 4 * PACKBYTES),
+                 fmt::format("BASE_OT:RS_PACK"));
 }
 
 void X86AsmOtInterface::Send(const std::shared_ptr<link::Context> &ctx,
@@ -83,17 +91,22 @@ void X86AsmOtInterface::Send(const std::shared_ptr<link::Context> &ctx,
   // Send S_pack.
   unsigned char S_pack[PACKBYTES];
   sender_genS(sender.get(), S_pack);
-  ctx->Send(ctx->NextRank(), S_pack, "BASE_OT:S_PACK");
+  ctx->SendAsync(ctx->NextRank(), S_pack, "BASE_OT:S_PACK");
+
+  const auto batch_num = math::DivCeil(kNumOt, 4);
+  // Receiver rs_pack
+  auto buffer = ctx->Recv(ctx->NextRank(), fmt::format("BASE_OT:RS_PACK"));
+  YACL_ENFORCE_EQ(buffer.size(),
+                  static_cast<int64_t>(batch_num * 4 * PACKBYTES));
 
   for (int i = 0; i < kNumOt; i += 4) {
     const int batch_size = std::min(4, kNumOt - i);
 
-    unsigned char rs_pack[4 * PACKBYTES];
+    // unsigned char rs_pack[4 * PACKBYTES];
+    auto *rs_pack =
+        reinterpret_cast<unsigned char *>(buffer.data()) + i * PACKBYTES;
     unsigned char messages[2][4][HASHBYTES];
 
-    auto buffer = ctx->Recv(ctx->NextRank(), fmt::format("BASE_OT:{}", i));
-    YACL_ENFORCE_EQ(buffer.size(), static_cast<int64_t>(sizeof(rs_pack)));
-    std::memcpy(rs_pack, buffer.data(), static_cast<int64_t>(buffer.size()));
     if (!sender_keygen_check(sender.get(), rs_pack, messages)) {
       YACL_THROW("simplest-ot: sender_keygen failed");
     }

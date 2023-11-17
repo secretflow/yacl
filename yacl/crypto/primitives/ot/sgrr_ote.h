@@ -20,6 +20,7 @@
 
 #include "yacl/crypto/primitives/ot/ot_store.h"
 #include "yacl/crypto/utils/rand.h"
+#include "yacl/crypto/utils/secparam.h"
 #include "yacl/link/link.h"
 
 namespace yacl::crypto {
@@ -45,6 +46,8 @@ namespace yacl::crypto {
 // https://crypto.stackexchange.com/questions/38039
 // https://stackoverflow.com/questions/50402168
 
+YACL_MODULE_DECLARE("sgrr_ote", SecParam::C::INF, SecParam::S::INF);
+
 void SgrrOtExtRecv(const std::shared_ptr<link::Context>& ctx,
                    const OtRecvStore& base_ot, uint32_t n, uint32_t index,
                    absl::Span<uint128_t> output);
@@ -52,5 +55,24 @@ void SgrrOtExtRecv(const std::shared_ptr<link::Context>& ctx,
 void SgrrOtExtSend(const std::shared_ptr<link::Context>& ctx,
                    const OtSendStore& base_ot, uint32_t n,
                    absl::Span<uint128_t> output);
+
+// Notice that:
+//  > In such cases, punctured index would be the choice of cot
+//  > punctured index might be greater than n
+void SgrrOtExtRecv_fixindex(const std::shared_ptr<link::Context>& ctx,
+                            const OtRecvStore& base_ot, uint32_t n,
+                            absl::Span<uint128_t> output);
+
+void SgrrOtExtSend_fixindex(const std::shared_ptr<link::Context>& ctx,
+                            const OtSendStore& base_ot, uint32_t n,
+                            absl::Span<uint128_t> output);
+// non-interactive function, Receiver should receive "recv_msgs" from Sender
+void SgrrOtExtRecv_fixindex(const OtRecvStore& base_ot, uint32_t n,
+                            absl::Span<uint128_t> output,
+                            absl::Span<std::array<uint128_t, 2>> recv_msg);
+// non-interactive function, Sender should send "send_msg" to Receiver
+void SgrrOtExtSend_fixindex(const OtSendStore& base_ot, uint32_t n,
+                            absl::Span<uint128_t> output,
+                            absl::Span<std::array<uint128_t, 2>> send_msg);
 
 }  // namespace yacl::crypto

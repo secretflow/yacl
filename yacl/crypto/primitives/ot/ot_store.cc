@@ -206,7 +206,7 @@ void OtRecvStore::FlipChoice(uint64_t idx) {
 dynamic_bitset<uint128_t> OtRecvStore::CopyChoice() const {
   YACL_ENFORCE(type_ == OtStoreType::Normal,
                "Copying choice is currently not allowed in compact mode");
-  dynamic_bitset<uint128_t> out(bit_buf_->to_string());  // copy
+  dynamic_bitset<uint128_t> out = *bit_buf_;  // copy
   out >>= GetUseCtr();
   out.resize(GetUseSize());
   return out;
@@ -530,21 +530,32 @@ OtSendStore MakeCompactOtSendStore(AlignedVector<uint128_t>&& blocks,
 
 MockOtStore MockRots(uint64_t num) {
   auto recv_choices = RandBits<dynamic_bitset<uint128_t>>(num);
+  return MockRots(num, recv_choices);
+}
+
+MockOtStore MockRots(uint64_t num, dynamic_bitset<uint128_t> choices) {
+  YACL_ENFORCE(choices.size() == num);
   AlignedVector<uint128_t> recv_blocks;
   AlignedVector<std::array<uint128_t, 2>> send_blocks;
 
   Prg<uint128_t> gen(RandSeed());
   for (uint64_t i = 0; i < num; ++i) {
     send_blocks.push_back({gen(), gen()});
-    recv_blocks.push_back(send_blocks[i][recv_choices[i]]);
+    recv_blocks.push_back(send_blocks[i][choices[i]]);
   }
 
-  return {MakeOtSendStore(send_blocks),                 // sender is normal
-          MakeOtRecvStore(recv_choices, recv_blocks)};  // receiver is normal
+  return {MakeOtSendStore(send_blocks),            // sender is normal
+          MakeOtRecvStore(choices, recv_blocks)};  // receiver is normal
 }
 
 MockOtStore MockCots(uint64_t num, uint128_t delta) {
   auto recv_choices = RandBits<dynamic_bitset<uint128_t>>(num);
+  return MockCots(num, delta, recv_choices);
+}
+
+MockOtStore MockCots(uint64_t num, uint128_t delta,
+                     dynamic_bitset<uint128_t> choices) {
+  YACL_ENFORCE(choices.size() == num);
   AlignedVector<uint128_t> recv_blocks;
   AlignedVector<uint128_t> send_blocks;
 
@@ -552,15 +563,15 @@ MockOtStore MockCots(uint64_t num, uint128_t delta) {
   for (uint64_t i = 0; i < num; ++i) {
     auto msg = gen();
     send_blocks.push_back(msg);
-    if (!recv_choices[i]) {
+    if (!choices[i]) {
       recv_blocks.push_back(send_blocks[i]);
     } else {
       recv_blocks.push_back(send_blocks[i] ^ delta);
     }
   }
 
-  return {MakeCompactOtSendStore(send_blocks, delta),   // sender is compact
-          MakeOtRecvStore(recv_choices, recv_blocks)};  // receiver is normal
+  return {MakeCompactOtSendStore(send_blocks, delta),  // sender is compact
+          MakeOtRecvStore(choices, recv_blocks)};      // receiver is normal
 }
 
 MockOtStore MockCompactOts(uint64_t num) {

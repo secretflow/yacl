@@ -663,6 +663,10 @@ yacl::Buffer MPInt::ToMagBytes(Endian endian) const {
 // characteristics of big-endian, the remaining part will not be assigned 0.
 size_t MPInt::ToMagBytes(unsigned char *buf, size_t buf_len,
                          Endian endian) const {
+  if (buf == nullptr) {
+    return mp_ext_mag_bytes_size(n_);
+  }
+
   return mp_ext_to_mag_bytes(n_, buf, buf_len, endian);
 }
 

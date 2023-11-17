@@ -18,9 +18,6 @@
 #include <memory>
 #include <vector>
 
-#include "yacl/base/byte_container_view.h"
-#include "yacl/base/exception.h"
-#include "yacl/base/int128.h"
 #include "yacl/crypto/tools/prg.h"
 #include "yacl/crypto/tools/random_permutation.h"
 #include "yacl/utils/matrix_utils.h"
@@ -30,7 +27,7 @@ namespace yacl::crypto {
 namespace {
 
 constexpr size_t kBatchSize = 128;
-constexpr size_t kKappa = 128;
+constexpr size_t kKappa = YACL_MODULE_SECPARAM_C_UINT("iknp_ote");
 
 inline std::array<uint128_t, kBatchSize> XorBatchedBlock(
     const absl::Span<uint128_t> in, const uint128_t block) {

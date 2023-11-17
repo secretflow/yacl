@@ -20,8 +20,11 @@
 
 #include "yacl/crypto/primitives/ot/ferret_ote.h"
 #include "yacl/crypto/primitives/ot/gywz_ote.h"
+#include "yacl/crypto/utils/secparam.h"
 
 namespace yacl::crypto {
+
+YACL_MODULE_DECLARE("ferret_ote_rn", SecParam::C::k128, SecParam::S::INF);
 
 uint64_t MpCotRNHelper(uint64_t idx_num, uint64_t idx_range) {
   const auto batch_size = (idx_range + idx_num - 1) / idx_num;
@@ -44,8 +47,8 @@ void MpCotRNSend(const std::shared_ptr<link::Context>& ctx,
         cot.Slice(i * math::Log2Ceil(batch_size),
                   i * math::Log2Ceil(batch_size) + math::Log2Ceil(this_size));
 
-    FerretGywzOtExtSend(ctx, cot_slice, this_size,
-                        out.subspan(i * batch_size, this_size));
+    GywzOtExtSend_ferret(ctx, cot_slice, this_size,
+                         out.subspan(i * batch_size, this_size));
   }
 }
 
@@ -63,8 +66,8 @@ void MpCotRNRecv(const std::shared_ptr<link::Context>& ctx,
     const auto cot_slice =
         cot.Slice(i * math::Log2Ceil(batch_size),
                   i * math::Log2Ceil(batch_size) + math::Log2Ceil(this_size));
-    FerretGywzOtExtRecv(ctx, cot_slice, this_size,
-                        out.subspan(i * batch_size, this_size));
+    GywzOtExtRecv_ferret(ctx, cot_slice, this_size,
+                         out.subspan(i * batch_size, this_size));
   }
 }
 

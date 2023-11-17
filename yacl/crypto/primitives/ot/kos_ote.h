@@ -20,6 +20,7 @@
 
 #include "yacl/base/dynamic_bitset.h"
 #include "yacl/crypto/primitives/ot/ot_store.h"
+#include "yacl/crypto/utils/secparam.h"
 #include "yacl/link/link.h"
 
 // KOS OT Extension Implementation (Malicious Secure)
@@ -50,6 +51,8 @@
 //
 
 namespace yacl::crypto {
+
+YACL_MODULE_DECLARE("kos_ote", SecParam::C::k128, SecParam::S::k64);
 
 void KosOtExtSend(const std::shared_ptr<link::Context>& ctx,
                   const OtRecvStore& base_ot,

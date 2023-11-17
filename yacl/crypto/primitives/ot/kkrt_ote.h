@@ -21,6 +21,7 @@
 
 #include "yacl/crypto/base/aes/aes_intrinsics.h"
 #include "yacl/crypto/primitives/ot/ot_store.h"
+#include "yacl/crypto/utils/secparam.h"
 #include "yacl/link/link.h"
 
 namespace yacl::crypto {
@@ -105,6 +106,8 @@ class IGroupPRF {
 //     as repetition codes and KKRT as pseudo random codes.
 //   - This function requires base ot width to 512 now. Let us cut this to 128
 //     by implicitly calling IKNP inside KKRT.
+
+YACL_MODULE_DECLARE("kkrt_ote", SecParam::C::k128, SecParam::S::INF);
 
 std::unique_ptr<IGroupPRF> KkrtOtExtSend(
     const std::shared_ptr<link::Context>& ctx, const OtRecvStore& base_ot,

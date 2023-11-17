@@ -21,6 +21,7 @@
 
 #include "yacl/base/dynamic_bitset.h"
 #include "yacl/crypto/primitives/ot/ot_store.h"
+#include "yacl/crypto/utils/secparam.h"
 #include "yacl/link/link.h"
 
 namespace yacl::crypto {
@@ -43,28 +44,26 @@ namespace yacl::crypto {
 // Security assumptions:
 //  *. correlation-robust hash function, for more details about its
 //  implementation, see `yacl/crypto-tools/random_permutation.h`
-//
-// NOTE
-//  * OT Extension sender requires receiver base ot context.
-//  * OT Extension receiver requires sender base ot context.
-//
 
-void IknpOtExtSend(const std::shared_ptr<link::Context>& ctx,
-                   const OtRecvStore& base_ot,
+// iknp's security param declaration
+YACL_MODULE_DECLARE("iknp_ote", SecParam::C::k128, SecParam::S::INF);
+
+void IknpOtExtSend(const std::shared_ptr<link::Context> &ctx,
+                   const OtRecvStore &base_ot,
                    absl::Span<std::array<uint128_t, 2>> send_blocks,
                    bool cot = false);
 
-void IknpOtExtRecv(const std::shared_ptr<link::Context>& ctx,
-                   const OtSendStore& base_ot,
-                   const dynamic_bitset<uint128_t>& choices,
+void IknpOtExtRecv(const std::shared_ptr<link::Context> &ctx,
+                   const OtSendStore &base_ot,
+                   const dynamic_bitset<uint128_t> &choices,
                    absl::Span<uint128_t> recv_blocks, bool cot = false);
 
 // ==================== //
 //   Support OT Store   //
 // ==================== //
 
-inline OtSendStore IknpOtExtSend(const std::shared_ptr<link::Context>& ctx,
-                                 const OtRecvStore& base_ot, uint32_t ot_num,
+inline OtSendStore IknpOtExtSend(const std::shared_ptr<link::Context> &ctx,
+                                 const OtRecvStore &base_ot, uint32_t ot_num,
                                  bool cot = false) {
   std::vector<std::array<uint128_t, 2>> blocks(ot_num);
   IknpOtExtSend(ctx, base_ot, absl::MakeSpan(blocks), cot);
@@ -76,9 +75,9 @@ inline OtSendStore IknpOtExtSend(const std::shared_ptr<link::Context>& ctx,
   return ret;  // FIXME: Drop explicit copy
 }
 
-inline OtRecvStore IknpOtExtRecv(const std::shared_ptr<link::Context>& ctx,
-                                 const OtSendStore& base_ot,
-                                 const dynamic_bitset<uint128_t>& choices,
+inline OtRecvStore IknpOtExtRecv(const std::shared_ptr<link::Context> &ctx,
+                                 const OtSendStore &base_ot,
+                                 const dynamic_bitset<uint128_t> &choices,
                                  uint32_t ot_num, bool cot = false) {
   std::vector<uint128_t> blocks(ot_num);
   IknpOtExtRecv(ctx, base_ot, choices, absl::MakeSpan(blocks), cot);
