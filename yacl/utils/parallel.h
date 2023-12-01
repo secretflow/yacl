@@ -51,6 +51,11 @@ body of your function, only data pointers.
 inline void parallel_for(int64_t begin, int64_t end, int64_t grain_size,
                          const std::function<void(int64_t, int64_t)>& f);
 
+inline void parallel_for(int64_t begin, int64_t end,
+                         const std::function<void(int64_t, int64_t)>& f) {
+  parallel_for(begin, end, 1, f);
+}
+
 /*
 parallel_reduce
 
