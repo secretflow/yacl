@@ -39,6 +39,12 @@ AES_COPT_FLAGS = select({
     ],
 })
 
+OMP_LINK_FLAGS = select({
+    "@bazel_tools//src/conditions:darwin_x86_64": ["@macos_omp_x64//:openmp"],
+    "@bazel_tools//src/conditions:darwin_arm64": ["@macos_omp_arm64//:openmp"],
+    "//conditions:default": [],
+})
+
 def _yacl_copts():
     return select({
         "@yacl//bazel:yacl_build_as_release": RELEASE_FLAGS,
