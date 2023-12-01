@@ -62,6 +62,19 @@ def yacl_deps():
         remote = "{}/interconnection.git".format(SECRETFLOW_GIT),
     )
 
+    # Add homebrew openmp for macOS, somehow..homebrew installs to different location on Apple Silcon/Intel macs.. so we need two rules here
+    native.new_local_repository(
+        name = "macos_omp_x64",
+        build_file = "@yacl//bazel:local_openmp_macos.BUILD",
+        path = "/usr/local/opt/libomp",
+    )
+
+    native.new_local_repository(
+        name = "macos_omp_arm64",
+        build_file = "@yacl//bazel:local_openmp_macos.BUILD",
+        path = "/opt/homebrew/opt/libomp/",
+    )
+
 def _com_github_brpc_brpc():
     maybe(
         http_archive,
