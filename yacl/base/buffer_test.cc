@@ -14,6 +14,7 @@
 
 #include "yacl/base/buffer.h"
 
+#include <cstdint>
 #include <vector>
 
 #include "gtest/gtest.h"
@@ -25,8 +26,8 @@ namespace yacl::test {
 TEST(BufferTest, ParallelWorks) {
   std::vector<Buffer> v;
   v.resize(100000);
-  parallel_for(0, v.size(), 1, [&](int64_t beg, int64_t end) {
-    for (int64_t i = beg; i < end; ++i) {
+  parallel_for(0, v.size(), [&](int64_t begin, int64_t end) {
+    for (int64_t i = begin; i < end; ++i) {
       v[i] = Buffer(fmt::format("hello_{}", i));
     }
   });

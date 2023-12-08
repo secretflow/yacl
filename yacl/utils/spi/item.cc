@@ -20,12 +20,24 @@ namespace yacl {
 
 namespace {
 
-std::string TryRead(const std::any &v) {
-#define TRY_TYPE(type)                             \
-  if (t == typeid(type)) {                         \
-    return fmt::to_string(std::any_cast<type>(v)); \
+#define TRY_TYPE(type)                                        \
+  if (t == typeid(type)) {                                    \
+    return fmt::to_string(std::any_cast<type>(v));            \
+  }                                                           \
+  if (t == typeid(absl::Span<type>)) {                        \
+    const auto &c = std::any_cast<absl::Span<type>>(v);       \
+    return fmt::to_string(fmt::join(c, ", "));                \
+  }                                                           \
+  if (t == typeid(absl::Span<const type>)) {                  \
+    const auto &c = std::any_cast<absl::Span<const type>>(v); \
+    return fmt::to_string(fmt::join(c, ", "));                \
+  }                                                           \
+  if (t == typeid(std::vector<type>)) {                       \
+    const auto &c = std::any_cast<std::vector<type>>(v);      \
+    return fmt::to_string(fmt::join(c, ", "));                \
   }
 
+std::string TryRead(const std::any &v) {
   const auto &t = v.type();
   TRY_TYPE(bool);
   TRY_TYPE(int8_t);
@@ -46,11 +58,36 @@ std::string TryRead(const std::any &v) {
 
 }  // namespace
 
+template <>
+bool Item::IsAll(const bool &element) const {
+  if (!HasValue()) {
+    return false;
+  }
+
+  if (!IsArray()) {
+    return As<bool>() == element;
+  }
+
+  if (IsView()) {
+    absl::Span<const bool> real =
+        IsReadOnly() ? As<absl::Span<const bool>>() : As<absl::Span<bool>>();
+    return IsAllSameTo(real, element);
+  }
+
+  auto &real = As<std::vector<bool>>();
+  for (const auto &item : real) {
+    if (item != element) {
+      return false;
+    }
+  }
+  return true;
+}
+
 std::string Item::ToString() const {
   if (IsArray()) {
-    return fmt::format("{} Item, element_type={}, RO={}",
+    return fmt::format("{} Item, element_type={}, RO={}, Content={}",
                        IsView() ? "Span" : "Vector", v_.type().name(),
-                       IsReadOnly());
+                       IsReadOnly(), TryRead(v_));
   } else {
     return fmt::format("Scalar item, type={}, RO={}, Content={}",
                        v_.type().name(), IsReadOnly(), TryRead(v_));

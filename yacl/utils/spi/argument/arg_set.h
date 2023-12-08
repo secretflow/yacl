@@ -27,7 +27,8 @@ class SpiArgs : public std::map<std::string, SpiArg> {
   // If the user sets this parameter, but the type is not T, then an exception
   // is thrown
   template <typename T>
-  T Get(const SpiArgKey<T> &key, const T &default_value) const {
+  T Get(const SpiArgKey<T> &key,
+        const typename SpiArgKey<T>::ValueType &default_value) const {
     auto it = find((key.Key()));
     if (it == end()) {
       return default_value;

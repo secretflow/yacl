@@ -39,10 +39,20 @@ AES_COPT_FLAGS = select({
     ],
 })
 
-OMP_LINK_FLAGS = select({
+OMP_DEPS = select({
     "@bazel_tools//src/conditions:darwin_x86_64": ["@macos_omp_x64//:openmp"],
     "@bazel_tools//src/conditions:darwin_arm64": ["@macos_omp_arm64//:openmp"],
     "//conditions:default": [],
+})
+
+OMP_CFLAGS = select({
+    "@platforms//os:macos": ["-Xclang", "-fopenmp"],
+    "//conditions:default": ["-fopenmp"],
+})
+
+OMP_LINKFLAGS = select({
+    "@platforms//os:macos": [],
+    "//conditions:default": ["-fopenmp"],
 })
 
 def _yacl_copts():
@@ -86,14 +96,11 @@ def yacl_configure_make(**attrs):
 def yacl_cc_test(
         copts = [],
         deps = [],
-        linkstatic = True,
         **kwargs):
     cc_test(
         copts = _yacl_copts() + copts,
         deps = deps + [
             "@com_google_googletest//:gtest_main",
         ],
-        # static link for tcmalloc
-        linkstatic = True,
         **kwargs
     )

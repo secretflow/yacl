@@ -24,6 +24,7 @@ yacl_cc_library(
     name = "mp_int_enforce",
     hdrs = ["mp_int_enforce.h"],
     deps = [
+        "//yacl/base:exception",
         "@com_github_fmtlib_fmt//:fmtlib",
         "@com_github_libtom_libtommath//:libtommath",
     ],
@@ -49,6 +50,7 @@ yacl_cc_library(
     srcs = ["tommath_ext_types.cc"],
     hdrs = ["tommath_ext_types.h"],
     deps = [
+        ":mp_int_enforce",
         "//yacl/base:int128",
         "@com_github_libtom_libtommath//:libtommath",
     ],
@@ -88,7 +90,7 @@ yacl_cc_test(
 )
 
 yacl_cc_test(
-    name = "mp_ext_test",
+    name = "mpx_test",
     srcs = ["tommath_ext_test.cc"],
     deps = [
         ":tommath_ext_features",

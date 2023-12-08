@@ -16,7 +16,6 @@
 
 #include <algorithm>
 #include <array>
-#include <vector>
 
 #include "absl/types/span.h"
 

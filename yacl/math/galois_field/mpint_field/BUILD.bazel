@@ -1,4 +1,4 @@
-# Copyright 2022 Ant Group Co., Ltd.
+# Copyright 2023 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,51 +17,39 @@ load("//bazel:yacl.bzl", "yacl_cc_binary", "yacl_cc_library", "yacl_cc_test")
 package(default_visibility = ["//visibility:public"])
 
 yacl_cc_library(
-    name = "spi",
+    name = "configs",
+    hdrs = ["configs.h"],
     deps = [
-        ":item",
-        ":spi_factory",
-        ":type_traits",
-    ],
-)
-
-yacl_cc_library(
-    name = "item",
-    srcs = ["item.cc"],
-    hdrs = ["item.h"],
-    deps = [
-        "//yacl/base:exception",
         "//yacl/math/mpint",
-        "//yacl/utils:parallel",
-        "@com_google_absl//absl/types:span",
-    ],
-)
-
-yacl_cc_test(
-    name = "item_test",
-    srcs = ["item_test.cc"],
-    deps = [
-        ":item",
-    ],
-)
-
-yacl_cc_library(
-    name = "spi_factory",
-    hdrs = ["spi_factory.h"],
-    deps = [
         "//yacl/utils/spi/argument",
     ],
 )
 
-yacl_cc_test(
-    name = "spi_factory_test",
-    srcs = ["spi_factory_test.cc"],
+yacl_cc_library(
+    name = "mpint_field",
+    srcs = ["mpint_field.cc"],
+    hdrs = ["mpint_field.h"],
     deps = [
-        ":spi_factory",
+        ":configs",
+        "//yacl/math/galois_field:sketch",
+    ],
+    alwayslink = 1,
+)
+
+yacl_cc_test(
+    name = "mpint_field_test",
+    srcs = ["mpint_field_test.cc"],
+    deps = [
+        ":mpint_field",
     ],
 )
 
-yacl_cc_library(
-    name = "type_traits",
-    hdrs = ["type_traits.h"],
+yacl_cc_binary(
+    name = "bench",
+    srcs = ["mpint_field_bench.cc"],
+    deps = [
+        ":configs",
+        "//yacl/math/galois_field",
+        "@com_github_google_benchmark//:benchmark",
+    ],
 )

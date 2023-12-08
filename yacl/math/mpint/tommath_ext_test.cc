@@ -40,20 +40,20 @@ TEST(TommathExtTest, CountBits) {
   mp_int n;
   MP_ASSERT_OK(mp_init_i32(&n, 0));
   ON_SCOPE_EXIT([&] { mp_clear(&n); });
-  EXPECT_EQ(mp_ext_count_bits_fast(n), 0);
+  EXPECT_EQ(mpx_count_bits_fast(n), 0);
 
   MP_ASSERT_OK(mp_incr(&n));
-  EXPECT_EQ(mp_ext_count_bits_fast(n), 1);
+  EXPECT_EQ(mpx_count_bits_fast(n), 1);
 
   for (int i = 0; i < 4096; ++i) {
     MP_ASSERT_OK(mp_mul_2(&n, &n));
-    EXPECT_EQ(mp_ext_count_bits_fast(n), mp_count_bits(&n));
+    EXPECT_EQ(mpx_count_bits_fast(n), mp_count_bits(&n));
   }
 
   mp_zero(&n);
   MP_ASSERT_OK(mp_incr(&n));
   for (int i = 0; i < 128; ++i) {
-    EXPECT_EQ(mp_ext_count_bits_fast(n), i + 1) << Info(n);
+    EXPECT_EQ(mpx_count_bits_fast(n), i + 1) << Info(n);
     MP_ASSERT_OK(mp_mul_2(&n, &n));
     if (i % 2 == 1) {
       MP_ASSERT_OK(mp_incr(&n));
@@ -65,7 +65,7 @@ TEST(TommathExtTest, CountBitsRandom) {
   mp_int n;
   MP_ASSERT_OK(mp_init_i64(&n, 0));
   ON_SCOPE_EXIT([&] { mp_clear(&n); });
-  EXPECT_EQ(mp_ext_count_bits_fast(n), 0);
+  EXPECT_EQ(mpx_count_bits_fast(n), 0);
 
   std::random_device rd;
   std::mt19937_64 gen(rd());
@@ -79,7 +79,7 @@ TEST(TommathExtTest, CountBitsRandom) {
       a >>= 1;
     }
 
-    EXPECT_EQ(mp_ext_count_bits_fast(n), bits) << Info(n);
+    EXPECT_EQ(mpx_count_bits_fast(n), bits) << Info(n);
   }
 
   for (int64_t i = 0; i < 1000000; ++i) {
@@ -91,7 +91,7 @@ TEST(TommathExtTest, CountBitsRandom) {
       a >>= 1;
     }
 
-    EXPECT_EQ(mp_ext_count_bits_fast(n), bits) << Info(n);
+    EXPECT_EQ(mpx_count_bits_fast(n), bits) << Info(n);
   }
 }
 
@@ -106,14 +106,14 @@ TEST(TommathExtTest, Serialize) {
 
   for (int64_t bits = 0; bits < 4097; ++bits) {
     for (int64_t i = 0; i < 100; ++i) {
-      mp_ext_rand_bits(&a, bits);
+      mpx_rand_bits(&a, bits);
       if (i % 2 == 0) {
         MP_ASSERT_OK(mp_neg(&a, &a));
       }
-      auto sz = mp_ext_serialize_size(a);
-      mp_ext_serialize(a, buf, sz);
+      auto sz = mpx_serialize_size(a);
+      mpx_serialize(a, buf, sz);
 
-      mp_ext_deserialize(&b, buf, sz);
+      mpx_deserialize(&b, buf, sz);
       ASSERT_EQ(mp_cmp(&a, &b), 0)
           << "a is " << Info(a) << "\nb is " << Info(b);
     }
@@ -132,25 +132,25 @@ TEST(TommathExtTest, GetBit) {
 
   int idx = 0;
   while (s != 0) {
-    EXPECT_EQ(s & 1, mp_ext_get_bit(n, idx));
-    mp_ext_set_bit(&new_n, idx, s & 1);
+    EXPECT_EQ(s & 1, mpx_get_bit(n, idx));
+    mpx_set_bit(&new_n, idx, s & 1);
     s >>= 1;
     ++idx;
   }
 
   EXPECT_TRUE(mp_cmp(&n, &new_n) == 0);
-  mp_ext_set_bit(&new_n, 666, 0);
+  mpx_set_bit(&new_n, 666, 0);
   EXPECT_TRUE(mp_cmp(&n, &new_n) == 0);
 
-  mp_ext_set_bit(&new_n, 1000, 1);
-  EXPECT_EQ(mp_ext_get_bit(new_n, 999), 0);
-  EXPECT_EQ(mp_ext_get_bit(new_n, 1000), 1);
-  EXPECT_EQ(mp_ext_get_bit(new_n, 1001), 0);
-  EXPECT_EQ(mp_ext_count_bits_fast(new_n), 1001);
+  mpx_set_bit(&new_n, 1000, 1);
+  EXPECT_EQ(mpx_get_bit(new_n, 999), 0);
+  EXPECT_EQ(mpx_get_bit(new_n, 1000), 1);
+  EXPECT_EQ(mpx_get_bit(new_n, 1001), 0);
+  EXPECT_EQ(mpx_count_bits_fast(new_n), 1001);
 
-  mp_ext_set_bit(&new_n, 1000, 0);
-  EXPECT_EQ(mp_ext_get_bit(new_n, 1000), 0);
-  EXPECT_LE(mp_ext_count_bits_fast(new_n), 64);
+  mpx_set_bit(&new_n, 1000, 0);
+  EXPECT_EQ(mpx_get_bit(new_n, 1000), 0);
+  EXPECT_LE(mpx_count_bits_fast(new_n), 64);
 }
 
 TEST(TommathExtTest, MpDivd) {
@@ -168,7 +168,7 @@ TEST(TommathExtTest, MpDivd) {
   ON_SCOPE_EXIT([&] { mp_clear(&mp_res); });
 
   for (uint64_t i = 1000; i < 100000; ++i) {
-    mp_ext_rand_bits(&a, i / 10);
+    mpx_rand_bits(&a, i / 10);
 
     mp_digit res;
     MP_ASSERT_OK(mp_div_d(&a, d, nullptr, &res));

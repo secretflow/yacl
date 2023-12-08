@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:yacl.bzl", "yacl_cc_binary", "yacl_cc_library", "yacl_cc_test")
-load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@rules_cc//cc:defs.bzl", "cc_proto_library")
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("//bazel:yacl.bzl", "OMP_CFLAGS", "OMP_DEPS", "OMP_LINKFLAGS", "yacl_cc_binary", "yacl_cc_library", "yacl_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -65,44 +65,15 @@ yacl_cc_test(
 )
 
 yacl_cc_library(
-    name = "thread_pool",
-    srcs = ["thread_pool.cc"],
-    hdrs = ["thread_pool.h"],
-    deps = [
-        "//yacl/base:exception",
-    ],
-)
-
-yacl_cc_test(
-    name = "thread_pool_test",
-    srcs = ["thread_pool_test.cc"],
-    deps = [
-        ":thread_pool",
-    ],
-)
-
-yacl_cc_library(
     name = "parallel",
     srcs = [
-        "parallel_common.cc",
-        "parallel_native.cc",
+        "parallel.cc",
     ],
     hdrs = [
         "parallel.h",
-        "parallel_native.h",
     ],
-    visibility = ["//visibility:public"],
     deps = [
         ":thread_pool",
-        "//yacl/base:exception",
-    ],
-)
-
-yacl_cc_test(
-    name = "parallel_test",
-    srcs = ["parallel_test.cc"],
-    deps = [
-        ":parallel",
     ],
 )
 
@@ -255,5 +226,34 @@ yacl_cc_test(
     linkstatic = True,
     deps = [
         ":platform_utils",
+    ],
+)
+
+yacl_cc_test(
+    name = "parallel_test",
+    srcs = ["parallel_test.cc"],
+    deps = [
+        ":parallel",
+        "//yacl/base:exception",
+    ],
+)
+
+yacl_cc_binary(
+    name = "parallel_bench",
+    srcs = ["parallel_bench.cc"],
+    copts = OMP_CFLAGS,
+    linkopts = OMP_LINKFLAGS,
+    deps = [
+        ":parallel",
+        "@com_github_google_benchmark//:benchmark",
+    ],
+)
+
+yacl_cc_library(
+    name = "thread_pool",
+    srcs = ["thread_pool.cc"],
+    hdrs = ["thread_pool.h"],
+    deps = [
+        "//yacl/base:exception",
     ],
 )

@@ -22,30 +22,30 @@ namespace yacl::math {
 
 // Reference: https://eprint.iacr.org/2003/186.pdf
 // libtommath style
-void mp_ext_safe_prime_rand(mp_int *out, int t, int size);
+void mpx_safe_prime_rand(mp_int *out, int t, int size);
 
-void mp_ext_rand_bits(mp_int *out, int64_t bits);
+void mpx_rand_bits(mp_int *out, int64_t bits);
 
 // Convert num to bytes and output to buf
-void mp_ext_to_bytes(const mp_int &num, unsigned char *buf, int64_t byte_len,
-                     Endian endian = Endian::native);
+void mpx_to_bytes(const mp_int &num, unsigned char *buf, int64_t byte_len,
+                  Endian endian = Endian::native);
 
-size_t mp_ext_mag_bytes_size(const mp_int &num);
-size_t mp_ext_to_mag_bytes(const mp_int &num, uint8_t *buf, size_t buf_len,
-                           Endian endian = Endian::native);
-void mp_ext_from_mag_bytes(mp_int *num, const uint8_t *buf, size_t buf_len,
-                           Endian endian = Endian::native);
+size_t mpx_mag_bytes_size(const mp_int &num);
+size_t mpx_to_mag_bytes(const mp_int &num, uint8_t *buf, size_t buf_len,
+                        Endian endian = Endian::native);
+void mpx_from_mag_bytes(mp_int *num, const uint8_t *buf, size_t buf_len,
+                        Endian endian = Endian::native);
 
 // returns the number of bits in an int
 // Faster than tommath's native mp_count_bits() method
-int mp_ext_count_bits_fast(const mp_int &a);
+int mpx_count_bits_fast(const mp_int &a);
 
-size_t mp_ext_serialize_size(const mp_int &num);
-size_t mp_ext_serialize(const mp_int &num, uint8_t *buf, size_t buf_len);
-void mp_ext_deserialize(mp_int *num, const uint8_t *buf, size_t buf_len);
+size_t mpx_serialize_size(const mp_int &num);
+size_t mpx_serialize(const mp_int &num, uint8_t *buf, size_t buf_len);
+void mpx_deserialize(mp_int *num, const uint8_t *buf, size_t buf_len);
 
 // return 0 or 1
-uint8_t mp_ext_get_bit(const mp_int &a, int index);
-void mp_ext_set_bit(mp_int *a, int index, uint8_t value);
+uint8_t mpx_get_bit(const mp_int &a, int index);
+void mpx_set_bit(mp_int *a, int index, uint8_t value);
 
 }  // namespace yacl::math

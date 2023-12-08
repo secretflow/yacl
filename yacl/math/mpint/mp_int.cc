@@ -35,7 +35,12 @@ const MPInt MPInt::_0_(0);
 const MPInt MPInt::_1_(1);
 const MPInt MPInt::_2_(2);
 
-MPInt::MPInt() { MPINT_ENFORCE_OK(mp_init(&n_)); }
+MPInt::MPInt() {
+  // Use mpx_init instead of mp_init is hazardous.
+  // Therefore, any changes to MPInt’s public interface must be tested
+  // carefully.
+  mpx_init(&n_);
+}
 
 MPInt::MPInt(const std::string &num, size_t radix) {
   MPINT_ENFORCE_OK(mp_init(&n_));
@@ -70,12 +75,12 @@ MPInt &MPInt::operator=(MPInt &&other) noexcept {
 
 template <>
 int8_t MPInt::Get() const {
-  return mp_get_i8(&n_);
+  return mpx_get_i8(&n_);
 }
 
 template <>
 int16_t MPInt::Get() const {
-  return mp_get_i16(&n_);
+  return mpx_get_i16(&n_);
 }
 
 template <>
@@ -90,17 +95,17 @@ int64_t MPInt::Get() const {
 
 template <>
 int128_t MPInt::Get() const {
-  return mp_get_i128(&n_);
+  return mpx_get_i128(&n_);
 }
 
 template <>
 uint8_t MPInt::Get() const {
-  return mp_get_mag_u8(&n_);
+  return mpx_get_mag_u8(&n_);
 }
 
 template <>
 uint16_t MPInt::Get() const {
-  return mp_get_mag_u16(&n_);
+  return mpx_get_mag_u16(&n_);
 }
 
 template <>
@@ -123,7 +128,7 @@ unsigned long MPInt::Get() const {  // NOLINT: macOS uint64_t is ull
 
 template <>
 uint128_t MPInt::Get() const {
-  return mp_get_mag_u128(&n_);
+  return mpx_get_mag_u128(&n_);
 }
 
 template <>
@@ -143,77 +148,73 @@ MPInt MPInt::Get() const {
 
 template <>
 void MPInt::Set(int8_t value) {
-  mp_set_i8(&n_, value);
+  mpx_set_i8(&n_, value);
 }
 
 template <>
 void MPInt::Set(int16_t value) {
-  mp_set_i16(&n_, value);
+  mpx_set_i16(&n_, value);
 }
 
 template <>
 void MPInt::Set(int32_t value) {
-  mp_set_i32(&n_, value);
+  mpx_set_i32(&n_, value);
 }
 
 template <>
 void MPInt::Set(int64_t value) {
-  MPINT_ENFORCE_OK(mp_grow(&n_, 2));
-  mp_set_i64(&n_, value);
+  mpx_set_i64(&n_, value);
 }
 
 #ifdef __APPLE__
 template <>
 void MPInt::Set(long value) {  // NOLINT: macOS int64_t is ll
   static_assert(sizeof(long) == 8);
-  mp_set_i64(&n_, value);
+  mpx_set_i64(&n_, value);
 }
 #endif
 
 template <>
 void MPInt::Set(int128_t value) {
   MPINT_ENFORCE_OK(mp_grow(&n_, 3));
-  mp_set_i128(&n_, value);
+  mpx_set_i128(&n_, value);
 }
 
 template <>
 void MPInt::Set(uint8_t value) {
-  mp_set_u8(&n_, value);
+  mpx_set_u8(&n_, value);
 }
 
 template <>
 void MPInt::Set(uint16_t value) {
-  mp_set_u16(&n_, value);
+  mpx_set_u16(&n_, value);
 }
 
 template <>
 void MPInt::Set(uint32_t value) {
-  mp_set_u32(&n_, value);
+  mpx_set_u32(&n_, value);
 }
 
 template <>
 void MPInt::Set(uint64_t value) {
-  MPINT_ENFORCE_OK(mp_grow(&n_, 2));
-  mp_set_u64(&n_, value);
+  mpx_set_u64(&n_, value);
 }
 
 #ifdef __APPLE__
 template <>
 void MPInt::Set(unsigned long value) {  // NOLINT: macOS uint64_t is ull
   static_assert(sizeof(unsigned long) == 8);
-  mp_set_u64(&n_, value);
+  mpx_set_u64(&n_, value);
 }
 #endif
 
 template <>
 void MPInt::Set(uint128_t value) {
-  MPINT_ENFORCE_OK(mp_grow(&n_, 3));
-  mp_set_u128(&n_, value);
+  mpx_set_u128(&n_, value);
 }
 
 template <>
 void MPInt::Set(float value) {
-  MPINT_ENFORCE_OK(mp_grow(&n_, 2));
   MPINT_ENFORCE_OK(mp_set_double(&n_, value));
 }
 
@@ -281,11 +282,11 @@ void MPInt::SetZero() { mp_zero(&n_); }
 
 uint8_t MPInt::operator[](int idx) const { return GetBit(idx); }
 
-uint8_t MPInt::GetBit(int idx) const { return mp_ext_get_bit(n_, idx); }
+uint8_t MPInt::GetBit(int idx) const { return mpx_get_bit(n_, idx); }
 
-void MPInt::SetBit(int idx, uint8_t bit) { mp_ext_set_bit(&n_, idx, bit); }
+void MPInt::SetBit(int idx, uint8_t bit) { mpx_set_bit(&n_, idx, bit); }
 
-size_t MPInt::BitCount() const { return mp_ext_count_bits_fast(n_); }
+size_t MPInt::BitCount() const { return mpx_count_bits_fast(n_); }
 
 bool MPInt::operator>=(const MPInt &other) const { return Compare(other) >= 0; }
 bool MPInt::operator<=(const MPInt &other) const { return Compare(other) <= 0; }
@@ -421,23 +422,27 @@ std::ostream &operator<<(std::ostream &os, const MPInt &an_int) {
 }
 
 MPInt &MPInt::DecrOne() & {
+  mpx_reserve(&n_, 1);
   MPINT_ENFORCE_OK(mp_decr(&n_));
   return *this;
 }
 
 MPInt &MPInt::IncrOne() & {
+  mpx_reserve(&n_, 1);
   MPINT_ENFORCE_OK(mp_incr(&n_));
   return *this;
 }
 
-MPInt MPInt::DecrOne() && {
+MPInt &&MPInt::DecrOne() && {
+  mpx_reserve(&n_, 1);
   MPINT_ENFORCE_OK(mp_decr(&n_));
-  return *this;
+  return std::move(*this);
 }
 
-MPInt MPInt::IncrOne() && {
+MPInt &&MPInt::IncrOne() && {
+  mpx_reserve(&n_, 1);
   MPINT_ENFORCE_OK(mp_incr(&n_));
-  return *this;
+  return std::move(*this);
 }
 
 MPInt MPInt::Abs() const {
@@ -498,11 +503,13 @@ void MPInt::MulMod(const MPInt &a, const MPInt &b, const MPInt &mod, MPInt *d) {
 }
 
 void MPInt::Pow(const MPInt &a, uint32_t b, MPInt *c) {
+  mpx_reserve(&c->n_, MP_BITS_TO_DIGITS(mpx_count_bits_fast(a.n_) * b));
   MPINT_ENFORCE_OK(mp_expt_n(&a.n_, b, &c->n_));
 }
 
 MPInt MPInt::Pow(uint32_t b) const {
   MPInt res;
+  mpx_reserve(&res.n_, mpx_count_bits_fast(n_) * b);
   MPINT_ENFORCE_OK(mp_expt_n(&n_, b, &res.n_));
   return res;
 }
@@ -571,7 +578,7 @@ void MPInt::RandomRoundUp(size_t bit_size, MPInt *r) {
 }
 
 void MPInt::RandomExactBits(size_t bit_size, MPInt *r) {
-  mp_ext_rand_bits(&r->n_, bit_size);
+  mpx_rand_bits(&r->n_, bit_size);
 }
 
 void MPInt::RandomMonicExactBits(size_t bit_size, MPInt *r) {
@@ -592,7 +599,7 @@ void MPInt::RandPrimeOver(size_t bit_size, MPInt *out, PrimeType prime_type) {
   int trials = mp_prime_rabin_miller_trials(bit_size);
 
   if (prime_type == PrimeType::FastSafe) {
-    mp_ext_safe_prime_rand(&out->n_, trials, bit_size);
+    mpx_safe_prime_rand(&out->n_, trials, bit_size);
   } else {
     MPINT_ENFORCE_OK(mp_prime_rand(&out->n_, trials, bit_size,
                                    static_cast<int>(prime_type)));
@@ -623,22 +630,22 @@ std::string MPInt::ToHexString() const { return ToRadixString(16); }
 std::string MPInt::ToString() const { return ToRadixString(10); }
 
 yacl::Buffer MPInt::Serialize() const {
-  size_t size = mp_ext_serialize_size(n_);
+  size_t size = mpx_serialize_size(n_);
   yacl::Buffer buffer(size);
-  mp_ext_serialize(n_, buffer.data<uint8_t>(), size);
+  mpx_serialize(n_, buffer.data<uint8_t>(), size);
   return buffer;
 }
 
 size_t MPInt::Serialize(uint8_t *buf, size_t buf_len) const {
   if (buf == nullptr) {
-    return mp_ext_serialize_size(n_);
+    return mpx_serialize_size(n_);
   }
 
-  return mp_ext_serialize(n_, buf, buf_len);
+  return mpx_serialize(n_, buf, buf_len);
 }
 
 void MPInt::Deserialize(yacl::ByteContainerView buffer) {
-  mp_ext_deserialize(&n_, buffer.data(), buffer.size());
+  mpx_deserialize(&n_, buffer.data(), buffer.size());
 }
 
 yacl::Buffer MPInt::ToBytes(size_t byte_len, Endian endian) const {
@@ -648,13 +655,13 @@ yacl::Buffer MPInt::ToBytes(size_t byte_len, Endian endian) const {
 }
 
 void MPInt::ToBytes(unsigned char *buf, size_t buf_len, Endian endian) const {
-  mp_ext_to_bytes(n_, buf, buf_len, endian);
+  mpx_to_bytes(n_, buf, buf_len, endian);
 }
 
 yacl::Buffer MPInt::ToMagBytes(Endian endian) const {
-  size_t size = mp_ext_mag_bytes_size(n_);
+  size_t size = mpx_mag_bytes_size(n_);
   yacl::Buffer buffer(size);
-  mp_ext_to_mag_bytes(n_, buffer.data<uint8_t>(), size, endian);
+  mpx_to_mag_bytes(n_, buffer.data<uint8_t>(), size, endian);
   return buffer;
 }
 
@@ -664,14 +671,14 @@ yacl::Buffer MPInt::ToMagBytes(Endian endian) const {
 size_t MPInt::ToMagBytes(unsigned char *buf, size_t buf_len,
                          Endian endian) const {
   if (buf == nullptr) {
-    return mp_ext_mag_bytes_size(n_);
+    return mpx_mag_bytes_size(n_);
   }
 
-  return mp_ext_to_mag_bytes(n_, buf, buf_len, endian);
+  return mpx_to_mag_bytes(n_, buf, buf_len, endian);
 }
 
 void MPInt::FromMagBytes(yacl::ByteContainerView buffer, Endian endian) {
-  mp_ext_from_mag_bytes(&n_, buffer.data(), buffer.size(), endian);
+  mpx_from_mag_bytes(&n_, buffer.data(), buffer.size(), endian);
 }
 
 }  // namespace yacl::math

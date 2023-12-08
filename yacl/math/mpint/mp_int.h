@@ -180,8 +180,8 @@ class MPInt {
 
   MPInt &DecrOne() &;
   MPInt &IncrOne() &;
-  [[nodiscard]] MPInt DecrOne() &&;
-  [[nodiscard]] MPInt IncrOne() &&;
+  [[nodiscard]] MPInt &&DecrOne() &&;
+  [[nodiscard]] MPInt &&IncrOne() &&;
 
   [[nodiscard]] MPInt Abs() const;
 
@@ -392,6 +392,7 @@ class MPInt {
   friend class MontgomerySpace;
 };
 
+// for fmtlib
 inline auto format_as(const MPInt &i) { return fmt::streamed(i); }
 
 }  // namespace yacl::math

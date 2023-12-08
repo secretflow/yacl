@@ -83,13 +83,11 @@ class MockQuantumLib : public MockPheSpi {
   static std::unique_ptr<MockPheSpi> Create(const std::string &phe_name,
                                             const SpiArgs &args) {
     YACL_ENFORCE(phe_name == "elgamal");
-    return std::make_unique<MockQuantumLib>(
-        args.Get<std::string>(Curve, "ed25519"));
+    return std::make_unique<MockQuantumLib>(args.Get(Curve, "ed25519"));
   }
 
   static bool Check(const std::string &phe_name, const SpiArgs &args) {
-    return phe_name == "elgamal" &&
-           args.Get<std::string>(Curve, "ed25519") == "ed25519";
+    return phe_name == "elgamal" && args.Get(Curve, "ed25519") == "ed25519";
   }
 
   std::string ToString() override {

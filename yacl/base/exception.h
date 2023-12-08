@@ -283,7 +283,7 @@ class EnforceNotMet : public Exception {
   do {                                                                   \
     if (!(condition)) {                                                  \
       ::yacl::stacktrace_t __stacks__;                                   \
-      int __dep__ = absl::GetStackTrace(                                 \
+      const int __dep__ = absl::GetStackTrace(                           \
           __stacks__.data(), ::yacl::internal::kMaxStackTraceDep, 0);    \
       throw ::yacl::EnforceNotMet(__FILE__, __LINE__, #condition,        \
                                   ::yacl::internal::Format(__VA_ARGS__), \
@@ -413,5 +413,11 @@ T CheckNotNull(T t) {
   YACL_ENFORCE(t != nullptr);
   return t;
 }
+
+#ifdef NDEBUG
+#define WEAK_ENFORCE(condition, ...) ((void)0)
+#else
+#define WEAK_ENFORCE(condition, ...) YACL_ENFORCE(condition, __VA_ARGS__)
+#endif
 
 }  // namespace yacl

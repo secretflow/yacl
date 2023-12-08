@@ -1,11 +1,51 @@
-// Copyright (c) 2016 Facebook Inc.
-#include <atomic>
-#include <future>
+// Copyright 2023 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include "yacl/utils/parallel.h"
+
+#include <atomic>
+#include <future>
+#include <sstream>
+
 #include "yacl/utils/thread_pool.h"
 
 namespace yacl {
+namespace {
+
+size_t get_env_num_threads(const char* var_name, size_t def_value = 0) {
+  try {
+    if (auto* value = std::getenv(var_name)) {
+      int nthreads = std::stoi(value);
+      YACL_ENFORCE(nthreads > 0);
+      return nthreads;
+    }
+  } catch (const std::exception& e) {
+    YACL_THROW("Invalid {} variable value: {}", var_name, e.what());
+  }
+  return def_value;
+}
+
+}  // namespace
+
+int intraop_default_num_threads() {
+  size_t nthreads = get_env_num_threads("YACL_NUM_THREADS", 0);
+  if (nthreads == 0) {
+    nthreads = ThreadPool::DefaultNumThreads();
+  }
+  return nthreads;
+}
+
 namespace {
 // used with _set_in_parallel_region to mark master thread
 // as in parallel region while executing parallel primitives

@@ -131,7 +131,7 @@ bool is_pocklington_criterion_satisfied(const mp_int *p) {
 //    Miller-Rabin and Baillie-PSW for `p`.
 //    If `q` and `p` are found to be prime, return them as a result. If not, go
 //    back to the point 1.
-void mp_ext_safe_prime_rand(mp_int *p, int t, int psize) {
+void mpx_safe_prime_rand(mp_int *p, int t, int psize) {
   uint8_t maskAND, maskOR_msb, maskOR_lsb;
   int maskOR_msb_offset;
   bool res;
@@ -179,7 +179,7 @@ void mp_ext_safe_prime_rand(mp_int *p, int t, int psize) {
     /* read it in */
     /* TODO: casting only for now until all lengths have been changed to the
      * type "size_t"*/
-    mp_ext_from_mag_bytes(&q, tmp, (size_t)bsize, Endian::big);
+    mpx_from_mag_bytes(&q, tmp, (size_t)bsize, Endian::big);
 
     // Find a odd number `q` among q, q+2, .... , (1 << 20) satisfy：
     // 1. co-prime to `small_primes`.
@@ -224,7 +224,7 @@ void mp_ext_safe_prime_rand(mp_int *p, int t, int psize) {
   } while (true);
 }
 
-void mp_ext_rand_bits(mp_int *out, int64_t bits) {
+void mpx_rand_bits(mp_int *out, int64_t bits) {
   if (bits <= 0) {
     mp_zero(out);
     return;
@@ -286,7 +286,7 @@ int count_bits_debruijn(uint64_t v) {
   return bitPatternToLog2[(v * 0x6c04f118e9966f6bULL) >> 57];
 }
 
-int mp_ext_count_bits_fast(const mp_int &a) {
+int mpx_count_bits_fast(const mp_int &a) {
   if (a.used == 0) {
     return 0;
   }
@@ -294,8 +294,8 @@ int mp_ext_count_bits_fast(const mp_int &a) {
   return (a.used - 1) * MP_DIGIT_BIT + count_bits_debruijn(a.dp[a.used - 1]);
 }
 
-void mp_ext_to_bytes(const mp_int &num, unsigned char *buf, int64_t byte_len,
-                     Endian endian) {
+void mpx_to_bytes(const mp_int &num, unsigned char *buf, int64_t byte_len,
+                  Endian endian) {
   YACL_ENFORCE(MP_DIGIT_BIT % 4 == 0, "Unsupported MP_DIGIT_BIT {}",
                MP_DIGIT_BIT);
 
@@ -340,18 +340,18 @@ void mp_ext_to_bytes(const mp_int &num, unsigned char *buf, int64_t byte_len,
   }
 }
 
-size_t mp_ext_mag_bytes_size(const mp_int &num) {
-  return (mp_ext_count_bits_fast(num) + CHAR_BIT - 1) / CHAR_BIT;
+size_t mpx_mag_bytes_size(const mp_int &num) {
+  return (mpx_count_bits_fast(num) + CHAR_BIT - 1) / CHAR_BIT;
 }
 
-size_t mp_ext_to_mag_bytes(const mp_int &num, uint8_t *buf, size_t buf_len,
-                           Endian endian) {
+size_t mpx_to_mag_bytes(const mp_int &num, uint8_t *buf, size_t buf_len,
+                        Endian endian) {
   static_assert(MP_DIGIT_BIT % 4 == 0, "Unsupported MP_DIGIT_BIT");
   if (num.used == 0) {
     return 0;
   }
 
-  auto min_bytes = mp_ext_mag_bytes_size(num);
+  auto min_bytes = mpx_mag_bytes_size(num);
   YACL_ENFORCE(buf_len >= min_bytes,
                "buf is too small to store mp_int, buf_size={}, required={}",
                buf_len, min_bytes);
@@ -391,8 +391,8 @@ size_t mp_ext_to_mag_bytes(const mp_int &num, uint8_t *buf, size_t buf_len,
   return pos;
 }
 
-void mp_ext_from_mag_bytes(mp_int *num, const uint8_t *buf, size_t buf_len,
-                           Endian endian) {
+void mpx_from_mag_bytes(mp_int *num, const uint8_t *buf, size_t buf_len,
+                        Endian endian) {
   if (buf_len == 0) {
     mp_zero(num);
   }
@@ -441,19 +441,19 @@ void mp_ext_from_mag_bytes(mp_int *num, const uint8_t *buf, size_t buf_len,
 //                                  │
 //                               sign bit
 // D = data/payload; S = sign bit
-size_t mp_ext_serialize_size(const mp_int &num) {
-  return mp_ext_count_bits_fast(num) / CHAR_BIT + 1;
+size_t mpx_serialize_size(const mp_int &num) {
+  return mpx_count_bits_fast(num) / CHAR_BIT + 1;
 }
 
-size_t mp_ext_serialize(const mp_int &num, uint8_t *buf, size_t buf_len) {
-  auto total_buf = mp_ext_serialize_size(num);
+size_t mpx_serialize(const mp_int &num, uint8_t *buf, size_t buf_len) {
+  auto total_buf = mpx_serialize_size(num);
   YACL_ENFORCE(buf_len >= total_buf,
                "buf is too small, min required={}, actual={}", total_buf,
                buf_len);
 
   // store num in Little-Endian
   buf[total_buf - 1] = 0;
-  auto value_buf = mp_ext_to_mag_bytes(num, buf, buf_len, Endian::little);
+  auto value_buf = mpx_to_mag_bytes(num, buf, buf_len, Endian::little);
   YACL_ENFORCE(total_buf == value_buf || total_buf == value_buf + 1,
                "bug: buf len mismatch, {} vs {}", total_buf, value_buf);
   // write sign bit
@@ -462,15 +462,15 @@ size_t mp_ext_serialize(const mp_int &num, uint8_t *buf, size_t buf_len) {
   return total_buf;
 }
 
-void mp_ext_deserialize(mp_int *num, const uint8_t *buf, size_t buf_len) {
+void mpx_deserialize(mp_int *num, const uint8_t *buf, size_t buf_len) {
   YACL_ENFORCE(buf_len > 0, "mp_int deserialize: empty buffer");
   // since buf is const, we cannot clear the sign bit
-  mp_ext_from_mag_bytes(num, buf, buf_len, Endian::little);
+  mpx_from_mag_bytes(num, buf, buf_len, Endian::little);
   num->sign = ((buf[buf_len - 1] >> 7) == 1 ? MP_NEG : MP_ZPOS);
-  mp_ext_set_bit(num, buf_len * CHAR_BIT - 1, 0);  // clear sign bit
+  mpx_set_bit(num, buf_len * CHAR_BIT - 1, 0);  // clear sign bit
 }
 
-uint8_t mp_ext_get_bit(const mp_int &a, int index) {
+uint8_t mpx_get_bit(const mp_int &a, int index) {
   int limb = index / MP_DIGIT_BIT;
   if (limb >= a.used) {
     return 0;
@@ -479,7 +479,7 @@ uint8_t mp_ext_get_bit(const mp_int &a, int index) {
   return (a.dp[limb] >> (index % MP_DIGIT_BIT)) & 1;
 }
 
-void mp_ext_set_bit(mp_int *a, int index, uint8_t value) {
+void mpx_set_bit(mp_int *a, int index, uint8_t value) {
   int limb = index / MP_DIGIT_BIT;
   if (limb >= a->alloc) {
     MPINT_ENFORCE_OK(mp_grow(a, limb + 1));

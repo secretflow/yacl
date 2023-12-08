@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstdint>
 #include <cstdio>
 #include <mutex>
 #include <random>
@@ -289,7 +290,7 @@ class EcCurveTest : public ::testing::TestWithParam<std::string> {
     constexpr int64_t ts = 1 << 15;
     std::array<EcPoint, ts> buf;
     auto g = ec_->GetGenerator();
-    yacl::parallel_for(0, ts, 1, [&](int64_t beg, int64_t end) {
+    yacl::parallel_for(0, ts, [&](int64_t beg, int64_t end) {
       auto point = ec_->MulBase(MPInt(beg));
       buf[beg] = point;
       for (int64_t i = beg + 1; i < end; ++i) {
@@ -392,7 +393,7 @@ TEST(OpensslMemLeakTest, DISABLED_MulBaseLeaks) {
       EcGroupFactory::Instance().Create("sm2", ArgLib = "openssl");
 
   std::mutex mutex;
-  yacl::parallel_for(0, 2, 1, [&](int64_t, int64_t) {
+  yacl::parallel_for(0, 2, [&](int64_t, int64_t) {
     std::lock_guard<std::mutex> guard(mutex);
     // memory leaks here even with serial calls.
     ec->MulBase(0_mp);
