@@ -1,5 +1,5 @@
 diff --git a/CMakeLists.txt b/CMakeLists.txt
-index 8f85249..53e0365 100644
+index dfbcb0f..72f9a46 100644
 --- a/CMakeLists.txt
 +++ b/CMakeLists.txt
 @@ -113,7 +113,7 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
@@ -9,28 +9,18 @@ index 8f85249..53e0365 100644
 -    PUBLIC_HEADER "${PUBLIC_HEADERS}"
 +    PUBLIC_HEADER "${HEADERS}"
  )
- 
+
  option(COMPILE_LTO "Build with LTO enabled")
 diff --git a/tommath_private.h b/tommath_private.h
-index d88d263..46caa96 100644
+index d319a1d..5f4446e 100644
 --- a/tommath_private.h
 +++ b/tommath_private.h
-@@ -188,14 +188,14 @@ MP_STATIC_ASSERT(prec_geq_min_prec, MP_DEFAULT_DIGIT_COUNT >= MP_MIN_DIGIT_COUNT
+@@ -17,7 +17,7 @@
+  * On Win32 a .def file must be used to specify the exported symbols.
+  */
+ #if defined(__GNUC__) && __GNUC__ >= 4 && !defined(_WIN32) && !defined(__CYGWIN__)
+-#   define MP_PRIVATE __attribute__ ((visibility ("hidden")))
++#   define MP_PRIVATE
+ #else
+ #   define MP_PRIVATE
  #endif
- 
- /* random number source */
--extern MP_PRIVATE mp_err(*s_mp_rand_source)(void *out, size_t size);
-+extern mp_err(*s_mp_rand_source)(void *out, size_t size);
- 
- /* lowlevel functions, do not call! */
- MP_PRIVATE bool s_mp_get_bit(const mp_int *a, int b) MP_WUR;
- MP_PRIVATE int s_mp_log_2expt(const mp_int *a, mp_digit base) MP_WUR;
- 
- MP_PRIVATE mp_err s_mp_add(const mp_int *a, const mp_int *b, mp_int *c) MP_WUR;
--MP_PRIVATE mp_err s_mp_div_3(const mp_int *a, mp_int *c, mp_digit *d) MP_WUR;
-+mp_err s_mp_div_3(const mp_int *a, mp_int *c, mp_digit *d) MP_WUR;
- MP_PRIVATE mp_err s_mp_div_recursive(const mp_int *a, const mp_int *b, mp_int *q, mp_int *r) MP_WUR;
- MP_PRIVATE mp_err s_mp_div_school(const mp_int *a, const mp_int *b, mp_int *c, mp_int *d) MP_WUR;
- MP_PRIVATE mp_err s_mp_div_small(const mp_int *a, const mp_int *b, mp_int *c, mp_int *d) MP_WUR;
-
- 

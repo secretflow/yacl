@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstdint>
+
 #include "gtest/gtest.h"
 
 #include "yacl/crypto/base/ecc/openssl/openssl_group.h"
@@ -103,7 +105,7 @@ TEST(OpensslMemLeakTest, MulBaseLeaks) {
       yacl::crypto::EcGroupFactory::Instance().Create("sm2",
                                                       ArgLib = "openssl");
 
-  yacl::parallel_for(0, 2, 1, [&](int64_t, int64_t) {
+  yacl::parallel_for(0, 2, [&](int64_t, int64_t) {
     // no memory leak here, but the same code in ecc_test.cc leaks.
     ec->MulBase(0_mp);
   });

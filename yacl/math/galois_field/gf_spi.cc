@@ -12,17 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "yacl/math/galois_field/gf_spi.h"
 
-#include "fmt/ostream.h"
-#include "libtommath/tommath.h"
+namespace yacl::math {
 
-#include "yacl/base/exception.h"
+GaloisFieldFactory& GaloisFieldFactory::Instance() {
+  static GaloisFieldFactory factory;
+  return factory;
+}
 
-namespace fmt {
-template <>
-struct formatter<mp_err> : ostream_formatter {};
-}  // namespace fmt
-
-#define MPINT_ENFORCE_OK(MP_ERR, ...) \
-  YACL_ENFORCE_EQ((MP_ERR), MP_OKAY, ##__VA_ARGS__)
+}  // namespace yacl::math

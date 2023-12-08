@@ -16,7 +16,8 @@
 
 namespace yacl::math {
 
-MontgomerySpace::MontgomerySpace(const MPInt &mod) {
+MontgomerySpace::MontgomerySpace(const MPInt &mod) : identity_(0) {
+  // init identity_ to 0 to make sure memory is allocated
   YACL_ENFORCE(!mod.IsNegative() && mod.IsOdd(),
                "modulus must be a positive odd number");
   mod_ = mod;

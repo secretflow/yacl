@@ -14,35 +14,54 @@
 
 #include "yacl/utils/parallel.h"
 
+#include <cstdint>
 #include <numeric>
 
 #include "gtest/gtest.h"
 
+#include "yacl/base/exception.h"
+
 namespace yacl {
 
-struct Param {
-  int num_threads;
-  int data_size;
-  int grain_size;
-};
-
-class ParallelTest : public testing::TestWithParam<Param> {};
-
-TEST_P(ParallelTest, ParallelForTest) {
-  auto param = GetParam();
-
-  init_num_threads();
-  set_num_threads(param.num_threads);
-
-  std::vector<int> data(param.data_size);
+TEST(ParallelTest, ParallelForTest) {
+  std::vector<int> data(200);
   std::iota(data.begin(), data.end(), 0);
 
-  parallel_for(0, data.size(), param.grain_size,
-               [&data](int64_t beg, int64_t end) {
-                 for (int64_t i = beg; i < end; ++i) {
-                   data[i] *= 2;
-                 }
-               });
+  parallel_for(0, data.size(), [&data](int64_t beg, int64_t end) {
+    for (int64_t i = beg; i < end; ++i) {
+      data[i] *= 2;
+    }
+  });
+
+  for (size_t i = 0; i < data.size(); ++i) {
+    ASSERT_EQ(i * 2, data[i]);
+  }
+}
+
+TEST(ParallelTest, ParallelForBatchedTest) {
+  std::vector<int> data(200);
+  std::iota(data.begin(), data.end(), 0);
+
+  parallel_for(0, data.size(), 50, [&data](int64_t begin, int64_t end) {
+    for (int64_t i = begin; i < end; ++i) {
+      data[i] *= 2;
+    }
+  });
+
+  for (size_t i = 0; i < data.size(); ++i) {
+    ASSERT_EQ(i * 2, data[i]);
+  }
+}
+
+TEST(ParallelTest, ParallelForBatchedWithTrailingTest) {
+  std::vector<int> data(210);
+  std::iota(data.begin(), data.end(), 0);
+
+  parallel_for(0, data.size(), 50, [&data](int64_t begin, int64_t end) {
+    for (int64_t i = begin; i < end; ++i) {
+      data[i] *= 2;
+    }
+  });
 
   for (size_t i = 0; i < data.size(); ++i) {
     ASSERT_EQ(i * 2, data[i]);
@@ -50,28 +69,23 @@ TEST_P(ParallelTest, ParallelForTest) {
 }
 
 TEST(ParallelTest, ParallelWithExceptionTest) {
-  init_num_threads();
-  set_num_threads(4);
-
+  EXPECT_THROW(
+      parallel_for(0, 1000,
+                   [](int64_t, int64_t) { throw RuntimeError("surprise"); }),
+      RuntimeError);
   EXPECT_THROW(
       parallel_for(0, 1000, 1,
                    [](int64_t, int64_t) { throw RuntimeError("surprise"); }),
       RuntimeError);
 }
 
-TEST_P(ParallelTest, ParallelReduceTest) {
-  auto param = GetParam();
-
-  init_num_threads();
-  set_num_threads(param.num_threads);
-
-  std::vector<int> data(param.data_size);
+TEST(ParallelTest, ParallelReduceTest) {
+  std::vector<int> data(500);
   std::iota(data.begin(), data.end(), 0);
   int expect_sum = std::accumulate(data.begin(), data.end(), 0);
-
   int total_sum = parallel_reduce<int>(
-      0, data.size(), param.grain_size,
-      [&data](int64_t beg, int64_t end) {
+      0, data.size(), 1,
+      [&data](int64_t beg, int64_t end) -> int {
         int partial_sum = data[beg];
         for (int64_t i = beg + 1; i < end; ++i) {
           partial_sum += data[i];
@@ -79,12 +93,7 @@ TEST_P(ParallelTest, ParallelReduceTest) {
         return partial_sum;
       },
       [](int a, int b) { return a + b; });
-
   ASSERT_EQ(expect_sum, total_sum);
 }
-
-INSTANTIATE_TEST_SUITE_P(ParallelTestSuit, ParallelTest,
-                         testing::Values(Param{4, 123, 10}, Param{4, 123, 50},
-                                         Param{4, 123, 200}));
 
 }  // namespace yacl

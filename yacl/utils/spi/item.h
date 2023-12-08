@@ -15,10 +15,14 @@
 #pragma once
 
 #include <any>
+#include <atomic>
+#include <cstdint>
+#include <vector>
 
 #include "absl/types/span.h"
 
 #include "yacl/base/exception.h"
+#include "yacl/utils/parallel.h"
 
 namespace yacl {
 
@@ -141,7 +145,7 @@ class Item {
   }
 
   template <typename T>
-  std::enable_if_t<std::is_pointer_v<T>, T> As() {
+  std::enable_if_t<std::is_pointer_v<T>, T> As() {  // As a pointer
     try {
       return std::any_cast<std::remove_pointer_t<T>>(&v_);
     } catch (const std::bad_any_cast& e) {
@@ -206,6 +210,9 @@ class Item {
       // non-const value -> const T
       return As<absl::Span<RawT>>();
     } else {
+      static_assert(!std::is_same_v<bool, RawT>,
+                    "Call AsSpan<bool> on a vector item is not allowed");
+
       // vector
       // non-const value -> const T
       return absl::MakeConstSpan(As<std::vector<RawT>>());
@@ -235,6 +242,10 @@ class Item {
   bool operator!=(const T& other) const {
     return !operator==(other);
   }
+
+  // is every element in item equals "element"
+  template <typename T>
+  bool IsAll(const T& element) const;
 
   OperandType operator,(const Item& other) const {
     return static_cast<OperandType>(((meta_ & 1) << 1) | (other.meta_ & 1));
@@ -309,6 +320,24 @@ class Item {
     return item;
   }
 
+  template <typename T>
+  bool IsAllSameTo(absl::Span<const T> real, const T& expected) const {
+    std::atomic<bool> res = true;
+    yacl::parallel_for(0, real.length(), [&](int64_t beg, int64_t end) {
+      for (int64_t i = beg; i < end; ++i) {
+        if (!res) {
+          return;
+        }
+
+        if (real[i] != expected) {
+          res.store(false);
+          return;
+        }
+      }
+    });
+    return res.load();
+  }
+
   // The format of meta:
   // bit 0 -> is array?  0 - scalar; 1 - array
   // bit 1 -> is view ?  0 - hold value;    1 - ref/view
@@ -318,5 +347,16 @@ class Item {
 };
 
 std::ostream& operator<<(std::ostream& os, const Item& a);
+
+template <>
+bool Item::IsAll(const bool& element) const;
+
+template <typename T>
+bool Item::IsAll(const T& element) const {
+  if (!HasValue()) {
+    return false;
+  }
+  return IsAllSameTo(AsSpan<T>(), element);
+}
 
 }  // namespace yacl

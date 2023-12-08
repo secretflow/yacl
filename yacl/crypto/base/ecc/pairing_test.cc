@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstdint>
+
 #include "fmt/ranges.h"
 #include "gtest/gtest.h"
 
@@ -230,12 +232,14 @@ class PairingCurveTest : public ::testing::TestWithParam<std::string> {
     constexpr int64_t ts = 1 << 15;
     std::array<EcPoint, ts> buf;
     auto g = ec->GetGenerator();
-    yacl::parallel_for(0, ts, 1, [&](int64_t beg, int64_t end) {
-      auto point = ec->MulBase(MPInt(beg));
-      buf[beg] = point;
-      for (int64_t i = beg + 1; i < end; ++i) {
-        point = ec->Add(point, g);
-        buf[i] = point;
+    yacl::parallel_for(0, ts, [&](int64_t beg, int64_t end) {
+      for (int64_t i = beg; i < end; ++i) {
+        auto point = ec->MulBase(MPInt(beg));
+        buf[beg] = point;
+        for (int64_t i = beg + 1; i < end; ++i) {
+          point = ec->Add(point, g);
+          buf[i] = point;
+        }
       }
     });
 
@@ -326,14 +330,12 @@ TEST(Pairing_Multi_Instance_Test, Works) {
     // TODO: temporarily disable mcl pairing-related test, since its weird error
     // on Intel Mac
     if (lib_name != "libmcl") {
-      yacl::parallel_for(0, 10, 1, [&](int64_t x, int64_t y) {
-        for (int64_t i = x; i < y; i++) {
-          std::shared_ptr<PairingGroup> pairing =
-              PairingGroupFactory::Instance().Create(pairing_name,
-                                                     ArgLib = lib_name);
-          pairing->Pairing(pairing->GetG1()->GetGenerator(),
-                           pairing->GetG2()->GetGenerator());
-        }
+      yacl::parallel_for(0, 10, [&](int64_t, int64_t) {
+        std::shared_ptr<PairingGroup> pairing =
+            PairingGroupFactory::Instance().Create(pairing_name,
+                                                   ArgLib = lib_name);
+        pairing->Pairing(pairing->GetG1()->GetGenerator(),
+                         pairing->GetG2()->GetGenerator());
       });
     }
   }
