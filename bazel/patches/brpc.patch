@@ -75,10 +75,20 @@ index be02c50a..186abe54 100644
          }
          return true;
 diff --git a/BUILD.bazel b/BUILD.bazel
-index 5e59bd1c..9df99bfc 100644
+index 5d317c90..5bb62a6e 100644
 --- a/BUILD.bazel
 +++ b/BUILD.bazel
-@@ -48,7 +48,7 @@ LINKOPTS = [
+@@ -45,13 +45,17 @@ COPTS = [
+ }) + select({
+     "//bazel/config:brpc_with_rdma": ["-DBRPC_WITH_RDMA=1"],
+     "//conditions:default": [""],
++}) + select({
++    # Force linux aarch to use O1 build
++    "@bazel_tools//src/conditions:linux_aarch64": ["-O1"],
++    "//conditions:default": [""],
+ })
+ 
+ LINKOPTS = [
      "-pthread",
      "-ldl",
  ] + select({
@@ -87,7 +97,7 @@ index 5e59bd1c..9df99bfc 100644
          "-framework CoreFoundation",
          "-framework CoreGraphics",
          "-framework CoreData",
-@@ -206,7 +206,7 @@ BUTIL_SRCS = [
+@@ -215,7 +219,7 @@ BUTIL_SRCS = [
      "src/butil/recordio.cc",
      "src/butil/popen.cpp",
  ] + select({
@@ -96,7 +106,7 @@ index 5e59bd1c..9df99bfc 100644
          "src/butil/time/time_mac.cc",
          "src/butil/mac/scoped_mach_port.cc",
      ],
-@@ -314,15 +314,14 @@ cc_library(
+@@ -324,15 +328,14 @@ cc_library(
      visibility = ["//visibility:public"],
      deps = [
          "@com_github_gflags_gflags//:gflags",
@@ -115,6 +125,7 @@ index 5e59bd1c..9df99bfc 100644
          "//conditions:default": [],
      }),
  )
+
 diff --git a/bazel/config/BUILD.bazel b/bazel/config/BUILD.bazel
 index 4471bad1..d9cc6bd6 100644
 --- a/bazel/config/BUILD.bazel
