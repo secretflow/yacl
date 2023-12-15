@@ -39,7 +39,7 @@ class SpiArg {
   }
 
   template <typename T>
-  SpiArg operator=(const T &value) {
+  &SpiArg operator=(const T &value) {
     value_ = value;
     return *this;
   }
