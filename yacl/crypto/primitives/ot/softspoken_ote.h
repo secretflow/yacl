@@ -24,8 +24,11 @@
 #include "yacl/base/int128.h"
 #include "yacl/crypto/primitives/ot/ot_store.h"
 #include "yacl/crypto/utils/rand.h"
+#include "yacl/crypto/utils/secparam.h"
 #include "yacl/link/context.h"
 #include "yacl/link/link.h"
+
+YACL_MODULE_DECLARE("softspoken_ote", SecParam::C::k128, SecParam::S::INF);
 
 namespace yacl::crypto {
 
@@ -51,7 +54,7 @@ namespace yacl::crypto {
 //
 // Security assumptions:
 //  *. correlation-robust hash function, for more details about its
-//  implementation, see `yacl/crypto/tools/random_permutation.h`
+//  implementation, see `yacl/crypto/tools/rp.h`
 //
 // NOTE:
 //  * OT Extension sender requires receiver base ot context.
@@ -65,12 +68,12 @@ namespace yacl::crypto {
 
 class SoftspokenOtExtSender {
  public:
-  SoftspokenOtExtSender(uint64_t k = 2, uint64_t step = 0);
+  SoftspokenOtExtSender(uint64_t k = 2, uint64_t step = 0, bool mal = false);
 
   void OneTimeSetup(const std::shared_ptr<link::Context>& ctx);
 
   void OneTimeSetup(const std::shared_ptr<link::Context>& ctx,
-                    const OtRecvStore& base_ot);
+                    const OtRecvStore& base_ot /* rot */);
 
   // old-style interface
   void Send(const std::shared_ptr<link::Context>& ctx,
@@ -120,16 +123,17 @@ class SoftspokenOtExtSender {
   std::array<uint128_t, 128> p_idx_mask_;     // mask for punctured index
   AlignedVector<uint128_t> compress_leaves_;  // compressed pprf leaves
   uint64_t step_{32};                         // super batch size = step_ * 128
+  bool mal_{false};                           // malicous
 };
 
 class SoftspokenOtExtReceiver {
  public:
-  SoftspokenOtExtReceiver(uint64_t k = 2, uint64_t step = 0);
+  SoftspokenOtExtReceiver(uint64_t k = 2, uint64_t step = 0, bool mal = false);
 
   void OneTimeSetup(const std::shared_ptr<link::Context>& ctx);
 
   void OneTimeSetup(const std::shared_ptr<link::Context>& ctx,
-                    const OtSendStore& base_ot);
+                    const OtSendStore& base_ot /* rot */);
 
   // old-style interface
   void Recv(const std::shared_ptr<link::Context>& ctx,
@@ -180,24 +184,27 @@ class SoftspokenOtExtReceiver {
   uint64_t pprf_range_;                  // the number of leaves for single pprf
   AlignedVector<uint128_t> all_leaves_;  // leaves for all pprf
   uint64_t step_{32};                    // super batch size = step_ * 128
+  bool mal_{false};                      // malicous
 };
 
 // Softspoken Ot Extension interface
 inline void SoftspokenOtExtSend(
-    const std::shared_ptr<link::Context>& ctx, const OtRecvStore& base_ot,
+    const std::shared_ptr<link::Context>& ctx,
+    const OtRecvStore& base_ot /* rot */,
     absl::Span<std::array<uint128_t, 2>> send_blocks, uint64_t k = 2,
-    bool cot = false) {
-  auto ssSender = SoftspokenOtExtSender(k);
+    bool cot = false, bool mal = false) {
+  auto ssSender = SoftspokenOtExtSender(k, 0, mal);
   ssSender.OneTimeSetup(ctx, base_ot);
   ssSender.Send(ctx, send_blocks, cot);
 }
 
 inline void SoftspokenOtExtRecv(const std::shared_ptr<link::Context>& ctx,
-                                const OtSendStore& base_ot,
+                                const OtSendStore& base_ot /* rot */,
                                 const dynamic_bitset<uint128_t>& choices,
                                 absl::Span<uint128_t> recv_blocks,
-                                uint64_t k = 2, bool cot = false) {
-  auto ssReceiver = SoftspokenOtExtReceiver(k);
+                                uint64_t k = 2, bool cot = false,
+                                bool mal = false) {
+  auto ssReceiver = SoftspokenOtExtReceiver(k, 0, mal);
   ssReceiver.OneTimeSetup(ctx, base_ot);
   ssReceiver.Recv(ctx, choices, recv_blocks, cot);
 }

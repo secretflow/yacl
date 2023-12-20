@@ -22,9 +22,9 @@
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/int128.h"
-#include "yacl/crypto/base/drbg/sm4_drbg.h"
+#include "yacl/crypto/tools/crhash.h"
 #include "yacl/crypto/tools/prg.h"
-#include "yacl/crypto/tools/random_permutation.h"
+#include "yacl/crypto/tools/rp.h"
 #include "yacl/crypto/utils/rand.h"
 #include "yacl/math/f2k/f2k.h"
 #include "yacl/utils/matrix_utils.h"

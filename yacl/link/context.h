@@ -27,7 +27,7 @@
 #include "yacl/link/retry_options.h"
 #include "yacl/link/ssl_options.h"
 #include "yacl/link/transport/channel.h"
-#include "yacl/utils/hash.h"
+#include "yacl/utils/hash_combine.h"
 
 #include "yacl/link/link.pb.h"
 

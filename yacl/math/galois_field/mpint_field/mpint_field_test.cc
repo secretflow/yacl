@@ -14,19 +14,19 @@
 
 #include "gtest/gtest.h"
 
+#include "yacl/math/galois_field/gf_configs.h"
 #include "yacl/math/galois_field/gf_spi.h"
-#include "yacl/math/galois_field/mpint_field/configs.h"
 
 namespace yacl::math::mpf::test {
 
 class MPIntFieldTest : public testing::Test {};
 
 TEST_F(MPIntFieldTest, AddWorks) {
-  auto gf = GaloisFieldFactory::Instance().Create(kFieldName, ArgLib = kLibName,
-                                                  ArgMod = 13_mp);
+  auto gf = GaloisFieldFactory::Instance().Create(
+      kPrimeField, ArgLib = kMPIntLib, ArgMod = 13_mp);
 
-  EXPECT_EQ(gf->GetLibraryName(), kLibName);
-  EXPECT_EQ(gf->GetFieldName(), kFieldName);
+  EXPECT_EQ(gf->GetLibraryName(), kMPIntLib);
+  EXPECT_EQ(gf->GetFieldName(), kPrimeField);
 
   EXPECT_EQ(gf->GetOrder(), 13_mp);
   EXPECT_TRUE(gf->GetExtensionDegree().IsOne());
@@ -37,8 +37,8 @@ TEST_F(MPIntFieldTest, AddWorks) {
 }
 
 TEST_F(MPIntFieldTest, ScalarWorks) {
-  auto gf = GaloisFieldFactory::Instance().Create(kFieldName, ArgLib = kLibName,
-                                                  ArgMod = 13_mp);
+  auto gf = GaloisFieldFactory::Instance().Create(
+      kPrimeField, ArgLib = kMPIntLib, ArgMod = 13_mp);
 
   EXPECT_TRUE((bool)gf->IsIdentityZero(0_mp));
   EXPECT_FALSE((bool)gf->IsIdentityZero(1_mp));
@@ -125,8 +125,8 @@ TEST_F(MPIntFieldTest, ScalarWorks) {
 }
 
 TEST_F(MPIntFieldTest, VectorWorks) {
-  auto gf = GaloisFieldFactory::Instance().Create(kFieldName, ArgLib = kLibName,
-                                                  ArgMod = 13_mp);
+  auto gf = GaloisFieldFactory::Instance().Create(
+      kPrimeField, ArgLib = kMPIntLib, ArgMod = 13_mp);
 
   // test item format
   std::vector<MPInt> a = {1_mp, 2_mp, 3_mp};
@@ -208,15 +208,15 @@ TEST_F(MPIntFieldTest, VectorWorks) {
 TEST_F(MPIntFieldTest, VectorIoWorks) {
   MPInt mod;
   MPInt::RandPrimeOver(1024, &mod, PrimeType::Normal);
-  auto gf = GaloisFieldFactory::Instance().Create(kFieldName, ArgLib = kLibName,
-                                                  ArgMod = mod);
+  auto gf = GaloisFieldFactory::Instance().Create(
+      kPrimeField, ArgLib = kMPIntLib, ArgMod = mod);
 
   // subspan
   auto item1 = Item::Take<MPInt>({0_mp, 1_mp, 2_mp, 3_mp});
   auto item2 = item1.SubSpan<MPInt>(0, 1);
   ASSERT_TRUE(item2.IsView());
   ASSERT_FALSE(item2.IsReadOnly());
-  ASSERT_TRUE(item2.IsHoldType<absl::Span<MPInt>>());
+  ASSERT_TRUE(item2.WrappedTypeIs<absl::Span<MPInt>>());
   ASSERT_TRUE(gf->Equal(item2, Item::Take<MPInt>({0_mp})));
 
   // deepcopy
@@ -247,6 +247,69 @@ TEST_F(MPIntFieldTest, VectorIoWorks) {
   auto real_sz = gf->Serialize(item1, buf.data<uint8_t>(), buf.size());
   EXPECT_EQ(real_sz, buf.size());
   EXPECT_EQ(gf->Deserialize(buf), vt);
+}
+
+TEST_F(MPIntFieldTest, ScalarInplaceWorks) {
+  auto gf = GaloisFieldFactory::Instance().Create(
+      kPrimeField, ArgLib = kMPIntLib, ArgMod = 13_mp);
+
+  // operands //
+  Item a = 0_mp;
+  gf->NegInplace(&a);
+  ASSERT_EQ(a, 0_mp);
+
+  gf->AddInplace(&a, 1_mp);  // a = 1
+  ASSERT_EQ(a, 1_mp);
+
+  gf->NegInplace(&a);
+  ASSERT_EQ(a, 12_mp);
+
+  gf->SubInplace(&a, 5_mp);
+  ASSERT_EQ(a, 7_mp);
+
+  gf->InvInplace(&a);
+  ASSERT_EQ(a, 2_mp);
+
+  gf->InvInplace(&a);
+  ASSERT_EQ(a, 7_mp);
+
+  gf->MulInplace(&a, 4_mp);
+  ASSERT_EQ(a, 2_mp);
+
+  gf->DivInplace(&a, 2_mp);
+  ASSERT_EQ(a, 1_mp);
+
+  gf->PowInplace(&a, 123456_mp);
+  ASSERT_EQ(a, 1_mp);
+}
+
+TEST_F(MPIntFieldTest, VectorInplaceWorks) {
+  auto gf = GaloisFieldFactory::Instance().Create(
+      kPrimeField, ArgLib = kMPIntLib, ArgMod = 13_mp);
+
+  std::vector<MPInt> va = {1_mp, 2_mp, 3_mp};
+  Item a = Item::Ref(va);
+
+  gf->AddInplace(&a, Item::Take<MPInt>({11_mp, 12_mp, 13_mp}));
+  ASSERT_EQ(a.AsSpan<MPInt>(), std::vector({12_mp, 1_mp, 3_mp}));
+
+  gf->NegInplace(&a);
+  ASSERT_EQ(a.AsSpan<MPInt>(), std::vector({1_mp, 12_mp, 10_mp}));
+
+  gf->SubInplace(&a, Item::Take<MPInt>({0_mp, 5_mp, 1_mp}));
+  ASSERT_EQ(a.AsSpan<MPInt>(), std::vector({1_mp, 7_mp, 9_mp}));
+
+  gf->InvInplace(&a);
+  ASSERT_EQ(a.AsSpan<MPInt>(), std::vector({1_mp, 2_mp, 3_mp}));
+
+  gf->MulInplace(&a, Item::Take<MPInt>({7_mp, 7_mp, 7_mp}));
+  ASSERT_EQ(a.AsSpan<MPInt>(), std::vector({7_mp, 1_mp, 8_mp}));
+
+  gf->DivInplace(&a, Item::Take<MPInt>({1_mp, 2_mp, 4_mp}));
+  ASSERT_EQ(a.AsSpan<MPInt>(), std::vector({7_mp, 7_mp, 2_mp}));
+
+  gf->PowInplace(&a, 2_mp);
+  ASSERT_EQ(a.AsSpan<MPInt>(), std::vector({10_mp, 10_mp, 4_mp}));
 }
 
 }  // namespace yacl::math::mpf::test

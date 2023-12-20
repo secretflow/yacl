@@ -26,6 +26,7 @@ yacl_cc_library(
 
 yacl_cc_library(
     name = "spec_traits",
+    srcs = ["spec_traits.cc"],
     hdrs = ["spec_traits.h"],
 )
 

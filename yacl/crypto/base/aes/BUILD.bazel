@@ -25,12 +25,7 @@ yacl_cc_binary(
         "//yacl/crypto/tools:prg",
         "//yacl/crypto/utils:rand",
         "@com_github_google_benchmark//:benchmark_main",
-    ] + select({
-        "@platforms//cpu:x86_64": [
-            "@com_github_intel_ipp//:ipp",
-        ],
-        "//conditions:default": [],
-    }),
+    ],
 )
 
 yacl_cc_library(

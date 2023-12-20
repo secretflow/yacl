@@ -42,7 +42,6 @@ def yacl_deps():
     # crypto related
     _com_github_openssl_openssl()
     _com_github_blake3team_blake3()
-    _com_github_intel_ipp()
     _com_github_libsodium()
     _com_github_libtom_libtommath()
     _com_github_herumi_mcl()
@@ -60,6 +59,14 @@ def yacl_deps():
         name = "org_interconnection",
         commit = IC_COMMIT_ID,
         remote = "{}/interconnection.git".format(SECRETFLOW_GIT),
+    )
+
+    maybe(
+        git_repository,
+        name = "com_github_greendow_hash_drbg",
+        build_file = "@yacl//bazel:hash_drbg.BUILD",
+        commit = "2411fa9d0de81c69dce2a48555c30298253db15d",
+        remote = "https://github.com/greendow/Hash-DRBG.git",
     )
 
     # Add homebrew openmp for macOS, somehow..homebrew installs to different location on Apple Silcon/Intel macs.. so we need two rules here
@@ -162,11 +169,11 @@ def _com_github_openssl_openssl():
     maybe(
         http_archive,
         name = "com_github_openssl_openssl",
-        sha256 = "c0bb03960ba535e51726950853f0e01a0a92e107e202f417e7546ee5e59baee0",
+        sha256 = "9a7a7355f3d4b73f43b5730ce80371f9d1f97844ffc8c4b01c723ba0625d6aad",
         type = "tar.gz",
-        strip_prefix = "openssl-OpenSSL_1_1_1v",
+        strip_prefix = "openssl-openssl-3.0.12",
         urls = [
-            "https://github.com/openssl/openssl/archive/refs/tags/OpenSSL_1_1_1v.tar.gz",
+            "https://github.com/openssl/openssl/archive/refs/tags/openssl-3.0.12.tar.gz",
         ],
         build_file = "@yacl//bazel:openssl.BUILD",
     )
@@ -252,22 +259,6 @@ def _rules_foreign_cc():
         strip_prefix = "rules_foreign_cc-0.10.1",
         urls = [
             "https://github.com/bazelbuild/rules_foreign_cc/archive/refs/tags/0.10.1.tar.gz",
-        ],
-    )
-
-def _com_github_intel_ipp():
-    maybe(
-        http_archive,
-        name = "com_github_intel_ipp",
-        sha256 = "1ecfa70328221748ceb694debffa0106b92e0f9bf6a484f8e8512c2730c7d730",
-        strip_prefix = "ipp-crypto-ippcp_2021.8",
-        build_file = "@yacl//bazel:ipp.BUILD",
-        patch_args = ["-p1"],
-        patches = [
-            "@yacl//bazel:patches/ippcp.patch",
-        ],
-        urls = [
-            "https://github.com/intel/ipp-crypto/archive/refs/tags/ippcp_2021.8.tar.gz",
         ],
     )
 

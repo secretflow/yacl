@@ -19,7 +19,7 @@
 #include <vector>
 
 #include "yacl/crypto/tools/prg.h"
-#include "yacl/crypto/tools/random_permutation.h"
+#include "yacl/crypto/tools/rp.h"
 #include "yacl/utils/matrix_utils.h"
 
 namespace yacl::crypto {

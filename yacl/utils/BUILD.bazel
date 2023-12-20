@@ -114,8 +114,8 @@ yacl_cc_test(
 )
 
 yacl_cc_library(
-    name = "hash",
-    hdrs = ["hash.h"],
+    name = "hash_combine",
+    hdrs = ["hash_combine.h"],
 )
 
 yacl_cc_library(
@@ -246,7 +246,7 @@ yacl_cc_binary(
     deps = [
         ":parallel",
         "@com_github_google_benchmark//:benchmark",
-    ] + OMP_DEPS,
+    ],
 )
 
 yacl_cc_library(

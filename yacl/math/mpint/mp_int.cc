@@ -503,13 +503,22 @@ void MPInt::MulMod(const MPInt &a, const MPInt &b, const MPInt &mod, MPInt *d) {
 }
 
 void MPInt::Pow(const MPInt &a, uint32_t b, MPInt *c) {
+  if (b == 0) {
+    *c = MPInt::_1_;
+    return;
+  }
+
   mpx_reserve(&c->n_, MP_BITS_TO_DIGITS(mpx_count_bits_fast(a.n_) * b));
   MPINT_ENFORCE_OK(mp_expt_n(&a.n_, b, &c->n_));
 }
 
 MPInt MPInt::Pow(uint32_t b) const {
+  if (b == 0) {
+    return MPInt::_1_;
+  }
+
   MPInt res;
-  mpx_reserve(&res.n_, mpx_count_bits_fast(n_) * b);
+  mpx_reserve(&res.n_, MP_BITS_TO_DIGITS(mpx_count_bits_fast(n_) * b));
   MPINT_ENFORCE_OK(mp_expt_n(&n_, b, &res.n_));
   return res;
 }

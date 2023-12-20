@@ -16,6 +16,8 @@
 
 #include <vector>
 
+#include "openssl/evp.h" /* for evp type conversions */
+
 #include "yacl/base/byte_container_view.h"
 
 namespace yacl::crypto {
@@ -75,5 +77,29 @@ class HashInterface {
   // object can continue to accumulate additional data via Update() operations.
   virtual std::vector<uint8_t> CumulativeHash() const = 0;
 };
+
+/* to a string which openssl recognizes */
+inline const char *ToString(HashAlgorithm hash_algo) {
+  switch (hash_algo) {
+    // see: https://www.openssl.org/docs/man3.0/man7/EVP_MD-SHA3.html
+    // see: https://www.openssl.org/docs/man3.0/man7/EVP_MD-SHA2.html
+    case HashAlgorithm::SHA224:
+      return "sha2-224";
+    case HashAlgorithm::SHA256:
+      return "sha2-256";
+    case HashAlgorithm::SHA384:
+      return "sha2-384";
+    case HashAlgorithm::SHA512:
+      return "sha2-512";
+    case HashAlgorithm::SHA_1:
+      return "sha1";
+    case HashAlgorithm::SM3:
+      return "sm3";
+    case HashAlgorithm::BLAKE2B:
+      return "blake2b-512";
+    default:
+      YACL_THROW("Unsupported hash algo: {}", static_cast<int>(hash_algo));
+  }
+}
 
 }  // namespace yacl::crypto

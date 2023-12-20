@@ -16,51 +16,51 @@
 
 namespace yacl::crypto {
 
-uint64_t FillPRandBytes(SymmetricCrypto::CryptoType crypto_type, uint128_t seed,
-                        uint128_t iv, uint64_t count, absl::Span<uint8_t> out) {
+uint64_t FillPRand(SymmetricCrypto::CryptoType type, uint128_t seed,
+                   uint64_t iv, uint64_t count, char* buf, size_t len) {
   constexpr size_t block_size = SymmetricCrypto::BlockSize();
-  const size_t nbytes = out.size();
+  const size_t nbytes = len;
   const size_t nblock = (nbytes + block_size - 1) / block_size;
   const size_t padding_bytes = nbytes % block_size;
 
-  bool isCTR = (crypto_type == SymmetricCrypto::CryptoType::AES128_CTR ||
-                crypto_type == SymmetricCrypto::CryptoType::SM4_CTR);
+  bool isCTR = (type == SymmetricCrypto::CryptoType::AES128_CTR ||
+                type == SymmetricCrypto::CryptoType::SM4_CTR);
 
   std::unique_ptr<SymmetricCrypto> crypto;
   if (isCTR) {
     // CTR mode does not requires padding or manully build counter...
-    crypto = std::make_unique<SymmetricCrypto>(crypto_type, seed, count);
-    std::memset(out.data(), 0, nbytes);
-    auto bv = absl::MakeSpan(reinterpret_cast<uint8_t*>(out.data()), nbytes);
+    crypto = std::make_unique<SymmetricCrypto>(type, seed, count);
+    std::memset(buf, 0, nbytes);
+    auto bv = absl::MakeSpan(reinterpret_cast<uint8_t*>(buf), nbytes);
     crypto->Encrypt(bv, bv);
   } else {
-    crypto = std::make_unique<SymmetricCrypto>(crypto_type, seed, iv);
+    crypto = std::make_unique<SymmetricCrypto>(type, seed, iv);
     if (padding_bytes == 0) {
       // No padding, fast path
-      auto s = absl::MakeSpan(reinterpret_cast<uint128_t*>(out.data()), nblock);
+      auto s = absl::MakeSpan(reinterpret_cast<uint128_t*>(buf), nblock);
       internal::EcbMakeContentBlocks(count, s);
       crypto->Encrypt(s, s);
     } else {
-      if (crypto_type == SymmetricCrypto::CryptoType::AES128_ECB ||
-          crypto_type == SymmetricCrypto::CryptoType::SM4_ECB) {
+      if (type == SymmetricCrypto::CryptoType::AES128_ECB ||
+          type == SymmetricCrypto::CryptoType::SM4_ECB) {
         if (nblock > 1) {
           // first n-1 block
-          auto s = absl::MakeSpan(reinterpret_cast<uint128_t*>(out.data()),
-                                  nblock - 1);
+          auto s =
+              absl::MakeSpan(reinterpret_cast<uint128_t*>(buf), nblock - 1);
           internal::EcbMakeContentBlocks(count, s);
           crypto->Encrypt(s, s);
         }
         // last padding block
         uint128_t padding = count + nblock - 1;
         padding = crypto->Encrypt(padding);
-        std::memcpy(reinterpret_cast<uint128_t*>(out.data()) + (nblock - 1),
-                    &padding, padding_bytes);
+        std::memcpy(reinterpret_cast<uint128_t*>(buf) + (nblock - 1), &padding,
+                    padding_bytes);
       } else {
         std::vector<uint128_t> cipher(nblock);
         auto s = absl::MakeSpan(cipher);
         internal::EcbMakeContentBlocks(count, s);
         crypto->Encrypt(s, s);
-        std::memcpy(out.data(), cipher.data(), nbytes);
+        std::memcpy(buf, cipher.data(), nbytes);
       }
     }
   }

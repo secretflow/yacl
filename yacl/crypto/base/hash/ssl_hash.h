@@ -18,6 +18,7 @@
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/crypto/base/hash/hash_interface.h"
+#include "yacl/crypto/base/openssl_wrappers.h"
 
 namespace yacl::crypto {
 
@@ -25,7 +26,6 @@ namespace yacl::crypto {
 class SslHash : public HashInterface {
  public:
   explicit SslHash(HashAlgorithm hash_algo);
-  ~SslHash() override;
 
   // From HashInterface.
   HashAlgorithm GetHashAlgorithm() const override;
@@ -36,8 +36,9 @@ class SslHash : public HashInterface {
 
  private:
   const HashAlgorithm hash_algo_;
+  openssl::UniqueMd md_;
+  openssl::UniqueMdCtx context_;
   const size_t digest_size_;
-  EVP_MD_CTX* context_;
 };
 
 // Sm3Hash implements HashInterface for the SM3 hash function.

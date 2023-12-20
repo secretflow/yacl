@@ -58,7 +58,7 @@ jobs:
           path: test_logs.tar.gz
   macOS_ut_arm64:
     macos:
-      xcode: 15.1
+      xcode: 14.2
     environment:
       HOMEBREW_NO_AUTO_UPDATE: 1
     resource_class: macos.m1.medium.gen1

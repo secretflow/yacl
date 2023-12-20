@@ -33,7 +33,9 @@ constexpr char iv_96[] = "000000000000";
 
 template <typename T>
 class AesGcmCryptoTest : public testing::Test {};
-using MyTypes = ::testing::Types<Aes128GcmCrypto, Aes256GcmCrypto>;
+using MyTypes = ::testing::Types<Aes128GcmCrypto, Aes256GcmCrypto
+                                 // Sm4GcmCrypto
+                                 >;
 TYPED_TEST_SUITE(AesGcmCryptoTest, MyTypes);
 
 TYPED_TEST(AesGcmCryptoTest, EncryptDecrypt_ShouldOk) {

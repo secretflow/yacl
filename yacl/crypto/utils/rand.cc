@@ -14,143 +14,91 @@
 
 #include "yacl/crypto/utils/rand.h"
 
-#include <algorithm>
-#include <mutex>
-#include <thread>
+#include <limits>
+#include <memory>
 
+#include "openssl/rand.h"
+
+#include "yacl/base/byte_container_view.h"
 #include "yacl/base/dynamic_bitset.h"
+#include "yacl/crypto/provider/helper.h"
+#include "yacl/crypto/utils/entropy_source/entropy_source.h"
 
 namespace yacl::crypto {
 
-namespace {
-
-std::once_flag seed_flag;
-
-void OpensslSeedOnce() {
-  // NistAesCtrDrbg seed with intel rdseed
-  std::call_once(seed_flag, []() {
-    Prg<uint64_t> prg(0, PRG_MODE::kNistAesCtrDrbg);
-    std::array<uint8_t, 32> rand_bytes;
-    prg.Fill(absl::MakeSpan(rand_bytes));  // get 256 bits seed
-
-    RAND_seed(rand_bytes.data(), rand_bytes.size());  // reseed
-  });
+// --------------------
+// Core Implementations
+// --------------------
+RandCtx::RandCtx(SecParam::C c, bool use_yacl_es) : c_(c) {
+  ctr_drbg_ = DrbgFactory::Instance().Create(
+      "ctr-drbg", ArgUseYaclEs = use_yacl_es, ArgSecParamC = c_);
+  hash_drbg_ = DrbgFactory::Instance().Create(
+      "hash-drbg", ArgUseYaclEs = use_yacl_es, ArgSecParamC = c_);
 }
-}  // namespace
 
-// RAND_priv_bytes() and RAND_bytes() Generates num random bytes using a
-// cryptographically secure pseudo random generator (CSPRNG) and stores them
-// in out (with 256 security strength). For details, see:
-// https://www.openssl.org/docs/man1.1.1/man3/RAND_bytes.html
-//
-// By default, the OpenSSL CSPRNG supports a security level of 256 bits,
-// provided it was able to seed itself from a trusted entropy source.
-// On all major platforms supported by OpenSSL (including the Unix-like
-// platforms and Windows), OpenSSL is configured to automatically seed
-// the CSPRNG on first use using the operating systems's random generator.
-//
-// OpenSSL comes with a default implementation of the RAND API which
-// is based on the deterministic random bit generator (DRBG) model
-// as described in [NIST SP 800-90A Rev. 1].
-// It seeds and reseeds itself automatically using trusted random
-// sources provided by the operating system.
-//
-// Reference:
-// https://www.openssl.org/docs/man3.0/man7/RAND.html
-// https://www.openssl.org/docs/man3.0/man3/RAND_seed.html
-// https://www.openssl.org/docs/manmaster/man3/RAND_bytes.html
-
-uint64_t RandU64(bool use_secure_rand) {
-  uint64_t rand64;
-  if (use_secure_rand) {
-    OpensslSeedOnce();  // reseed openssl internal CSPRNG
-    // RAND_priv_bytes() has the same semantics as RAND_bytes(). It uses a
-    // separate "private" PRNG instance so that a compromise of the "public"
-    // PRNG instance will not affect the secrecy of these private values
-    //
-    // RAND_priv_bytes() is thread-safe with OpenSSL >= 1.1.0
-    YACL_ENFORCE(RAND_priv_bytes(reinterpret_cast<unsigned char*>(&rand64),
-                                 sizeof(rand64)) == 1);
-
+void RandCtx::Fill(char *buf, size_t len, bool use_fast_mode) const {
+  YACL_ENFORCE(len <= std::numeric_limits<int>::max());
+  if (use_fast_mode) {
+    hash_drbg_->Fill(buf, len);
   } else {
-    YACL_ENFORCE(RAND_bytes(reinterpret_cast<unsigned char*>(&rand64),
-                            sizeof(uint64_t)) == 1);
+    ctr_drbg_->Fill(buf, len);
   }
+}
+
+// ---------------------
+// Other Implementations
+// ---------------------
+uint64_t RandU64(const RandCtx &ctx, bool use_fast_mode) {
+  uint64_t rand64 = 0;
+  FillRand(ctx, reinterpret_cast<char *>(&rand64), sizeof(uint64_t),
+           use_fast_mode);
   return rand64;
 }
 
-uint128_t RandU128(bool use_secure_rand) {
-  uint128_t rand128;
-  if (use_secure_rand) {
-    OpensslSeedOnce();  // reseed openssl internal CSPRNG
-    // RAND_priv_bytes() has the same semantics as RAND_bytes(). It uses a
-    // separate "private" PRNG instance so that a compromise of the "public"
-    // PRNG instance will not affect the secrecy of these private values
-    //
-    // RAND_priv_bytes() is thread-safe with OpenSSL >= 1.1.0
-    YACL_ENFORCE(RAND_priv_bytes(reinterpret_cast<unsigned char*>(&rand128),
-                                 sizeof(rand128)) == 1);
-
-  } else {
-    YACL_ENFORCE(RAND_bytes(reinterpret_cast<unsigned char*>(&rand128),
-                            sizeof(rand128)) == 1);
-  }
+uint128_t RandU128(const RandCtx &ctx, bool use_fast_mode) {
+  uint128_t rand128 = 0;
+  FillRand(ctx, reinterpret_cast<char *>(&rand128), sizeof(uint128_t),
+           use_fast_mode);
   return rand128;
 }
 
 template <>
 std::vector<bool> RandBits<std::vector<bool>>(uint64_t len,
-                                              bool use_secure_rand) {
+                                              bool use_fast_mode) {
   std::vector<bool> out(len, false);
   const unsigned stride = sizeof(unsigned) * 8;
-  if (use_secure_rand) {  // drbg is more secure
-    Prg<unsigned> prg(RandU128(true), PRG_MODE::kNistAesCtrDrbg);
-    for (uint64_t i = 0; i < len; i += stride) {
-      unsigned rand = prg();
-      unsigned size = std::min(stride, static_cast<unsigned>(len - i));
-      for (unsigned j = 0; j < size; ++j) {
-        out[i + j] = (rand & (1 << j)) != 0;
-      }
-    }
-  } else {  // fast path
-    Prg<unsigned> prg(RandU128(false), PRG_MODE::kAesEcb);
-    for (uint64_t i = 0; i < len; i += stride) {
-      unsigned rand = prg();
-      unsigned size = std::min(stride, static_cast<unsigned>(len - i));
-      for (unsigned j = 0; j < size; ++j) {
-        out[i + j] = (rand & (1 << j)) != 0;
-      }
+
+  // generate randomness
+  auto rand_buf = RandVec<unsigned>(len, use_fast_mode);
+
+  // for each byte
+  for (uint64_t i = 0; i < len; i += stride) {
+    unsigned size = std::min(stride, static_cast<unsigned>(len - i));
+    for (unsigned j = 0; j < size; ++j) {
+      out[i + j] = (rand_buf[i] & (1 << j)) != 0;
     }
   }
   return out;
 }
 
-#define IMPL_RANDBIT_DYNAMIC_BIT_TYPE(TYPE)                                   \
-  template <>                                                                 \
-  dynamic_bitset<TYPE> RandBits<dynamic_bitset<TYPE>>(uint64_t len,           \
-                                                      bool use_secure_rand) { \
-    dynamic_bitset<TYPE> out(len);                                            \
-    const unsigned stride = sizeof(unsigned) * 8;                             \
-    if (use_secure_rand) {                                                    \
-      Prg<unsigned> prg(RandU128(true), PRG_MODE::kNistAesCtrDrbg);           \
-      for (uint64_t i = 0; i < len; i += stride) {                            \
-        unsigned rand = prg();                                                \
-        unsigned size = std::min(stride, static_cast<unsigned>(len - i));     \
-        for (unsigned j = 0; j < size; ++j) {                                 \
-          out[i + j] = (rand & (1 << j)) != 0;                                \
-        }                                                                     \
-      }                                                                       \
-    } else {                                                                  \
-      Prg<unsigned> prg(RandU128(false), PRG_MODE::kAesEcb);                  \
-      for (uint64_t i = 0; i < len; i += stride) {                            \
-        unsigned rand = prg();                                                \
-        unsigned size = std::min(stride, static_cast<unsigned>(len - i));     \
-        for (unsigned j = 0; j < size; ++j) {                                 \
-          out[i + j] = (rand & (1 << j)) != 0;                                \
-        }                                                                     \
-      }                                                                       \
-    }                                                                         \
-    return out;                                                               \
+#define IMPL_RANDBIT_DYNAMIC_BIT_TYPE(T)                                \
+  template <>                                                           \
+  dynamic_bitset<T> RandBits<dynamic_bitset<T>>(uint64_t len,           \
+                                                bool use_fast_mode) {   \
+    dynamic_bitset<T> out(len);                                         \
+    const unsigned stride = sizeof(unsigned) * 8;                       \
+                                                                        \
+    /* generate randomness */                                           \
+    auto rand_buf = RandBytes(len, use_fast_mode);                      \
+                                                                        \
+    /* for each byte */                                                 \
+    for (uint64_t i = 0; i < len; i += stride) {                        \
+      unsigned size = std::min(stride, static_cast<unsigned>(len - i)); \
+      for (unsigned j = 0; j < size; ++j) {                             \
+        out[i + j] = (rand_buf[i] & (1 << j)) != 0;                     \
+      }                                                                 \
+    }                                                                   \
+    return out;                                                         \
   }
 
 IMPL_RANDBIT_DYNAMIC_BIT_TYPE(uint128_t);

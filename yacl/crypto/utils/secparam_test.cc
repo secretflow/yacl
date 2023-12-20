@@ -16,12 +16,12 @@
 
 #include "gtest/gtest.h"
 
-namespace yacl::crypto {
-
 // inheader
 YACL_MODULE_DECLARE("iknp_ote", SecParam::C::k128, SecParam::S::k40);
 YACL_MODULE_DECLARE("aes", SecParam::C::k128, SecParam::S::INF);
 YACL_MODULE_DECLARE("hash", SecParam::C::k192, SecParam::S::INF);
+
+namespace yacl::crypto {
 
 TEST(DeclareTest, Test) {
   EXPECT_EQ(YACL_MODULE_SECPARAM_C("iknp_ote"), SecParam::C::k128);
@@ -38,5 +38,4 @@ TEST(DeclareTest, Test) {
 
   YACL_PRINT_MODULE_SUMMARY();
 }
-
 }  // namespace yacl::crypto

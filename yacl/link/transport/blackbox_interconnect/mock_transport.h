@@ -106,6 +106,7 @@ class MockTransport {
       YACL_THROW_IO_ERROR("brpc server failed to add msg service");
     }
     brpc::ServerOptions server_opt;
+    server_opt.has_builtin_services = false;
     if (server_.Start(local_transport_url.c_str(), &server_opt) != 0) {
       YACL_THROW_IO_ERROR("brpc server failed start at {}",
                           local_transport_url);

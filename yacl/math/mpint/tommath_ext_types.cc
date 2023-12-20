@@ -42,7 +42,7 @@ void mpx_reserve(mp_int *a, size_t n_digits) {
     return;
   }
 
-  MPINT_ENFORCE_OK(mp_grow(a, 1));
+  MPINT_ENFORCE_OK(mp_grow(a, n_digits));
 }
 
 #define MPX_INIT_INT(name, set, type) \

@@ -14,10 +14,7 @@
 
 #include "yacl/crypto/base/aead/gcm_crypto.h"
 
-#include "openssl/evp.h"
-
-#include "yacl/base/exception.h"
-#include "yacl/utils/scope_guard.h"
+#include "yacl/crypto/base/openssl_wrappers.h"
 
 namespace yacl::crypto {
 
@@ -25,23 +22,13 @@ namespace {
 
 constexpr size_t kAesMacSize = 16;
 
-const EVP_CIPHER* CreateEvpCipher(GcmCryptoSchema schema) {
-  switch (schema) {
-    case GcmCryptoSchema::AES128_GCM:
-      return EVP_aes_128_gcm();
-    case GcmCryptoSchema::AES256_GCM:
-      return EVP_aes_256_gcm();
-    default:
-      YACL_THROW("Unknown crypto schema: {}", static_cast<int>(schema));
-  }
-}
-
 size_t GetMacSize(GcmCryptoSchema schema) {
   switch (schema) {
     case GcmCryptoSchema::AES128_GCM:
-      return kAesMacSize;
     case GcmCryptoSchema::AES256_GCM:
       return kAesMacSize;
+    // case GcmCryptoSchema::SM4_GCM:
+    //   return kAesMacSize;
     default:
       YACL_THROW("Unknown crypto schema: {}", static_cast<int>(schema));
   }
@@ -55,32 +42,34 @@ void GcmCrypto::Encrypt(ByteContainerView plaintext, ByteContainerView aad,
   YACL_ENFORCE_EQ(ciphertext.size(), plaintext.size());
   YACL_ENFORCE_EQ(mac.size(), GetMacSize(schema_));
 
-  EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
-  YACL_ENFORCE(ctx, "Failed to new evp cipher context.");
-  ON_SCOPE_EXIT([&] { EVP_CIPHER_CTX_free(ctx); });
-  const EVP_CIPHER* cipher = CreateEvpCipher(schema_);
-  YACL_ENFORCE_EQ(key_.size(), (size_t)EVP_CIPHER_key_length(cipher));
-  YACL_ENFORCE_EQ(iv_.size(), (size_t)EVP_CIPHER_iv_length(cipher));
-  YACL_ENFORCE_EQ(
-      EVP_EncryptInit_ex(ctx, cipher, nullptr, key_.data(), iv_.data()), 1);
-  int out_length;
+  // init openssl evp cipher context
+  auto ctx = openssl::UniqueCipherCtx(EVP_CIPHER_CTX_new());
+  YACL_ENFORCE(ctx != nullptr, "Failed to new evp cipher context.");
+  const auto cipher = openssl::FetchEvpCipher(ToString(schema_));
+  YACL_ENFORCE(cipher != nullptr);
+
+  YACL_ENFORCE(key_.size() == (size_t)EVP_CIPHER_key_length(cipher.get()));
+  YACL_ENFORCE(iv_.size() == (size_t)EVP_CIPHER_iv_length(cipher.get()));
+  YACL_ENFORCE(EVP_EncryptInit_ex(ctx.get(), cipher.get(), nullptr, key_.data(),
+                                  iv_.data()) > 0);
+
   // Provide AAD data if exist
-  const int aad_len = aad.size();
-  if (0 != aad_len) {
-    YACL_ENFORCE_EQ(
-        EVP_EncryptUpdate(ctx, nullptr, &out_length, aad.data(), aad_len), 1);
-    YACL_ENFORCE_EQ(out_length, (int)aad.size());
+  int out_length = 0;
+  const auto aad_len = aad.size();
+  if (aad_len > 0) {
+    YACL_ENFORCE(EVP_EncryptUpdate(ctx.get(), nullptr, &out_length, aad.data(),
+                                   aad_len) > 0);
+    YACL_ENFORCE(out_length == (int)aad.size());
   }
-  YACL_ENFORCE_EQ(EVP_EncryptUpdate(ctx, ciphertext.data(), &out_length,
-                                    plaintext.data(), plaintext.size()),
-                  1);
-  YACL_ENFORCE_EQ(out_length, (int)plaintext.size(),
-                  "Unexpected encrypte out length.");
+  YACL_ENFORCE(EVP_EncryptUpdate(ctx.get(), ciphertext.data(), &out_length,
+                                 plaintext.data(), plaintext.size()) > 0);
+  YACL_ENFORCE(out_length == (int)plaintext.size(),
+               "Unexpected encrypte out length.");
+
   // Note that get no output here as the data is always aligned for GCM.
-  EVP_EncryptFinal_ex(ctx, nullptr, &out_length);
-  YACL_ENFORCE_EQ(EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG,
-                                      GetMacSize(schema_), mac.data()),
-                  1, "Failed to get mac.");
+  EVP_EncryptFinal_ex(ctx.get(), nullptr, &out_length);
+  YACL_ENFORCE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG,
+                                   GetMacSize(schema_), mac.data()) > 0);
 }
 
 void GcmCrypto::Decrypt(ByteContainerView ciphertext, ByteContainerView aad,
@@ -89,34 +78,34 @@ void GcmCrypto::Decrypt(ByteContainerView ciphertext, ByteContainerView aad,
   YACL_ENFORCE_EQ(ciphertext.size(), plaintext.size());
   YACL_ENFORCE_EQ(mac.size(), GetMacSize(schema_));
 
+  // init openssl evp cipher context
   EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
   YACL_ENFORCE(ctx, "Failed to new evp cipher context.");
   ON_SCOPE_EXIT([&] { EVP_CIPHER_CTX_free(ctx); });
-  const EVP_CIPHER* cipher = CreateEvpCipher(schema_);
-  YACL_ENFORCE_EQ(key_.size(), (size_t)EVP_CIPHER_key_length(cipher));
-  YACL_ENFORCE_EQ(iv_.size(), (size_t)EVP_CIPHER_iv_length(cipher));
+  const auto cipher = openssl::FetchEvpCipher(ToString(schema_));
+  YACL_ENFORCE_EQ(key_.size(), (size_t)EVP_CIPHER_key_length(cipher.get()));
+  YACL_ENFORCE_EQ(iv_.size(), (size_t)EVP_CIPHER_iv_length(cipher.get()));
   YACL_ENFORCE(
-      EVP_DecryptInit_ex(ctx, cipher, nullptr, key_.data(), iv_.data()));
+      EVP_DecryptInit_ex(ctx, cipher.get(), nullptr, key_.data(), iv_.data()));
 
-  int out_length;
   // Provide AAD data if exist
-  const int aad_len = aad.size();
-  if (0 != aad_len) {
-    YACL_ENFORCE_EQ(
-        EVP_DecryptUpdate(ctx, nullptr, &out_length, aad.data(), aad_len), 1);
-    YACL_ENFORCE_EQ(out_length, (int)aad.size());
+  int out_length = 0;
+  const auto aad_len = aad.size();
+  if (aad_len > 0) {
+    YACL_ENFORCE(
+        EVP_DecryptUpdate(ctx, nullptr, &out_length, aad.data(), aad_len) > 0);
+    YACL_ENFORCE(out_length == (int)aad.size());
   }
-  YACL_ENFORCE_EQ(EVP_DecryptUpdate(ctx, plaintext.data(), &out_length,
-                                    ciphertext.data(), ciphertext.size()),
-                  1);
-  YACL_ENFORCE_EQ(out_length, (int)plaintext.size(),
-                  "Unexpcted decryption out length.");
-  YACL_ENFORCE_EQ(EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG,
-                                      GetMacSize(schema_), (void*)mac.data()),
-                  1, "Failed to get mac.");
+  YACL_ENFORCE(EVP_DecryptUpdate(ctx, plaintext.data(), &out_length,
+                                 ciphertext.data(), ciphertext.size()) > 0);
+  YACL_ENFORCE(out_length == (int)plaintext.size(),
+               "Unexpcted decryption out length.");
+  YACL_ENFORCE(EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG,
+                                   GetMacSize(schema_), (void*)mac.data()) > 0);
+
   // Note that get no output here as the data is always aligned for GCM.
-  YACL_ENFORCE_EQ(EVP_DecryptFinal_ex(ctx, nullptr, &out_length), 1,
-                  "Failed to verfiy mac.");
+  YACL_ENFORCE(EVP_DecryptFinal_ex(ctx, nullptr, &out_length) > 0,
+               "Failed to verfiy mac.");
 }
 
 }  // namespace yacl::crypto

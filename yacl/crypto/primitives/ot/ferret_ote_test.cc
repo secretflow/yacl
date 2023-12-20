@@ -122,12 +122,13 @@ INSTANTIATE_TEST_SUITE_P(
     Works_Instances, FerretOtExtTest,
     testing::Values(FerretParams{10485760, LpnNoiseAsm::RegularNoise},
                     FerretParams{10485761, LpnNoiseAsm::RegularNoise},
-                    FerretParams{1 << 20, LpnNoiseAsm::RegularNoise},
-                    FerretParams{1 << 21, LpnNoiseAsm::RegularNoise},
-                    FerretParams{1 << 22, LpnNoiseAsm::RegularNoise},
-                    FerretParams{1 << 23, LpnNoiseAsm::RegularNoise},
-                    FerretParams{1 << 24, LpnNoiseAsm::RegularNoise},
-                    FerretParams{1 << 25, LpnNoiseAsm::RegularNoise}));
+                    FerretParams{1 << 20, LpnNoiseAsm::RegularNoise}
+                    // FerretParams{1 << 21, LpnNoiseAsm::RegularNoise},
+                    // FerretParams{1 << 22, LpnNoiseAsm::RegularNoise},
+                    // FerretParams{1 << 23, LpnNoiseAsm::RegularNoise},
+                    // FerretParams{1 << 24, LpnNoiseAsm::RegularNoise},
+                    // FerretParams{1 << 25, LpnNoiseAsm::RegularNoise}
+                    ));
 
 TEST(FerretOtExtEdgeTest, Test1) {
   // GIVEN

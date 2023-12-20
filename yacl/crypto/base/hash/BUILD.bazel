@@ -23,6 +23,7 @@ yacl_cc_library(
     deps = [
         ":hash_interface",
         "//yacl/base:exception",
+        "//yacl/crypto/base:openssl_wrappers",
         "//yacl/utils:scope_guard",
         "@com_github_openssl_openssl//:openssl",
     ],
@@ -70,6 +71,7 @@ yacl_cc_library(
     srcs = ["hash_interface.h"],
     deps = [
         "//yacl/base:byte_container_view",
+        "@com_github_openssl_openssl//:openssl",
     ],
 )
 

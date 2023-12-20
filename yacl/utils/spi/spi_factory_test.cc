@@ -26,7 +26,7 @@ namespace yacl::test {
 class MockPheSpi {
  public:
   virtual std::string ToString() = 0;
-  virtual ~MockPheSpi(){};
+  virtual ~MockPheSpi() = default;
 };
 
 DEFINE_ARG_int(KeySize);

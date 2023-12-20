@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/tools/benchmark.h"
+#include "benchmark.h"
 
 #include <cstdint>
 
@@ -26,43 +26,17 @@ void BM_DefaultArguments(benchmark::internal::Benchmark* b) {
       ->Arg(22437250);
 }
 
-void BM_DualEncodeArguments(benchmark::internal::Benchmark* b) {
-  b->Unit(benchmark::kMillisecond)
-      ->Iterations(10)
-      ->Arg(100000)
-      ->Arg(1000000)   // one million
-      ->Arg(10000000)  // ten million
-      ->Arg(22437250);
-}
+// Register benchmarks for (Circular) CrHash
+BENCHMARK_REGISTER_F(ToolBench, RP)->Apply(BM_DefaultArguments);
+BENCHMARK_REGISTER_F(ToolBench, CRHASH)->Apply(BM_DefaultArguments);
+BENCHMARK_REGISTER_F(ToolBench, CRHASH_INPLACE)->Apply(BM_DefaultArguments);
+BENCHMARK_REGISTER_F(ToolBench, CCRHASH)->Apply(BM_DefaultArguments);
+BENCHMARK_REGISTER_F(ToolBench, CCRHASH_INPLACE)->Apply(BM_DefaultArguments);
+BENCHMARK_REGISTER_F(ToolBench, RO)->Apply(BM_DefaultArguments);
 
-// Register benchmarks for local linear code
-BENCHMARK_REGISTER_F(ToolBench, LLC)
+BENCHMARK_REGISTER_F(ToolBench, PRG)
     ->Unit(benchmark::kMillisecond)
-    ->Iterations(10)
-    ->Args({10485760, 452000});
-
-// Register benchmarks for dual LPN
-BENCHMARK_REGISTER_F(ToolBench, Silver5)->Apply(BM_DualEncodeArguments);
-BENCHMARK_REGISTER_F(ToolBench, Silver5Inplace)->Apply(BM_DualEncodeArguments);
-BENCHMARK_REGISTER_F(ToolBench, Silver11)->Apply(BM_DualEncodeArguments);
-BENCHMARK_REGISTER_F(ToolBench, Silver11Inplace)->Apply(BM_DualEncodeArguments);
-BENCHMARK_REGISTER_F(ToolBench, ExAcc7)->Apply(BM_DualEncodeArguments);
-BENCHMARK_REGISTER_F(ToolBench, ExAcc11)->Apply(BM_DualEncodeArguments);
-BENCHMARK_REGISTER_F(ToolBench, ExAcc21)->Apply(BM_DualEncodeArguments);
-BENCHMARK_REGISTER_F(ToolBench, ExAcc40)->Apply(BM_DualEncodeArguments);
-
-// BENCHMARK(BM_RP)->Apply(BM_DefaultArguments);
-// BENCHMARK(BM_CrHash)->Apply(BM_DefaultArguments);
-// BENCHMARK(BM_CcrHash)->Apply(BM_DefaultArguments);
-// BENCHMARK(BM_RO)->Apply(BM_DefaultArguments);
-
-// BENCHMARK(BM_Prg)
-//     ->Unit(benchmark::kMillisecond)
-//     ->Arg(static_cast<int64_t>(PRG_MODE::kNistAesCtrDrbg))
-//     ->Arg(static_cast<int64_t>(PRG_MODE::kGmSm4CtrDrbg))
-//     ->Arg(static_cast<int64_t>(PRG_MODE::kAesEcb))
-//     ->Arg(static_cast<int64_t>(PRG_MODE::KSm4Ecb));
-
-// BENCHMARK(BM_Llc)->Unit(benchmark::kMillisecond)->Args({10485760, 452000});
+    ->Arg(static_cast<int64_t>(PRG_MODE::kAesEcb))
+    ->Arg(static_cast<int64_t>(PRG_MODE::kSm4Ecb));
 
 }  // namespace yacl::crypto

@@ -4,6 +4,8 @@
 
 namespace yacl::crypto {
 
+using math::MPInt;
+
 // Polynomial class for polynomial manipulation and sharing.
 class Polynomial {
  public:
@@ -12,7 +14,7 @@ class Polynomial {
    *
    * @param modulus
    */
-  Polynomial(math::MPInt modulus) : modulus_(modulus) {}
+  Polynomial(const MPInt& modulus) : modulus_(modulus) {}
 
   /**
    * @brief Destroy the Polynomial object
@@ -24,11 +26,12 @@ class Polynomial {
    * @brief Creates a random polynomial with the given zero_value, threshold,
    * and modulus.
    *
-   * @param zero_value
+   * @param zero_value Set poly(0) to be the zero_value(secret value).
    * @param threshold
    * @param modulus
    */
-  void CreatePolynomial(const math::MPInt& zero_value, size_t threshold);
+  void CreatePolynomial(const MPInt& zero_value, size_t threshold);
+  void RandomPolynomial(size_t threshold);
 
   /**
    * @brief Horner's method, also known as Horner's rule or Horner's scheme, is
@@ -59,7 +62,7 @@ class Polynomial {
    * @param modulus
    * @param result
    */
-  void EvaluatePolynomial(const math::MPInt& x, math::MPInt& result) const;
+  void EvaluatePolynomial(const MPInt& x, MPInt* result) const;
 
   /**
    * @brief Performs Lagrange interpolation to interpolate the polynomial based
@@ -70,9 +73,8 @@ class Polynomial {
    * @param prime
    * @param result
    */
-  void LagrangeInterpolation(std::vector<math::MPInt>& xs,
-                             std::vector<math::MPInt>& ys,
-                             math::MPInt& result) const;
+  void LagrangeInterpolation(absl::Span<const MPInt>, absl::Span<const MPInt>,
+                             MPInt* result) const;
 
   /**
    * @brief Sets the coefficients of the polynomial to the provided vector of
@@ -80,21 +82,29 @@ class Polynomial {
    *
    * @param coefficients
    */
-  void SetCoeffs(const std::vector<math::MPInt>& coefficients) {
+  void SetCoeffs(const std::vector<MPInt>& coefficients) {
     coeffs_ = coefficients;
   }
 
   /**
    * @brief Returns the coefficients of the polynomial as a vector of MPInt.
    *
-   * @return std::vector<math::MPInt>
+   * @return std::vector<MPInt>
    */
-  std::vector<math::MPInt> GetCoeffs() const { return coeffs_; }
+  std::vector<MPInt> GetCoeffs() const { return coeffs_; }
+
+  static MPInt LagrangeInterpolation(absl::Span<const MPInt> xs,
+                                     absl::Span<const MPInt> ys,
+                                     const MPInt& target_x,
+                                     const MPInt& modulus);
+  static MPInt LagrangeComputeAtX(absl::Span<const MPInt> xs, uint64_t index,
+                                  const MPInt& y, const MPInt& target_x,
+                                  const MPInt& modulus);
 
  private:
   // Vector to store the coefficients of the polynomial.
-  std::vector<math::MPInt> coeffs_;
-  math::MPInt modulus_;
+  std::vector<MPInt> coeffs_;
+  MPInt modulus_;
 };
 
 }  // namespace yacl::crypto

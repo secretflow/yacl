@@ -45,8 +45,8 @@ class SpiArg {
   }
 
   // Specialized functions of operator=<T>
-  SpiArg &operator=(const char *value);
-  SpiArg &operator=(const std::string &value);
+  SpiArg operator=(const char *value);
+  SpiArg operator=(const std::string &value);
 
   const std::string &Key() const;
   bool HasValue() const;

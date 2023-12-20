@@ -12,110 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
 #include <memory>
 #include <vector>
 
 #include "benchmark/benchmark.h"
 
-#include "yacl/base/aligned_vector.h"
-#include "yacl/crypto/tools/expand_accumulate_code.h"
-#include "yacl/crypto/tools/linear_code.h"
+#include "yacl/crypto/tools/crhash.h"
 #include "yacl/crypto/tools/prg.h"
-#include "yacl/crypto/tools/random_oracle.h"
-#include "yacl/crypto/tools/random_permutation.h"
-#include "yacl/crypto/tools/silver_code.h"
+#include "yacl/crypto/tools/ro.h"
+#include "yacl/crypto/tools/rp.h"
 #include "yacl/crypto/utils/rand.h"
 
 namespace yacl::crypto {
 
 class ToolBench : public benchmark::Fixture {};
-
-// 1st arg = n (generor matrix)
-// 2nd arg = k (generor matrix)
-BENCHMARK_DEFINE_F(ToolBench, LLC)(benchmark::State& state) {
-  for (auto _ : state) {
-    state.PauseTiming();
-    {
-      auto n = state.range(0);
-      auto k = state.range(1);
-      uint128_t seed = RandSeed();
-      LocalLinearCode<10> llc(seed, n, k);
-      auto input = RandVec<uint128_t>(k);
-      std::vector<uint128_t> out(n);
-
-      state.ResumeTiming();
-
-      llc.Encode(input, absl::MakeSpan(out));
-
-      state.PauseTiming();
-    }
-    state.ResumeTiming();
-  }
-}
-
-// 1st arg = n (output size)
-#define DELCARE_SLV_INPLACE_BENCH(weight)                \
-  BENCHMARK_DEFINE_F(ToolBench, Silver##weight##Inplace) \
-  (benchmark::State & state) {                           \
-    for (auto _ : state) {                               \
-      state.PauseTiming();                               \
-      {                                                  \
-        auto n = state.range(0);                         \
-        SilverCode slv(n, weight);                       \
-        auto input = RandVec<uint128_t>(n * 2);          \
-        state.ResumeTiming();                            \
-        slv.DualEncodeInplace(absl::MakeSpan(input));    \
-        state.PauseTiming();                             \
-      }                                                  \
-      state.ResumeTiming();                              \
-    }                                                    \
-  }
-
-// 1st arg = n (output size)
-#define DELCARE_SLV_BENCH(weight)                                           \
-  BENCHMARK_DEFINE_F(ToolBench, Silver##weight)(benchmark::State & state) { \
-    for (auto _ : state) {                                                  \
-      state.PauseTiming();                                                  \
-      {                                                                     \
-        auto n = state.range(0);                                            \
-        SilverCode slv(n, weight);                                          \
-        auto input = RandVec<uint128_t>(n * 2);                             \
-        auto output = std::vector<uint128_t>(n);                            \
-        state.ResumeTiming();                                               \
-        slv.DualEncode(absl::MakeSpan(input), absl::MakeSpan(output));      \
-        state.PauseTiming();                                                \
-      }                                                                     \
-      state.ResumeTiming();                                                 \
-    }                                                                       \
-  }
-
-DELCARE_SLV_BENCH(5);
-DELCARE_SLV_INPLACE_BENCH(5);
-DELCARE_SLV_BENCH(11);
-DELCARE_SLV_INPLACE_BENCH(11);
-
-// 1st arg = n (output size)
-#define DELCARE_EXACC_BENCH(weight)                                        \
-  BENCHMARK_DEFINE_F(ToolBench, ExAcc##weight)(benchmark::State & state) { \
-    for (auto _ : state) {                                                 \
-      state.PauseTiming();                                                 \
-      {                                                                    \
-        auto n = state.range(0);                                           \
-        ExAccCode<weight> acc(n);                                          \
-        auto input = RandVec<uint128_t>(n * 2);                            \
-        auto output = std::vector<uint128_t>(n);                           \
-        state.ResumeTiming();                                              \
-        acc.DualEncode(absl::MakeSpan(input), absl::MakeSpan(output));     \
-        state.PauseTiming();                                               \
-      }                                                                    \
-      state.ResumeTiming();                                                \
-    }                                                                      \
-  }
-
-DELCARE_EXACC_BENCH(7);
-DELCARE_EXACC_BENCH(11);
-DELCARE_EXACC_BENCH(21);
-DELCARE_EXACC_BENCH(40);
 
 // 1st arg = prg type
 BENCHMARK_DEFINE_F(ToolBench, PRG)(benchmark::State& state) {
@@ -152,8 +64,8 @@ BENCHMARK_DEFINE_F(ToolBench, RP)(benchmark::State& state) {
     std::fill(input.begin(), input.end(), 0);
     state.ResumeTiming();
     using Ctype = SymmetricCrypto::CryptoType;
-    const auto& RP = RandomPerm(Ctype::AES128_CTR, 0x12345678);
-    RP.Gen(absl::MakeSpan(input));
+    const auto& rp = RP(Ctype::AES128_CTR, 0x12345678);
+    rp.Gen(absl::MakeSpan(input));
   }
 }
 
@@ -169,6 +81,17 @@ BENCHMARK_DEFINE_F(ToolBench, CRHASH)(benchmark::State& state) {
   }
 }
 
+BENCHMARK_DEFINE_F(ToolBench, CRHASH_INPLACE)(benchmark::State& state) {
+  for (auto _ : state) {
+    state.PauseTiming();
+    size_t n = state.range(0);
+    std::vector<uint128_t> input(n);
+    std::fill(input.begin(), input.end(), 0);
+    state.ResumeTiming();
+    ParaCrHashInplace_128(absl::MakeSpan(input));
+  }
+}
+
 // 1st arg = numer of batched inputs
 BENCHMARK_DEFINE_F(ToolBench, CCRHASH)(benchmark::State& state) {
   for (auto _ : state) {
@@ -178,6 +101,17 @@ BENCHMARK_DEFINE_F(ToolBench, CCRHASH)(benchmark::State& state) {
     std::fill(input.begin(), input.end(), 0);
     state.ResumeTiming();
     ParaCcrHash_128(absl::MakeSpan(input));
+  }
+}
+
+BENCHMARK_DEFINE_F(ToolBench, CCRHASH_INPLACE)(benchmark::State& state) {
+  for (auto _ : state) {
+    state.PauseTiming();
+    size_t n = state.range(0);
+    std::vector<uint128_t> input(n);
+    std::fill(input.begin(), input.end(), 0);
+    state.ResumeTiming();
+    ParaCcrHashInplace_128(absl::MakeSpan(input));
   }
 }
 

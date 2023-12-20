@@ -87,7 +87,7 @@ index 5d317c90..5bb62a6e 100644
 +    "@bazel_tools//src/conditions:linux_aarch64": ["-O1"],
 +    "//conditions:default": [""],
  })
- 
+
  LINKOPTS = [
      "-pthread",
      "-ldl",
