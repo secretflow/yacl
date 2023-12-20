@@ -87,7 +87,6 @@ void MPIntField::NegInplace(MPInt *x) const {
   WEAK_ENFORCE(IsInField(*x), "x is not a valid field element, x={}", *x);
   x->NegateInplace();
   AddInplace(x, mod_);
-  x->DecrOne();
 }
 
 MPInt MPIntField::Inv(const MPInt &x) const { return x.InvertMod(mod_); }
