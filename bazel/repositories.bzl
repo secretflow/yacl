@@ -38,6 +38,7 @@ def yacl_deps():
     _com_github_google_cpu_features()
     _com_github_dltcollab_sse2neon()
     _com_github_msgpack_msgpack()
+    _com_github_greendow_hash_drbg()
 
     # crypto related
     _com_github_openssl_openssl()
@@ -59,14 +60,6 @@ def yacl_deps():
         name = "org_interconnection",
         commit = IC_COMMIT_ID,
         remote = "{}/interconnection.git".format(SECRETFLOW_GIT),
-    )
-
-    maybe(
-        git_repository,
-        name = "com_github_greendow_hash_drbg",
-        build_file = "@yacl//bazel:hash_drbg.BUILD",
-        commit = "2411fa9d0de81c69dce2a48555c30298253db15d",
-        remote = "https://github.com/greendow/Hash-DRBG.git",
     )
 
     # Add homebrew openmp for macOS, somehow..homebrew installs to different location on Apple Silcon/Intel macs.. so we need two rules here
@@ -329,6 +322,19 @@ def _com_github_msgpack_msgpack():
             "https://github.com/msgpack/msgpack-c/archive/refs/tags/cpp-6.1.0.tar.gz",
         ],
         build_file = "@yacl//bazel:msgpack.BUILD",
+    )
+
+def _com_github_greendow_hash_drbg():
+    maybe(
+        http_archive,
+        name = "com_github_greendow_hash_drbg",
+        sha256 = "c03a3da5742d0f0c40232817d84f21d8eed4c4af498c4dff3a51b3bcadcb3787",
+        type = "tar.gz",
+        strip_prefix = "Hash-DRBG-2411fa9d0de81c69dce2a48555c30298253db15d",
+        urls = [
+            "https://github.com/greendow/Hash-DRBG/archive/2411fa9d0de81c69dce2a48555c30298253db15d.tar.gz",
+        ],
+        build_file = "@yacl//bazel:hash_drbg.BUILD",
     )
 
 def _com_github_herumi_mcl():
