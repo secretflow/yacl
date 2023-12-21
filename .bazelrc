@@ -32,7 +32,7 @@ build:macos --host_copt=-Wa,--noexecstack
 # platform specific config
 # Bazel will automatic pick platform config since we have enable_platform_specific_config set
 build:macos --features=-supports_dynamic_linker
-build:macos --linkopt="-Wl,-no_warn_duplicate_libraries"
+build:macos --linkopt="-Wl"
 build:macos --copt=-Wno-unused-command-line-argument
 build:macos --host_copt=-Wno-unused-command-line-argument
 

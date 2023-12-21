@@ -66,6 +66,7 @@ std::shared_ptr<Context> FactoryBrpc::CreateContext(const ContextDesc& desc,
         delegate, desc.recv_timeout_ms, desc.exit_if_async_error,
         desc.retry_opts);
     channel->SetThrottleWindowSize(desc.throttle_window_size);
+    channel->SetDisableMsgSeqId(desc.disable_msg_seq_id);
     msg_loop->AddListener(rank, channel);
     channels[rank] = std::move(channel);
   }

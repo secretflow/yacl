@@ -246,7 +246,7 @@ yacl_cc_binary(
     deps = [
         ":parallel",
         "@com_github_google_benchmark//:benchmark",
-    ],
+    ] + OMP_DEPS,
 )
 
 yacl_cc_library(

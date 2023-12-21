@@ -35,7 +35,7 @@
 
 namespace yacl::crypto {
 
-inline std::string GetProviderPath() noexcept {
+inline std::string GetProviderPath() {
   // first, get the exec path
   std::filesystem::path exe_path;
 #ifndef __APPLE__

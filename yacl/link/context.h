@@ -140,6 +140,8 @@ struct ContextDesc {
 
   RetryOptions retry_opts;
 
+  bool disable_msg_seq_id = false;
+
   bool operator==(const ContextDesc& other) const {
     return (id == other.id) && (parties == other.parties);
   }

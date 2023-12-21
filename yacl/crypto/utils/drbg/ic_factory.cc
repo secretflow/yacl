@@ -11,8 +11,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #include "yacl/crypto/utils/drbg/ic_factory.h"
+
+#include <algorithm>
+#include <utility>
 
 #include "yacl/base/int128.h"
 
@@ -42,7 +44,9 @@ constexpr size_t kBatchSize = 1024;
 
 IcDrbg::IcDrbg(std::string type, bool use_yacl_es, SecParam::C secparam)
     : Drbg(use_yacl_es), type_(std::move(type)), secparam_(secparam) {
+  YACL_ENFORCE(secparam_ <= SecParam::C::k256);
   uint128_t seed = 0;
+
   // default seeded using yacl's entropy source
   auto es = EntropySourceFactory::Instance().Create("auto");
   auto out_buf = es->GetEntropy(sizeof(uint128_t));

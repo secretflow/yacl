@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <string>
 
 #include "yacl/crypto/utils/entropy_source/entropy_source.h"
 
