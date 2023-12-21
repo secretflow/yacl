@@ -141,9 +141,9 @@ EcPoint MclGroupT<Fp_, Zn_>::MulDoubleBase(const MPInt& s1, const MPInt& s2,
   }
   ps2.setMpz(scalar2);
 
-  Ec::mulVecMT(*CastAny<Ec>(ret),
-               new Ec[]{*CastAny<Ec>(GetGenerator()), *CastAny<Ec>(p2)},
-               new Fr[]{ps1, ps2}, 2, 2);
+  Ec ecs[] = {*CastAny<Ec>(GetGenerator()), *CastAny<Ec>(p2)};
+  Fr frs[] = {ps1, ps2};
+  Ec::mulVecMT(*CastAny<Ec>(ret), ecs, frs, 2, 2);
   return ret;
 }
 

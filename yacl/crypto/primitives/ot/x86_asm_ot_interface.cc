@@ -23,7 +23,7 @@
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/exception.h"
-#include "yacl/crypto/tools/random_oracle.h"
+#include "yacl/crypto/tools/ro.h"
 #include "yacl/math/gadget.h"
 
 namespace yacl::crypto {

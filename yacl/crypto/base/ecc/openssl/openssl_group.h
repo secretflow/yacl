@@ -18,19 +18,13 @@
 #include "openssl/ec.h"
 
 #include "yacl/crypto/base/ecc/group_sketch.h"
+#include "yacl/crypto/base/openssl_wrappers.h"
 
 namespace yacl::crypto::openssl {
 
-#define INTERNAL_WRAP_SSL_ECC_TYPE(TYPE, DELETER) \
-  struct TYPE##_DELETER {                         \
-   public:                                        \
-    void operator()(TYPE* x) { DELETER(x); }      \
-  };                                              \
-  using TYPE##_PTR = std::unique_ptr<TYPE, TYPE##_DELETER>;
-
-INTERNAL_WRAP_SSL_ECC_TYPE(EC_GROUP, EC_GROUP_free)
-INTERNAL_WRAP_SSL_ECC_TYPE(BN_CTX, BN_CTX_free)
-INTERNAL_WRAP_SSL_ECC_TYPE(BIGNUM, BN_free)
+using EC_GROUP_PTR = internal::TyHelper<EC_GROUP, EC_GROUP_free>;
+using BN_CTX_PTR = internal::TyHelper<BN_CTX, BN_CTX_free>;
+using BIGNUM_PTR = internal::TyHelper<BIGNUM, BN_free>;
 
 class OpensslGroup : public EcGroupSketch {
  public:

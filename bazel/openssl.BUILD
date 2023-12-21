@@ -14,59 +14,58 @@
 
 load("@yacl//bazel:yacl.bzl", "yacl_configure_make")
 
-package(default_visibility = ["//visibility:public"])
+# An openssl build file based on a snippet found in the github issue:
+# https://github.com/bazelbuild/rules_foreign_cc/issues/337
+
+# Read https://wiki.openssl.org/index.php/Compilation_and_Installation
 
 filegroup(
     name = "all_srcs",
-    srcs = glob(["**"]),
+    srcs = glob(
+        include = ["**"],
+        exclude = ["*.bazel"],
+    ),
 )
 
-# This is the value defined by --config=android_arm64
-config_setting(
-    name = "cpu_arm64_v8a",
-    values = {"cpu": "arm64-v8a"},
-    visibility = ["//visibility:private"],
-)
+CONFIGURE_OPTIONS = [
+    # fixed openssl work dir for deterministic build.
+    "--openssldir=/tmp/openssl",
+    "--libdir=lib",
+    "no-legacy",
+    "no-weak-ssl-ciphers",
+    "no-shared",
+    "no-tests",
+    "no-ui-console",
+]
+
+MAKE_TARGETS = [
+    "build_programs",
+    "install_sw",
+]
 
 yacl_configure_make(
     name = "openssl",
-    configure_command = select(
-        {
-            ":cpu_arm64_v8a": "Configure",  # Use Configure for android build
-            "//conditions:default": "config",
-        },
-    ),
-    configure_options = [
-        # fixed openssl work dir for deterministic build.
-        "--openssldir=/tmp/openssl",
-        "--libdir=lib",
-        "no-shared",
-        # https://www.openssl.org/docs/man1.1.0/man3/OpenSSL_version.html
-        # OPENSSL_ENGINES_DIR point to /tmp path randomly generated.
-        "no-engine",
-        "no-tests",
-    ] + select(
-        {
-            ":cpu_arm64_v8a": ["android-arm64"],
-            "//conditions:default": [],
-        },
-    ),
-    copts = ["-Wno-format"],
+    args = ["-j 4"],
+    configure_command = "Configure",
+    configure_in_place = True,
+    configure_options = CONFIGURE_OPTIONS,
     env = select({
-        "@bazel_tools//src/conditions:darwin": {
-            "ARFLAGS": "-static -s -o",
+        "@platforms//os:macos": {
+            "AR": "",
         },
         "//conditions:default": {
+            "MODULESDIR": "",
         },
     }),
+    lib_name = "openssl",
     lib_source = ":all_srcs",
-    linkopts = ["-ldl"],
+    out_binaries = ["openssl"],
+    # Note that for Linux builds, libssl must come before libcrypto on the linker command-line.
+    # As such, libssl must be listed before libcrypto
     out_static_libs = [
         "libssl.a",
         "libcrypto.a",
     ],
-    targets = [
-        "-s",
-        "-s install_sw",
-    ],
+    targets = MAKE_TARGETS,
+    visibility = ["//visibility:public"],
 )

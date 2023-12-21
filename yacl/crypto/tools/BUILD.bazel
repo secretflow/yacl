@@ -22,9 +22,8 @@ yacl_cc_library(
     hdrs = ["prg.h"],
     deps = [
         "//yacl/base:dynamic_bitset",
-        "//yacl/crypto/base:symmetric_crypto",
-        "//yacl/crypto/base/drbg:nist_aes_drbg",
-        "//yacl/crypto/base/drbg:sm4_drbg",
+        "//yacl/crypto/base/block_cipher:symmetric_crypto",
+        "//yacl/crypto/utils:secparam",
     ],
 )
 
@@ -37,118 +36,58 @@ yacl_cc_test(
 )
 
 yacl_cc_library(
-    name = "random_oracle",
-    hdrs = ["random_oracle.h"],
+    name = "ro",
+    hdrs = ["ro.h"],
     deps = [
         "//yacl/crypto/base/hash:hash_utils",
     ],
 )
 
 yacl_cc_test(
-    name = "random_oracle_test",
-    srcs = ["random_oracle_test.cc"],
+    name = "ro_test",
+    srcs = ["ro_test.cc"],
     deps = [
-        ":random_oracle",
+        ":ro",
         "//yacl/crypto/utils:rand",
     ],
 )
 
 yacl_cc_library(
-    name = "random_permutation",
-    srcs = ["random_permutation.cc"],
-    hdrs = ["random_permutation.h"],
+    name = "rp",
+    srcs = ["rp.cc"],
+    hdrs = ["rp.h"],
     deps = [
-        "//yacl/crypto/base:symmetric_crypto",
-        "//yacl/crypto/base/aes:aes_intrinsics",
+        "//yacl/crypto/base/block_cipher:symmetric_crypto",
     ],
 )
 
 yacl_cc_test(
-    name = "random_permutation_test",
-    srcs = ["random_permutation_test.cc"],
+    name = "rp_test",
+    srcs = ["rp_test.cc"],
     deps = [
         ":prg",
-        ":random_permutation",
-    ],
-)
-
-yacl_cc_library(
-    name = "code_interface",
-    hdrs = ["code_interface.h"],
-)
-
-yacl_cc_library(
-    name = "linear_code",
-    hdrs = ["linear_code.h"],
-    deps = [
-        ":code_interface",
-        "//yacl/crypto/tools:random_permutation",
-        "//yacl/math:gadget",
-    ] + select({
-        "@platforms//cpu:aarch64": [
-            "@com_github_dltcollab_sse2neon//:sse2neon",
-        ],
-        "//conditions:default": [],
-    }),
-)
-
-yacl_cc_test(
-    name = "linear_code_test",
-    srcs = ["linear_code_test.cc"],
-    deps = [
-        ":linear_code",
+        ":rp",
         "//yacl/crypto/utils:rand",
     ],
 )
 
 yacl_cc_library(
-    name = "silver_code",
-    srcs = ["silver_code.cc"],
-    hdrs = ["silver_code.h"],
+    name = "crhash",
+    srcs = ["crhash.cc"],
+    hdrs = ["crhash.h"],
     deps = [
-        ":code_interface",
-        "//yacl/base:block",
-        "//yacl/base:exception",
-        "//yacl/base:int128",
-    ] + select({
-        "@platforms//cpu:aarch64": [
-            "@com_github_dltcollab_sse2neon//:sse2neon",
-        ],
-        "//conditions:default": [],
-    }),
-)
-
-yacl_cc_test(
-    name = "silver_code_test",
-    srcs = ["silver_code_test.cc"],
-    deps = [
-        ":silver_code",
+        ":rp",
+        "//yacl/crypto/base/aes:aes_intrinsics",
         "//yacl/crypto/utils:rand",
     ],
 )
 
-yacl_cc_library(
-    name = "expand_accumulate_code",
-    hdrs = ["expand_accumulate_code.h"],
-    deps = [
-        ":code_interface",
-        ":linear_code",
-        "//yacl/base:block",
-        "//yacl/base:int128",
-    ] + select({
-        "@platforms//cpu:aarch64": [
-            "@com_github_dltcollab_sse2neon//:sse2neon",
-        ],
-        "//conditions:default": [],
-    }),
-)
-
 yacl_cc_test(
-    name = "expand_accumulate_code_test",
-    srcs = ["expand_accumulate_code_test.cc"],
+    name = "crhash_test",
+    srcs = ["crhash_test.cc"],
     deps = [
-        ":expand_accumulate_code",
-        "//yacl/crypto/utils:rand",
+        ":crhash",
+        ":prg",
     ],
 )
 
@@ -159,12 +98,10 @@ yacl_cc_binary(
         "benchmark.h",
     ],
     deps = [
-        ":expand_accumulate_code",
-        ":linear_code",
+        ":crhash",
         ":prg",
-        ":random_oracle",
-        ":random_permutation",
-        ":silver_code",
+        ":ro",
+        ":rp",
         "//yacl/base:aligned_vector",
         "//yacl/crypto/utils:rand",
         "@com_github_google_benchmark//:benchmark_main",

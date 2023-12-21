@@ -23,6 +23,10 @@
 #include "yacl/crypto/utils/secparam.h"
 #include "yacl/link/link.h"
 
+YACL_MODULE_DECLARE("kos_ote", SecParam::C::k128, SecParam::S::k64);
+
+namespace yacl::crypto {
+
 // KOS OT Extension Implementation (Malicious Secure)
 //
 // This implementation bases on KOS OTE, for more theoretical details, see
@@ -49,10 +53,6 @@
 // - SoftSpokenOT https://eprint.iacr.org/2022/192
 // - KOS security proof (asymptotic) https://eprint.iacr.org/2022/1371.pdf
 //
-
-namespace yacl::crypto {
-
-YACL_MODULE_DECLARE("kos_ote", SecParam::C::k128, SecParam::S::k64);
 
 void KosOtExtSend(const std::shared_ptr<link::Context>& ctx,
                   const OtRecvStore& base_ot,

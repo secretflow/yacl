@@ -22,9 +22,9 @@
 #include "yacl/crypto/primitives/ot/gywz_ote.h"
 #include "yacl/crypto/utils/secparam.h"
 
-namespace yacl::crypto {
-
 YACL_MODULE_DECLARE("ferret_ote_rn", SecParam::C::k128, SecParam::S::INF);
+
+namespace yacl::crypto {
 
 uint64_t MpCotRNHelper(uint64_t idx_num, uint64_t idx_range) {
   const auto batch_size = (idx_range + idx_num - 1) / idx_num;

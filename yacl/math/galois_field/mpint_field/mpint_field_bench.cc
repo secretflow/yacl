@@ -14,8 +14,8 @@
 
 #include "benchmark/benchmark.h"
 
+#include "yacl/math/galois_field/gf_configs.h"
 #include "yacl/math/galois_field/gf_spi.h"
-#include "yacl/math/galois_field/mpint_field/configs.h"
 #include "yacl/math/mpint/mp_int.h"
 
 using yacl::math::MPInt;
@@ -39,7 +39,8 @@ static void BM_MpfAdd(benchmark::State& state) {
   MPInt::RandomExactBits(state.range(0) - 1, &mod);
 
   auto spi = yacl::math::GaloisFieldFactory::Instance().Create(
-      "Zp", yacl::ArgLib = "mpint", yacl::math::mpf::ArgMod = mod);
+      yacl::math::kPrimeField, yacl::ArgLib = yacl::math::kMPIntLib,
+      yacl::math::ArgMod = mod);
 
   for (auto _ : state) {
     benchmark::DoNotOptimize(spi->Add(m1, m2));

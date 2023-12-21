@@ -17,20 +17,10 @@ load("//bazel:yacl.bzl", "yacl_cc_binary", "yacl_cc_library", "yacl_cc_test")
 package(default_visibility = ["//visibility:public"])
 
 yacl_cc_library(
-    name = "configs",
-    hdrs = ["configs.h"],
-    deps = [
-        "//yacl/math/mpint",
-        "//yacl/utils/spi/argument",
-    ],
-)
-
-yacl_cc_library(
     name = "mpint_field",
     srcs = ["mpint_field.cc"],
     hdrs = ["mpint_field.h"],
     deps = [
-        ":configs",
         "//yacl/math/galois_field:sketch",
     ],
     alwayslink = 1,
@@ -48,7 +38,6 @@ yacl_cc_binary(
     name = "bench",
     srcs = ["mpint_field_bench.cc"],
     deps = [
-        ":configs",
         "//yacl/math/galois_field",
         "@com_github_google_benchmark//:benchmark",
     ],

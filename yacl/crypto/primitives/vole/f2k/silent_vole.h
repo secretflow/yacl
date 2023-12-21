@@ -19,7 +19,10 @@
 #include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
 #include "yacl/crypto/primitives/ot/softspoken_ote.h"
+#include "yacl/crypto/utils/secparam.h"
 #include "yacl/link/context.h"
+
+YACL_MODULE_DECLARE("silent_vole", SecParam::C::k128, SecParam::S::INF);
 
 namespace yacl::crypto {
 
@@ -78,6 +81,7 @@ class SilentVoleSender {
   SilentVoleSender(CodeType code) {
     ss_sender_ = SoftspokenOtExtSender(2);
     codetype_ = code;
+    delta_ = MakeUint128(0, 0);  // init delta_
   }
 
   void OneTimeSetup(const std::shared_ptr<link::Context>& ctx) {

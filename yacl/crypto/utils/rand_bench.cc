@@ -1,4 +1,3 @@
-
 // Copyright 2022 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,103 +12,100 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <future>
 #include <iostream>
 #include <random>
 
 #include "benchmark/benchmark.h"
 
-#include "yacl/base/dynamic_bitset.h"
 #include "yacl/crypto/utils/rand.h"
+#include "yacl/crypto/utils/secparam.h"
 
 namespace yacl::crypto {
 
-static void BM_RandU64InSecure(benchmark::State& state) {
+static void BM_SecureRand(benchmark::State& state) {
   for (auto _ : state) {
     state.PauseTiming();
-    size_t n = state.range(0);
-    state.ResumeTiming();
-    for (size_t i = 0; i < n; i++) {
-      RandU64(false);
+    {
+      // setup input
+      size_t n = state.range(0);
+      std::vector<char> out(n);
+      auto& ctx = RandCtx::GetDefault();
+
+      // benchmark
+      state.ResumeTiming();
+      FillRand(ctx, out.data(), out.size(), false);
+      state.PauseTiming();
     }
+    state.ResumeTiming();
   }
 }
 
-static void BM_RandU64Secure(benchmark::State& state) {
+static void BM_FastRand(benchmark::State& state) {
   for (auto _ : state) {
     state.PauseTiming();
-    size_t n = state.range(0);
-    state.ResumeTiming();
-    for (size_t i = 0; i < n; i++) {
-      SecureRandU64();
+    {
+      // setup input
+      size_t n = state.range(0);
+      std::vector<char> out(n);
+      auto& ctx = RandCtx::GetDefault();
+
+      // benchmark
+      state.ResumeTiming();
+      FillRand(ctx, out.data(), out.size(), true);
+      state.PauseTiming();
     }
+    state.ResumeTiming();
   }
 }
 
-static void BM_RandU128InSecure(benchmark::State& state) {
+static void BM_IcDrbg(benchmark::State& state) {
   for (auto _ : state) {
     state.PauseTiming();
-    size_t n = state.range(0);
-    state.ResumeTiming();
-    for (size_t i = 0; i < n; i++) {
-      RandU128(false);
+    {
+      // setup input
+      size_t n = state.range(0);
+      std::vector<char> out(n);
+
+      auto drbg = DrbgFactory::Instance().Create("ic-hash-drbg");
+      drbg->SetSeed(1234);
+
+      // benchmark
+      state.ResumeTiming();
+      drbg->Fill(out.data(), out.size());
+      state.PauseTiming();
     }
-  }
-}
-
-static void BM_RandU128Secure(benchmark::State& state) {
-  for (auto _ : state) {
-    state.PauseTiming();
-    size_t n = state.range(0);
     state.ResumeTiming();
-    for (size_t i = 0; i < n; i++) {
-      SecureRandU128();
-    }
   }
 }
 
-static void BM_RandBytesInSecure(benchmark::State& state) {
-  for (auto _ : state) {
-    state.PauseTiming();
-    size_t n = state.range(0);
-    state.ResumeTiming();
-    RandBytes(n, false);
-  }
-}
+BENCHMARK(BM_SecureRand)
+    ->Unit(benchmark::kMillisecond)
+    ->Arg(1024)
+    ->Arg(5120)
+    ->Arg(10240)
+    ->Arg(20480)
+    ->Arg(40960)
+    ->Arg(81920)
+    ->Arg(1 << 24);
 
-static void BM_RandBytesSecure(benchmark::State& state) {
-  for (auto _ : state) {
-    state.PauseTiming();
-    size_t n = state.range(0);
-    state.ResumeTiming();
-    SecureRandBytes(n);
-  }
-}
+BENCHMARK(BM_FastRand)
+    ->Unit(benchmark::kMillisecond)
+    ->Arg(1024)
+    ->Arg(5120)
+    ->Arg(10240)
+    ->Arg(20480)
+    ->Arg(40960)
+    ->Arg(81920)
+    ->Arg(1 << 24);
 
-static void BM_RandBitsInSecure(benchmark::State& state) {
-  for (auto _ : state) {
-    state.PauseTiming();
-    size_t n = state.range(0);
-    state.ResumeTiming();
-    SecureRandBits<dynamic_bitset<uint128_t>>(n);
-  }
-}
-
-static void BM_RandBitsSecure(benchmark::State& state) {
-  for (auto _ : state) {
-    state.PauseTiming();
-    size_t n = state.range(0);
-    state.ResumeTiming();
-    SecureRandBits<std::vector<bool>>(n);
-  }
-}
-
-BENCHMARK(BM_RandU64InSecure)->Unit(benchmark::kMillisecond)->Arg(1 << 15);
-BENCHMARK(BM_RandU64Secure)->Unit(benchmark::kMillisecond)->Arg(1 << 15);
-BENCHMARK(BM_RandU128InSecure)->Unit(benchmark::kMillisecond)->Arg(1 << 15);
-BENCHMARK(BM_RandU128Secure)->Unit(benchmark::kMillisecond)->Arg(1 << 15);
-BENCHMARK(BM_RandBytesInSecure)->Unit(benchmark::kMillisecond)->Arg(1 << 15);
-BENCHMARK(BM_RandBytesSecure)->Unit(benchmark::kMillisecond)->Arg(1 << 15);
-BENCHMARK(BM_RandBitsInSecure)->Unit(benchmark::kMillisecond)->Arg(1 << 15);
-BENCHMARK(BM_RandBitsSecure)->Unit(benchmark::kMillisecond)->Arg(1 << 15);
-
+BENCHMARK(BM_IcDrbg)
+    ->Unit(benchmark::kMillisecond)
+    ->Arg(1024)
+    ->Arg(5120)
+    ->Arg(10240)
+    ->Arg(20480)
+    ->Arg(40960)
+    ->Arg(81920)
+    ->Arg(1 << 24);
 }  // namespace yacl::crypto

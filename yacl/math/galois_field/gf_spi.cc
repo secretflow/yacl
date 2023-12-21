@@ -14,7 +14,11 @@
 
 #include "yacl/math/galois_field/gf_spi.h"
 
+#include "yacl/math/galois_field/gf_configs.h"
+
 namespace yacl::math {
+
+DEFINE_ARG(MPInt, Mod);
 
 GaloisFieldFactory& GaloisFieldFactory::Instance() {
   static GaloisFieldFactory factory;

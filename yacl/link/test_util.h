@@ -40,7 +40,12 @@ inline std::vector<std::shared_ptr<Context>> SetupBrpcWorld(
     contexts[rank] = FactoryBrpc().CreateContext(ctx_desc, rank);
   }
 
-  auto proc = [&](size_t rank) { contexts[rank]->ConnectToMesh(); };
+  auto proc = [&](size_t rank) {
+    contexts[rank]->ConnectToMesh();
+    // If throttle_window_size is not zero, "SendAsync" will block until
+    // messages are processed
+    contexts[rank]->SetThrottleWindowSize(0);
+  };
   std::vector<std::future<void>> jobs(world_size);
   for (size_t rank = 0; rank < world_size; rank++) {
     jobs[rank] = std::async(proc, rank);

@@ -27,7 +27,7 @@
 #include "yacl/link/retry_options.h"
 #include "yacl/link/ssl_options.h"
 #include "yacl/link/transport/channel.h"
-#include "yacl/utils/hash.h"
+#include "yacl/utils/hash_combine.h"
 
 #include "yacl/link/link.pb.h"
 
@@ -139,6 +139,8 @@ struct ContextDesc {
   std::string link_type = kDefaultLinkType;
 
   RetryOptions retry_opts;
+
+  bool disable_msg_seq_id = false;
 
   bool operator==(const ContextDesc& other) const {
     return (id == other.id) && (parties == other.parties);

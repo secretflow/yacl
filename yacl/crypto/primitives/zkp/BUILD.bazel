@@ -48,7 +48,7 @@ yacl_cc_library(
     ],
     deps = [
         ":sigma_owh",
-        "//yacl/crypto/tools:random_oracle",
+        "//yacl/crypto/tools:ro",
     ],
 )
 

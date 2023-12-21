@@ -14,29 +14,27 @@
 
 #include "yacl/math/galois_field/mpint_field/mpint_field.h"
 
-#include "yacl/math/galois_field/mpint_field/configs.h"
+#include "yacl/math/galois_field/gf_configs.h"
 
 namespace yacl::math::mpf {
 
-DEFINE_ARG(MPInt, Mod);
-
-REGISTER_GF_LIBRARY(kLibName, 100, MPIntField::Check, MPIntField::Create);
+REGISTER_GF_LIBRARY(kMPIntLib, 100, MPIntField::Check, MPIntField::Create);
 
 std::unique_ptr<GaloisField> MPIntField::Create(const std::string &field_name,
                                                 const SpiArgs &args) {
-  YACL_ENFORCE(field_name == kFieldName);
+  YACL_ENFORCE(field_name == kPrimeField);
   auto mod = args.GetRequired(ArgMod);
   YACL_ENFORCE(mod.IsPrime(), "ArgMod must be a prime");
   return std::unique_ptr<MPIntField>(new MPIntField(std::move(mod)));
 }
 
 bool MPIntField::Check(const std::string &field_name, const SpiArgs &) {
-  return field_name == kFieldName;
+  return field_name == kPrimeField;
 }
 
-std::string MPIntField::GetLibraryName() const { return kLibName; }
+std::string MPIntField::GetLibraryName() const { return kMPIntLib; }
 
-std::string MPIntField::GetFieldName() const { return kFieldName; }
+std::string MPIntField::GetFieldName() const { return kPrimeField; }
 
 MPInt MPIntField::GetOrder() const { return mod_; }
 

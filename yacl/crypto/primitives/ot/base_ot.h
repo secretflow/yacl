@@ -25,9 +25,9 @@
 #include "yacl/crypto/utils/secparam.h"
 #include "yacl/link/link.h"
 
-namespace yacl::crypto {
-
 YACL_MODULE_DECLARE("base_ot", SecParam::C::k128, SecParam::S::INF);
+
+namespace yacl::crypto {
 
 using Block = uint128_t;
 

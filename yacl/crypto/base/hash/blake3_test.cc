@@ -14,6 +14,7 @@
 
 #include "yacl/crypto/base/hash/blake3.h"
 
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -105,24 +106,55 @@ TEST(Blake3HashTest, MultipleUpdates) {
             test_data_blake3.result2);
 }
 
+// Verify that blacke3 could extract different output length as needed.
+// The blow testing would set the output length from 1 byte (8-bit) to 8 * 32 =
+// 256 bytes (2048-bit).
+// Besdies, the output length would affect the security level, see
+// yacl/crypto/base/hash/blake3.h for more details.
 TEST(Blake3HashTest, CustomOutLength) {
-  for (size_t i = 0; i <= (BLAKE3_OUT_LEN + 1); i++) {
-    if ((i == 0) || (i > BLAKE3_OUT_LEN)) {
-      EXPECT_THROW(Blake3Hash blake3(i), yacl::EnforceNotMet);
-      continue;
-    }
+  for (size_t i = 0; i <= (8 * BLAKE3_OUT_LEN); i++) {
     Blake3Hash blake3(i);
 
     std::string vector1_bytes =
         absl::HexStringToBytes(test_data_blake3.vector1);
 
-    std::string std_result = test_data_blake3.result1.substr(0, 2 * i);
+    // Shorter outputs are prefixes of longer ones.
+    // reference
+    // https://github.com/BLAKE3-team/BLAKE3-specs/blob/master/blake3.pdf
+    // Section 2.6
     std::vector<uint8_t> result = blake3.Update(vector1_bytes).CumulativeHash();
+    auto cur_result = absl::BytesToHexString(
+        absl::string_view((const char*)result.data(), result.size()));
 
-    EXPECT_EQ(absl::BytesToHexString(
-                  absl::string_view((const char*)result.data(), result.size())),
-              std_result);
+    // find minimum length
+    auto len = std::min(i, static_cast<size_t>(BLAKE3_OUT_LEN));
+    EXPECT_EQ(cur_result.substr(0, 2 * len),
+              test_data_blake3.result1.substr(0, 2 * len));
   }
+}
+
+//
+// Blake3 support arbitrary output length
+// reference:
+// 1. https://en.wikipedia.org/wiki/List_of_hash_functions
+// 2. https://github.com/BLAKE3-team/BLAKE3-specs/blob/master/blake3.pdf
+// Section 2.6
+//
+TEST(Blake3HashTest, MaximumLength) {
+  size_t max_size = 1 << 25;  // 2^25 bytes, 2^28-bit
+
+  Blake3Hash blake3(max_size);
+
+  std::string vector1_bytes = absl::HexStringToBytes(test_data_blake3.vector1);
+
+  auto len = std::min(max_size, static_cast<size_t>(BLAKE3_OUT_LEN));
+
+  std::string std_result = test_data_blake3.result1.substr(0, 2 * len);
+  std::vector<uint8_t> result = blake3.Update(vector1_bytes).CumulativeHash();
+  auto cur_result = absl::BytesToHexString(
+      absl::string_view((const char*)result.data(), result.size()));
+
+  EXPECT_EQ(cur_result.substr(0, 2 * len), std_result);
 }
 
 }  // namespace yacl::crypto

@@ -46,16 +46,16 @@ class MpVoleTest : public ::testing::TestWithParam<TestParams2> {};
 TEST_P(SpVoleTest, SpVoleWork) {
   auto lctxs = link::test::SetupWorld(2);  // setup network
   const uint64_t num = GetParam().num;
-  auto cot = MockCots(math::Log2Ceil(num), RandU128());
+  auto cot = MockCots(math::Log2Ceil(num), FastRandU128());
 
   // auto delta = rot.recv.CopyChoice().data()[0];
 
   std::vector<uint128_t> v(num);
   std::vector<uint128_t> w(num);
 
-  uint128_t single_v = RandU128();
-  uint128_t single_w = RandU128();
-  uint32_t index = RandU64() % num;
+  uint128_t single_v = FastRandU128();
+  uint128_t single_w = FastRandU128();
+  uint32_t index = FastRandU64() % num;
 
   auto sender = std::async([&] {
     SpVoleSend(lctxs[0], cot.send, num, single_w, absl::MakeSpan(w));
@@ -85,7 +85,7 @@ TEST_P(MpVoleTest, MpVoleWork) {
   MpVoleParam param(index_num, num);
   param.GenIndexes();
 
-  auto cot = MockCots(param.require_ot_num_, RandU128());
+  auto cot = MockCots(param.require_ot_num_, FastRandU128());
 
   std::vector<uint128_t> s_output(num);
   std::vector<uint128_t> r_output(num);
@@ -124,7 +124,7 @@ TEST_P(MpVoleTest, MpVoleWork) {
   }
 }
 
-TEST_P(MpVoleTest, MpVole128_fixindex_Work) {
+TEST_P(MpVoleTest, MpVole128_fixed_index_Work) {
   auto lctxs = link::test::SetupWorld(2);  // setup network
   const uint64_t num = GetParam().num;
   const uint64_t index_num = GetParam().index_num;
@@ -149,7 +149,7 @@ TEST_P(MpVoleTest, MpVole128_fixindex_Work) {
 
   YACL_ENFORCE(pos == param.require_ot_num_);
 
-  auto cot = MockCots(param.require_ot_num_, RandU128(), choices);
+  auto cot = MockCots(param.require_ot_num_, FastRandU128(), choices);
 
   std::vector<uint128_t> s_output(num);
   std::vector<uint128_t> r_output(num);
@@ -158,13 +158,13 @@ TEST_P(MpVoleTest, MpVole128_fixindex_Work) {
   auto w = RandVec<uint128_t>(index_num);
 
   auto sender = std::async([&] {
-    MpVoleSend_fixindex(lctxs[0], cot.send, param, absl::MakeSpan(w),
-                        absl::MakeSpan(s_output));
+    MpVoleSend_fixed_index(lctxs[0], cot.send, param, absl::MakeSpan(w),
+                           absl::MakeSpan(s_output));
   });
 
   auto receiver = std::async([&] {
-    MpVoleRecv_fixindex(lctxs[1], cot.recv, param, absl::MakeSpan(v),
-                        absl::MakeSpan(r_output));
+    MpVoleRecv_fixed_index(lctxs[1], cot.recv, param, absl::MakeSpan(v),
+                           absl::MakeSpan(r_output));
   });
 
   sender.get();
@@ -188,7 +188,7 @@ TEST_P(MpVoleTest, MpVole128_fixindex_Work) {
   }
 }
 
-TEST_P(MpVoleTest, MpVole64_fixindex_Work) {
+TEST_P(MpVoleTest, MpVole64_fixed_index_Work) {
   auto lctxs = link::test::SetupWorld(2);  // setup network
   const uint64_t num = GetParam().num;
   const uint64_t index_num = GetParam().index_num;
@@ -213,7 +213,7 @@ TEST_P(MpVoleTest, MpVole64_fixindex_Work) {
 
   YACL_ENFORCE(pos == param.require_ot_num_);
 
-  auto cot = MockCots(param.require_ot_num_, RandU128(), choices);
+  auto cot = MockCots(param.require_ot_num_, FastRandU128(), choices);
 
   std::vector<uint64_t> s_output(num);
   std::vector<uint64_t> r_output(num);
@@ -222,13 +222,13 @@ TEST_P(MpVoleTest, MpVole64_fixindex_Work) {
   auto w = RandVec<uint64_t>(index_num);
 
   auto sender = std::async([&] {
-    MpVoleSend_fixindex(lctxs[0], cot.send, param, absl::MakeSpan(w),
-                        absl::MakeSpan(s_output));
+    MpVoleSend_fixed_index(lctxs[0], cot.send, param, absl::MakeSpan(w),
+                           absl::MakeSpan(s_output));
   });
 
   auto receiver = std::async([&] {
-    MpVoleRecv_fixindex(lctxs[1], cot.recv, param, absl::MakeSpan(v),
-                        absl::MakeSpan(r_output));
+    MpVoleRecv_fixed_index(lctxs[1], cot.recv, param, absl::MakeSpan(v),
+                           absl::MakeSpan(r_output));
   });
 
   sender.get();

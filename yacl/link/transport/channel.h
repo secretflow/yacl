@@ -217,6 +217,10 @@ class Channel : public IChannel, public std::enable_shared_from_this<Channel> {
     chunk_parallel_send_size_ = size;
   }
 
+  void SetDisableMsgSeqId(bool disable_msg_seq_id) {
+    disable_msg_seq_id_ = disable_msg_seq_id;
+  }
+
   void SendRequestWithRetry(
       const ::google::protobuf::Message& request, uint32_t timeout_override_ms,
       spdlog::level::level_enum log_level = spdlog::level::info) const;
@@ -356,6 +360,8 @@ class Channel : public IChannel, public std::enable_shared_from_this<Channel> {
   std::shared_ptr<TransportLink> link_;
 
   RetryOptions retry_options_;
+
+  bool disable_msg_seq_id_ = false;
 };
 
 // A receiver loop is a thread loop which receives messages from the world.

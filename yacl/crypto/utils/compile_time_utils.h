@@ -88,8 +88,10 @@ constexpr uint32_t crc32<static_cast<size_t>(-1)>(
   return 0xFFFFFFFF;
 }
 
+}  // namespace yacl::crypto
+
 // helper macros
-#define CT_CRC32(x) (crc32<sizeof(x) - 2>(x) ^ 0xFFFFFFFF)
+#define CT_CRC32(x) (yacl::crypto::crc32<sizeof(x) - 2>(x) ^ 0xFFFFFFFF)
 
 // ----------------------------------------
 // Compile-Time Utility: Customized Counter
@@ -132,12 +134,10 @@ constexpr constant_index<acc> counter_crumb(id, constant_index<rank>,
                           COUNTER_READ_CRUMB( \
                               TAG, 64, COUNTER_READ_CRUMB(TAG, 128, 0))))))))
 
-// counter ++
+// counter++
 #define COUNTER_INC(TAG)                                                 \
   constexpr constant_index<COUNTER_READ(TAG) + 1> counter_crumb(         \
       TAG, constant_index<(COUNTER_READ(TAG) + 1) & ~COUNTER_READ(TAG)>, \
       constant_index<(COUNTER_READ(TAG) + 1) & COUNTER_READ(TAG)>) {     \
     return {};                                                           \
   }
-
-}  // namespace yacl::crypto

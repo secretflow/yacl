@@ -48,7 +48,7 @@ using GF128 = uint128_t;
 #define DECLARE_OT2VOLE_TEST(type0, type1)                                \
   TEST_P(BaseVoleTest, Ot2Vole_##type0##x##type1##_Work) {                \
     const uint64_t vole_num = GetParam().num;                             \
-    auto delta128 = RandU128();                                           \
+    auto delta128 = FastRandU128();                                       \
     auto ot_num = vole_num * sizeof(type0) * 8;                           \
     auto cot = MockCots(ot_num, delta128);                                \
     std::vector<type0> u(vole_num);                                       \

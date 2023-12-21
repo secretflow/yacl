@@ -26,6 +26,7 @@ yacl_cc_library(
         "openssl_group.h",
     ],
     deps = [
+        "//yacl/crypto/base:openssl_wrappers",
         "//yacl/crypto/base/ecc:spi",
         "//yacl/crypto/base/hash:blake3",
         "//yacl/crypto/base/hash:ssl_hash",

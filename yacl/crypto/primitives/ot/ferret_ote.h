@@ -20,29 +20,10 @@
 #include <vector>
 
 #include "yacl/crypto/primitives/ot/ot_store.h"
+#include "yacl/crypto/utils/secparam.h"
 #include "yacl/math/gadget.h"
 #include "yacl/utils/cuckoo_index.h"
-
 namespace yacl::crypto {
-
-enum class LpnNoiseAsm { RegularNoise, UniformNoise };
-
-// For more parameter choices, see results in
-// https://eprint.iacr.org/2019/273.pdf Page 20, Table 1.
-class LpnParam {
- public:
-  uint64_t n = 10485760;  // primal lpn, security param = 128
-  uint64_t k = 452000;    // primal lpn, security param = 128
-  uint64_t t = 1280;      // primal lpn, security param = 128
-  LpnNoiseAsm noise_asm = LpnNoiseAsm::RegularNoise;
-
-  LpnParam(uint64_t n, uint64_t k, uint64_t t, LpnNoiseAsm noise_asm)
-      : n(n), k(k), t(t), noise_asm(noise_asm) {}
-
-  static LpnParam GetDefault() {
-    return {10485760, 452000, 1280, LpnNoiseAsm::RegularNoise};
-  }
-};
 
 // Ferret OT Extension Implementation
 //
@@ -63,7 +44,7 @@ class LpnParam {
 //
 // Security assumptions:
 //  > Correlation-robust hash function, for more details about its
-//  implementation, see `yacl/crypto-tools/random_permutation.h`
+//  implementation, see `yacl/crypto-tools/rp.h`
 // > Primal LPN, for more details, please see the original paper
 
 uint64_t FerretCotHelper(const LpnParam& lpn_param, uint64_t ot_num);
@@ -76,6 +57,12 @@ OtRecvStore FerretOtExtRecv(const std::shared_ptr<link::Context>& ctx,
                             const OtRecvStore& base_cot,
                             const LpnParam& lpn_param, uint64_t ot_num);
 
+//
+// --------------------------
+//         Customized
+// --------------------------
+//
+// [Warning] for cheetah only
 void FerretOtExtSend_cheetah(const std::shared_ptr<link::Context>& ctx,
                              const OtSendStore& base_cot,
                              const LpnParam& lpn_param, uint64_t ot_num,

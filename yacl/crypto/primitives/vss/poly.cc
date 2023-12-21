@@ -2,12 +2,17 @@
 
 namespace yacl::crypto {
 
+void Polynomial::RandomPolynomial(size_t threshold) {
+  MPInt zero_value;
+  MPInt::RandomLtN(this->modulus_, &zero_value);
+  CreatePolynomial(zero_value, threshold);
+}
+
 // Generate a random polynomial with the given zero value, threshold, and
 // modulus_.
-void Polynomial::CreatePolynomial(const math::MPInt& zero_value,
-                                  size_t threshold) {
+void Polynomial::CreatePolynomial(const MPInt& zero_value, size_t threshold) {
   // Create a vector to hold the polynomial coefficients.
-  std::vector<math::MPInt> coefficients(threshold);
+  std::vector<MPInt> coefficients(threshold);
 
   // Set the constant term (coefficient[0]) of the polynomial to the given
   // zero_value.
@@ -16,11 +21,11 @@ void Polynomial::CreatePolynomial(const math::MPInt& zero_value,
   // Generate random coefficients for the remaining terms of the polynomial.
   for (size_t i = 1; i < threshold; ++i) {
     // Create a variable to hold the current coefficient being generated.
-    math::MPInt coefficient_i;
+    MPInt coefficient_i;
 
     // Generate a random integer less than modulus_ and assign it to
     // coefficient_i.
-    math::MPInt::RandomLtN(this->modulus_, &coefficient_i);
+    MPInt::RandomLtN(this->modulus_, &coefficient_i);
 
     // Set the current coefficient to the generated random value.
     coefficients[i] = coefficient_i;
@@ -31,75 +36,79 @@ void Polynomial::CreatePolynomial(const math::MPInt& zero_value,
 }
 
 // Horner's method for computing the polynomial value at a given x.
-void Polynomial::EvaluatePolynomial(const math::MPInt& x,
-                                    math::MPInt& result) const {
+void Polynomial::EvaluatePolynomial(const MPInt& x, MPInt* result) const {
   // Initialize the result to the constant term (coefficient of highest degree)
   // of the polynomial.
-  if (!coeffs_.empty()) {
-    result = coeffs_.back();
-  } else {
-    // If the coefficients vector is empty, print a warning message.
-    std::cout << "coeffs_ is empty!!!" << std::endl;
-  }
+  YACL_ENFORCE(!coeffs_.empty(), "coeffs_ is empty!!!");
+  auto tmp = coeffs_.back();
 
   // Evaluate the polynomial using Horner's method.
   // Starting from the second highest degree coefficient to the constant term
   // (coefficient[0]).
   for (int i = coeffs_.size() - 2; i >= 0; --i) {
     // Create a duplicate of the given x to avoid modifying it.
-    // math::MPInt x_dup = x;
+    // MPInt x_dup = x;
 
     // Multiply the current result with the x value and update the result.
     // result = x_dup.MulMod(result, modulus_);
-    result = x.MulMod(result, modulus_);
+    tmp = x.MulMod(tmp, modulus_);
     // Add the next coefficient to the result.
-    result = result.AddMod(coeffs_[i], modulus_);
+    tmp = tmp.AddMod(coeffs_[i], modulus_);
   }
+
+  *result = tmp;
 }
 
 // Lagrange Interpolation algorithm for polynomial interpolation.
-void Polynomial::LagrangeInterpolation(std::vector<math::MPInt>& xs,
-                                       std::vector<math::MPInt>& ys,
-                                       math::MPInt& result) const {
+void Polynomial::LagrangeInterpolation(absl::Span<const MPInt> xs,
+                                       absl::Span<const MPInt> ys,
+                                       MPInt* result) const {
+  *result = LagrangeInterpolation(xs, ys, 0_mp, modulus_);
+}
+
+MPInt Polynomial::LagrangeInterpolation(absl::Span<const MPInt> xs,
+                                        absl::Span<const MPInt> ys,
+                                        const MPInt& target_x,
+                                        const MPInt& modulus) {
+  YACL_ENFORCE(xs.size() == ys.size());
   // Initialize the accumulator to store the result of the interpolation.
-  math::MPInt acc(0);
+  auto acc = 0_mp;
 
   // Loop over each element in the input points xs and interpolate the
   // polynomial.
-  for (size_t i = 0; i < xs.size(); ++i) {
-    // Initialize the numerator and denominator for Lagrange interpolation.
-    math::MPInt num(1);
-    math::MPInt denum(1);
-
-    // Compute the numerator and denominator for the current interpolation
-    // point.
-    for (size_t j = 0; j < xs.size(); ++j) {
-      if (j != i) {
-        math::MPInt xj = xs[j];
-
-        // Update the numerator by multiplying it with the current xj.
-        num = num.MulMod(xj, modulus_);
-
-        // Compute the difference between the current xj and the current xi
-        // (xs[i]).
-        math::MPInt xj_sub_xi = xj.SubMod(xs[i], modulus_);
-
-        // Update the denominator by multiplying it with the difference.
-        denum = denum.MulMod(xj_sub_xi, modulus_);
-      }
-    }
-
-    // Compute the inverse of the denominator modulo the modulus_.
-    math::MPInt denum_inv = denum.InvertMod(modulus_);
-
-    // Compute the current interpolated value and add it to the accumulator.
-    acc = ys[i]
-              .MulMod(num, modulus_)
-              .MulMod(denum_inv, modulus_)
-              .AddMod(acc, modulus_);
+  for (uint64_t i = 0; i < xs.size(); ++i) {
+    auto t = Polynomial::LagrangeComputeAtX(xs, i, ys[i], target_x, modulus);
+    acc = t.AddMod(acc, modulus);
   }
-
-  // Store the final interpolated result in the 'result' variable.
-  result = acc;
+  return acc;
 }
+
+MPInt Polynomial::LagrangeComputeAtX(absl::Span<const MPInt> xs, uint64_t index,
+                                     const MPInt& y, const MPInt& target_x,
+                                     const MPInt& modulus) {
+  YACL_ENFORCE(index < xs.size(), "X index should be < xs.size()");
+
+  auto num = 1_mp;
+  auto denum = 1_mp;
+  for (uint64_t j = 0; j < xs.size(); ++j) {
+    if (j != index) {
+      MPInt xj_sub_targetx = xs[j].SubMod(target_x, modulus);
+
+      // Update the numerator by multiplying it with the current xj.
+      num = num.MulMod(xj_sub_targetx, modulus);
+
+      // Compute the difference between the current xj and the current xi
+      // (xs[i]).
+      MPInt xj_sub_xi = xs[j].SubMod(xs[index], modulus);
+
+      // Update the denominator by multiplying it with the difference.
+      denum = denum.MulMod(xj_sub_xi, modulus);
+    }
+  }
+  // Compute the inverse of the denominator modulo the modulus_.
+  MPInt denum_inv = denum.InvertMod(modulus);
+
+  return y.MulMod(num, modulus).MulMod(denum_inv, modulus);
+}
+
 }  // namespace yacl::crypto

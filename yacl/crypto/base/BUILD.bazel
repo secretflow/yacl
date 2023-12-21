@@ -12,154 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:yacl.bzl", "AES_COPT_FLAGS", "yacl_cc_library", "yacl_cc_test")
+load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
 yacl_cc_library(
-    name = "symmetric_crypto",
-    srcs = [
-        "symmetric_crypto.cc",
-    ],
+    name = "openssl_wrappers",
     hdrs = [
-        "symmetric_crypto.h",
+        "openssl_wrappers.h",
     ],
-    copts = AES_COPT_FLAGS,
-    deps = [
-        "//yacl/base:byte_container_view",
-        "//yacl/base:exception",
-        "//yacl/base:int128",
-        "//yacl/crypto/base/aes:aes_intrinsics",
-        "@com_github_openssl_openssl//:openssl",
-        "@com_google_absl//absl/types:span",
-    ],
-)
-
-yacl_cc_test(
-    name = "symmetric_crypto_test",
-    srcs = ["symmetric_crypto_test.cc"],
-    deps = [
-        ":symmetric_crypto",
-    ],
-)
-
-yacl_cc_library(
-    name = "asymmetric_util",
-    srcs = ["asymmetric_util.cc"],
-    hdrs = ["asymmetric_util.h"],
-    deps = [
-        "//yacl/base:byte_container_view",
-        "//yacl/base:exception",
-        "//yacl/utils:scope_guard",
-        "@com_github_openssl_openssl//:openssl",
-    ],
-)
-
-yacl_cc_library(
-    name = "asymmetric_crypto",
-    hdrs = ["asymmetric_crypto.h"],
-    deps = [
-        "//yacl/base:byte_container_view",
-    ],
-)
-
-yacl_cc_library(
-    name = "asymmetric_sm2_crypto",
-    srcs = ["asymmetric_sm2_crypto.cc"],
-    hdrs = ["asymmetric_sm2_crypto.h"],
-    deps = [
-        ":asymmetric_crypto",
-        ":asymmetric_util",
-        "//yacl/base:exception",
-        "@com_github_openssl_openssl//:openssl",
-        "@com_google_absl//absl/memory",
-    ],
-)
-
-yacl_cc_test(
-    name = "asymmetric_sm2_crypto_test",
-    srcs = ["asymmetric_sm2_crypto_test.cc"],
-    deps = [
-        ":asymmetric_sm2_crypto",
-    ],
-)
-
-yacl_cc_library(
-    name = "asymmetric_rsa_crypto",
-    srcs = ["asymmetric_rsa_crypto.cc"],
-    hdrs = ["asymmetric_rsa_crypto.h"],
-    deps = [
-        ":asymmetric_crypto",
-        ":asymmetric_util",
-        "//yacl/base:exception",
-        "@com_github_openssl_openssl//:openssl",
-        "@com_google_absl//absl/memory",
-    ],
-)
-
-yacl_cc_test(
-    name = "asymmetric_rsa_crypto_test",
-    srcs = ["asymmetric_rsa_crypto_test.cc"],
-    deps = [
-        ":asymmetric_rsa_crypto",
-    ],
-)
-
-yacl_cc_library(
-    name = "signing",
-    hdrs = ["signing.h"],
-    deps = [
-        "//yacl/base:byte_container_view",
-    ],
-)
-
-yacl_cc_library(
-    name = "sm2_signing",
-    srcs = ["sm2_signing.cc"],
-    hdrs = ["sm2_signing.h"],
-    deps = [
-        ":asymmetric_util",
-        ":signing",
-        "//yacl/base:exception",
-        "@com_github_openssl_openssl//:openssl",
-        "@com_google_absl//absl/memory",
-    ],
-)
-
-yacl_cc_test(
-    name = "sm2_signing_test",
-    srcs = ["sm2_signing_test.cc"],
-    deps = [
-        ":sm2_signing",
-    ],
-)
-
-yacl_cc_library(
-    name = "rsa_signing",
-    srcs = ["rsa_signing.cc"],
-    hdrs = ["rsa_signing.h"],
-    deps = [
-        ":signing",
-        "//yacl/base:exception",
-        "//yacl/utils:scope_guard",
-        "@com_github_openssl_openssl//:openssl",
-        "@com_google_absl//absl/memory",
-    ],
-)
-
-yacl_cc_test(
-    name = "rsa_signing_test",
-    srcs = ["rsa_signing_test.cc"],
-    deps = [
-        ":asymmetric_util",
-        ":rsa_signing",
-    ],
-)
-
-yacl_cc_library(
-    name = "hmac",
-    srcs = ["hmac.cc"],
-    hdrs = ["hmac.h"],
     deps = [
         "//yacl/base:byte_container_view",
         "//yacl/base:exception",
@@ -167,55 +28,27 @@ yacl_cc_library(
         "//yacl/utils:scope_guard",
         "@com_github_openssl_openssl//:openssl",
     ],
+    alwayslink = True,
 )
 
 yacl_cc_library(
-    name = "hmac_sm3",
-    srcs = ["hmac_sm3.h"],
-    deps = [
-        ":hmac",
+    name = "key_utils",
+    srcs = ["key_utils.cc"],
+    hdrs = [
+        "key_utils.h",
     ],
-)
-
-yacl_cc_library(
-    name = "hmac_sha256",
-    srcs = ["hmac_sha256.h"],
     deps = [
-        ":hmac",
+        ":openssl_wrappers",
+        "//yacl/io/stream",
     ],
 )
 
 yacl_cc_test(
-    name = "hmac_all_test",
-    srcs = ["hmac_all_test.cc"],
+    name = "key_utils_test",
+    srcs = ["key_utils_test.cc"],
     deps = [
-        ":hmac_sha256",
-        ":hmac_sm3",
-    ],
-)
-
-yacl_cc_library(
-    name = "digital_envelope",
-    srcs = ["digital_envelope.cc"],
-    hdrs = ["digital_envelope.h"],
-    deps = [
-        ":asymmetric_rsa_crypto",
-        ":asymmetric_sm2_crypto",
-        ":hmac_sm3",
-        ":symmetric_crypto",
-        "//yacl/crypto/base/aead:gcm_crypto",
-        "//yacl/crypto/base/aead:sm4_mac",
-        "//yacl/crypto/base/hash:ssl_hash",
-        "//yacl/crypto/tools:prg",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/types:span",
-    ],
-)
-
-yacl_cc_test(
-    name = "digital_envelope_test",
-    srcs = ["digital_envelope_test.cc"],
-    deps = [
-        ":digital_envelope",
+        ":key_utils",
+        "//yacl/crypto/base/pke:asymmetric_rsa_crypto",  # for test
+        "//yacl/crypto/base/sign:rsa_signing",  # for test
     ],
 )

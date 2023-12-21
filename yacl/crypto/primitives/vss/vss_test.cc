@@ -14,10 +14,10 @@ TEST(VerifiableSecretSharingTest, TestCreateAndVerifyShares) {
   std::unique_ptr<EcGroup> ec_group = EcGroupFactory::Instance().Create("sm2");
 
   // Get the order of the elliptic curve group as the modulus
-  math::MPInt modulus = ec_group->GetOrder();
+  MPInt modulus = ec_group->GetOrder();
 
   // Define the secret to be shared
-  math::MPInt original_secret("1234567890");
+  MPInt original_secret("1234567890");
 
   // Create a VerifiableSecretSharing instance with parameters (total_shares,
   // required_shares, modulus)
@@ -40,7 +40,7 @@ TEST(VerifiableSecretSharingTest, TestCreateAndVerifyShares) {
   }
 
   // Reconstruct the secret using the shares and the polynomial
-  math::MPInt reconstructed_secret = vss.RecoverSecret(shares);
+  MPInt reconstructed_secret = vss.RecoverSecret(shares);
   // Check if the reconstructed secret matches the original secret
   EXPECT_EQ(reconstructed_secret, original_secret);
 

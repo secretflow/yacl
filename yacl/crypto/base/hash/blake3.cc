@@ -25,10 +25,11 @@ Blake3Hash::Blake3Hash()
   Init();
 }
 
+// Blake3 caller can extract as much output as needed, reference:
+// https://github.com/BLAKE3-team/BLAKE3-specs/blob/master/blake3.pdf
+// Section 2.6
 Blake3Hash::Blake3Hash(size_t output_len)
     : hash_algo_(HashAlgorithm::BLAKE3), digest_size_(output_len) {
-  YACL_ENFORCE((output_len > 0) && (output_len <= BLAKE3_OUT_LEN),
-               "blake3 hash out length shoud be in (0, {}]", BLAKE3_OUT_LEN);
   Init();
 }
 

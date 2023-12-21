@@ -21,14 +21,14 @@
 
 #include "yacl/crypto/primitives/ot/ferret_ote.h"
 #include "yacl/crypto/primitives/ot/gywz_ote.h"
-#include "yacl/crypto/tools/random_permutation.h"
+#include "yacl/crypto/tools/rp.h"
 #include "yacl/crypto/utils/secparam.h"
 #include "yacl/math/gadget.h"
 #include "yacl/utils/cuckoo_index.h"
 
-namespace yacl::crypto {
-
 YACL_MODULE_DECLARE("ferret_ote_un", SecParam::C::k128, SecParam::S::INF);
+
+namespace yacl::crypto {
 
 using FerretSimpleMap = std::vector<std::unordered_map<uint64_t, uint64_t>>;
 
@@ -36,7 +36,7 @@ constexpr auto kFerretRpType = SymmetricCrypto::CryptoType::AES128_ECB;
 constexpr auto kFerretRpSeed = 0x12345678;  // FIXME: use different seeds
 constexpr auto kFerretCuckooHashNum = 3;
 constexpr auto kFerretCuckooStashNum = 0;
-const auto RP = RandomPerm(kFerretRpType, kFerretRpSeed);  // for cuckoo
+const auto kRP = RP(kFerretRpType, kFerretRpSeed);  // for cuckoo
 
 // create simple map
 std::unique_ptr<FerretSimpleMap> MakeSimpleMap(
@@ -50,7 +50,7 @@ std::unique_ptr<FerretSimpleMap> MakeSimpleMap(
   std::iota(idx_blocks.begin(), idx_blocks.end(), 0);
 
   // random permutation
-  auto idxes_h = RP.Gen(idx_blocks);
+  auto idxes_h = kRP.Gen(idx_blocks);
 
   // for each index (value), calculate its cuckoo bin_idx
   for (uint64_t i = 0; i < n; ++i) {
@@ -147,7 +147,7 @@ void MpCotUNRecv(const std::shared_ptr<link::Context>& ctx,
 
   // random permutation
   AlignedVector<uint128_t> idx_blocks(idxes.begin(), idxes.end());
-  auto idxes_h = RP.Gen(idx_blocks);
+  auto idxes_h = kRP.Gen(idx_blocks);
 
   CuckooIndex cuckoo_index(cuckoo_option);
   cuckoo_index.Insert(absl::MakeSpan(idxes_h));

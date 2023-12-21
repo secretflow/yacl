@@ -16,6 +16,7 @@
 
 #include <cstdint>
 #include <string>
+#include <utility>
 
 #include "fmt/color.h"
 
@@ -24,7 +25,9 @@
 
 namespace yacl::crypto {
 
+// ------------------
 // Security parameter
+// ------------------
 class SecParam {
  public:
   // Computational Security Parameter: A number associated with the amount of
@@ -72,22 +75,7 @@ class SecParam {
   };
 
   // convert to int
-  static constexpr uint32_t MakeInt(const C c) {
-    switch (c) {
-      case C::k112:
-        return 112;
-      case C::k128:
-        return 128;
-      case C::k192:
-        return 192;
-      case C::k256:
-        return 256;
-      case C::INF:
-        return UINT32_MAX;
-      default:
-        return 0;  // this should never be called
-    }
-  }
+  static constexpr uint32_t MakeInt(C c);
 
   // Statistical Security Parameter: (from wikipedia) A measure of the
   // probability with which an adversary can break the scheme. Statistial
@@ -102,26 +90,75 @@ class SecParam {
     INF       // the adversary can not statistically guess out anything (as
               // contrary to "almost anything")
   };
-
   // convert s to int
-  static constexpr uint32_t MakeInt(const S s) {
-    switch (s) {
-      case S::k30:
-        return 30;
-      case S::k40:
-        return 40;
-      case S::k64:
-        return 64;
-      case S::INF:
-        return UINT32_MAX;
-      default:
-        return 0;  // this should never be called
-    }
-  }
+  static constexpr uint32_t MakeInt(S s);
 
   static C glob_c;  // global computational security paramter
   static S glob_s;  // global statistical security paramter
 };
+
+// -----------------------
+// Function implementaions
+// -----------------------
+constexpr uint32_t SecParam::MakeInt(SecParam::C c) {
+  switch (c) {
+    case SecParam::C::k112:
+      return 112;
+    case SecParam::C::k128:
+      return 128;
+    case SecParam::C::k192:
+      return 192;
+    case SecParam::C::k256:
+      return 256;
+    case SecParam::C::INF:
+      return UINT32_MAX;
+    default:
+      return 0;  // this should never be called
+  }
+}
+
+constexpr uint32_t SecParam::MakeInt(SecParam::S s) {
+  switch (s) {
+    case SecParam::S::k30:
+      return 30;
+    case SecParam::S::k40:
+      return 40;
+    case SecParam::S::k64:
+      return 64;
+    case SecParam::S::INF:
+      return UINT32_MAX;
+    default:
+      return 0;  // this should never be called
+  }
+}
+
+// --------------------------------
+// LPN Parameter (security related)
+// --------------------------------
+
+enum class LpnNoiseAsm { RegularNoise, UniformNoise };
+
+// For more parameter choices, see results in
+// https://eprint.iacr.org/2019/273.pdf Page 20, Table 1.
+class LpnParam {
+ public:
+  uint64_t n = 10485760;  // primal lpn, security param = 128
+  uint64_t k = 452000;    // primal lpn, security param = 128
+  uint64_t t = 1280;      // primal lpn, security param = 128
+  LpnNoiseAsm noise_asm = LpnNoiseAsm::RegularNoise;
+
+  LpnParam(uint64_t n, uint64_t k, uint64_t t, LpnNoiseAsm noise_asm)
+      : n(n), k(k), t(t), noise_asm(noise_asm) {}
+
+  static LpnParam GetDefault() {
+    return {10485760, 452000, 1280, LpnNoiseAsm::RegularNoise};
+  }
+};
+}  // namespace yacl::crypto
+
+// ------------------
+//    Yacl module
+// ------------------
 
 // Yacl module's security parameter setup
 //
@@ -134,7 +171,7 @@ class SecParam {
 //  +----------+.          +------------+
 //                         dec: <INF, 30>                         <128, 30>
 //                               |                            [APPLICATION]
-// ************************************************************************
+// ========================================================================
 //                               |                                   [YACL]
 //                               V                                <128, 40>
 //  +----------+ depends on +----------+
@@ -144,6 +181,7 @@ class SecParam {
 //
 template <uint32_t hash>
 struct YaclModule {
+  using SecParam = yacl::crypto::SecParam;
   [[maybe_unused]] static constexpr std::string_view name = "unknown";
   [[maybe_unused]] static const SecParam::C c = SecParam::C::UNKNOWN;
   [[maybe_unused]] static const SecParam::S s = SecParam::S::UNKNOWN;
@@ -152,9 +190,7 @@ struct YaclModule {
 // Yacl global registry (which is a compile-time map)
 // this map only stores the unique module name hash (supposedly), and a
 // compile-time interal counter which counts the number of registerd modules
-namespace internal {
 struct YaclModuleCtr {};  // compile-time counter initialization (start at 0)
-}  // namespace internal
 
 template <uint32_t counter>
 struct YaclRegistry {
@@ -164,6 +200,8 @@ struct YaclRegistry {
 // Yacl module handler, which helps to print all registed module infos
 class YaclModuleHandler {
  public:
+  using SecParam = yacl::crypto::SecParam;
+
   template <uint32_t N>
   static void PrintAll() {
     fmt::print(fg(fmt::color::green), "{:-^50}\n", "module summary");
@@ -182,11 +220,18 @@ class YaclModuleHandler {
 
  private:
   template <uint32_t N>
-  static void iterator(bool print = false) {
+  static void iterator(bool print) {
     using Module = YaclModule<YaclRegistry<N>::hash>;
     if (print) {
-      fmt::print("{0:<10}\t{1:<5}\t{2:<5}\n", Module::name,
-                 SecParam::MakeInt(Module::c), SecParam::MakeInt(Module::s));
+      std::string c_str = fmt::format("{}", SecParam::MakeInt(Module::c));
+      std::string s_str = fmt::format("{}", SecParam::MakeInt(Module::s));
+      if (SecParam::MakeInt(Module::c) == UINT32_MAX) {
+        c_str = "-";
+      }
+      if (SecParam::MakeInt(Module::s) == UINT32_MAX) {
+        s_str = "-";
+      }
+      fmt::print("{0:<10}\t{1:<5}\t{2:<5}\n", Module::name, c_str, s_str);
     }
     SecParam::glob_c =
         SecParam::glob_c > Module::c ? Module::c : SecParam::glob_c;
@@ -197,7 +242,7 @@ class YaclModuleHandler {
   template <uint32_t... uints>
   static void interate_helper(
       [[maybe_unused]] std::integer_sequence<uint32_t, uints...> int_seq,
-      bool print = false) {
+      [[maybe_unused]] bool print = false) {
     ((iterator<uints>(print)), ...);
   }
 };
@@ -215,47 +260,46 @@ class YaclModuleHandler {
 // ----------------
 // YACL_MODULE_DECLARE_SECPARAM("iknp_ote", SecParam::C::k128, SecParam::S::INF)
 //
-#define YACL_MODULE_DECLARE(NAME, COMP, STAT)                  \
-  template <>                                                  \
-  struct YaclModule<CT_CRC32(NAME)> {                          \
-    static constexpr std::string_view name = NAME;             \
-    static constexpr SecParam::C c = (COMP);                   \
-    static constexpr SecParam::S s = (STAT);                   \
-  };                                                           \
-                                                               \
-  template <>                                                  \
-  struct YaclRegistry<COUNTER_READ(internal::YaclModuleCtr)> { \
-    static constexpr uint32_t hash = CT_CRC32(NAME);           \
-  };                                                           \
-  COUNTER_INC(internal::YaclModuleCtr);
+#define YACL_MODULE_DECLARE(NAME, COMP, STAT)        \
+  template <>                                        \
+  struct YaclModule<CT_CRC32(NAME)> {                \
+    using SecParam = yacl::crypto::SecParam;         \
+    static constexpr std::string_view name = NAME;   \
+    static constexpr SecParam::C c = (COMP);         \
+    static constexpr SecParam::S s = (STAT);         \
+  };                                                 \
+                                                     \
+  template <>                                        \
+  struct YaclRegistry<COUNTER_READ(YaclModuleCtr)> { \
+    static constexpr uint32_t hash = CT_CRC32(NAME); \
+  };                                                 \
+  COUNTER_INC(YaclModuleCtr);
 
 // Get module's security parameter
 #define YACL_MODULE_SECPARAM_C(NAME) YaclModule<CT_CRC32(NAME)>::c
 #define YACL_MODULE_SECPARAM_S(NAME) YaclModule<CT_CRC32(NAME)>::s
 #define YACL_MODULE_SECPARAM_C_UINT(NAME) \
-  SecParam::MakeInt(YaclModule<CT_CRC32(NAME)>::c)
+  SecParam::MakeInt(YACL_MODULE_SECPARAM_C(NAME))
 #define YACL_MODULE_SECPARAM_S_UINT(NAME) \
-  SecParam::MakeInt(YaclModule<CT_CRC32(NAME)>::s)
+  SecParam::MakeInt(YACL_MODULE_SECPARAM_S(NAME))
+
+// Get yacl's global security parameter
+#define YACL_GLOB_SECPARAM_C \
+  YaclModuleHandler::GetGlob<COUNTER_READ(YaclModuleCtr)>().first
+#define YACL_GLOB_SECPARAM_S \
+  YaclModuleHandler::GetGlob<COUNTER_READ(YaclModuleCtr)>().second
+#define YACL_GLOB_SECPARAM_C_UINT SecParam::MakeInt(YACL_GLOB_SECPARAM_C)
+#define YACL_GLOB_SECPARAM_S_UINT SecParam::MakeInt(YACL_GLOB_SECPARAM_S)
 
 // Print all module summary
 #define YACL_PRINT_MODULE_SUMMARY() \
-  YaclModuleHandler::PrintAll<COUNTER_READ(internal::YaclModuleCtr)>();
+  YaclModuleHandler::PrintAll<COUNTER_READ(YaclModuleCtr)>();
 
 // Enforce Yacl security level, fails when condition not met
-#define YACL_ENFORCE_SECPARAM(COMP, STAT)                                     \
-  YACL_ENFORCE(                                                               \
-      YaclModuleHandler::GetGlob<COUNTER_READ(internal::YaclModuleCtr)>()     \
-                  .first >= COMP &&                                           \
-          YaclModuleHandler::GetGlob<COUNTER_READ(internal::YaclModuleCtr)>() \
-                  .second >= STAT,                                            \
-      "Enforce SecurityParameter failed, expected c>{}, s>{}, but yacl got "  \
-      "global (c, s) = ({}, {})",                                             \
-      SecParam::MakeInt(COMP), SecParam::MakeInt(STAT),                       \
-      SecParam::MakeInt(                                                      \
-          YaclModuleHandler::GetGlob<COUNTER_READ(internal::YaclModuleCtr)>() \
-              .first),                                                        \
-      SecParam::MakeInt(                                                      \
-          YaclModuleHandler::GetGlob<COUNTER_READ(internal::YaclModuleCtr)>() \
-              .second));
-
-}  // namespace yacl::crypto
+#define YACL_ENFORCE_SECPARAM(COMP, STAT)                                    \
+  YACL_ENFORCE(                                                              \
+      YACL_GLOB_SECPARAM_C >= (COMP) && YACL_GLOB_SECPARAM_S >= (STAT),      \
+      "Enforce SecurityParameter failed, expected c>{}, s>{}, but yacl got " \
+      "global (c, s) = ({}, {})",                                            \
+      SecParam::MakeInt(COMP), SecParam::MakeInt(STAT),                      \
+      YACL_GLOB_SECPARAM_C_UINT, YACL_GLOB_SECPARAM_S_UINT);

@@ -14,10 +14,12 @@
 
 #pragma once
 
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <memory>
 #include <mutex>
+#include <string>
 #include <unordered_map>
 
 #include "yacl/link/transport/channel.h"
@@ -34,7 +36,12 @@ class ReceiverLoopMem final : public IReceiverLoop {
 
 class ChannelMem final : public IChannel {
  public:
-  ~ChannelMem() override = default;
+  ~ChannelMem() override {
+    if (!finished_) {
+      // WaitLinkTaskFinish should be called if you want to keep sync with
+      // peers.
+    }
+  }
 
   ChannelMem(size_t self_rank, size_t peer_rank, size_t timeout_ms = 20000U);
 
@@ -71,8 +78,9 @@ class ChannelMem final : public IChannel {
 
   uint64_t GetRecvTimeout() const final { return recv_timeout_ms_.count(); }
 
+  void WaitLinkTaskFinish() final;
+
   // do nothing
-  void WaitLinkTaskFinish() final {}
   void SetThrottleWindowSize(size_t) final {}
   void TestSend(uint32_t /*timeout*/) final {}
   void TestRecv() final {}
@@ -90,6 +98,9 @@ class ChannelMem final : public IChannel {
 
   std::chrono::milliseconds recv_timeout_ms_ =
       3UL * 60 * std::chrono::milliseconds(1000);
+
+  std::atomic<bool> finished_{true};
+  inline static const std::string kFinKey = "_fin_";
 };
 
 }  // namespace yacl::link::transport

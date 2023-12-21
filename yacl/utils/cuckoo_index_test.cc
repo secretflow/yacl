@@ -18,7 +18,6 @@
 
 #include "gtest/gtest.h"
 
-#include "yacl/crypto/base/symmetric_crypto.h"
 #include "yacl/crypto/utils/rand.h"
 
 namespace yacl {

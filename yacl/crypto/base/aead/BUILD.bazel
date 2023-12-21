@@ -21,12 +21,8 @@ yacl_cc_library(
     srcs = ["gcm_crypto.cc"],
     hdrs = ["gcm_crypto.h"],
     deps = [
-        "//yacl/base:byte_container_view",
-        "//yacl/base:exception",
         "//yacl/base:int128",
-        "//yacl/utils:scope_guard",
-        "@com_github_openssl_openssl//:openssl",
-        "@com_google_absl//absl/types:span",
+        "//yacl/crypto/base:key_utils",
     ],
 )
 
@@ -43,9 +39,9 @@ yacl_cc_library(
     srcs = ["sm4_mac.cc"],
     hdrs = ["sm4_mac.h"],
     deps = [
-        "//yacl/crypto/base:hmac_sm3",
-        "//yacl/crypto/base:symmetric_crypto",
+        "//yacl/crypto/base/block_cipher:symmetric_crypto",
         "//yacl/crypto/base/hash:ssl_hash",
+        "//yacl/crypto/base/hmac:hmac_sm3",
     ],
 )
 
