@@ -14,7 +14,7 @@
 
 #include "yacl/crypto/base/sign/rsa_signing.h"
 
-#include "yacl/crypto/base/hash/hash_utils.h"
+#include <vector>
 
 namespace yacl::crypto {
 
@@ -33,28 +33,28 @@ std::vector<uint8_t> RsaSigner::Sign(ByteContainerView message) const {
   YACL_ENFORCE(ctx != nullptr);
 
   // init context
-  YACL_ENFORCE(EVP_PKEY_sign_init(ctx.get()) > 0);
+  OSSL_RET_1(EVP_PKEY_sign_init(ctx.get()));
 
   // make sure to use OAEP_PADDING
-  YACL_ENFORCE(EVP_PKEY_CTX_set_rsa_padding(ctx.get(), kRsaPadding) > 0);
+  OSSL_RET_1(EVP_PKEY_CTX_set_rsa_padding(ctx.get(), kRsaPadding));
 
   // use sha256
   // EVP_PKEY_CTX_set_signature_md() sets the message digest type used in a
   // signature. It can be used in the RSA, DSA and ECDSA algorithms.
-  YACL_ENFORCE(EVP_PKEY_CTX_set_signature_md(ctx.get(), EVP_sha256()) > 0);
+  OSSL_RET_1(EVP_PKEY_CTX_set_signature_md(ctx.get(), EVP_sha256()));
 
   // sha256 on the message
   auto md = Sha256(message);
 
   // first, get output length
   size_t outlen = 0;
-  YACL_ENFORCE(EVP_PKEY_sign(ctx.get(), /* empty input */ nullptr, &outlen,
-                             md.data(), md.size()) > 0);
+  OSSL_RET_1(EVP_PKEY_sign(ctx.get(), /* empty input */ nullptr, &outlen,
+                           md.data(), md.size()));
 
   // then sign
   std::vector<uint8_t> out(outlen);
-  YACL_ENFORCE(
-      EVP_PKEY_sign(ctx.get(), out.data(), &outlen, md.data(), md.size()) > 0);
+  OSSL_RET_1(
+      EVP_PKEY_sign(ctx.get(), out.data(), &outlen, md.data(), md.size()));
 
   return out;
 }
@@ -67,15 +67,15 @@ bool RsaVerifier::Verify(ByteContainerView message,
   YACL_ENFORCE(ctx != nullptr);
 
   // init context
-  YACL_ENFORCE(EVP_PKEY_verify_init(ctx.get()) > 0);
+  OSSL_RET_1(EVP_PKEY_verify_init(ctx.get()));
 
   // make sure to use OAEP_PADDING
-  YACL_ENFORCE(EVP_PKEY_CTX_set_rsa_padding(ctx.get(), kRsaPadding) > 0);
+  OSSL_RET_1(EVP_PKEY_CTX_set_rsa_padding(ctx.get(), kRsaPadding));
 
   // use sha256
   // EVP_PKEY_CTX_set_signature_md() sets the message digest type used in a
   // signature. It can be used in the RSA, DSA and ECDSA algorithms.
-  YACL_ENFORCE(EVP_PKEY_CTX_set_signature_md(ctx.get(), EVP_sha256()) > 0);
+  OSSL_RET_1(EVP_PKEY_CTX_set_signature_md(ctx.get(), EVP_sha256()));
 
   // sha256 on the message
   auto md = Sha256(message);

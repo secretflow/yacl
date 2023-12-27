@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "openssl/evp.h"
+#include <vector>
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/crypto/base/hash/hash_interface.h"

@@ -14,13 +14,20 @@
 
 #pragma once
 
-#include "yacl/crypto/primitives/ot/ferret_ote.h"
 #include "yacl/crypto/primitives/ot/ot_store.h"
-#include "yacl/crypto/primitives/ot/softspoken_ote.h"
-#include "yacl/crypto/utils/rand.h"
 #include "yacl/crypto/utils/secparam.h"
 #include "yacl/math/gadget.h"
 
+/* submodules */
+#include "yacl/crypto/primitives/ot/ferret_ote.h"
+#include "yacl/crypto/primitives/ot/gywz_ote.h"
+#include "yacl/crypto/primitives/ot/sgrr_ote.h"
+#include "yacl/crypto/primitives/ot/softspoken_ote.h"
+#include "yacl/crypto/tools/crhash.h"
+#include "yacl/crypto/tools/rp.h"
+#include "yacl/crypto/utils/rand.h"
+
+/* security parameter declaration */
 YACL_MODULE_DECLARE("sparse_vole", SecParam::C::INF, SecParam::S::INF);
 
 namespace yacl::crypto {

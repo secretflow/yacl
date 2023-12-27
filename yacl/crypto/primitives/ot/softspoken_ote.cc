@@ -16,17 +16,14 @@
 
 #include <sys/socket.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 
 #include "yacl/base/aligned_vector.h"
-#include "yacl/base/dynamic_bitset.h"
-#include "yacl/base/int128.h"
-#include "yacl/crypto/primitives/ot/base_ot.h"
-#include "yacl/crypto/tools/crhash.h"
-#include "yacl/crypto/tools/prg.h"
-#include "yacl/crypto/utils/rand.h"
+#include "yacl/base/byte_container_view.h"
 #include "yacl/math/f2k/f2k.h"
+#include "yacl/utils/matrix_utils.h"
 #include "yacl/utils/serialize.h"
 
 #ifndef __aarch64__
@@ -41,15 +38,6 @@
 
 #include <array>
 #include <vector>
-
-#include "ot_store.h"
-
-#include "yacl/base/byte_container_view.h"
-#include "yacl/base/exception.h"
-#include "yacl/base/int128.h"
-#include "yacl/crypto/primitives/ot/sgrr_ote.h"
-#include "yacl/crypto/tools/rp.h"
-#include "yacl/utils/matrix_utils.h"
 
 namespace yacl::crypto {
 
@@ -254,7 +242,7 @@ void SoftspokenOtExtSender::OneTimeSetup(
     const uint64_t range_limit = static_cast<uint64_t>(1) << k_limit;
     // i-th OT instances
     auto sub_ot = dup_base_ot.NextSlice(k_limit);
-    // TODO: [low efficiency] It would copy dynamic_bitset<uint128_t>.
+    // TODO(@wenfan): [low efficiency] It would copy dynamic_bitset<uint128_t>.
     // punctured index for i-th pprf
     punctured_idx_[i] = sub_ot.CopyChoice().data()[0];
     // punctured leaves for the i-th pprf

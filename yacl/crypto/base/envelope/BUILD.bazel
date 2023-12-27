@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:yacl.bzl", "AES_COPT_FLAGS", "yacl_cc_library", "yacl_cc_test")
+load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -28,7 +28,7 @@ yacl_cc_library(
         "//yacl/crypto/base/hmac:hmac_sm3",
         "//yacl/crypto/base/pke:asymmetric_rsa_crypto",
         "//yacl/crypto/base/pke:asymmetric_sm2_crypto",
-        "//yacl/crypto/tools:prg",
+        "//yacl/crypto/utils:rand",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
     ],

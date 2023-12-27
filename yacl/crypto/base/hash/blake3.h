@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <vector>
+
 #include "c/blake3.h"
 
 #include "yacl/base/byte_container_view.h"

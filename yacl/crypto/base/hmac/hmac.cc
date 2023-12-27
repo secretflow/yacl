@@ -32,8 +32,8 @@ Hmac::Hmac(HashAlgorithm hash_algo, ByteContainerView key)
       "digest", const_cast<char*>(ToString(hash_algo)),
       /* the length of previous param is determined using strlen() */ 0);
   params[1] = OSSL_PARAM_construct_end();
-  YACL_ENFORCE(EVP_MAC_init(ctx_.get(), key_.data(), key_.size(),
-                            /* params */ params.data()) > 0);
+  OSSL_RET_1(EVP_MAC_init(ctx_.get(), key_.data(), key_.size(),
+                          /* params */ params.data()));
 }
 
 HashAlgorithm Hmac::GetHashAlgorithm() const { return hash_algo_; }
@@ -44,14 +44,14 @@ Hmac& Hmac::Reset() {
   YACL_ENFORCE(params != nullptr);
 
   // re-init the mac context
-  YACL_ENFORCE(EVP_MAC_init(ctx_.get(), key_.data(), key_.size(),
-                            /* params */ params) > 0);
+  OSSL_RET_1(EVP_MAC_init(ctx_.get(), key_.data(), key_.size(),
+                          /* params */ params));
   return *this;
 }
 
 Hmac& Hmac::Update(ByteContainerView data) {
   YACL_ENFORCE(ctx_ != nullptr);
-  YACL_ENFORCE(EVP_MAC_update(ctx_.get(), data.data(), data.size()) > 0);
+  OSSL_RET_1(EVP_MAC_update(ctx_.get(), data.data(), data.size()));
   return *this;
 }
 
@@ -65,12 +65,11 @@ std::vector<uint8_t> Hmac::CumulativeMac() const {
 
   // get the outptut size
   size_t outlen = 0;
-  YACL_ENFORCE(EVP_MAC_final(ctx_copy.get(), nullptr, &outlen, 0) > 0);
+  OSSL_RET_1(EVP_MAC_final(ctx_copy.get(), nullptr, &outlen, 0));
 
   // get the final output
   std::vector<uint8_t> mac(outlen);
-  YACL_ENFORCE(EVP_MAC_final(ctx_copy.get(), mac.data(), &outlen, mac.size()) >
-               0);
+  OSSL_RET_1(EVP_MAC_final(ctx_copy.get(), mac.data(), &outlen, mac.size()));
   mac.resize(outlen);  // this is necessary
 
   return mac;

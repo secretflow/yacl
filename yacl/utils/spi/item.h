@@ -17,6 +17,7 @@
 #include <any>
 #include <atomic>
 #include <cstdint>
+#include <utility>
 #include <vector>
 
 #include "absl/types/span.h"
@@ -262,7 +263,7 @@ class Item {
 
   OperandType operator,(const Item& other) const {
     return static_cast<OperandType>(((meta_ & 1) << 1) | (other.meta_ & 1));
-  };
+  }
 
   // operations only for array
   template <typename T>

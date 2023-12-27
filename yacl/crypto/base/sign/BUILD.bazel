@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:yacl.bzl", "AES_COPT_FLAGS", "yacl_cc_library", "yacl_cc_test")
+load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -32,6 +32,7 @@ yacl_cc_library(
         ":signing",
         "//yacl/crypto/base:key_utils",
         "//yacl/crypto/base/hash:hash_utils",
+        "//yacl/crypto/utils:secparam",
     ],
 )
 
@@ -51,6 +52,7 @@ yacl_cc_library(
         ":signing",
         "//yacl/crypto/base:key_utils",
         "//yacl/crypto/base/hash:hash_utils",
+        "//yacl/crypto/utils:secparam",
     ],
 )
 

@@ -17,8 +17,6 @@
 #include <algorithm>
 #include <cstdint>
 
-#include "yacl/crypto/base/block_cipher/symmetric_crypto.h"
-
 namespace yacl::crypto {
 
 using Ctype = SymmetricCrypto::CryptoType;

@@ -17,7 +17,7 @@
 #include "fmt/ranges.h"
 #include "gtest/gtest.h"
 
-#include "yacl/crypto/base/ecc/pairing_spi.h"
+#include "yacl/crypto/base/pairing/pairing_spi.h"
 #include "yacl/utils/parallel.h"
 
 namespace yacl::crypto {
@@ -25,14 +25,15 @@ namespace yacl::crypto {
 class PairingCurveTest : public ::testing::TestWithParam<std::string> {
  protected:
   std::unique_ptr<PairingGroup> pairing_group_;
-  std::shared_ptr<Field> gt_field_;
+  std::shared_ptr<GroupTarget> gt_;
 
   void RunAllTests() {
     fmt::print("Begin to test curve {} from {} lib\n",
                pairing_group_->GetPairingName(),
                pairing_group_->GetLibraryName());
 
-    for (const auto &ec : {pairing_group_->GetG1(), pairing_group_->GetG2()}) {
+    for (const auto &ec :
+         {pairing_group_->GetGroup1(), pairing_group_->GetGroup2()}) {
       TestArithmeticWorks(ec);
       TestMulIsAdd(ec);
       TestSerializeWorks(ec);
@@ -250,8 +251,8 @@ class PairingCurveTest : public ::testing::TestWithParam<std::string> {
 
   void TestPairingAlgo() {
     // GIVEN
-    auto g1 = pairing_group_->GetG1()->GetGenerator();
-    auto g2 = pairing_group_->GetG2()->GetGenerator();
+    auto g1 = pairing_group_->GetGroup1()->GetGenerator();
+    auto g2 = pairing_group_->GetGroup2()->GetGenerator();
 
     // WHEN
     auto field_g = pairing_group_->Pairing(g1, g2);
@@ -259,23 +260,23 @@ class PairingCurveTest : public ::testing::TestWithParam<std::string> {
 
     // THEN
     // Test GT group order
-    ASSERT_TRUE(gt_field_->IsOne(gt_field_->Pow(field_g, order)));
+    ASSERT_TRUE((bool)gt_->IsIdentityOne(gt_->Pow(field_g, order)));
     // Test Pairing
     for (int i = 0; i < 10; i++) {
       MPInt x;
       MPInt::RandomLtN(order, &x);
       // field_g^x = e(g1, g2)^x
-      auto ex = gt_field_->Pow(field_g, x);
+      auto ex = gt_->Pow(field_g, x);
       // g1 * x
-      auto g1x = pairing_group_->GetG1()->MulBase(x);
+      auto g1x = pairing_group_->GetGroup1()->MulBase(x);
       // g2 * x
-      auto g2x = pairing_group_->GetG2()->MulBase(x);
+      auto g2x = pairing_group_->GetGroup2()->MulBase(x);
       // e1 = e(g1^x, g2) = e(g1, g2)^x = ex
       auto e1 = pairing_group_->Pairing(g1x, g2);
-      ASSERT_TRUE(gt_field_->Equal(e1, ex));
+      ASSERT_TRUE((bool)gt_->Equal(e1, ex));
       // e1 = e(g1, g2^x) = e(g1, g2)^x = ex
       auto e2 = pairing_group_->Pairing(g1, g2x);
-      ASSERT_TRUE(gt_field_->Equal(e2, ex));
+      ASSERT_TRUE((bool)gt_->Equal(e2, ex));
     }
 
     // Test Pairing = Miller + FinalExp
@@ -283,14 +284,14 @@ class PairingCurveTest : public ::testing::TestWithParam<std::string> {
       MPInt x;
       MPInt::RandomLtN(order, &x);
       // g1 * x
-      auto g1x = pairing_group_->GetG1()->MulBase(x);
+      auto g1x = pairing_group_->GetGroup1()->MulBase(x);
       // g2 * x
-      auto g2x = pairing_group_->GetG2()->MulBase(x);
+      auto g2x = pairing_group_->GetGroup2()->MulBase(x);
 
       auto f = pairing_group_->MillerLoop(g1x, g2x);
       auto f1 = pairing_group_->FinalExp(f);
       auto f2 = pairing_group_->Pairing(g1x, g2x);
-      ASSERT_TRUE(gt_field_->Equal(f1, f2));
+      ASSERT_TRUE((bool)gt_->Equal(f1, f2));
     }
   }
 };
@@ -334,8 +335,8 @@ TEST(Pairing_Multi_Instance_Test, Works) {
         std::shared_ptr<PairingGroup> pairing =
             PairingGroupFactory::Instance().Create(pairing_name,
                                                    ArgLib = lib_name);
-        pairing->Pairing(pairing->GetG1()->GetGenerator(),
-                         pairing->GetG2()->GetGenerator());
+        pairing->Pairing(pairing->GetGroup1()->GetGenerator(),
+                         pairing->GetGroup2()->GetGenerator());
       });
     }
   }

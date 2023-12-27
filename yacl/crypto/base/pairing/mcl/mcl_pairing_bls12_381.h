@@ -17,45 +17,45 @@
 #include "mcl/bls12_381.hpp"
 
 #include "yacl/crypto/base/ecc/mcl/mcl_ec_group.h"
-#include "yacl/crypto/base/ecc/pairing_spi.h"
-#include "yacl/crypto/base/field/mcl/mcl_field.h"
+#include "yacl/crypto/base/pairing/pairing_spi.h"
+#include "yacl/math/galois_field/mcl_field/mcl_field.h"
 
 namespace yacl::crypto::hmcl {
 
 using MclPairingBls12381G1 = MclGroupT<mcl::bls12::Fp, mcl::bls12::Fr>;
 using MclPairingBls12381G2 = MclGroupT<mcl::bls12::Fp2, mcl::bls12::Fr>;
-using MclPairingBls12381GT = MclField<mcl::bls12::GT, 12>;
+using MclPairingBls12381GT = math::hmcl::MclField<mcl::bls12::GT, 12>;
 
 class MclPairingBls12381 : public PairingGroup {
  public:
+  std::string GetLibraryName() const override;
   PairingName GetPairingName() const override;
   PairingAlgorithm GetPairingAlgorithm() const override;
-  std::string GetLibraryName() const override;
   std::string ToString() const override;
   size_t GetSecurityStrength() const override;
 
-  std::shared_ptr<EcGroup> GetG1() const override;
-  std::shared_ptr<EcGroup> GetG2() const override;
-  std::shared_ptr<Field> GetGT() const override;
+  std::shared_ptr<EcGroup> GetGroup1() const override;
+  std::shared_ptr<EcGroup> GetGroup2() const override;
+  std::shared_ptr<GroupTarget> GetGroupT() const override;
 
   MPInt GetOrder() const override;
 
-  FElement MillerLoop(const EcPoint& group1_point,
-                      const EcPoint& group2_point) const override;
-  FElement FinalExp(const FElement& x) const override;
-  // pairing = MillerLoop + FinalExponentiation
-  FElement Pairing(const EcPoint& group1_point,
-                   const EcPoint& group2_point) const override;
+  GtElement MillerLoop(const EcPoint& group1_point,
+                       const EcPoint& group2_point) const override;
+  GtElement FinalExp(const GtElement& x) const override;
+  GtElement Pairing(const EcPoint& group1_point,
+                    const EcPoint& group2_point) const override;
 
  private:
   PairingMeta meta_;
   std::shared_ptr<EcGroup> g1_;
   std::shared_ptr<EcGroup> g2_;
-  std::shared_ptr<Field> gt_;
+  std::shared_ptr<GroupTarget> gt_;
 
   friend class MclPGFactory;
   MclPairingBls12381(const PairingMeta& meta, std::unique_ptr<EcGroup>& g1,
-                     std::unique_ptr<EcGroup>& g2, std::unique_ptr<Field>& gt);
+                     std::unique_ptr<EcGroup>& g2,
+                     std::unique_ptr<GroupTarget>& gt);
 };
 
 }  // namespace yacl::crypto::hmcl

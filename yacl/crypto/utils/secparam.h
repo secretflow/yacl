@@ -206,9 +206,17 @@ class YaclModuleHandler {
   static void PrintAll() {
     fmt::print(fg(fmt::color::green), "{:-^50}\n", "module summary");
     interate_helper(std::make_integer_sequence<uint32_t, N>{}, true);
-    fmt::print(fg(fmt::color::yellow), "{0:<10}\t{1:<5}\t{2:<5}\n", "*target*",
-               SecParam::MakeInt(SecParam::glob_c),
-               SecParam::MakeInt(SecParam::glob_s));
+    std::string c_str = fmt::format("{}", SecParam::MakeInt(SecParam::glob_c));
+    std::string s_str = fmt::format("{}", SecParam::MakeInt(SecParam::glob_s));
+    if (SecParam::MakeInt(SecParam::glob_c) == UINT32_MAX) {
+      c_str = "-";
+    }
+    if (SecParam::MakeInt(SecParam::glob_s) == UINT32_MAX) {
+      s_str = "-";
+    }
+
+    fmt::print(fg(fmt::color::yellow), "{0:<10}\t{1:<5}\t{2:<5}\n", "*all*",
+               c_str, s_str);
     fmt::print(fg(fmt::color::green), "{:-^50}\n", "");
   }
 
@@ -293,7 +301,7 @@ class YaclModuleHandler {
 
 // Print all module summary
 #define YACL_PRINT_MODULE_SUMMARY() \
-  YaclModuleHandler::PrintAll<COUNTER_READ(YaclModuleCtr)>();
+  YaclModuleHandler::PrintAll<COUNTER_READ(YaclModuleCtr)>()
 
 // Enforce Yacl security level, fails when condition not met
 #define YACL_ENFORCE_SECPARAM(COMP, STAT)                                    \
@@ -302,4 +310,7 @@ class YaclModuleHandler {
       "Enforce SecurityParameter failed, expected c>{}, s>{}, but yacl got " \
       "global (c, s) = ({}, {})",                                            \
       SecParam::MakeInt(COMP), SecParam::MakeInt(STAT),                      \
-      YACL_GLOB_SECPARAM_C_UINT, YACL_GLOB_SECPARAM_S_UINT);
+      YACL_GLOB_SECPARAM_C_UINT, YACL_GLOB_SECPARAM_S_UINT)
+
+// alias
+using SecParam = yacl::crypto::SecParam;

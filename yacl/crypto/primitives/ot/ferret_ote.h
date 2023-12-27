@@ -23,6 +23,16 @@
 #include "yacl/crypto/utils/secparam.h"
 #include "yacl/math/gadget.h"
 #include "yacl/utils/cuckoo_index.h"
+
+/* submodules */
+#include "yacl/crypto/primitives/code/linear_code.h"
+#include "yacl/crypto/primitives/ot/ferret_ote_rn.h"
+#include "yacl/crypto/primitives/ot/ferret_ote_un.h"
+#include "yacl/crypto/primitives/ot/gywz_ote.h"
+
+/* security parameter declaration */
+// this module is only a wrapper, no need for security parameter definition
+
 namespace yacl::crypto {
 
 // Ferret OT Extension Implementation

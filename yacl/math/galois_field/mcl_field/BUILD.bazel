@@ -13,6 +13,7 @@
 # limitations under the License.
 
 load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
+load("@bazel_skylib//lib:selects.bzl", "selects")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -22,15 +23,17 @@ yacl_cc_library(
         "mcl_field.cc",
     ],
     hdrs = ["mcl_field.h"],
-    defines = [
-        # ! Flag only for test !
-        # "MCL_FIELD_YACL_TEST",
-    ],
+    defines = selects.with_or({
+        ("@yacl//bazel:yacl_build_as_debug", "@yacl//bazel:yacl_build_as_fast"): [
+            # !Only for test and don't use this in production!
+            "MCL_FIELD_YACL_TEST",
+        ],
+        "//conditions:default": [],
+    }),
     deps = [
-        "//yacl/crypto/base/ecc/mcl:pairing_header",
         "//yacl/crypto/base/ecc/mcl:util",
-        "//yacl/crypto/base/field:field_spi",
-        "@com_github_herumi_mcl//:mcl",
+        "//yacl/crypto/base/pairing/mcl:pairing_header",
+        "//yacl/math/galois_field:sketch",
     ],
 )
 
@@ -39,7 +42,7 @@ yacl_cc_test(
     srcs = ["mcl_field_test.cc"],
     deps = [
         ":field",
-        "//yacl/crypto/base/ecc/mcl:pairing",
+        "//yacl/crypto/base/pairing/mcl:pairing",
         "//yacl/crypto/utils:rand",
     ],
 )

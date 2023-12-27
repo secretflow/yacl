@@ -16,16 +16,11 @@
 
 #include <algorithm>
 #include <array>
-#include <chrono>
 #include <utility>
 #include <vector>
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/int128.h"
-#include "yacl/crypto/tools/crhash.h"
-#include "yacl/crypto/tools/prg.h"
-#include "yacl/crypto/tools/rp.h"
-#include "yacl/crypto/utils/rand.h"
 #include "yacl/math/f2k/f2k.h"
 #include "yacl/utils/matrix_utils.h"
 #include "yacl/utils/serialize.h"
@@ -212,7 +207,7 @@ void KosOtExtSend(const std::shared_ptr<link::Context>& ctx,
   auto& batch0 = q_ext;
   auto batch1 = VecXorMonochrome(absl::MakeSpan(q_ext), delta);
 
-  if (cot == false) {
+  if (!cot) {
     ParaCrHashInplace_128(absl::MakeSpan(batch0));
     ParaCrHashInplace_128(absl::MakeSpan(batch1));
   }
@@ -309,7 +304,7 @@ void KosOtExtRecv(const std::shared_ptr<link::Context>& ctx,
   }
 
   t_ext.resize(ot_num_valid);
-  if (cot == false) {
+  if (!cot) {
     ParaCrHashInplace_128(absl::MakeSpan(t_ext));
   }
   for (size_t i = 0; i < ot_num_valid; i++) {

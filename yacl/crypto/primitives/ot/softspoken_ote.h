@@ -22,12 +22,20 @@
 #include "yacl/base/dynamic_bitset.h"
 #include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
-#include "yacl/crypto/primitives/ot/ot_store.h"
-#include "yacl/crypto/utils/rand.h"
 #include "yacl/crypto/utils/secparam.h"
 #include "yacl/link/context.h"
 #include "yacl/link/link.h"
 
+/* submodules */
+#include "yacl/crypto/primitives/ot/base_ot.h"
+#include "yacl/crypto/primitives/ot/ot_store.h"
+#include "yacl/crypto/primitives/ot/sgrr_ote.h"
+#include "yacl/crypto/tools/crhash.h"
+#include "yacl/crypto/tools/prg.h"
+#include "yacl/crypto/tools/rp.h"
+#include "yacl/crypto/utils/rand.h"
+
+/* security parameter declaration */
 YACL_MODULE_DECLARE("softspoken_ote", SecParam::C::k128, SecParam::S::INF);
 
 namespace yacl::crypto {
@@ -49,26 +57,27 @@ namespace yacl::crypto {
 //                 (one-time setup)
 //              (a.k.a (N-1)-out-of-N OT)               (a.k.a subfield VOLE)
 //
-//  > k: Softspoken parameter (decide the instances and num for PPRF)
-//  > kappa: computation security parameter (128 for example)
+// => k: Softspoken parameter (decide the instances and num for PPRF)
+// => kappa: computation security parameter (128 for example)
 //
 // Security assumptions:
-//  *. correlation-robust hash function, for more details about its
-//  implementation, see `yacl/crypto/tools/rp.h`
+// => correlation-robust hash function, for more details about its
+// implementation, see `yacl/crypto/tools/rp.h`
 //
 // NOTE:
-//  * OT Extension sender requires receiver base ot context.
-//  * OT Extension receiver requires sender base ot context.
-//  * Computation cost would be O(2^k/k).
-//  * Communication for each OT needs 128/k bits.
-//  * parameter k should be a small number (no greater than 10).
-//  * k = 2, 4, 8 are recommended in the localhost, LAN, WAN setting
+// => OT Extension sender requires receiver base ot context.
+// => OT Extension receiver requires sender base ot context.
+// => Computation cost would be O(2^k/k).
+// => Communication for each OT needs 128/k bits.
+// => parameter k should be a small number (no greater than 10).
+// => k = 2, 4, 8 are recommended in the localhost, LAN, WAN setting
 //  respectively.
-// *  step = 64 for k = 1 or 2; step = 32 for k = 3 or 4.
+// => step = 64 for k = 1 or 2; step = 32 for k = 3 or 4.
 
 class SoftspokenOtExtSender {
  public:
-  SoftspokenOtExtSender(uint64_t k = 2, uint64_t step = 0, bool mal = false);
+  explicit SoftspokenOtExtSender(uint64_t k = 2, uint64_t step = 0,
+                                 bool mal = false);
 
   void OneTimeSetup(const std::shared_ptr<link::Context>& ctx);
 
@@ -128,7 +137,8 @@ class SoftspokenOtExtSender {
 
 class SoftspokenOtExtReceiver {
  public:
-  SoftspokenOtExtReceiver(uint64_t k = 2, uint64_t step = 0, bool mal = false);
+  explicit SoftspokenOtExtReceiver(uint64_t k = 2, uint64_t step = 0,
+                                   bool mal = false);
 
   void OneTimeSetup(const std::shared_ptr<link::Context>& ctx);
 

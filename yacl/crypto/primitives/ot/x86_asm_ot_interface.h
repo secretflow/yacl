@@ -20,7 +20,13 @@
 #error "OT interface already defined"
 #endif
 
+#include <memory>
+
 #include "yacl/crypto/primitives/ot/base_ot_interface.h"
+#include "yacl/crypto/utils/secparam.h"
+
+/* security parameter declaration */
+YACL_MODULE_DECLARE("base_ot_x86_asm", SecParam::C::k128, SecParam::S::INF);
 
 namespace yacl::crypto {
 

@@ -21,10 +21,8 @@
 #include <utility>
 #include <vector>
 
-#include "openssl/objects.h"
-
 #include "yacl/base/exception.h"
-#include "yacl/crypto/provider/helper.h"
+#include "yacl/crypto/ossl-provider/helper.h"
 #include "yacl/crypto/utils/secparam.h"
 
 namespace yacl::crypto {

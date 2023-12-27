@@ -68,7 +68,7 @@ struct CurveMeta {
   size_t secure_bits;
 
   CurveName LowerName() const;
-  bool IsEquivalent(CurveMeta rhs) const;
+  bool IsEquivalent(const CurveMeta& rhs) const;
 };
 
 CurveMeta GetCurveMetaByName(const CurveName& name);

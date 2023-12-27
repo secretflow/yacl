@@ -23,6 +23,13 @@
 #include "yacl/crypto/utils/secparam.h"
 #include "yacl/link/link.h"
 
+/* submodules */
+#include "yacl/crypto/tools/crhash.h"
+#include "yacl/crypto/tools/prg.h"
+#include "yacl/crypto/tools/rp.h"
+#include "yacl/crypto/utils/rand.h"
+
+/* security parameter declaration */
 YACL_MODULE_DECLARE("kos_ote", SecParam::C::k128, SecParam::S::k64);
 
 namespace yacl::crypto {

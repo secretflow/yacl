@@ -14,7 +14,7 @@
 
 #include "yacl/crypto/base/pke/asymmetric_sm2_crypto.h"
 
-#include "absl/memory/memory.h"
+#include <vector>
 
 #include "yacl/base/exception.h"
 
@@ -27,20 +27,17 @@ std::vector<uint8_t> Sm2Encryptor::Encrypt(ByteContainerView plaintext) {
   YACL_ENFORCE(ctx != nullptr);
 
   // init context
-  YACL_ENFORCE(EVP_PKEY_encrypt_init(ctx.get()) > 0);
-
-  // make sure to use OAEP_PADDING
-  // YACL_ENFORCE(EVP_PKEY_CTX_set_rsa_padding(ctx.get(), kRsaPadding) > 0);
+  OSSL_RET_1(EVP_PKEY_encrypt_init(ctx.get()));
 
   // first, get output length
   size_t outlen = 0;
-  YACL_ENFORCE(EVP_PKEY_encrypt(ctx.get(), /* empty input */ nullptr, &outlen,
-                                plaintext.data(), plaintext.size()) > 0);
+  OSSL_RET_1(EVP_PKEY_encrypt(ctx.get(), /* empty input */ nullptr, &outlen,
+                              plaintext.data(), plaintext.size()));
 
   // then encrypt
   std::vector<uint8_t> out(outlen);
-  YACL_ENFORCE(EVP_PKEY_encrypt(ctx.get(), out.data(), &outlen,
-                                plaintext.data(), plaintext.size()) > 0);
+  OSSL_RET_1(EVP_PKEY_encrypt(ctx.get(), out.data(), &outlen, plaintext.data(),
+                              plaintext.size()));
   out.resize(outlen); /* important */
   return out;
 }
@@ -52,20 +49,17 @@ std::vector<uint8_t> Sm2Decryptor::Decrypt(ByteContainerView ciphertext) {
   YACL_ENFORCE(ctx != nullptr);
 
   // init context
-  YACL_ENFORCE(EVP_PKEY_decrypt_init(ctx.get()) > 0);
-
-  // make sure to use OAEP_PADDING
-  // YACL_ENFORCE(EVP_PKEY_CTX_set_rsa_padding(ctx.get(), kRsaPadding) > 0);
+  OSSL_RET_1(EVP_PKEY_decrypt_init(ctx.get()));
 
   // first, get output length
   size_t outlen = 0;
-  YACL_ENFORCE(EVP_PKEY_decrypt(ctx.get(), /* empty input */ nullptr, &outlen,
-                                ciphertext.data(), ciphertext.size()) > 0);
+  OSSL_RET_1(EVP_PKEY_decrypt(ctx.get(), /* empty input */ nullptr, &outlen,
+                              ciphertext.data(), ciphertext.size()));
 
   // then decrypt
   std::vector<uint8_t> out(outlen);
-  YACL_ENFORCE(EVP_PKEY_decrypt(ctx.get(), out.data(), &outlen,
-                                ciphertext.data(), ciphertext.size()) > 0);
+  OSSL_RET_1(EVP_PKEY_decrypt(ctx.get(), out.data(), &outlen, ciphertext.data(),
+                              ciphertext.size()));
   out.resize(outlen); /* important */
   return out;
 }

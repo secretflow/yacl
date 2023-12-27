@@ -14,7 +14,7 @@
 
 #include "absl/strings/ascii.h"
 
-#include "yacl/crypto/base/ecc/mcl/mcl_pairing_group.h"
+#include "yacl/crypto/base/pairing/mcl/mcl_pairing_group.h"
 
 namespace yacl::crypto::hmcl {
 
@@ -93,8 +93,8 @@ std::unique_ptr<PairingGroup> MclPGFactory::CreateByName(
         static_cast<void (*)(mcl::namespace_name::G2&, const std::string&)>( \
             mcl::namespace_name::hashAndMapToG2);                            \
                                                                              \
-    auto gt = std::unique_ptr<Field>(                                        \
-        new MclPairing##class_name##GT(g1->GetOrder(), true));               \
+    auto gt = std::unique_ptr<GroupTarget>(new MclPairing##class_name##GT(   \
+        g1->GetOrder(), math::hmcl::Type::Mul));                             \
                                                                              \
     auto child_ptr =                                                         \
         std::make_unique<MclPairing##class_name>(meta, g1, g2, gt);          \
@@ -140,8 +140,8 @@ std::unique_ptr<PairingGroup> MclPGFactory::Create(const PairingMeta& meta) {
               mcl::bls12::hashAndMapToG2);
 
       // Init GT
-      auto gt = std::unique_ptr<Field>(
-          new MclPairingBls12381GT(g1->GetOrder(), true));
+      auto gt = std::unique_ptr<GroupTarget>(
+          new MclPairingBls12381GT(g1->GetOrder(), math::hmcl::Type::Mul));
 
       return std::unique_ptr<PairingGroup>(
           new MclPairingBls12381(meta, g1, g2, gt));

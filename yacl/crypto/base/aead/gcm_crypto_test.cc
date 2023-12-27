@@ -15,9 +15,9 @@
 #include "yacl/crypto/base/aead/gcm_crypto.h"
 
 #include <memory>
+#include <string>
 
 #include "gtest/gtest.h"
-#include "openssl/evp.h"
 
 #include "yacl/base/exception.h"
 

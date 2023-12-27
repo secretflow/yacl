@@ -18,6 +18,16 @@
 
 #include "yacl/base/byte_container_view.h"
 
+/* submodules */
+#include "yacl/crypto/base/aead/gcm_crypto.h"
+#include "yacl/crypto/base/aead/sm4_mac.h"
+#include "yacl/crypto/base/block_cipher/symmetric_crypto.h"
+#include "yacl/crypto/base/hash/ssl_hash.h"
+#include "yacl/crypto/base/hmac/hmac_sm3.h"
+#include "yacl/crypto/base/pke/asymmetric_rsa_crypto.h"
+#include "yacl/crypto/base/pke/asymmetric_sm2_crypto.h"
+#include "yacl/crypto/utils/rand.h"
+
 namespace yacl::crypto {
 
 // SM envelope sealing with sm4-ctr + hmac-sm3 + sm2.

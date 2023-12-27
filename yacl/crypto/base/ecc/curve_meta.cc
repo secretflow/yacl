@@ -826,7 +826,7 @@ std::vector<CurveMeta> kPredefinedCurves = {
 
 CurveName CurveMeta::LowerName() const { return absl::AsciiStrToLower(name); }
 
-bool CurveMeta::IsEquivalent(CurveMeta rhs) const {
+bool CurveMeta::IsEquivalent(const CurveMeta& rhs) const {
   return std::tie(form, field_type, secure_bits) ==
          std::tie(rhs.form, rhs.field_type, rhs.secure_bits);
 }

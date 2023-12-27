@@ -53,6 +53,7 @@ yacl_cc_library(
         ":base_ot_interface",
         "//yacl/base:exception",
         "//yacl/crypto/tools:ro",
+        "//yacl/crypto/utils:secparam",
         "//yacl/link",
         "@simplest_ot//:simplest_ot_portable",
     ],
@@ -70,6 +71,7 @@ yacl_cc_library(
         ":base_ot_interface",
         "//yacl/base:exception",
         "//yacl/crypto/tools:ro",
+        "//yacl/crypto/utils:secparam",
         "//yacl/link",
         "//yacl/math:gadget",
         "@simplest_ot//:simplest_ot_x86_asm",
@@ -224,11 +226,13 @@ yacl_cc_test(
 
 yacl_cc_library(
     name = "ferret_ote",
-    srcs = ["ferret_ote.cc"],
-    hdrs = [
-        "ferret_ote.h",
+    srcs = [
+        "ferret_ote.cc",
         "ferret_ote_rn.h",
         "ferret_ote_un.h",
+    ],
+    hdrs = [
+        "ferret_ote.h",
     ],
     deps = [
         ":ot_store",

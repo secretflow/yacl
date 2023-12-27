@@ -14,8 +14,6 @@
 
 #include "yacl/crypto/base/sign/sm2_signing.h"
 
-#include "yacl/crypto/base/hash/hash_utils.h"
-
 namespace yacl::crypto {
 
 namespace {
@@ -44,21 +42,19 @@ std::vector<uint8_t> Sm2Signer::Sign(ByteContainerView message) const {
   EVP_MD_CTX_set_pkey_ctx(mctx.get(), ctx.get());  // set it related to pkey ctx
 
   // init sign
-  YACL_ENFORCE(EVP_DigestSignInit(
-                   mctx.get(), /* pkey ctx has already been inited */ nullptr,
-                   EVP_sm3(),
-                   /* engine */ nullptr, sk_.get()) > 0);
+  OSSL_RET_1(EVP_DigestSignInit(
+      mctx.get(), /* pkey ctx has already been inited */ nullptr, EVP_sm3(),
+      /* engine */ nullptr, sk_.get()));
 
   // write hashes of message into mctx
-  YACL_ENFORCE(
-      EVP_DigestSignUpdate(mctx.get(), message.data(), message.size()) > 0);
+  OSSL_RET_1(EVP_DigestSignUpdate(mctx.get(), message.data(), message.size()));
 
   // get output size
   size_t outlen = 0;
-  YACL_ENFORCE(EVP_DigestSignFinal(mctx.get(), nullptr, &outlen) > 0);
+  OSSL_RET_1(EVP_DigestSignFinal(mctx.get(), nullptr, &outlen));
 
   std::vector<uint8_t> out(outlen);
-  YACL_ENFORCE(EVP_DigestSignFinal(mctx.get(), out.data(), &outlen) > 0);
+  OSSL_RET_1(EVP_DigestSignFinal(mctx.get(), out.data(), &outlen));
 
   // Correct the signature size (this is necessary! TODO: find out why)
   out.resize(outlen);
@@ -79,12 +75,12 @@ bool Sm2Verifier::Verify(ByteContainerView message,
 
   EVP_MD_CTX_set_pkey_ctx(mctx.get(), ctx.get());
 
-  YACL_ENFORCE(EVP_DigestVerifyInit(
-                   mctx.get(), /* pkey ctx has already been inited */ nullptr,
-                   EVP_sm3(), /* engine */ nullptr, pk_.get()) > 0);
+  OSSL_RET_1(EVP_DigestVerifyInit(
+      mctx.get(), /* pkey ctx has already been inited */ nullptr, EVP_sm3(),
+      /* engine */ nullptr, pk_.get()));
 
-  YACL_ENFORCE(
-      EVP_DigestVerifyUpdate(mctx.get(), message.data(), message.size()) > 0);
+  OSSL_RET_1(
+      EVP_DigestVerifyUpdate(mctx.get(), message.data(), message.size()));
 
   int rc =
       EVP_DigestVerifyFinal(mctx.get(), signature.data(), signature.size());

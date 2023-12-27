@@ -47,29 +47,29 @@ void GcmCrypto::Encrypt(ByteContainerView plaintext, ByteContainerView aad,
   YACL_ENFORCE(ctx != nullptr, "Failed to new evp cipher context.");
   const auto cipher = openssl::FetchEvpCipher(ToString(schema_));
   YACL_ENFORCE(cipher != nullptr);
-
   YACL_ENFORCE(key_.size() == (size_t)EVP_CIPHER_key_length(cipher.get()));
   YACL_ENFORCE(iv_.size() == (size_t)EVP_CIPHER_iv_length(cipher.get()));
-  YACL_ENFORCE(EVP_EncryptInit_ex(ctx.get(), cipher.get(), nullptr, key_.data(),
-                                  iv_.data()) > 0);
+
+  OSSL_RET_1(EVP_EncryptInit_ex(ctx.get(), cipher.get(), nullptr, key_.data(),
+                                iv_.data()));
 
   // Provide AAD data if exist
   int out_length = 0;
   const auto aad_len = aad.size();
   if (aad_len > 0) {
-    YACL_ENFORCE(EVP_EncryptUpdate(ctx.get(), nullptr, &out_length, aad.data(),
-                                   aad_len) > 0);
+    OSSL_RET_1(EVP_EncryptUpdate(ctx.get(), nullptr, &out_length, aad.data(),
+                                 aad_len));
     YACL_ENFORCE(out_length == (int)aad.size());
   }
-  YACL_ENFORCE(EVP_EncryptUpdate(ctx.get(), ciphertext.data(), &out_length,
-                                 plaintext.data(), plaintext.size()) > 0);
+  OSSL_RET_1(EVP_EncryptUpdate(ctx.get(), ciphertext.data(), &out_length,
+                               plaintext.data(), plaintext.size()));
   YACL_ENFORCE(out_length == (int)plaintext.size(),
                "Unexpected encrypte out length.");
 
   // Note that get no output here as the data is always aligned for GCM.
   EVP_EncryptFinal_ex(ctx.get(), nullptr, &out_length);
-  YACL_ENFORCE(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG,
-                                   GetMacSize(schema_), mac.data()) > 0);
+  OSSL_RET_1(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG,
+                                 GetMacSize(schema_), mac.data()));
 }
 
 void GcmCrypto::Decrypt(ByteContainerView ciphertext, ByteContainerView aad,
@@ -79,32 +79,33 @@ void GcmCrypto::Decrypt(ByteContainerView ciphertext, ByteContainerView aad,
   YACL_ENFORCE_EQ(mac.size(), GetMacSize(schema_));
 
   // init openssl evp cipher context
-  EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
-  YACL_ENFORCE(ctx, "Failed to new evp cipher context.");
-  ON_SCOPE_EXIT([&] { EVP_CIPHER_CTX_free(ctx); });
+  auto ctx = openssl::UniqueCipherCtx(EVP_CIPHER_CTX_new());
+
+  YACL_ENFORCE(ctx.get(), "Failed to new evp cipher context.");
+
   const auto cipher = openssl::FetchEvpCipher(ToString(schema_));
   YACL_ENFORCE_EQ(key_.size(), (size_t)EVP_CIPHER_key_length(cipher.get()));
   YACL_ENFORCE_EQ(iv_.size(), (size_t)EVP_CIPHER_iv_length(cipher.get()));
-  YACL_ENFORCE(
-      EVP_DecryptInit_ex(ctx, cipher.get(), nullptr, key_.data(), iv_.data()));
+  YACL_ENFORCE(EVP_DecryptInit_ex(ctx.get(), cipher.get(), nullptr, key_.data(),
+                                  iv_.data()));
 
   // Provide AAD data if exist
   int out_length = 0;
   const auto aad_len = aad.size();
   if (aad_len > 0) {
-    YACL_ENFORCE(
-        EVP_DecryptUpdate(ctx, nullptr, &out_length, aad.data(), aad_len) > 0);
+    OSSL_RET_1(EVP_DecryptUpdate(ctx.get(), nullptr, &out_length, aad.data(),
+                                 aad_len));
     YACL_ENFORCE(out_length == (int)aad.size());
   }
-  YACL_ENFORCE(EVP_DecryptUpdate(ctx, plaintext.data(), &out_length,
-                                 ciphertext.data(), ciphertext.size()) > 0);
+  OSSL_RET_1(EVP_DecryptUpdate(ctx.get(), plaintext.data(), &out_length,
+                               ciphertext.data(), ciphertext.size()));
   YACL_ENFORCE(out_length == (int)plaintext.size(),
                "Unexpcted decryption out length.");
-  YACL_ENFORCE(EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG,
-                                   GetMacSize(schema_), (void*)mac.data()) > 0);
+  OSSL_RET_1(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG,
+                                 GetMacSize(schema_), (void*)mac.data()));
 
   // Note that get no output here as the data is always aligned for GCM.
-  YACL_ENFORCE(EVP_DecryptFinal_ex(ctx, nullptr, &out_length) > 0,
+  YACL_ENFORCE(EVP_DecryptFinal_ex(ctx.get(), nullptr, &out_length) > 0,
                "Failed to verfiy mac.");
 }
 

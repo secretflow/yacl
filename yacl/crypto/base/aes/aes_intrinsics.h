@@ -56,6 +56,7 @@
 
 #include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
+#include "yacl/crypto/utils/secparam.h"
 
 #ifndef __aarch64__
 // sse
@@ -67,6 +68,8 @@
 #include "sse2neon.h"
 #endif
 
+/* security parameter declaration */
+YACL_MODULE_DECLARE("aes_intrinsics", SecParam::C::k128, SecParam::S::INF);
 namespace yacl::crypto {
 
 namespace internal {

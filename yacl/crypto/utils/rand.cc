@@ -17,11 +17,9 @@
 #include <limits>
 #include <memory>
 
-#include "openssl/rand.h"
-
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/dynamic_bitset.h"
-#include "yacl/crypto/provider/helper.h"
+#include "yacl/crypto/ossl-provider/helper.h"
 #include "yacl/crypto/utils/entropy_source/entropy_source.h"
 
 namespace yacl::crypto {

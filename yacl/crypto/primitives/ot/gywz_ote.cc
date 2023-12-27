@@ -20,10 +20,6 @@
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/dynamic_bitset.h"
 #include "yacl/base/exception.h"
-#include "yacl/crypto/base/aes/aes_opt.h"
-#include "yacl/crypto/primitives/ot/ot_store.h"
-#include "yacl/crypto/tools/crhash.h"
-#include "yacl/crypto/tools/prg.h"
 #include "yacl/math/gadget.h"
 
 namespace yacl::crypto {

@@ -32,7 +32,9 @@ class MPIntField : public GFScalarSketch<MPInt> {
   std::string GetFieldName() const override;
 
   MPInt GetOrder() const override;
-  MPInt GetExtensionDegree() const override;
+  MPInt GetMulGroupOrder() const override;
+  MPInt GetAddGroupOrder() const override;
+  uint64_t GetExtensionDegree() const override;
   MPInt GetBaseFieldOrder() const override;
 
   Item GetIdentityZero() const override;

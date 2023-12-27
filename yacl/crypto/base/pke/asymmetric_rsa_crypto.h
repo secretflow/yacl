@@ -15,9 +15,15 @@
 #pragma once
 
 #include <memory>
+#include <utility>
+#include <vector>
 
 #include "yacl/crypto/base/key_utils.h"
 #include "yacl/crypto/base/pke/asymmetric_crypto.h"
+#include "yacl/crypto/utils/secparam.h"
+
+/* security parameter declaration */
+YACL_MODULE_DECLARE("rsa_enc", SecParam::C::k128, SecParam::S::INF);
 
 namespace yacl::crypto {
 

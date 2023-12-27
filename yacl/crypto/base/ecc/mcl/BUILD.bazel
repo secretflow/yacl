@@ -24,11 +24,11 @@ yacl_cc_library(
     ],
     hdrs = ["mcl_ec_group.h"],
     deps = [
-        ":pairing_header",
         ":util",
         "//yacl/crypto/base/ecc:spi",
         "//yacl/crypto/base/hash:blake3",
         "//yacl/crypto/base/hash:ssl_hash",
+        "//yacl/crypto/base/pairing/mcl:pairing_header",
     ],
     alwayslink = 1,
 )
@@ -38,49 +38,6 @@ yacl_cc_test(
     srcs = ["mcl_ec_test.cc"],
     deps = [
         ":ecc",
-    ],
-)
-
-yacl_cc_library(
-    name = "pairing_header",
-    hdrs = ["pairing_header.h"],
-    copts = [
-    ],
-    defines = [
-        # Macro `MCL_ALL_PAIRING_FOR_YACL` enables libmcl's all pairing curves
-        # and not that they are not standard pairing instances.
-        # !Only for test and don't recommmand!
-        # "MCL_ALL_PAIRING_FOR_YACL",
-    ],
-    deps = ["@com_github_herumi_mcl//:mcl"],
-)
-
-yacl_cc_library(
-    name = "pairing",
-    srcs = [
-        "mcl_pairing_bls12_381.cc",
-        "mcl_pairing_bls12_381.h",
-        "mcl_pairing_factory.cc",
-        "mcl_pairing_group.cc",
-    ],
-    hdrs = [
-        "mcl_pairing_group.h",
-    ],
-    deps = [
-        ":ecc",
-        ":pairing_header",
-        "//yacl/crypto/base/ecc:pairing_spi",
-        "//yacl/crypto/base/field/mcl:field",
-    ],
-    alwayslink = 1,
-)
-
-yacl_cc_test(
-    name = "pairing_test",
-    srcs = ["mcl_pairing_test.cc"],
-    deps = [
-        ":pairing",
-        "//yacl/crypto/utils:rand",
     ],
 )
 

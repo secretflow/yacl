@@ -20,12 +20,15 @@
 #include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
 #include "yacl/crypto/primitives/ot/ot_store.h"
-#include "yacl/crypto/primitives/ot/softspoken_ote.h"
-#include "yacl/crypto/utils/rand.h"
 #include "yacl/crypto/utils/secparam.h"
 #include "yacl/math/f2k/f2k.h"
 #include "yacl/math/gadget.h"
 
+/* submodules */
+#include "yacl/crypto/primitives/ot/softspoken_ote.h"
+#include "yacl/crypto/utils/rand.h"
+
+/* security parameter declaration */
 YACL_MODULE_DECLARE("base_vole", SecParam::C::INF, SecParam::S::INF);
 
 namespace yacl::crypto {

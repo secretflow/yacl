@@ -17,6 +17,15 @@
 #include <vector>
 
 #include "yacl/base/byte_container_view.h"
+#include "yacl/crypto/utils/secparam.h"
+
+/* submodules */
+#include "yacl/crypto/base/block_cipher/symmetric_crypto.h"
+#include "yacl/crypto/base/hash/ssl_hash.h"
+#include "yacl/crypto/base/hmac/hmac_sm3.h"
+
+/* security parameter declaration */
+YACL_MODULE_DECLARE("sm4_mac", SecParam::C::k128, SecParam::S::INF);
 
 namespace yacl::crypto {
 

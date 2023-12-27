@@ -17,12 +17,28 @@ load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
 package(default_visibility = ["//visibility:public"])
 
 yacl_cc_library(
-    name = "field_spi",
-    # srcs = ["field_spi.cc"],
-    hdrs = ["field_spi.h"],
+    name = "pairing",
     deps = [
-        "//yacl/base:block",
-        "//yacl/crypto/base/ecc:any_ptr",
-        "//yacl/math/mpint",
+        "//yacl/crypto/base/pairing/mcl:pairing",
+    ],
+)
+
+yacl_cc_library(
+    name = "pairing_spi",
+    srcs = ["pairing_spi.cc"],
+    hdrs = ["pairing_spi.h"],
+    deps = [
+        "//yacl/crypto/base/ecc:spi",
+        "//yacl/math/galois_field:spi",
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+yacl_cc_test(
+    name = "pairing_test",
+    srcs = ["pairing_test.cc"],
+    deps = [
+        ":pairing",
+        "@yacl//yacl/utils:parallel",
     ],
 )

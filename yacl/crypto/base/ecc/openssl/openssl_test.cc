@@ -23,7 +23,7 @@
 namespace yacl::crypto::openssl {
 // We only need to test these two functions, other functions will be tested by
 // SPI
-BIGNUM_PTR Mp2Bn(const MPInt &mp);
+UniqueBn Mp2Bn(const MPInt &mp);
 MPInt Bn2Mp(const BIGNUM *bn);
 }  // namespace yacl::crypto::openssl
 

@@ -19,12 +19,16 @@
 #include "absl/types/span.h"
 
 #include "yacl/base/byte_container_view.h"
+#include "yacl/crypto/utils/secparam.h"
+
+/* security parameter declaration */
+YACL_MODULE_DECLARE("aes_gcm", SecParam::C::k128, SecParam::S::INF);
 
 namespace yacl::crypto {
 
 enum class GcmCryptoSchema : int {
-  AES128_GCM,
-  AES256_GCM,
+  AES128_GCM, /* security level = 128 */
+  AES256_GCM, /* security level = 256 */
   // SM4_GCM /* TODO openssl 3.2 supports SM4 GCM */
 };
 

@@ -71,6 +71,7 @@ yacl_cc_library(
     srcs = ["hash_interface.h"],
     deps = [
         "//yacl/base:byte_container_view",
+        "//yacl/crypto/utils:secparam",
         "@com_github_openssl_openssl//:openssl",
     ],
 )

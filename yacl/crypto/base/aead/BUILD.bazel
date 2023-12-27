@@ -23,6 +23,7 @@ yacl_cc_library(
     deps = [
         "//yacl/base:int128",
         "//yacl/crypto/base:key_utils",
+        "//yacl/crypto/utils:secparam",
     ],
 )
 
@@ -42,6 +43,7 @@ yacl_cc_library(
         "//yacl/crypto/base/block_cipher:symmetric_crypto",
         "//yacl/crypto/base/hash:ssl_hash",
         "//yacl/crypto/base/hmac:hmac_sm3",
+        "//yacl/crypto/utils:secparam",
     ],
 )
 

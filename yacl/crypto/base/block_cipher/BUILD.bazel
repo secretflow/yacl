@@ -28,7 +28,7 @@ yacl_cc_library(
     deps = [
         "//yacl/base:int128",
         "//yacl/crypto/base:openssl_wrappers",
-        "//yacl/crypto/base/aes:aes_intrinsics",
+        "//yacl/crypto/utils:secparam",
     ],
 )
 

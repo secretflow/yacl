@@ -14,16 +14,22 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cstdint>
 #include <iostream>
 #include <random>
+#include <string>
 #include <thread>
 #include <tuple>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 #include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
+
+/* submodules */
+#include "yacl/crypto/tools/prg.h"
 
 namespace yacl::crypto {
 
@@ -71,7 +77,7 @@ class DpfKey {
   // empty constructor
   DpfKey() = default;
 
-  DpfKey(bool rank, const uint128_t mseed) : rank_(rank), mseed_(mseed){};
+  DpfKey(bool rank, const uint128_t mseed) : rank_(rank), mseed_(mseed) {}
 
   DpfKey(bool rank, size_t in_bitnum, size_t ss_bitnum, uint32_t sec_param,
          const uint128_t mseed)
@@ -79,7 +85,7 @@ class DpfKey {
         in_bitnum_(in_bitnum),
         ss_bitnum_(ss_bitnum),
         sec_param_(sec_param),
-        mseed_(mseed){};
+        mseed_(mseed) {}
 
   void EnableEvalAll() { enable_evalall = true; }
   void DisableFullEval() { enable_evalall = false; }
@@ -111,10 +117,10 @@ class DpfContext {
   // constructors
   DpfContext() = default;
 
-  explicit DpfContext(size_t in_bitnum) : in_bitnum_(in_bitnum){};
+  explicit DpfContext(size_t in_bitnum) : in_bitnum_(in_bitnum) {}
 
   DpfContext(size_t in_bitnum, size_t ss_bitnum)
-      : in_bitnum_(in_bitnum), ss_bitnum_(ss_bitnum){};
+      : in_bitnum_(in_bitnum), ss_bitnum_(ss_bitnum) {}
 
   void SetInBitNum(size_t in_bitnum) {
     YACL_ENFORCE(in_bitnum <= 64);
@@ -128,9 +134,9 @@ class DpfContext {
   }
   size_t GetSsBitNum() const { return ss_bitnum_; }
 
-  /////////////////////////////////////////////////////////////////////////////////////
+  // --------------------------------------
   // Original key generation and evaluation
-  /////////////////////////////////////////////////////////////////////////////////////
+  // --------------------------------------
   std::pair<DpfKey, DpfKey> Gen(DpfInStore alpha, DpfOutStore beta,
                                 uint128_t first_mk, uint128_t second_mk,
                                 bool enable_evalall = false) {
