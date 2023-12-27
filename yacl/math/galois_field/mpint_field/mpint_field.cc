@@ -38,7 +38,11 @@ std::string MPIntField::GetFieldName() const { return kPrimeField; }
 
 MPInt MPIntField::GetOrder() const { return mod_; }
 
-MPInt MPIntField::GetExtensionDegree() const { return MPInt::_1_; }
+MPInt MPIntField::GetMulGroupOrder() const { return mod_ - 1_mp; }
+
+MPInt MPIntField::GetAddGroupOrder() const { return mod_; }
+
+uint64_t MPIntField::GetExtensionDegree() const { return 1; }
 
 MPInt MPIntField::GetBaseFieldOrder() const { return mod_; }
 

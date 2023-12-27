@@ -14,8 +14,6 @@
 
 #include "yacl/crypto/tools/crhash.h"
 
-#include "yacl/crypto/tools/rp.h"
-
 #ifndef __aarch64__
 // sse
 #include <emmintrin.h>

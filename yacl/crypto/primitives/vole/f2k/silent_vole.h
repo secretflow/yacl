@@ -15,13 +15,23 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 
 #include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
-#include "yacl/crypto/primitives/ot/softspoken_ote.h"
 #include "yacl/crypto/utils/secparam.h"
 #include "yacl/link/context.h"
 
+/* submodules */
+#include "yacl/crypto/primitives/code/code_interface.h"
+#include "yacl/crypto/primitives/code/ea_code.h"
+#include "yacl/crypto/primitives/code/silver_code.h"
+#include "yacl/crypto/primitives/ot/ferret_ote.h"
+#include "yacl/crypto/primitives/vole/f2k/base_vole.h"
+#include "yacl/crypto/primitives/vole/f2k/sparse_vole.h"
+#include "yacl/crypto/utils/rand.h"
+
+/* security parameter declaration */
 YACL_MODULE_DECLARE("silent_vole", SecParam::C::k128, SecParam::S::INF);
 
 namespace yacl::crypto {
@@ -34,7 +44,7 @@ enum class CodeType {
   ExAcc11,
   ExAcc21,
   ExAcc40,
-  // TODO: @wenfan
+  // TODO(@wenfan)
   // Support ExConv Code
   ExConv7x24,
   ExConv21x24
@@ -78,14 +88,14 @@ enum class CodeType {
 
 class SilentVoleSender {
  public:
-  SilentVoleSender(CodeType code) {
+  explicit SilentVoleSender(CodeType code) {
     ss_sender_ = SoftspokenOtExtSender(2);
     codetype_ = code;
     delta_ = MakeUint128(0, 0);  // init delta_
   }
 
   void OneTimeSetup(const std::shared_ptr<link::Context>& ctx) {
-    if (is_inited_ == false) {
+    if (!is_inited_) {
       ss_sender_.OneTimeSetup(ctx);
       delta_ = ss_sender_.GetDelta();
       is_inited_ = true;
@@ -129,13 +139,13 @@ class SilentVoleSender {
 
 class SilentVoleReceiver {
  public:
-  SilentVoleReceiver(CodeType code) {
+  explicit SilentVoleReceiver(CodeType code) {
     ss_receiver_ = SoftspokenOtExtReceiver(2);
     codetype_ = code;
   }
 
   void OneTimeSetup(const std::shared_ptr<link::Context>& ctx) {
-    if (is_inited_ == false) {
+    if (!is_inited_) {
       ss_receiver_.OneTimeSetup(ctx);
       is_inited_ = true;
     }

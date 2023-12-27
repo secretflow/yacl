@@ -14,6 +14,8 @@
 
 #include "yacl/crypto/base/sign/rsa_signing.h"
 
+#include <string>
+
 #include "gtest/gtest.h"
 
 #include "yacl/crypto/base/openssl_wrappers.h"

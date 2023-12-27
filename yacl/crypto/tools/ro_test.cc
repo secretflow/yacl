@@ -33,14 +33,14 @@ INSTANTIATE_TEST_SUITE_P(VarInputLen, RandomOracleTest,
 TEST_P(RandomOracleTest, Default) {
   const auto& param = GetParam();
   const auto& RO = RandomOracle::GetDefault();
-  auto input = RandBytes(param);
+  auto input = FastRandBytes(param);
   EXPECT_EQ(RO.Gen(input), RO.Gen(input));
 }
 
 TEST_P(RandomOracleTest, OutLen8) {
   const auto& param = GetParam();
   auto RO = RandomOracle(HashAlgorithm::BLAKE3, 8);
-  auto input = RandBytes(param);
+  auto input = FastRandBytes(param);
   EXPECT_EQ(RO.Gen(input), RO.Gen(input));
 }
 
@@ -64,7 +64,7 @@ void inline CheckType(const RandomOracle& ro, ByteContainerView input) {
 TEST_P(RandomOracleTest, GetTypeTest) {
   const auto& param = GetParam();
   const auto& RO = RandomOracle::GetDefault();
-  auto input = RandBytes(param);
+  auto input = FastRandBytes(param);
   CheckType<uint128_t>(RO, input);
   CheckType<int128_t>(RO, input);
   CheckType<uint64_t>(RO, input);
@@ -79,7 +79,7 @@ TEST_P(RandomOracleTest, GetTypeTest) {
 TEST_P(RandomOracleTest, TwoParamTest) {
   const auto& param = GetParam();
   const auto& RO = RandomOracle::GetDefault();
-  auto input_bytes = RandBytes(param);
+  auto input_bytes = FastRandBytes(param);
   auto input_u64 = FastRandU64();
 
   EXPECT_EQ(RO.Gen<uint128_t>(input_bytes, input_u64),

@@ -19,12 +19,18 @@
 #include "absl/types/span.h"
 
 #include "yacl/base/int128.h"
-#include "yacl/crypto/primitives/ot/gywz_ote.h"
-#include "yacl/crypto/primitives/ot/ot_store.h"
-#include "yacl/crypto/utils/rand.h"
 #include "yacl/crypto/utils/secparam.h"
 #include "yacl/link/link.h"
 
+/* submodules */
+#include "yacl/crypto/base/aes/aes_opt.h"
+#include "yacl/crypto/primitives/ot/gywz_ote.h"
+#include "yacl/crypto/primitives/ot/ot_store.h"
+#include "yacl/crypto/tools/crhash.h"
+#include "yacl/crypto/tools/prg.h"
+#include "yacl/crypto/utils/rand.h"
+
+/* security parameter declaration */
 YACL_MODULE_DECLARE("gywz_ote", SecParam::C::INF, SecParam::S::INF);
 
 namespace yacl::crypto {

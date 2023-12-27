@@ -20,6 +20,9 @@
 
 #include "yacl/base/int128.h"
 
+/* submodules */
+#include "yacl/crypto/tools/rp.h"
+
 namespace yacl::crypto {
 
 // Correlation Robust Hash function (Single Block input)

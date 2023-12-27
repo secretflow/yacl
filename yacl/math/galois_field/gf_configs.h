@@ -31,7 +31,10 @@ inline const std::string kBinaryField = "GF_2^k";
 DECLARE_ARG(MPInt, Mod);  // the value of p in GF_p
 
 // configs for kExtensionField, kBinaryField
-DECLARE_ARG(uint64_t, degree);
+DECLARE_ARG(uint64_t, Degree);
+
+// configs for max bit size for underlying prime number
+DECLARE_ARG(uint64_t, MaxBitSize);
 
 //==   Supported lib list...   ==//
 
@@ -49,5 +52,6 @@ DECLARE_ARG(uint64_t, degree);
 // Note 2: Get mpint field instance by `GaloisFieldFactory::Instance().Create()`
 
 inline const std::string kMPIntLib = "mpint";
+inline const std::string kMclLib = "libmcl";
 
 }  // namespace yacl::math

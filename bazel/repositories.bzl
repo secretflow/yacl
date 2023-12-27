@@ -18,11 +18,12 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 SECRETFLOW_GIT = "https://github.com/secretflow"
 
-IC_COMMIT_ID = "b4a657d5ac39fe584dbccb7808fcbc8897ed2077"
+IC_COMMIT_ID = "e9a64bfe1ae57f358b41790a1bdd82c390dd50da"
 
 SIMPLEST_OT_COMMIT_ID = "4e39b7c35721c7fd968da6e047f59c0ac92e8088"
 
 def yacl_deps():
+    _rule_proto()
     _rule_python()
     _rules_foreign_cc()
     _com_github_madler_zlib()
@@ -229,6 +230,17 @@ def _com_github_blake3team_blake3():
         build_file = "@yacl//bazel:blake3.BUILD",
         urls = [
             "https://github.com/BLAKE3-team/BLAKE3/archive/refs/tags/1.4.1.tar.gz",
+        ],
+    )
+
+def _rule_proto():
+    maybe(
+        http_archive,
+        name = "rules_proto",
+        sha256 = "dc3fb206a2cb3441b485eb1e423165b231235a1ea9b031b4433cf7bc1fa460dd",
+        strip_prefix = "rules_proto-5.3.0-21.7",
+        urls = [
+            "https://github.com/bazelbuild/rules_proto/archive/refs/tags/5.3.0-21.7.tar.gz",
         ],
     )
 

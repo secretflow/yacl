@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/base/ecc/mcl/mcl_pairing_group.h"
+#include "yacl/crypto/base/pairing/mcl/mcl_pairing_group.h"
 
 #ifdef MCL_ALL_PAIRING_FOR_YACL
 namespace yacl::crypto::hmcl {
@@ -43,17 +43,17 @@ size_t MclPairingGroup<G1_, G2_, GT_>::GetSecurityStrength() const {
 }
 
 template <typename G1_, typename G2_, typename GT_>
-std::shared_ptr<EcGroup> MclPairingGroup<G1_, G2_, GT_>::GetG1() const {
+std::shared_ptr<EcGroup> MclPairingGroup<G1_, G2_, GT_>::GetGroup1() const {
   return g1_;
 }
 
 template <typename G1_, typename G2_, typename GT_>
-std::shared_ptr<EcGroup> MclPairingGroup<G1_, G2_, GT_>::GetG2() const {
+std::shared_ptr<EcGroup> MclPairingGroup<G1_, G2_, GT_>::GetGroup2() const {
   return g2_;
 }
 
 template <typename G1_, typename G2_, typename GT_>
-std::shared_ptr<Field> MclPairingGroup<G1_, G2_, GT_>::GetGT() const {
+std::shared_ptr<GroupTarget> MclPairingGroup<G1_, G2_, GT_>::GetGroupT() const {
   return gt_;
 }
 
@@ -63,35 +63,34 @@ MPInt MclPairingGroup<G1_, G2_, GT_>::GetOrder() const {
 }
 
 template <typename G1_, typename G2_, typename GT_>
-FElement MclPairingGroup<G1_, G2_, GT_>::MillerLoop(
+GtElement MclPairingGroup<G1_, G2_, GT_>::MillerLoop(
     const EcPoint& group1_point, const EcPoint& group2_point) const {
-  FElement ret = gt_->MakeInstance();
-  miller_func_(*(CastAny<GT_>(ret)), *(CastAny<G1_>(group1_point)),
+  GT_ ret;
+  miller_func_(ret, *(CastAny<G1_>(group1_point)),
                *(CastAny<G2_>(group2_point)));
   return ret;
 }
 
 template <typename G1_, typename G2_, typename GT_>
-FElement MclPairingGroup<G1_, G2_, GT_>::FinalExp(const FElement& x) const {
-  FElement ret = gt_->MakeInstance();
-  final_exp_func_(*(CastAny<GT_>(ret)), *(CastAny<GT_>(x)));
+GtElement MclPairingGroup<G1_, G2_, GT_>::FinalExp(const GtElement& x) const {
+  GT_ ret;
+  final_exp_func_(ret, x.As<GT_>());
   return ret;
 }
 
 template <typename G1_, typename G2_, typename GT_>
-FElement MclPairingGroup<G1_, G2_, GT_>::Pairing(
+GtElement MclPairingGroup<G1_, G2_, GT_>::Pairing(
     const EcPoint& group1_point, const EcPoint& group2_point) const {
-  FElement ret = gt_->MakeInstance();
-  pairing_func_(*(CastAny<GT_>(ret)), *(CastAny<G1_>(group1_point)),
+  GT_ ret;
+  pairing_func_(ret, *(CastAny<G1_>(group1_point)),
                 *(CastAny<G2_>(group2_point)));
   return ret;
 }
 
 template <typename G1_, typename G2_, typename GT_>
-MclPairingGroup<G1_, G2_, GT_>::MclPairingGroup(const PairingMeta& meta,
-                                                std::unique_ptr<EcGroup>& g1,
-                                                std::unique_ptr<EcGroup>& g2,
-                                                std::unique_ptr<Field>& gt)
+MclPairingGroup<G1_, G2_, GT_>::MclPairingGroup(
+    const PairingMeta& meta, std::unique_ptr<EcGroup>& g1,
+    std::unique_ptr<EcGroup>& g2, std::unique_ptr<GroupTarget>& gt)
     : meta_(meta) {
   g1_ = std::move(g1);
   g2_ = std::move(g2);

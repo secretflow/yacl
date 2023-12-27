@@ -19,6 +19,10 @@
 #include "openssl/evp.h" /* for evp type conversions */
 
 #include "yacl/base/byte_container_view.h"
+#include "yacl/crypto/utils/secparam.h"
+
+/* security parameter declaration */
+YACL_MODULE_DECLARE("hash_all", SecParam::C::k128, SecParam::S::INF);
 
 namespace yacl::crypto {
 
@@ -30,7 +34,7 @@ enum class HashAlgorithm : int {
   SHA384 = 3,
   SHA512 = 4,
 
-  SHA_1 = 5,
+  // SHA_1 = 5, // not recommended to use
 
   SM3 = 6,
 
@@ -91,8 +95,8 @@ inline const char *ToString(HashAlgorithm hash_algo) {
       return "sha2-384";
     case HashAlgorithm::SHA512:
       return "sha2-512";
-    case HashAlgorithm::SHA_1:
-      return "sha1";
+    // case HashAlgorithm::SHA_1:
+    //   return "sha1";
     case HashAlgorithm::SM3:
       return "sm3";
     case HashAlgorithm::BLAKE2B:

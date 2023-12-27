@@ -14,7 +14,7 @@
 
 #include "gtest/gtest.h"
 
-#include "yacl/crypto/base/ecc/mcl/mcl_pairing_group.h"
+#include "yacl/crypto/base/pairing/mcl/mcl_pairing_group.h"
 #include "yacl/crypto/utils/rand.h"
 
 namespace yacl::crypto::hmcl {
@@ -29,7 +29,7 @@ class MclPairingTest : public ::testing::Test {
   std::unique_ptr<PairingGroup> pairing_group_;
   std::shared_ptr<EcGroup> group1_;
   std::shared_ptr<EcGroup> group2_;
-  std::shared_ptr<Field> gt_field_;
+  std::shared_ptr<GroupTarget> gt_;
 
   void TestPairingAlgo() {
     // GIVEN
@@ -42,23 +42,23 @@ class MclPairingTest : public ::testing::Test {
 
     // THEN
     // Test GT group order
-    ASSERT_TRUE(gt_field_->IsOne(gt_field_->Pow(field_g, order)));
+    ASSERT_TRUE((bool)gt_->IsIdentityOne(gt_->Pow(field_g, order)));
     // Test Pairing
     for (int i = 0; i < 10; i++) {
       MPInt x;
       MPInt::RandomLtN(order, &x);
       // field_g^x = e(g1, g2)^x
-      auto ex = gt_field_->Pow(field_g, x);
+      auto ex = gt_->Pow(field_g, x);
       // g1 * x
       auto g1x = group1_->MulBase(x);
       // g2 * x
       auto g2x = group2_->MulBase(x);
       // e1 = e(g1^x, g2) = e(g1, g2)^x = ex
       auto e1 = pairing_group_->Pairing(g1x, g2);
-      ASSERT_TRUE(gt_field_->Equal(e1, ex));
+      ASSERT_TRUE((bool)gt_->Equal(e1, ex));
       // e1 = e(g1, g2^x) = e(g1, g2)^x = ex
       auto e2 = pairing_group_->Pairing(g1, g2x);
-      ASSERT_TRUE(gt_field_->Equal(e2, ex));
+      ASSERT_TRUE((bool)gt_->Equal(e2, ex));
     }
 
     // Test Pairing = Miller + FinalExp
@@ -73,7 +73,7 @@ class MclPairingTest : public ::testing::Test {
       auto f = pairing_group_->MillerLoop(g1x, g2x);
       auto f1 = pairing_group_->FinalExp(f);
       auto f2 = pairing_group_->Pairing(g1x, g2x);
-      ASSERT_TRUE(gt_field_->Equal(f1, f2));
+      ASSERT_TRUE((bool)gt_->Equal(f1, f2));
     }
   }
 
@@ -101,16 +101,16 @@ class MclPairingTest : public ::testing::Test {
    protected:                                                                \
     void SetUp() override {                                                  \
       pairing_group_ = MclPGFactory::CreateByName(pairing_name);             \
-      group1_ = pairing_group_->GetG1();                                     \
-      group2_ = pairing_group_->GetG2();                                     \
-      gt_field_ = pairing_group_->GetGT();                                   \
+      group1_ = pairing_group_->GetGroup1();                                 \
+      group2_ = pairing_group_->GetGroup2();                                 \
+      gt_ = pairing_group_->GetGroupT();                                     \
     }                                                                        \
   };                                                                         \
   TEST_F(MclPairing##class_name##Test, DISABLED_Works) {                     \
     fmt::print("Begin test pairing {}\n", pairing_group_->GetPairingName()); \
     TestPairingAlgo();                                                       \
-    TestHashToCurve(pairing_group_->GetG1());                                \
-    TestHashToCurve(pairing_group_->GetG2());                                \
+    TestHashToCurve(pairing_group_->GetGroup1());                            \
+    TestHashToCurve(pairing_group_->GetGroup2());                            \
     fmt::print("End test pairing {}\n", pairing_group_->GetPairingName());   \
   }
 

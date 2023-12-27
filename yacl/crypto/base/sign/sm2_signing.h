@@ -14,8 +14,18 @@
 
 #pragma once
 
+#include <utility>
+#include <vector>
+
 #include "yacl/crypto/base/key_utils.h"
 #include "yacl/crypto/base/sign/signing.h"
+#include "yacl/crypto/utils/secparam.h"
+
+/* submodules */
+#include "yacl/crypto/base/hash/hash_utils.h"
+
+/* security parameter declaration */
+YACL_MODULE_DECLARE("sm2_sign", SecParam::C::k128, SecParam::S::INF);
 
 namespace yacl::crypto {
 
@@ -26,7 +36,7 @@ class Sm2Signer final : public AsymmetricSigner {
   explicit Sm2Signer(/* pem key */ ByteContainerView sk_buf)
       : sk_(LoadKeyFromBuf(sk_buf)) {}
 
-  SignatureScheme GetSignatureSchema() const override { return scheme_; };
+  SignatureScheme GetSignatureSchema() const override { return scheme_; }
 
   // Sign message with the default id.
   std::vector<uint8_t> Sign(ByteContainerView message) const override;
@@ -56,6 +66,6 @@ class Sm2Verifier final : public AsymmetricVerifier {
   const SignatureScheme scheme_ = SignatureScheme::SM2_SIGNING_SM3_HASH;
 };
 
-// TODO @raofei: support sm2 certificate
+// TODO(@raofei, @shanzhu): support sm2 certificate
 
 }  // namespace yacl::crypto

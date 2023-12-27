@@ -14,6 +14,8 @@
 
 #include "yacl/crypto/base/key_utils.h"
 
+#include <cstddef>
+
 #include "yacl/io/stream/file_io.h"
 
 namespace yacl::crypto {
@@ -83,13 +85,13 @@ openssl::UniquePkey GenRsaKeyPair(unsigned rsa_keylen) {
   openssl::UniquePkeyCtx ctx(
       EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, /* engine = default */ nullptr));
   YACL_ENFORCE(ctx != nullptr);
-  YACL_ENFORCE(EVP_PKEY_keygen_init(ctx.get()) > 0);
+  OSSL_RET_1(EVP_PKEY_keygen_init(ctx.get()));
 
   // set key length bits
-  YACL_ENFORCE(EVP_PKEY_CTX_set_rsa_keygen_bits(ctx.get(), rsa_keylen) > 0);
+  OSSL_RET_1(EVP_PKEY_CTX_set_rsa_keygen_bits(ctx.get(), rsa_keylen));
 
   // generate keys
-  YACL_ENFORCE(EVP_PKEY_keygen(ctx.get(), &pkey) > 0);
+  OSSL_RET_1(EVP_PKEY_keygen(ctx.get(), &pkey));
   return openssl::UniquePkey(pkey);
 }
 
@@ -99,10 +101,10 @@ openssl::UniquePkey GenSm2KeyPair() {
   openssl::UniquePkeyCtx ctx(
       EVP_PKEY_CTX_new_id(EVP_PKEY_SM2, /* engine = default */ nullptr));
   YACL_ENFORCE(ctx != nullptr);
-  YACL_ENFORCE(EVP_PKEY_keygen_init(ctx.get()) > 0);
+  OSSL_RET_1(EVP_PKEY_keygen_init(ctx.get()));
 
   // generate keys
-  YACL_ENFORCE(EVP_PKEY_keygen(ctx.get(), &pkey) > 0);
+  OSSL_RET_1(EVP_PKEY_keygen(ctx.get(), &pkey));
   return openssl::UniquePkey(pkey);
 }
 
@@ -143,7 +145,7 @@ openssl::UniquePkey LoadKeyFromBuf(ByteContainerView buf) {
       /* OSSL_LIB_CTX */ nullptr, /* probquery */ nullptr));
 
   YACL_ENFORCE(decoder != nullptr, "no decoder found");
-  YACL_ENFORCE(OSSL_DECODER_from_bio(decoder.get(), bio.get()) == 1);
+  OSSL_RET_1(OSSL_DECODER_from_bio(decoder.get(), bio.get()));
 
   return openssl::UniquePkey(pkey);
 }
@@ -161,8 +163,8 @@ Buffer ExportPublicKeyToPemBuf(
     /* public key */ const openssl::UniquePkey& pkey) {
   openssl::UniqueBio bio(BIO_new(BIO_s_mem()));  // create an empty bio
   // export certificate to bio
-  YACL_ENFORCE(PEM_write_bio_PUBKEY(bio.get(), pkey.get()) == 1,
-               "Failed PEM_export_bio_PUBKEY.");
+  OSSL_RET_1(PEM_write_bio_PUBKEY(bio.get(), pkey.get()),
+             "Failed PEM_export_bio_PUBKEY.");
   return BioToBuf(bio);
 }
 
@@ -178,9 +180,9 @@ Buffer ExportSecretKeyToPemBuf(
   openssl::UniqueBio bio(BIO_new(BIO_s_mem()));  // create an empty bio
 
   // export certificate to bio
-  YACL_ENFORCE(PEM_write_bio_PrivateKey(bio.get(), pkey.get(), nullptr, nullptr,
-                                        0, nullptr, nullptr) == 1,
-               "Failed PEM_export_bio_PrivateKey.");
+  OSSL_RET_1(PEM_write_bio_PrivateKey(bio.get(), pkey.get(), nullptr, nullptr,
+                                      0, nullptr, nullptr),
+             "Failed PEM_export_bio_PrivateKey.");
   return BioToBuf(bio);
 }
 
@@ -204,7 +206,7 @@ Buffer ExportPublicKeyToDerBuf(
       /* format */ "DER",
       /* RFC 5280: X.509 structure */ "SubjectPublicKeyInfo", nullptr));
   YACL_ENFORCE(encoder != nullptr, "no encoder found");
-  YACL_ENFORCE(OSSL_ENCODER_to_bio(encoder.get(), bio.get()) == 1);
+  OSSL_RET_1(OSSL_ENCODER_to_bio(encoder.get(), bio.get()));
   return BioToBuf(bio);
 }
 
@@ -225,7 +227,7 @@ Buffer ExportSecretKeyToDerBuf(
       /* format */ "DER",
       /* RFC 5208: PKCS#8 structure */ "PrivateKeyInfo", nullptr));
   YACL_ENFORCE(encoder != nullptr, "no encoder found");
-  YACL_ENFORCE(OSSL_ENCODER_to_bio(encoder.get(), bio.get()) == 1);
+  OSSL_RET_1(OSSL_ENCODER_to_bio(encoder.get(), bio.get()));
   return BioToBuf(bio);
 }
 
@@ -244,9 +246,10 @@ openssl::UniqueX509 MakeX509Cert(
     /* subjects info */
     const std::unordered_map<std::string, std::string>& subjects,
     /* time */ unsigned days, HashAlgorithm hash) {
-  YACL_ENFORCE((hash == HashAlgorithm::SHA256) || (hash == HashAlgorithm::SM3));
+  YACL_ENFORCE(hash == HashAlgorithm::SHA256 || hash == HashAlgorithm::SM3);
+  // ++++++++++++++++++++++++++++++
   // Generate X509 cert (version 3)
-  // ----------------------------------------
+  // ++++++++++++++++++++++++++++++
   // * Certificate
   //  ** Version Number
   //  ** Serial Number
@@ -265,15 +268,14 @@ openssl::UniqueX509 MakeX509Cert(
   //  ** ...
   // * Certificate Signature Algorithm
   // * Certificate Signature
-  // ----------------------------------------
+  // ++++++++++++++++++++++++++++++
   openssl::UniqueX509 x509(X509_new());
   /* version */
-  YACL_ENFORCE(X509_set_version(x509.get(), kX509Version) == 1);
+  OSSL_RET_1(X509_set_version(x509.get(), kX509Version));
 
-  // /* Serial Number */
-  // // YACL_ENFORCE(X509_set_serialNumber(x509.get(),
-  // // ASN1_INTEGER_set_int64(FastRandU64()) == 1);    // set random serial
-  // number
+  /* Serial Number */
+  // YACL_ENFORCE(X509_set_serialNumber(x509.get(),
+  // ASN1_INTEGER_set_int64(FastRandU64()) == 1);    // set random serial number
 
   /* time */
   X509_gmtime_adj(X509_get_notBefore(x509.get()), 0);
@@ -289,15 +291,15 @@ openssl::UniqueX509 MakeX509Cert(
   for (const auto& field : kX509SubjectFields) {
     auto it = subjects.find(std::string(field));
     YACL_ENFORCE(it != subjects.end(), "Cannot find subject field {}.", field);
-    YACL_ENFORCE(X509_NAME_add_entry_by_txt(
-                     name, it->first.c_str(), MBSTRING_ASC,
-                     reinterpret_cast<const unsigned char*>(it->second.c_str()),
-                     -1, -1, 0),
-                 "Set x509 name failed.");
+    OSSL_RET_1(X509_NAME_add_entry_by_txt(
+                   name, it->first.c_str(), MBSTRING_ASC,
+                   reinterpret_cast<const unsigned char*>(it->second.c_str()),
+                   -1, -1, 0),
+               "Set x509 name failed.");
   }
 
   /* issuer = subject since this cert is self-signed */
-  YACL_ENFORCE(X509_set_issuer_name(x509.get(), name) == 1);
+  OSSL_RET_1(X509_set_issuer_name(x509.get(), name));
 
   /* fill cert with rsa public key */
   X509_set_pubkey(x509.get(), pk.get());
@@ -306,9 +308,9 @@ openssl::UniqueX509 MakeX509Cert(
   AddX509Extension(x509.get(), NID_subject_key_identifier, (char*)"hash");
 
   /* self signing with digest algorithm */
-  YACL_ENFORCE(X509_sign(x509.get(), sk.get(),
-                         openssl::FetchEvpMd(ToString(hash)).get()),
-               "Perform self-signing failed.");
+  auto sign_bytes = X509_sign(x509.get(), sk.get(),
+                              openssl::FetchEvpMd(ToString(hash)).get());
+  YACL_ENFORCE(sign_bytes > 0, "Perform self-signing failed.");
   return x509;
 }
 
@@ -349,8 +351,8 @@ Buffer ExportX509CertToBuf(const openssl::UniqueX509& x509) {
   openssl::UniqueBio bio(BIO_new(BIO_s_mem()));  // create an empty bio
 
   // export certificate to bio
-  YACL_ENFORCE(PEM_write_bio_X509(bio.get(), x509.get()) == 1,
-               "Failed PEM_export_bio_X509.");
+  OSSL_RET_1(PEM_write_bio_X509(bio.get(), x509.get()),
+             "Failed PEM_export_bio_X509.");
   return BioToBuf(bio);
 }
 

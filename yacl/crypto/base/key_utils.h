@@ -14,6 +14,10 @@
 
 #pragma once
 
+#include <string>
+#include <unordered_map>
+#include <utility>
+
 #include "yacl/crypto/base/openssl_wrappers.h"
 
 namespace yacl::crypto {

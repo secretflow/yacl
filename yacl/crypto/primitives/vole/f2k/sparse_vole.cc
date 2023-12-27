@@ -17,15 +17,9 @@
 #include <algorithm>
 #include <numeric>
 
-#include "sparse_vole.h"
-
 #include "yacl/base/aligned_vector.h"
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/int128.h"
-#include "yacl/crypto/primitives/ot/gywz_ote.h"
-#include "yacl/crypto/primitives/ot/sgrr_ote.h"
-#include "yacl/crypto/tools/crhash.h"
-#include "yacl/crypto/tools/rp.h"
 #include "yacl/math/f2k/f2k.h"
 #include "yacl/math/gadget.h"
 #include "yacl/utils/serialize.h"

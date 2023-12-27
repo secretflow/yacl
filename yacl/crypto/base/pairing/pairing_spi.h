@@ -15,13 +15,19 @@
 #pragma once
 
 #include "yacl/crypto/base/ecc/ecc_spi.h"
-#include "yacl/crypto/base/field/field_spi.h"
+#include "yacl/math/galois_field/gf_spi.h"
 #include "yacl/utils/spi/spi_factory.h"
 
 namespace yacl::crypto {
 
 using PairingName = CurveName;
 using PairingMeta = CurveMeta;
+// Alias of group element of pairing target (multiplicative) group over
+// extension field $F_{q^12}$.
+using GtElement = Item;
+// Alias of pairing target (multiplicative) group, specifically used in
+// Pairing setting.
+using GroupTarget = yacl::math::GaloisField;
 
 enum class PairingAlgorithm {
   Weil,
@@ -32,11 +38,12 @@ enum class PairingAlgorithm {
   Atei,
 };
 
-// Let $F_{q^k}$ be some finite extension of $F_q$ with $k ≥ 1$. The groups
-// $G_1$ and $G_2$ are defined in $E(F_{q^k})$, and the target group $G_T$ is
-// defined in the multiplicative group $F_{q^k}^*$ , so we usually write $G_1$
-// and $G_2$ additively, whilst we write $G_T$ multiplicatively. Thus, for $P_1,
-// P_2 \in G_1$ and $Q_1, Q_2 \in G_2$, the bilinearity of $e$ means that:
+// Let $F_{q^k}$ be some finite extension of field $F_q$ with $k ≥ 1$. The
+// groups $G_1$ and $G_2$ are defined over specific field, and the target group
+// $G_T$ is a multiplicative group over extension field $F_{q^k}^*$. So we
+// usually write $G_1$ and $G_2$ additively, whilst we write $G_T$
+// multiplicatively. Thus, for $P_1, P_2 \in G_1$ and $Q_1, Q_2 \in G_2$, the
+// bilinearity of $e$ means that:
 // -  e(P_1 + P_2 , Q_1) = e(P_1, Q_1) · e(P_2 , Q_1),
 // -  e(P_1, Q_1 + Q_2)  = e(P_1, Q_1) · e(P_1, Q_2),
 class PairingGroup {
@@ -49,21 +56,23 @@ class PairingGroup {
   virtual std::string ToString() const = 0;
   virtual size_t GetSecurityStrength() const = 0;
 
-  virtual std::shared_ptr<EcGroup> GetG1() const = 0;
-  virtual std::shared_ptr<EcGroup> GetG2() const = 0;
-  virtual std::shared_ptr<Field> GetGT() const = 0;
+  virtual std::shared_ptr<EcGroup> GetGroup1() const = 0;
+  virtual std::shared_ptr<EcGroup> GetGroup2() const = 0;
+  virtual std::shared_ptr<GroupTarget> GetGroupT() const = 0;
 
   virtual MPInt GetOrder() const = 0;
 
-  virtual FElement MillerLoop(const EcPoint &group1_point,
-                              const EcPoint &group2_point) const = 0;
-  virtual FElement FinalExp(const FElement &x) const = 0;
+  virtual GtElement MillerLoop(const EcPoint &group1_point,
+                               const EcPoint &group2_point) const = 0;
+  virtual GtElement FinalExp(const GtElement &x) const = 0;
   // pairing = MillerLoop + FinalExponentiation
-  virtual FElement Pairing(const EcPoint &group1_point,
-                           const EcPoint &group2_point) const = 0;
+  // Group1 x Group2 -> Gt
+  virtual GtElement Pairing(const EcPoint &group1_point,
+                            const EcPoint &group2_point) const = 0;
   // multi_miller_loop
-
+  // TODO: @banqiang
   // multi_pairing
+  // TODO: @banqiang
 };
 
 // Give pairing meta, return pairing instance.

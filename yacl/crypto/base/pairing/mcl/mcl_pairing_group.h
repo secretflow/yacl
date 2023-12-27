@@ -15,10 +15,10 @@
 #pragma once
 
 #include "yacl/crypto/base/ecc/mcl/mcl_ec_group.h"
-#include "yacl/crypto/base/ecc/mcl/mcl_pairing_bls12_381.h"
-#include "yacl/crypto/base/ecc/mcl/pairing_header.h"
-#include "yacl/crypto/base/ecc/pairing_spi.h"
-#include "yacl/crypto/base/field/mcl/mcl_field.h"
+#include "yacl/crypto/base/pairing/mcl/mcl_pairing_bls12_381.h"
+#include "yacl/crypto/base/pairing/mcl/pairing_header.h"
+#include "yacl/crypto/base/pairing/pairing_spi.h"
+#include "yacl/math/galois_field/mcl_field/mcl_field.h"
 
 namespace yacl::crypto::hmcl {
 
@@ -38,7 +38,8 @@ class MclPGFactory {
       MclGroupT<mcl::curve_name::Fp, mcl::curve_name::Fr>;  \
   using MclPairing##classname##G2 =                         \
       MclGroupT<mcl::curve_name::Fp2, mcl::curve_name::Fr>; \
-  using MclPairing##classname##GT = MclField<mcl::curve_name::GT, 12>;
+  using MclPairing##classname##GT =                         \
+      math::hmcl::MclField<mcl::curve_name::GT, 12>;
 
 PAIRING_CURVE_ALIAS(BN254, bn254);
 PAIRING_CURVE_ALIAS(BN384M, bn382m);
@@ -55,27 +56,23 @@ PAIRING_CURVE_ALIAS(BN256, bn256);
 template <typename G1_, typename G2_, typename GT_>
 class MclPairingGroup : public PairingGroup {
  public:
-  using G1 = G1_;
-  using G2 = G2_;
-  using GT = GT_;
-
   std::string GetLibraryName() const override;
   PairingName GetPairingName() const override;
   PairingAlgorithm GetPairingAlgorithm() const override;
   std::string ToString() const override;
   size_t GetSecurityStrength() const override;
 
-  std::shared_ptr<EcGroup> GetG1() const override;
-  std::shared_ptr<EcGroup> GetG2() const override;
-  std::shared_ptr<Field> GetGT() const override;
+  std::shared_ptr<EcGroup> GetGroup1() const override;
+  std::shared_ptr<EcGroup> GetGroup2() const override;
+  std::shared_ptr<GroupTarget> GetGroupT() const override;
 
   MPInt GetOrder() const override;
 
-  FElement MillerLoop(const EcPoint& group1_point,
-                      const EcPoint& group2_point) const override;
-  FElement FinalExp(const FElement& x) const override;
-  FElement Pairing(const EcPoint& group1_point,
-                   const EcPoint& group2_point) const override;
+  GtElement MillerLoop(const EcPoint& group1_point,
+                       const EcPoint& group2_point) const override;
+  GtElement FinalExp(const GtElement& x) const override;
+  GtElement Pairing(const EcPoint& group1_point,
+                    const EcPoint& group2_point) const override;
 
  private:
   using PairingFunc = std::function<void(GT_&, const G1_&, const G2_&)>;
@@ -85,7 +82,7 @@ class MclPairingGroup : public PairingGroup {
   PairingMeta meta_;
   std::shared_ptr<EcGroup> g1_;
   std::shared_ptr<EcGroup> g2_;
-  std::shared_ptr<Field> gt_;
+  std::shared_ptr<GroupTarget> gt_;
 
   PairingFunc pairing_func_;
   MillerFunc miller_func_;
@@ -97,7 +94,7 @@ class MclPairingGroup : public PairingGroup {
   explicit MclPairingGroup(const PairingMeta& meta,
                            std::unique_ptr<EcGroup>& g1,
                            std::unique_ptr<EcGroup>& g2,
-                           std::unique_ptr<Field>& gt);
+                           std::unique_ptr<GroupTarget>& gt);
 };
 
 #define PAIRING_GROUP_ALIAS(classname, namespace_name)                  \

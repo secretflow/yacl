@@ -15,16 +15,19 @@
 #pragma once
 
 #include <memory>
+#include <string>
 #include <unordered_map>
 
 #include "hash/hash_interface.h" /* yacl hash to openssl hash */
 #include "openssl/bio.h"
+#include "openssl/bn.h"
 #include "openssl/core.h"
 #include "openssl/core_dispatch.h"
 #include "openssl/core_names.h"
 #include "openssl/decoder.h"
+#include "openssl/ec.h"
 #include "openssl/encoder.h"
-#include "openssl/evp.h" /* evp */
+#include "openssl/evp.h"
 #include "openssl/pem.h"
 #include "openssl/provider.h"
 #include "openssl/x509v3.h"
@@ -88,6 +91,11 @@ using UniqueDecoder =
 using UniqueLib = internal::TyHelper<OSSL_LIB_CTX, OSSL_LIB_CTX_free>;
 using UniqueProv = internal::TyHelper<OSSL_PROVIDER, OSSL_PROVIDER_unload>;
 
+/* ec and bn */
+using UniqueEcGroup = internal::TyHelper<EC_GROUP, EC_GROUP_free>;
+using UniqueBnCtx = internal::TyHelper<BN_CTX, BN_CTX_free>;
+using UniqueBn = internal::TyHelper<BIGNUM, BN_free>;
+
 // ------------------
 // OpenSSL EVP Enum
 // ------------------
@@ -106,8 +114,7 @@ inline UniqueMac FetchEvpHmac() {
 // ---------------------------------
 // Helpers for OpenSSL return values
 // ---------------------------------
-// #define OSSL_RET_1(MP_ERR, ...) YACL_ENFORCE_EQ((MP_ERR), 1, __VA_ARGS__)
-// #define OSSL_RET_N(MP_ERR, ...) YACL_ENFORCE_GE((MP_ERR), 0, __VA_ARGS__)
-// #define OSSL_RET_ZP(MP_ERR, ...) YACL_ENFORCE_GT((MP_ERR), 0, __VA_ARGS__)
+/* enforce return code == 1 */
+#define OSSL_RET_1(MP_ERR, ...) YACL_ENFORCE_EQ((MP_ERR), 1, __VA_ARGS__)
 
 }  // namespace yacl::crypto::openssl

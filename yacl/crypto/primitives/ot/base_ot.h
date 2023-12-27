@@ -25,7 +25,15 @@
 #include "yacl/crypto/utils/secparam.h"
 #include "yacl/link/link.h"
 
-YACL_MODULE_DECLARE("base_ot", SecParam::C::k128, SecParam::S::INF);
+/* submodules */
+#if defined(__linux__) && defined(__x86_64)
+#include "yacl/crypto/primitives/ot/x86_asm_ot_interface.h"
+#else
+#include "yacl/crypto/primitives/ot/portable_ot_interface.h"
+#endif
+
+/* security parameter declaration */
+// this module is only a wrapper, no need for security parameter definition
 
 namespace yacl::crypto {
 

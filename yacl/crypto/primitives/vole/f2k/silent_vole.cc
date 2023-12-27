@@ -14,18 +14,12 @@
 
 #include "yacl/crypto/primitives/vole/f2k/silent_vole.h"
 
-#include <type_traits>
+#include <algorithm>
+#include <memory>
 
 #include "yacl/base/aligned_vector.h"
 #include "yacl/base/dynamic_bitset.h"
 #include "yacl/base/int128.h"
-#include "yacl/crypto/primitives/code/code_interface.h"
-#include "yacl/crypto/primitives/code/ea_code.h"
-#include "yacl/crypto/primitives/code/silver_code.h"
-#include "yacl/crypto/primitives/ot/ferret_ote.h"
-#include "yacl/crypto/primitives/vole/f2k/base_vole.h"
-#include "yacl/crypto/primitives/vole/f2k/sparse_vole.h"
-#include "yacl/crypto/utils/rand.h"
 #include "yacl/math/gadget.h"
 
 namespace yacl::crypto {
@@ -42,13 +36,13 @@ namespace {
 // https://github.com/osu-crypto/libOTe/blob/master/libOTe/TwoChooseOne/ConfigureCode.cpp
 // which would return the number of noise in MpVole
 //
-uint64_t GenRegNoiseWeight(double min_dist_ratio, uint64_t sec) {
+uint64_t GenRegNoiseWeight(double min_dist_ratio, uint64_t security_param) {
   if (min_dist_ratio > 0.5 || min_dist_ratio <= 0) {
     YACL_THROW("mini distance too small, rate {}", min_dist_ratio);
   }
 
-  auto d = std::log2(1 - 2 * min_dist_ratio);
-  auto t = std::max<uint64_t>(128, -double(sec) / d);
+  auto d = -std::log2(1 - 2 * min_dist_ratio);
+  auto t = std::max<uint64_t>(128, double(security_param) / d);
 
   return math::RoundUpTo(t, 8);
 }
@@ -96,7 +90,7 @@ struct VoleParam {
       case CodeType::ExAcc40:
         min_dist_ratio = 0.2;
         break;
-      // TODO: @wenfan
+      // TODO(@wenfan)
       // support ExConv Code
       default:
         break;
@@ -155,7 +149,7 @@ std::shared_ptr<LinearCodeInterface> GetEncoder(const VoleParam<T>& param) {
     case CodeType::ExAcc40:
       encoder = std::make_shared<ExAccCode<40>>(vole_num, mp_vole_size);
       break;
-    // TODO: @wenfan
+    // TODO(@wenfan)
     // support ExConv Code
     default:
       break;
@@ -230,7 +224,7 @@ void SilentVoleReceiver::SfRecv(const std::shared_ptr<link::Context>& ctx,
 template <typename T, typename K>
 void SilentVoleSender::SendImpl(const std::shared_ptr<link::Context>& ctx,
                                 absl::Span<K> c) {
-  if (is_inited_ == false) {
+  if (!is_inited_) {
     OneTimeSetup(ctx);
   }
 
@@ -259,7 +253,7 @@ void SilentVoleSender::SendImpl(const std::shared_ptr<link::Context>& ctx,
 template <typename T, typename K>
 void SilentVoleReceiver::RecvImpl(const std::shared_ptr<link::Context>& ctx,
                                   absl::Span<T> a, absl::Span<K> b) {
-  if (is_inited_ == false) {
+  if (!is_inited_) {
     OneTimeSetup(ctx);
   }
 

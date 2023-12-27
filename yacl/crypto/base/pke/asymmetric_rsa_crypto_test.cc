@@ -14,6 +14,8 @@
 
 #include "yacl/crypto/base/pke/asymmetric_rsa_crypto.h"
 
+#include <string>
+
 #include "gtest/gtest.h"
 
 #include "yacl/crypto/base/openssl_wrappers.h"

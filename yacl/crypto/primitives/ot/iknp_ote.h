@@ -21,10 +21,16 @@
 
 #include "yacl/base/dynamic_bitset.h"
 #include "yacl/crypto/primitives/ot/ot_store.h"
-#include "yacl/crypto/tools/crhash.h"
 #include "yacl/crypto/utils/secparam.h"
 #include "yacl/link/link.h"
+#include "yacl/utils/matrix_utils.h"
 
+/* submodules */
+#include "yacl/crypto/tools/crhash.h"
+#include "yacl/crypto/tools/prg.h"
+#include "yacl/crypto/tools/rp.h"
+
+/* security parameter declaration */
 YACL_MODULE_DECLARE("iknp_ote", SecParam::C::k128, SecParam::S::INF);
 
 namespace yacl::crypto {

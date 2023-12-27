@@ -39,6 +39,7 @@ yacl_cc_library(
     ],
     deps = [
         ":openssl_wrappers",
+        "//yacl/crypto/utils:secparam",
         "//yacl/io/stream",
     ],
 )

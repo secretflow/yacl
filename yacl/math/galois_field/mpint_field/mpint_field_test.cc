@@ -29,7 +29,7 @@ TEST_F(MPIntFieldTest, AddWorks) {
   EXPECT_EQ(gf->GetFieldName(), kPrimeField);
 
   EXPECT_EQ(gf->GetOrder(), 13_mp);
-  EXPECT_TRUE(gf->GetExtensionDegree().IsOne());
+  EXPECT_TRUE(gf->GetExtensionDegree() == 1);
   EXPECT_EQ(gf->GetBaseFieldOrder(), 13_mp);
 
   EXPECT_EQ(gf->GetIdentityZero(), 0_mp);
@@ -310,6 +310,19 @@ TEST_F(MPIntFieldTest, VectorInplaceWorks) {
 
   gf->PowInplace(&a, 2_mp);
   ASSERT_EQ(a.AsSpan<MPInt>(), std::vector({10_mp, 10_mp, 4_mp}));
+}
+
+TEST_F(MPIntFieldTest, OrderWorks) {
+  auto gf = GaloisFieldFactory::Instance().Create(
+      kPrimeField, ArgLib = kMPIntLib, ArgMod = 13_mp);
+  EXPECT_EQ(gf->GetOrder(), 13_mp);
+  auto x = 5_mp;
+  EXPECT_EQ(gf->GetOrder(), gf->GetAddGroupOrder());
+  EXPECT_EQ(gf->GetOrder() - 1_mp, gf->GetMulGroupOrder());
+  // Test additive order, x * order = 0(IdentityZero);
+  EXPECT_TRUE((bool)gf->IsIdentityZero(gf->Mul(x, gf->GetAddGroupOrder())));
+  // Test multiplicative order, x ^ order = 1(IdentityOne);
+  EXPECT_TRUE((bool)gf->IsIdentityOne(gf->Pow(x, gf->GetMulGroupOrder())));
 }
 
 }  // namespace yacl::math::mpf::test

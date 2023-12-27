@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/base/ecc/mcl/mcl_pairing_bls12_381.h"
+#include "yacl/crypto/base/pairing/mcl/mcl_pairing_bls12_381.h"
 
 namespace yacl::crypto::hmcl {
 
 MclPairingBls12381::MclPairingBls12381(const PairingMeta& meta,
                                        std::unique_ptr<EcGroup>& g1,
                                        std::unique_ptr<EcGroup>& g2,
-                                       std::unique_ptr<Field>& gt)
+                                       std::unique_ptr<GroupTarget>& gt)
     : meta_(meta) {
   g1_ = std::move(g1);
   g2_ = std::move(g2);
@@ -39,35 +39,34 @@ size_t MclPairingBls12381::GetSecurityStrength() const {
   return meta_.secure_bits;
 }
 
-std::shared_ptr<EcGroup> MclPairingBls12381::GetG1() const { return g1_; }
+std::shared_ptr<EcGroup> MclPairingBls12381::GetGroup1() const { return g1_; }
 
-std::shared_ptr<EcGroup> MclPairingBls12381::GetG2() const { return g2_; }
+std::shared_ptr<EcGroup> MclPairingBls12381::GetGroup2() const { return g2_; }
 
-std::shared_ptr<Field> MclPairingBls12381::GetGT() const { return gt_; }
+std::shared_ptr<GroupTarget> MclPairingBls12381::GetGroupT() const {
+  return gt_;
+}
 
 MPInt MclPairingBls12381::GetOrder() const { return g1_->GetOrder(); }
 
-FElement MclPairingBls12381::MillerLoop(const EcPoint& group1_point,
-                                        const EcPoint& group2_point) const {
-  FElement ret = gt_->MakeInstance();
-  mcl::bls12::millerLoop(*(CastAny<mcl::bls12::GT>(ret)),
-                         *(CastAny<mcl::bls12::G1>(group1_point)),
+GtElement MclPairingBls12381::MillerLoop(const EcPoint& group1_point,
+                                         const EcPoint& group2_point) const {
+  mcl::bls12::GT ret;
+  mcl::bls12::millerLoop(ret, *(CastAny<mcl::bls12::G1>(group1_point)),
                          *(CastAny<mcl::bls12::G2>(group2_point)));
   return ret;
 }
 
-FElement MclPairingBls12381::FinalExp(const FElement& x) const {
-  FElement ret = gt_->MakeInstance();
-  mcl::bls12::finalExp(*(CastAny<mcl::bls12::GT>(ret)),
-                       *(CastAny<mcl::bls12::GT>(x)));
+GtElement MclPairingBls12381::FinalExp(const GtElement& x) const {
+  mcl::bls12::GT ret;
+  mcl::bls12::finalExp(ret, x.As<mcl::bls12::GT>());
   return ret;
 }
 
-FElement MclPairingBls12381::Pairing(const EcPoint& group1_point,
-                                     const EcPoint& group2_point) const {
-  FElement ret = gt_->MakeInstance();
-  mcl::bls12::pairing(*(CastAny<mcl::bls12::GT>(ret)),
-                      *(CastAny<mcl::bls12::G1>(group1_point)),
+GtElement MclPairingBls12381::Pairing(const EcPoint& group1_point,
+                                      const EcPoint& group2_point) const {
+  mcl::bls12::GT ret;
+  mcl::bls12::pairing(ret, *(CastAny<mcl::bls12::G1>(group1_point)),
                       *(CastAny<mcl::bls12::G2>(group2_point)));
   return ret;
 }

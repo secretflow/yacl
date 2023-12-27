@@ -20,7 +20,9 @@
 
 #include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
-#include "yacl/crypto/base/aes/aes_intrinsics.h"
+
+/* submodules */
+// #include "yacl/crypto/base/aes/aes_intrinsics.h"
 #include "yacl/crypto/base/block_cipher/symmetric_crypto.h"
 
 namespace yacl::crypto {
@@ -69,7 +71,7 @@ class RP {
   }
 
   static const RP& GetCrDefault() {
-    const static RP rp(Ctype::AES128_ECB, 0x12345678);
+    static const RP rp(Ctype::AES128_ECB, 0x12345678);
     return rp;
   }
 

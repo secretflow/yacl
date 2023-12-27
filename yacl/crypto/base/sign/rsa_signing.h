@@ -14,8 +14,18 @@
 
 #pragma once
 
+#include <utility>
+#include <vector>
+
 #include "yacl/crypto/base/key_utils.h"
 #include "yacl/crypto/base/sign/signing.h"
+#include "yacl/crypto/utils/secparam.h"
+
+/* submodules */
+#include "yacl/crypto/base/hash/hash_utils.h"
+
+/* security parameter declaration */
+YACL_MODULE_DECLARE("rsa_sign", SecParam::C::k128, SecParam::S::INF);
 
 namespace yacl::crypto {
 

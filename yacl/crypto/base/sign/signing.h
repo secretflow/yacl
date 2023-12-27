@@ -29,18 +29,14 @@ enum class SignatureScheme : int {
 class AsymmetricSigner {
  public:
   virtual ~AsymmetricSigner() = default;
-
   virtual SignatureScheme GetSignatureSchema() const = 0;
-
   virtual std::vector<uint8_t> Sign(ByteContainerView message) const = 0;
 };
 
 class AsymmetricVerifier {
  public:
   virtual ~AsymmetricVerifier() = default;
-
   virtual SignatureScheme GetSignatureSchema() const = 0;
-
   virtual bool Verify(ByteContainerView message,
                       ByteContainerView signature) const = 0;
 };

@@ -18,10 +18,6 @@
 #include <climits>
 #include <iterator>
 
-#include "openssl/aes.h"
-#include "openssl/crypto.h"
-#include "openssl/err.h"
-#include "openssl/evp.h"
 #include "spdlog/spdlog.h"
 
 #include "yacl/base/exception.h"
@@ -45,20 +41,20 @@ openssl::UniqueCipherCtx CreateEVPCipherCtx(SymmetricCrypto::CryptoType type,
   // cbc mode need to set iv
   if ((type == SymmetricCrypto::CryptoType::AES128_ECB) ||
       (type == SymmetricCrypto::CryptoType::SM4_ECB)) {
-    YACL_ENFORCE(EVP_CipherInit_ex(ctx.get(), cipher.get(), nullptr, key_data,
-                                   nullptr, enc));
+    OSSL_RET_1(EVP_CipherInit_ex(ctx.get(), cipher.get(), nullptr, key_data,
+                                 nullptr, enc));
   } else {
     /**
      * @brief cbc and ctr mode set iv
      * for ctr the iv is the initiator counter, most case counter set 0
      */
     const auto* iv_data = reinterpret_cast<const uint8_t*>(&iv);
-    YACL_ENFORCE(EVP_CipherInit_ex(ctx.get(), cipher.get(), nullptr, key_data,
-                                   iv_data, enc));
+    OSSL_RET_1(EVP_CipherInit_ex(ctx.get(), cipher.get(), nullptr, key_data,
+                                 iv_data, enc));
   }
 
   // No padding needed for aligned blocks.
-  YACL_ENFORCE(EVP_CIPHER_CTX_set_padding(ctx.get(), 0));
+  OSSL_RET_1(EVP_CIPHER_CTX_set_padding(ctx.get(), 0));
 
   return ctx;
 }

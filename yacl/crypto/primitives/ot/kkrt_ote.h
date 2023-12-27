@@ -19,11 +19,20 @@
 
 #include "absl/types/span.h"
 
-#include "yacl/crypto/base/aes/aes_intrinsics.h"
 #include "yacl/crypto/primitives/ot/ot_store.h"
 #include "yacl/crypto/utils/secparam.h"
 #include "yacl/link/link.h"
 
+/* submodules */
+#include "yacl/crypto/base/aes/aes_intrinsics.h"
+#include "yacl/crypto/base/aes/aes_opt.h"
+#include "yacl/crypto/base/block_cipher/symmetric_crypto.h"
+#include "yacl/crypto/base/hash/hash_utils.h"
+#include "yacl/crypto/tools/prg.h"
+#include "yacl/crypto/tools/ro.h"
+#include "yacl/crypto/utils/rand.h"
+
+/* security parameter declaration */
 YACL_MODULE_DECLARE("kkrt_ote", SecParam::C::k128, SecParam::S::INF);
 
 namespace yacl::crypto {

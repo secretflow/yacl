@@ -111,18 +111,17 @@ TYPED_TEST(HmacTest, ResetBetweenUpdates) {
 
 // Verify that the correct hmac is computed when the input is added over several
 // calls to Update.
-// TYPED_TEST(HmacTest, MultipleUpdates) {
-//   TypeParam hmac(this->Data().key);
-//   std::vector<uint8_t> mac =
-//   hmac.Update(this->Data().vector1).CumulativeMac();
-//   EXPECT_EQ(absl::BytesToHexString(
-//                 absl::string_view((const char*)mac.data(), mac.size())),
-//             this->Data().result1);
+TYPED_TEST(HmacTest, MultipleUpdates) {
+  TypeParam hmac(this->Data().key);
+  std::vector<uint8_t> mac = hmac.Update(this->Data().vector1).CumulativeMac();
+  EXPECT_EQ(absl::BytesToHexString(
+                absl::string_view((const char*)mac.data(), mac.size())),
+            this->Data().result1);
 
-//   mac = hmac.Update(this->Data().suffix).CumulativeMac();
-//   EXPECT_EQ(absl::BytesToHexString(
-//                 absl::string_view((const char*)mac.data(), mac.size())),
-//             this->Data().result2);
-// }
+  mac = hmac.Update(this->Data().suffix).CumulativeMac();
+  EXPECT_EQ(absl::BytesToHexString(
+                absl::string_view((const char*)mac.data(), mac.size())),
+            this->Data().result2);
+}
 
 }  // namespace yacl::crypto

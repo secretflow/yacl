@@ -15,8 +15,8 @@
 #include "yacl/crypto/base/ecc/mcl/mcl_ec_group.h"
 
 #include "yacl/crypto/base/ecc/mcl/mcl_util.h"
-#include "yacl/crypto/base/ecc/mcl/pairing_header.h"
 #include "yacl/crypto/base/hash/blake3.h"
+#include "yacl/crypto/base/pairing/mcl/pairing_header.h"
 
 namespace yacl::crypto::hmcl {
 

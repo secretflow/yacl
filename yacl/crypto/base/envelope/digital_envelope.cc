@@ -14,38 +14,15 @@
 
 #include "yacl/crypto/base/envelope/digital_envelope.h"
 
-#include <random>
-
 #include "absl/types/span.h"
 
-#include "yacl/crypto/base/aead/gcm_crypto.h"
-#include "yacl/crypto/base/aead/sm4_mac.h"
-#include "yacl/crypto/base/block_cipher/symmetric_crypto.h"
-#include "yacl/crypto/base/hash/ssl_hash.h"
-#include "yacl/crypto/base/hmac/hmac_sm3.h"
-#include "yacl/crypto/base/pke/asymmetric_rsa_crypto.h"
-#include "yacl/crypto/base/pke/asymmetric_sm2_crypto.h"
-#include "yacl/crypto/tools/prg.h"
-
 namespace yacl::crypto {
-namespace {
-
-std::vector<uint8_t> GenRandKey(size_t key_size) {
-  std::random_device rd;
-  Prg<uint8_t> prg(rd());
-  std::vector<uint8_t> symmetric_key(key_size);
-  std::generate(symmetric_key.begin(), symmetric_key.end(),
-                [&] { return prg(); });
-  return symmetric_key;
-}
-
-}  // namespace
 
 void SmEnvSeal(ByteContainerView pub_key, ByteContainerView iv,
                ByteContainerView plaintext, std::vector<uint8_t>* encrypted_key,
                std::vector<uint8_t>* ciphertext) {
   // Step 1. Generate random 16 bytes key for SM4.
-  std::vector<uint8_t> symmetric_key = GenRandKey(16);
+  std::vector<uint8_t> symmetric_key = SecureRandBytes(16);
 
   // Step 2. Do sm4-mac
   *ciphertext = Sm4MteEncrypt(symmetric_key, iv, plaintext);
@@ -66,7 +43,7 @@ void RsaEnvSeal(ByteContainerView pub_key, ByteContainerView iv,
                 ByteContainerView plaintext,
                 std::vector<uint8_t>* encrypted_key,
                 std::vector<uint8_t>* ciphertext, std::vector<uint8_t>* mac) {
-  std::vector<uint8_t> symmetric_key = GenRandKey(16);
+  std::vector<uint8_t> symmetric_key = SecureRandBytes(16);
   ciphertext->resize(plaintext.size());
   // Aes-128 mac size is 16 bytes.
   mac->resize(16);

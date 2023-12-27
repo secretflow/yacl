@@ -14,17 +14,13 @@
 
 #pragma once
 
-#include "openssl/bn.h"
-#include "openssl/ec.h"
+#include <memory>
+#include <string>
 
 #include "yacl/crypto/base/ecc/group_sketch.h"
 #include "yacl/crypto/base/openssl_wrappers.h"
 
 namespace yacl::crypto::openssl {
-
-using EC_GROUP_PTR = internal::TyHelper<EC_GROUP, EC_GROUP_free>;
-using BN_CTX_PTR = internal::TyHelper<BN_CTX, BN_CTX_free>;
-using BIGNUM_PTR = internal::TyHelper<BIGNUM, BN_free>;
 
 class OpensslGroup : public EcGroupSketch {
  public:
@@ -81,18 +77,18 @@ class OpensslGroup : public EcGroupSketch {
   bool IsInfinity(const EcPoint& point) const override;
 
  private:
-  explicit OpensslGroup(const CurveMeta& meta, EC_GROUP_PTR group);
+  explicit OpensslGroup(const CurveMeta& meta, UniqueEcGroup group);
 
   AnyPtr MakeOpensslPoint() const;
 
-  EC_GROUP_PTR group_;
-  BIGNUM_PTR field_p_;
+  UniqueEcGroup group_;
+  UniqueBn field_p_;
 
   MPInt order_;
   MPInt cofactor_;
   EcPoint generator_;
 
-  static thread_local BN_CTX_PTR ctx_;
+  static thread_local UniqueBnCtx ctx_;
 };
 
 }  // namespace yacl::crypto::openssl
