@@ -305,7 +305,7 @@ T MclField<T, degree>::DeserializeT(ByteContainerView buffer) const {
 template <typename T, size_t degree>
 MclField<T, degree>::MclField(const MPInt& order, Type field_type) {
   switch (field_type) {
-    case Type::Normal: {
+    case Type::Add: {
       order_ = 0_mp;
       order_mul_ = 0_mp;
       order_add_ = order;
