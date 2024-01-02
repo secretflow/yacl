@@ -44,6 +44,7 @@ yacl_cc_library(
         "gf_spi.cc",
     ],
     hdrs = [
+        "gf_configs.h",
         "gf_spi.h",
     ],
     deps = [

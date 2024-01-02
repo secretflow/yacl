@@ -284,12 +284,12 @@ class GFScalarSketch : public GaloisField {
       auto xsp = x->AsSpan<T>();
       yacl::parallel_for(0, xsp.length(), [&](int64_t beg, int64_t end) {
         for (int64_t i = beg; i < end; ++i) {
-          Pow(&xsp[i], y);
+          PowInplace(&xsp[i], y);
         }
       });
       return;
     } else {
-      Pow(x->As<T*>(), y);
+      PowInplace(x->As<T*>(), y);
       return;
     }
   }

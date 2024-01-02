@@ -19,10 +19,21 @@
 
 #include "absl/types/span.h"
 
-#include "yacl/crypto/base/aes/aes_intrinsics.h"
 #include "yacl/crypto/primitives/ot/ot_store.h"
 #include "yacl/crypto/utils/secparam.h"
 #include "yacl/link/link.h"
+
+/* submodules */
+#include "yacl/crypto/base/aes/aes_intrinsics.h"
+#include "yacl/crypto/base/aes/aes_opt.h"
+#include "yacl/crypto/base/block_cipher/symmetric_crypto.h"
+#include "yacl/crypto/base/hash/hash_utils.h"
+#include "yacl/crypto/tools/prg.h"
+#include "yacl/crypto/tools/ro.h"
+#include "yacl/crypto/utils/rand.h"
+
+/* security parameter declaration */
+YACL_MODULE_DECLARE("kkrt_ote", SecParam::C::k128, SecParam::S::INF);
 
 namespace yacl::crypto {
 
@@ -45,7 +56,7 @@ using KkrtRow = std::array<uint128_t, kKkrtWidth>;
 //
 // Security assumptions:
 //  *. correlation-robust hash function, for more details about its
-//  implementation, see `yacl/crypto-tools/random_permutation.h`
+//  implementation, see `yacl/crypto/tools/rp.h`
 //
 // NOTE
 //  * OT Extension sender requires receiver base ot context.
@@ -106,8 +117,6 @@ class IGroupPRF {
 //     as repetition codes and KKRT as pseudo random codes.
 //   - This function requires base ot width to 512 now. Let us cut this to 128
 //     by implicitly calling IKNP inside KKRT.
-
-YACL_MODULE_DECLARE("kkrt_ote", SecParam::C::k128, SecParam::S::INF);
 
 std::unique_ptr<IGroupPRF> KkrtOtExtSend(
     const std::shared_ptr<link::Context>& ctx, const OtRecvStore& base_ot,

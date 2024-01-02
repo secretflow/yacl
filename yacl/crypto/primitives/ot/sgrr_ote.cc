@@ -25,10 +25,6 @@
 #include "yacl/base/dynamic_bitset.h"
 #include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
-#include "yacl/crypto/base/aes/aes_opt.h"
-#include "yacl/crypto/tools/prg.h"
-#include "yacl/crypto/tools/random_permutation.h"
-#include "yacl/crypto/utils/rand.h"
 #include "yacl/math/gadget.h"
 
 namespace yacl::crypto {
@@ -100,7 +96,7 @@ std::vector<uint128_t> SplitAllSeeds(absl::Span<uint128_t> seeds) {
 
 void SgrrOtExtRecv(const std::shared_ptr<link::Context>& ctx,
                    const OtRecvStore& base_ot, uint32_t n, uint32_t index,
-                   absl::Span<uint128_t> output) {
+                   absl::Span<uint128_t> output, bool mal) {
   uint32_t ot_num = math::Log2Ceil(n);
   YACL_ENFORCE_GE(n, (uint32_t)1);                 // range should > 1
   YACL_ENFORCE_GE((uint32_t)128, base_ot.Size());  // base ot num < 128
@@ -157,11 +153,45 @@ void SgrrOtExtRecv(const std::shared_ptr<link::Context>& ctx,
       output[inserted_idx] = insert_val;
     }
   }
+
+  // check consistency
+  if (mal) {
+    size_t size = n;
+
+    std::vector<std::array<uint8_t, 32>> s;
+    std::array<std::array<uint8_t, 32>, 2> t = {};  // set zeros
+
+    for (size_t i = 0; i < size; ++i) {
+      s.emplace_back(Blake3(ByteContainerView(&output[i], sizeof(uint128_t))));
+      // t[0] = t[0] xor s[i]
+      std::transform(s[i].cbegin(), s[i].cend(), t[0].cbegin(), t[0].begin(),
+                     std::bit_xor<uint8_t>());
+    }
+    // t[0] = t[0] xor s[index]
+    std::transform(s[index].cbegin(), s[index].cend(), t[0].cbegin(),
+                   t[0].begin(), std::bit_xor<uint8_t>());
+
+    auto buff = ctx->Recv(ctx->NextRank(), "SGRR_OTE:RECV-PROOF");
+    YACL_ENFORCE(buff.size() == 64);
+    std::array<std::array<uint8_t, 32>, 2> recv_t;
+    memcpy(recv_t.data(), buff.data(), buff.size());
+
+    // s[index] = t[0] xor recv_t[index]
+    std::transform(recv_t[0].cbegin(), recv_t[0].cend(), t[0].cbegin(),
+                   s[index].begin(), std::bit_xor<uint8_t>());
+
+    t[1] = Blake3(ByteContainerView(s.data(), s.size() * 32));
+    YACL_ENFORCE(ByteContainerView(t[1]) == ByteContainerView(recv_t[1]));
+
+    // refresh output
+    ParaCrHashInplace_128(output.subspan(0, n));
+    output[index] = 0;
+  }
 }
 
 void SgrrOtExtSend(const std::shared_ptr<link::Context>& ctx,
                    const OtSendStore& base_ot, uint32_t n,
-                   absl::Span<uint128_t> output) {
+                   absl::Span<uint128_t> output, bool mal) {
   uint32_t ot_num = math::Log2Ceil(n);
   YACL_ENFORCE_GE(base_ot.Size(), ot_num);
   YACL_ENFORCE_GE(n, (uint32_t)1);
@@ -200,6 +230,24 @@ void SgrrOtExtSend(const std::shared_ptr<link::Context>& ctx,
       ctx->NextRank(),
       ByteContainerView(send_msgs.data(), ot_num * 2 * sizeof(uint128_t)),
       "SGRR_OTE:SEND-CORR");
+
+  // prove consistency
+  if (mal) {
+    size_t size = n;
+    std::vector<std::array<uint8_t, 32>> s;
+    std::array<std::array<uint8_t, 32>, 2> t = {};  // set zeros
+    for (size_t i = 0; i < size; ++i) {
+      s.emplace_back(Blake3(ByteContainerView(&output[i], sizeof(uint128_t))));
+      // t[0] = t[0] xor s[i]
+      std::transform(s[i].cbegin(), s[i].cend(), t[0].cbegin(), t[0].begin(),
+                     std::bit_xor<uint8_t>());
+    }
+    t[1] = Blake3(ByteContainerView(s.data(), s.size() * 32));
+    ctx->SendAsync(ctx->NextRank(), ByteContainerView(t.data(), 64),
+                   "SGRR_OTE:SEND-PROOF");
+    // Refresh output
+    ParaCrHashInplace_128(output.subspan(0, n));
+  }
 }
 
 // Notice that:
@@ -207,24 +255,24 @@ void SgrrOtExtSend(const std::shared_ptr<link::Context>& ctx,
 //  > punctured index might be greater than n
 // So, please do NOT use "FixIndexSgrrOtExtRecv" and "FixIndexSgrrOtExtSend",
 // unless you are certainly sure how do these algorithms work.
-void SgrrOtExtRecv_fixindex(const std::shared_ptr<link::Context>& ctx,
-                            const OtRecvStore& base_ot, uint32_t n,
-                            absl::Span<uint128_t> output) {
+void SgrrOtExtRecv_fixed_index(const std::shared_ptr<link::Context>& ctx,
+                               const OtRecvStore& base_ot, uint32_t n,
+                               absl::Span<uint128_t> output) {
   uint32_t ot_num = math::Log2Ceil(n);
   auto recv_buf = ctx->Recv(ctx->NextRank(), "SGRR_OTE:RECV-CORR");
   YACL_ENFORCE(recv_buf.size() >=
                static_cast<int64_t>(ot_num * 2 * sizeof(uint128_t)));
   auto recv_msgs = absl::MakeSpan(
       reinterpret_cast<std::array<uint128_t, 2>*>(recv_buf.data()), ot_num);
-  SgrrOtExtRecv_fixindex(base_ot, n, output, absl::MakeSpan(recv_msgs));
+  SgrrOtExtRecv_fixed_index(base_ot, n, output, absl::MakeSpan(recv_msgs));
 }
 
-void SgrrOtExtSend_fixindex(const std::shared_ptr<link::Context>& ctx,
-                            const OtSendStore& base_ot, uint32_t n,
-                            absl::Span<uint128_t> output) {
+void SgrrOtExtSend_fixed_index(const std::shared_ptr<link::Context>& ctx,
+                               const OtSendStore& base_ot, uint32_t n,
+                               absl::Span<uint128_t> output) {
   uint32_t ot_num = math::Log2Ceil(n);
   std::vector<std::array<uint128_t, 2>> send_msgs(ot_num);
-  SgrrOtExtSend_fixindex(base_ot, n, output, absl::MakeSpan(send_msgs));
+  SgrrOtExtSend_fixed_index(base_ot, n, output, absl::MakeSpan(send_msgs));
 
   ctx->SendAsync(
       ctx->NextRank(),
@@ -232,9 +280,9 @@ void SgrrOtExtSend_fixindex(const std::shared_ptr<link::Context>& ctx,
       "SGRR_OTE:SEND-CORR");
 }
 
-void SgrrOtExtRecv_fixindex(const OtRecvStore& base_ot, uint32_t n,
-                            absl::Span<uint128_t> output,
-                            absl::Span<std::array<uint128_t, 2>> recv_msgs) {
+void SgrrOtExtRecv_fixed_index(const OtRecvStore& base_ot, uint32_t n,
+                               absl::Span<uint128_t> output,
+                               absl::Span<std::array<uint128_t, 2>> recv_msgs) {
   uint32_t ot_num = math::Log2Ceil(n);
   YACL_ENFORCE_GE(n, (uint32_t)1);                 // range should > 1
   YACL_ENFORCE_GE((uint32_t)128, base_ot.Size());  // base ot num < 128
@@ -277,9 +325,9 @@ void SgrrOtExtRecv_fixindex(const OtRecvStore& base_ot, uint32_t n,
   }
 }
 
-void SgrrOtExtSend_fixindex(const OtSendStore& base_ot, uint32_t n,
-                            absl::Span<uint128_t> output,
-                            absl::Span<std::array<uint128_t, 2>> send_msgs) {
+void SgrrOtExtSend_fixed_index(const OtSendStore& base_ot, uint32_t n,
+                               absl::Span<uint128_t> output,
+                               absl::Span<std::array<uint128_t, 2>> send_msgs) {
   uint32_t ot_num = math::Log2Ceil(n);
   YACL_ENFORCE_GE(base_ot.Size(), ot_num);
   YACL_ENFORCE_GE(n, (uint32_t)1);

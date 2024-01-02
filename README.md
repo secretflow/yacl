@@ -8,16 +8,16 @@ Repo layout:
 
 - [base](yacl/base/): some basic types and utils in yacl.
 - [crypto](yacl/crypto/): a crypto library desigend for secure computation and so on.
-  - [base](yacl/crypto/base): **basic/standarized crypto**, i.e. AES, DRBG, hashing.
+  - [base](yacl/crypto/base): **basic/standarized crypto**, i.e. AES, hashing.
   - [primitives](yacl/crypto/primitives/): **crypto primitives**, i.e. OT, DPF.
   - [tools](yacl/crypto/tools/): **theoretical crypto tools**, i.e. Random Oracle (RO), PRG.
   - [utils](yacl/crypto/utils/): easy-to-use **crypto utilities**.
 - [io](yacl/io/): a simple streaming-based io library.
 - [link](yacl/link/): a simple rpc-based MPI framework, providing the [SPMD](https://en.wikipedia.org/wiki/SPMD) parallel programming capability.
 
-## Supported Crypto Algorithms
+## Supported crypto algorithms
 
-See **Full List** of supported algorithms: [ALGORITHMS.md](ALGORITHMS.md)
+See **Full List** of supported algorithms in: [ALGORITHMS.md](ALGORITHMS.md)
 
 **Selected algorithms**:
 
@@ -26,13 +26,13 @@ See **Full List** of supported algorithms: [ALGORITHMS.md](ALGORITHMS.md)
 - Distributed Point Function: [BGI16](https://eprint.iacr.org/2018/707.pdf)
 - Threshold Proxy-Re-encryption: [umbral with GM](https://github.com/nucypher/umbral-doc/blob/master/umbral-doc.pdf).
 
-## Build
-
-### Supported platforms
+## Supported platforms
 
 |     | Linux x86_64 | Linux aarch64 | macOS x86_64 | macOS Apple Silicon | Windows x86_64 | Windows WSL2 x86_64 |
 |-----|--------------|---------------|--------------|---------------------|----------------|---------------------|
 | CPU | yes          | yes           | yes          | yes                 | no             | yes                 |
+
+## Build
 
 ### Prerequisite
 
@@ -53,7 +53,7 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 https://brew.sh/
 
 # Install dependencies
-brew install bazel cmake ninja nasm automake libtool
+brew install bazel cmake ninja nasm automake libtool libomp
 ```
 
 ### Build & UnitTest

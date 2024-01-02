@@ -14,7 +14,7 @@
 
 #include "yacl/crypto/primitives/zkp/sigma.h"
 
-#include "yacl/crypto/tools/random_oracle.h"
+#include "yacl/crypto/tools/ro.h"
 
 namespace yacl::crypto {
 

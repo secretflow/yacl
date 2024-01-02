@@ -75,7 +75,7 @@ class SslHashTest : public testing::Test {
       return test_data_blake2b_;
     }
 
-    YACL_THROW("Unsupported typename!");
+    YACL_THROW("Unsupported type name!");
   }
 
   TestData test_data_sm3_;

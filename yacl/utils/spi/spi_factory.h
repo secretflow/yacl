@@ -21,6 +21,7 @@
 #include <string>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include "absl/strings/ascii.h"
 #include "spdlog/spdlog.h"

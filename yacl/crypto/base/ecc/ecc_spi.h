@@ -15,7 +15,7 @@
 #pragma once
 
 #include <ostream>
-#include <tuple>
+#include <string>
 #include <utility>
 #include <variant>
 

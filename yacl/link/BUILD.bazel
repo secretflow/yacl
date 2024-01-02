@@ -66,7 +66,7 @@ yacl_cc_library(
         ":trace",
         "//yacl/base:byte_container_view",
         "//yacl/link/transport:channel",
-        "//yacl/utils:hash",
+        "//yacl/utils:hash_combine",
     ],
 )
 

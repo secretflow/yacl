@@ -18,11 +18,12 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 SECRETFLOW_GIT = "https://github.com/secretflow"
 
-IC_COMMIT_ID = "b4a657d5ac39fe584dbccb7808fcbc8897ed2077"
+IC_COMMIT_ID = "e9a64bfe1ae57f358b41790a1bdd82c390dd50da"
 
 SIMPLEST_OT_COMMIT_ID = "4e39b7c35721c7fd968da6e047f59c0ac92e8088"
 
 def yacl_deps():
+    _rule_proto()
     _rule_python()
     _rules_foreign_cc()
     _com_github_madler_zlib()
@@ -38,11 +39,11 @@ def yacl_deps():
     _com_github_google_cpu_features()
     _com_github_dltcollab_sse2neon()
     _com_github_msgpack_msgpack()
+    _com_github_greendow_hash_drbg()
 
     # crypto related
     _com_github_openssl_openssl()
     _com_github_blake3team_blake3()
-    _com_github_intel_ipp()
     _com_github_libsodium()
     _com_github_libtom_libtommath()
     _com_github_herumi_mcl()
@@ -162,11 +163,11 @@ def _com_github_openssl_openssl():
     maybe(
         http_archive,
         name = "com_github_openssl_openssl",
-        sha256 = "c0bb03960ba535e51726950853f0e01a0a92e107e202f417e7546ee5e59baee0",
+        sha256 = "9a7a7355f3d4b73f43b5730ce80371f9d1f97844ffc8c4b01c723ba0625d6aad",
         type = "tar.gz",
-        strip_prefix = "openssl-OpenSSL_1_1_1v",
+        strip_prefix = "openssl-openssl-3.0.12",
         urls = [
-            "https://github.com/openssl/openssl/archive/refs/tags/OpenSSL_1_1_1v.tar.gz",
+            "https://github.com/openssl/openssl/archive/refs/tags/openssl-3.0.12.tar.gz",
         ],
         build_file = "@yacl//bazel:openssl.BUILD",
     )
@@ -232,6 +233,17 @@ def _com_github_blake3team_blake3():
         ],
     )
 
+def _rule_proto():
+    maybe(
+        http_archive,
+        name = "rules_proto",
+        sha256 = "dc3fb206a2cb3441b485eb1e423165b231235a1ea9b031b4433cf7bc1fa460dd",
+        strip_prefix = "rules_proto-5.3.0-21.7",
+        urls = [
+            "https://github.com/bazelbuild/rules_proto/archive/refs/tags/5.3.0-21.7.tar.gz",
+        ],
+    )
+
 # Required by protobuf
 def _rule_python():
     maybe(
@@ -252,22 +264,6 @@ def _rules_foreign_cc():
         strip_prefix = "rules_foreign_cc-0.10.1",
         urls = [
             "https://github.com/bazelbuild/rules_foreign_cc/archive/refs/tags/0.10.1.tar.gz",
-        ],
-    )
-
-def _com_github_intel_ipp():
-    maybe(
-        http_archive,
-        name = "com_github_intel_ipp",
-        sha256 = "1ecfa70328221748ceb694debffa0106b92e0f9bf6a484f8e8512c2730c7d730",
-        strip_prefix = "ipp-crypto-ippcp_2021.8",
-        build_file = "@yacl//bazel:ipp.BUILD",
-        patch_args = ["-p1"],
-        patches = [
-            "@yacl//bazel:patches/ippcp.patch",
-        ],
-        urls = [
-            "https://github.com/intel/ipp-crypto/archive/refs/tags/ippcp_2021.8.tar.gz",
         ],
     )
 
@@ -338,6 +334,19 @@ def _com_github_msgpack_msgpack():
             "https://github.com/msgpack/msgpack-c/archive/refs/tags/cpp-6.1.0.tar.gz",
         ],
         build_file = "@yacl//bazel:msgpack.BUILD",
+    )
+
+def _com_github_greendow_hash_drbg():
+    maybe(
+        http_archive,
+        name = "com_github_greendow_hash_drbg",
+        sha256 = "c03a3da5742d0f0c40232817d84f21d8eed4c4af498c4dff3a51b3bcadcb3787",
+        type = "tar.gz",
+        strip_prefix = "Hash-DRBG-2411fa9d0de81c69dce2a48555c30298253db15d",
+        urls = [
+            "https://github.com/greendow/Hash-DRBG/archive/2411fa9d0de81c69dce2a48555c30298253db15d.tar.gz",
+        ],
+        build_file = "@yacl//bazel:hash_drbg.BUILD",
     )
 
 def _com_github_herumi_mcl():

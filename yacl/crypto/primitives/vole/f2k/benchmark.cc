@@ -61,8 +61,8 @@ class VoleBench : public benchmark::Fixture {
  public:
   void SetUp(const ::benchmark::State&) override {
     if (lctxs_.empty()) {
-      lctxs_ = link::test::SetupBrpcWorld(2);
-      // lctxs_ = link::test::SetupWorld(2);
+      // lctxs_ = link::test::SetupBrpcWorld(2);
+      lctxs_ = link::test::SetupWorld(2);
     }
   }
 
@@ -214,8 +214,8 @@ DELCARE_SILENT_SUBFIELDVOLE_BENCH(ExAcc21);
 DELCARE_SILENT_SUBFIELDVOLE_BENCH(ExAcc40);
 
 #define BM_REGISTER_SILVER_SILENT_VOLE(Arguments)                         \
-  BENCHMARK_REGISTER_F(VoleBench, Silver5Vole_GF128)->Apply(Arguments);   \
   BENCHMARK_REGISTER_F(VoleBench, Silver5Vole_GF64)->Apply(Arguments);    \
+  BENCHMARK_REGISTER_F(VoleBench, Silver5Vole_GF128)->Apply(Arguments);   \
   BENCHMARK_REGISTER_F(VoleBench, Silver5SubfieldVole)->Apply(Arguments); \
   BENCHMARK_REGISTER_F(VoleBench, Silver11Vole_GF64)->Apply(Arguments);   \
   BENCHMARK_REGISTER_F(VoleBench, Silver11Vole_GF128)->Apply(Arguments);  \
@@ -255,10 +255,10 @@ void BM_PerfArguments(benchmark::internal::Benchmark* b) {
       ->Iterations(10);
 }
 
-BM_REGISTER_ALL_VOLE(BM_DefaultArguments);
+// BM_REGISTER_ALL_VOLE(BM_DefaultArguments);
 
-// BM_REGISTER_GILBOA_VOLE(BM_DefaultArguments);
-// BM_REGISTER_SILVER_SILENT_VOLE(BM_PerfArguments);
-// BM_REGISTER_EXACC_SILENT_VOLE(BM_PerfArguments);
+BM_REGISTER_GILBOA_VOLE(BM_DefaultArguments);
+BM_REGISTER_SILVER_SILENT_VOLE(BM_PerfArguments);
+BM_REGISTER_EXACC_SILENT_VOLE(BM_PerfArguments);
 
 }  // namespace yacl::crypto

@@ -15,8 +15,8 @@
 #include "yacl/crypto/base/ecc/mcl/mcl_ec_group.h"
 
 #include "yacl/crypto/base/ecc/mcl/mcl_util.h"
-#include "yacl/crypto/base/ecc/mcl/pairing_header.h"
 #include "yacl/crypto/base/hash/blake3.h"
+#include "yacl/crypto/base/pairing/mcl/pairing_header.h"
 
 namespace yacl::crypto::hmcl {
 
@@ -141,9 +141,9 @@ EcPoint MclGroupT<Fp_, Zn_>::MulDoubleBase(const MPInt& s1, const MPInt& s2,
   }
   ps2.setMpz(scalar2);
 
-  Ec::mulVecMT(*CastAny<Ec>(ret),
-               new Ec[]{*CastAny<Ec>(GetGenerator()), *CastAny<Ec>(p2)},
-               new Fr[]{ps1, ps2}, 2, 2);
+  Ec ecs[] = {*CastAny<Ec>(GetGenerator()), *CastAny<Ec>(p2)};
+  Fr frs[] = {ps1, ps2};
+  Ec::mulVecMT(*CastAny<Ec>(ret), ecs, frs, 2, 2);
   return ret;
 }
 

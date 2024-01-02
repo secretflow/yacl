@@ -30,24 +30,30 @@ namespace yacl::crypto {
 
 struct OtTestParams {
   unsigned num_ot;
+  bool mal = false;
 };
 
 struct KTestParams {
   unsigned k;
+  bool mal = false;
 };
 
 struct StepTestParams {
   unsigned step;
+  bool mal = false;
 };
 
 class SoftspokenStepTest : public ::testing::TestWithParam<StepTestParams> {};
 class SoftspokenKTest : public ::testing::TestWithParam<KTestParams> {};
 class SoftspokenOtExtTest : public ::testing::TestWithParam<OtTestParams> {};
 
+TEST(SecParamTest, Works) { YACL_PRINT_MODULE_SUMMARY(); }
+
 TEST_P(SoftspokenStepTest, Works) {
   // GIVEN
   const int kWorldSize = 2;
   const size_t step = GetParam().step;
+  const bool mal = GetParam().mal;
   const size_t num_ot = 4096;
   auto lctxs = link::test::SetupWorld(kWorldSize);             // setup network
   auto base_ot = MockRots(128);                                // mock option
@@ -56,8 +62,10 @@ TEST_P(SoftspokenStepTest, Works) {
   // WHEN
   std::vector<std::array<uint128_t, 2>> send_out(num_ot);
   std::vector<uint128_t> recv_out(num_ot);
-  auto ssSenderTask = std::async([&] { return SoftspokenOtExtSender(2); });
-  auto ssReceiverTask = std::async([&] { return SoftspokenOtExtReceiver(2); });
+  auto ssSenderTask =
+      std::async([&] { return SoftspokenOtExtSender(2, 0, mal); });
+  auto ssReceiverTask =
+      std::async([&] { return SoftspokenOtExtReceiver(2, 0, mal); });
   auto ssSender = ssSenderTask.get();
   auto ssReceiver = ssReceiverTask.get();
 
@@ -86,6 +94,7 @@ TEST_P(SoftspokenKTest, KWorks) {
   // GIVEN
   const int kWorldSize = 2;
   const size_t k = GetParam().k;
+  const bool mal = GetParam().mal;
   const size_t num_ot = 4096;
   auto lctxs = link::test::SetupWorld(kWorldSize);             // setup network
   auto base_ot = MockRots(128);                                // mock option
@@ -95,11 +104,12 @@ TEST_P(SoftspokenKTest, KWorks) {
   std::vector<std::array<uint128_t, 2>> send_out(num_ot);
   std::vector<uint128_t> recv_out(num_ot);
   std::future<void> sender = std::async([&] {
-    SoftspokenOtExtSend(lctxs[0], base_ot.recv, absl::MakeSpan(send_out), k);
+    SoftspokenOtExtSend(lctxs[0], base_ot.recv, absl::MakeSpan(send_out), k,
+                        false, mal);
   });
   std::future<void> receiver = std::async([&] {
     SoftspokenOtExtRecv(lctxs[1], base_ot.send, choices,
-                        absl::MakeSpan(recv_out), k);
+                        absl::MakeSpan(recv_out), k, false, mal);
   });
   receiver.get();
   sender.get();
@@ -117,6 +127,7 @@ TEST_P(SoftspokenKTest, ReuseWorks) {
   // GIVEN
   const int kWorldSize = 2;
   const size_t k = GetParam().k;
+  const bool mal = GetParam().mal;
   const size_t num_ot = 4096;
   auto lctxs = link::test::SetupWorld(kWorldSize);             // setup network
   auto base_ot = MockRots(128);                                // mock option
@@ -124,8 +135,10 @@ TEST_P(SoftspokenKTest, ReuseWorks) {
 
   // WHEN
   // One time setup for Softspoken
-  auto ssReceiverTask = std::async([&] { return SoftspokenOtExtReceiver(k); });
-  auto ssSenderTask = std::async([&] { return SoftspokenOtExtSender(k); });
+  auto ssReceiverTask =
+      std::async([&] { return SoftspokenOtExtReceiver(k, 0, mal); });
+  auto ssSenderTask =
+      std::async([&] { return SoftspokenOtExtSender(k, 0, mal); });
 
   auto ssReceiver = ssReceiverTask.get();
   auto ssSender = ssSenderTask.get();
@@ -169,6 +182,7 @@ TEST_P(SoftspokenOtExtTest, RotExtWorks) {
   // GIVEN
   const int kWorldSize = 2;
   const size_t num_ot = GetParam().num_ot;
+  const bool mal = GetParam().mal;
   auto lctxs = link::test::SetupWorld(kWorldSize);             // setup network
   auto base_ot = MockRots(128);                                // mock option
   auto choices = RandBits<dynamic_bitset<uint128_t>>(num_ot);  // get input
@@ -177,11 +191,12 @@ TEST_P(SoftspokenOtExtTest, RotExtWorks) {
   std::vector<std::array<uint128_t, 2>> send_out(num_ot);
   std::vector<uint128_t> recv_out(num_ot);
   std::future<void> sender = std::async([&] {
-    SoftspokenOtExtSend(lctxs[0], base_ot.recv, absl::MakeSpan(send_out), 2);
+    SoftspokenOtExtSend(lctxs[0], base_ot.recv, absl::MakeSpan(send_out), 2,
+                        false, mal);
   });
   std::future<void> receiver = std::async([&] {
     SoftspokenOtExtRecv(lctxs[1], base_ot.send, choices,
-                        absl::MakeSpan(recv_out), 2);
+                        absl::MakeSpan(recv_out), 2, false, mal);
   });
   receiver.get();
   sender.get();
@@ -199,6 +214,7 @@ TEST_P(SoftspokenOtExtTest, CotExtWorks) {
   // GIVEN
   const int kWorldSize = 2;
   const size_t num_ot = GetParam().num_ot;
+  const bool mal = GetParam().mal;
   auto lctxs = link::test::SetupWorld(kWorldSize);             // setup network
   auto base_ot = MockRots(128);                                // mock option
   auto choices = RandBits<dynamic_bitset<uint128_t>>(num_ot);  // get input
@@ -209,11 +225,11 @@ TEST_P(SoftspokenOtExtTest, CotExtWorks) {
 
   std::future<void> sender = std::async([&] {
     SoftspokenOtExtSend(lctxs[0], base_ot.recv, absl::MakeSpan(send_out), 3,
-                        true);
+                        true, mal);
   });
   std::future<void> receiver = std::async([&] {
     SoftspokenOtExtRecv(lctxs[1], base_ot.send, choices,
-                        absl::MakeSpan(recv_out), 3, true);
+                        absl::MakeSpan(recv_out), 3, true, mal);
   });
   receiver.get();
   sender.get();
@@ -234,13 +250,16 @@ TEST_P(SoftspokenOtExtTest, RotStoreWorks) {
   // GIVEN
   const int kWorldSize = 2;
   const size_t num_ot = GetParam().num_ot;
+  const bool mal = GetParam().mal;
   auto lctxs = link::test::SetupWorld(kWorldSize);  // setup network
   auto base_ot = MockRots(128);                     // mock option
 
   // WHEN
   // One time setup for Softspoken
-  auto ssReceiverTask = std::async([&] { return SoftspokenOtExtReceiver(2); });
-  auto ssSenderTask = std::async([&] { return SoftspokenOtExtSender(2); });
+  auto ssReceiverTask =
+      std::async([&] { return SoftspokenOtExtReceiver(2, 0, mal); });
+  auto ssSenderTask =
+      std::async([&] { return SoftspokenOtExtSender(2, 0, mal); });
 
   auto ssReceiver = ssReceiverTask.get();
   auto ssSender = ssSenderTask.get();
@@ -277,13 +296,16 @@ TEST_P(SoftspokenOtExtTest, CotStoreWorks) {
   // GIVEN
   const int kWorldSize = 2;
   const size_t num_ot = GetParam().num_ot;
+  const bool mal = GetParam().mal;
   auto lctxs = link::test::SetupWorld(kWorldSize);  // setup network
   auto base_ot = MockRots(128);                     // mock option
 
   // WHEN
   // One time setup for Softspoken
-  auto ssReceiverTask = std::async([&] { return SoftspokenOtExtReceiver(2); });
-  auto ssSenderTask = std::async([&] { return SoftspokenOtExtSender(2); });
+  auto ssReceiverTask =
+      std::async([&] { return SoftspokenOtExtReceiver(2, 0, mal); });
+  auto ssSenderTask =
+      std::async([&] { return SoftspokenOtExtSender(2, 0, mal); });
 
   auto ssReceiver = ssReceiverTask.get();
   auto ssSender = ssSenderTask.get();
@@ -318,35 +340,59 @@ TEST_P(SoftspokenOtExtTest, CotStoreWorks) {
 }
 
 INSTANTIATE_TEST_SUITE_P(Works_Instances, SoftspokenStepTest,
-                         testing::Values(StepTestParams{1},   //
-                                         StepTestParams{2},   //
-                                         StepTestParams{4},   //
-                                         StepTestParams{8},   //
-                                         StepTestParams{16},  //
-                                         StepTestParams{32},  //
-                                         StepTestParams{64},  //
-                                         StepTestParams{128}  //
-                                         ));
+                         testing::Values(StepTestParams{1},         //
+                                         StepTestParams{2},         //
+                                         StepTestParams{4},         //
+                                         StepTestParams{8},         //
+                                         StepTestParams{16},        //
+                                         StepTestParams{32},        //
+                                         StepTestParams{64},        //
+                                         StepTestParams{128},       //
+                                         StepTestParams{1, true},   //
+                                         StepTestParams{2, true},   //
+                                         StepTestParams{4, true},   //
+                                         StepTestParams{8, true},   //
+                                         StepTestParams{16, true},  //
+                                         StepTestParams{32, true},  //
+                                         StepTestParams{64, true},  //
+                                         StepTestParams{128, true}));
 
 INSTANTIATE_TEST_SUITE_P(Works_Instances, SoftspokenKTest,
-                         testing::Values(KTestParams{1},  //
-                                         KTestParams{2},  //
-                                         KTestParams{3},  //
-                                         KTestParams{4},  //
-                                         KTestParams{5},  //
-                                         KTestParams{6},  //
-                                         KTestParams{7},  //
-                                         KTestParams{8},  //
-                                         KTestParams{9},  //
-                                         KTestParams{10}));
+                         testing::Values(KTestParams{1},        //
+                                         KTestParams{2},        //
+                                         KTestParams{3},        //
+                                         KTestParams{4},        //
+                                         KTestParams{5},        //
+                                         KTestParams{6},        //
+                                         KTestParams{7},        //
+                                         KTestParams{8},        //
+                                         KTestParams{9},        //
+                                         KTestParams{10},       //
+                                         KTestParams{1, true},  //
+                                         KTestParams{2, true},  //
+                                         KTestParams{3, true},  //
+                                         KTestParams{4, true},  //
+                                         KTestParams{5, true},  //
+                                         KTestParams{6, true},  //
+                                         KTestParams{7, true},  //
+                                         KTestParams{8, true},  //
+                                         KTestParams{9, true},  //
+                                         KTestParams{10, true}));
 
 INSTANTIATE_TEST_SUITE_P(Works_Instances, SoftspokenOtExtTest,
-                         testing::Values(OtTestParams{8},      //
-                                         OtTestParams{128},    //
-                                         OtTestParams{129},    //
-                                         OtTestParams{4095},   //
-                                         OtTestParams{4096},   //
-                                         OtTestParams{65536},  //
-                                         OtTestParams{100000}));
+                         testing::Values(OtTestParams{8},            //
+                                         OtTestParams{128},          //
+                                         OtTestParams{129},          //
+                                         OtTestParams{4095},         //
+                                         OtTestParams{4096},         //
+                                         OtTestParams{65536},        //
+                                         OtTestParams{100000},       //
+                                         OtTestParams{8, true},      //
+                                         OtTestParams{128, true},    //
+                                         OtTestParams{129, true},    //
+                                         OtTestParams{4095, true},   //
+                                         OtTestParams{4096, true},   //
+                                         OtTestParams{65536, true},  //
+                                         OtTestParams{100000, true}));
 
 }  // namespace yacl::crypto

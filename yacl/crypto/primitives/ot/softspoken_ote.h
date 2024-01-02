@@ -22,10 +22,21 @@
 #include "yacl/base/dynamic_bitset.h"
 #include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
-#include "yacl/crypto/primitives/ot/ot_store.h"
-#include "yacl/crypto/utils/rand.h"
+#include "yacl/crypto/utils/secparam.h"
 #include "yacl/link/context.h"
 #include "yacl/link/link.h"
+
+/* submodules */
+#include "yacl/crypto/primitives/ot/base_ot.h"
+#include "yacl/crypto/primitives/ot/ot_store.h"
+#include "yacl/crypto/primitives/ot/sgrr_ote.h"
+#include "yacl/crypto/tools/crhash.h"
+#include "yacl/crypto/tools/prg.h"
+#include "yacl/crypto/tools/rp.h"
+#include "yacl/crypto/utils/rand.h"
+
+/* security parameter declaration */
+YACL_MODULE_DECLARE("softspoken_ote", SecParam::C::k128, SecParam::S::INF);
 
 namespace yacl::crypto {
 
@@ -46,31 +57,32 @@ namespace yacl::crypto {
 //                 (one-time setup)
 //              (a.k.a (N-1)-out-of-N OT)               (a.k.a subfield VOLE)
 //
-//  > k: Softspoken parameter (decide the instances and num for PPRF)
-//  > kappa: computation security parameter (128 for example)
+// => k: Softspoken parameter (decide the instances and num for PPRF)
+// => kappa: computation security parameter (128 for example)
 //
 // Security assumptions:
-//  *. correlation-robust hash function, for more details about its
-//  implementation, see `yacl/crypto/tools/random_permutation.h`
+// => correlation-robust hash function, for more details about its
+// implementation, see `yacl/crypto/tools/rp.h`
 //
 // NOTE:
-//  * OT Extension sender requires receiver base ot context.
-//  * OT Extension receiver requires sender base ot context.
-//  * Computation cost would be O(2^k/k).
-//  * Communication for each OT needs 128/k bits.
-//  * parameter k should be a small number (no greater than 10).
-//  * k = 2, 4, 8 are recommended in the localhost, LAN, WAN setting
+// => OT Extension sender requires receiver base ot context.
+// => OT Extension receiver requires sender base ot context.
+// => Computation cost would be O(2^k/k).
+// => Communication for each OT needs 128/k bits.
+// => parameter k should be a small number (no greater than 10).
+// => k = 2, 4, 8 are recommended in the localhost, LAN, WAN setting
 //  respectively.
-// *  step = 64 for k = 1 or 2; step = 32 for k = 3 or 4.
+// => step = 64 for k = 1 or 2; step = 32 for k = 3 or 4.
 
 class SoftspokenOtExtSender {
  public:
-  SoftspokenOtExtSender(uint64_t k = 2, uint64_t step = 0);
+  explicit SoftspokenOtExtSender(uint64_t k = 2, uint64_t step = 0,
+                                 bool mal = false);
 
   void OneTimeSetup(const std::shared_ptr<link::Context>& ctx);
 
   void OneTimeSetup(const std::shared_ptr<link::Context>& ctx,
-                    const OtRecvStore& base_ot);
+                    const OtRecvStore& base_ot /* rot */);
 
   // old-style interface
   void Send(const std::shared_ptr<link::Context>& ctx,
@@ -120,16 +132,18 @@ class SoftspokenOtExtSender {
   std::array<uint128_t, 128> p_idx_mask_;     // mask for punctured index
   AlignedVector<uint128_t> compress_leaves_;  // compressed pprf leaves
   uint64_t step_{32};                         // super batch size = step_ * 128
+  bool mal_{false};                           // malicous
 };
 
 class SoftspokenOtExtReceiver {
  public:
-  SoftspokenOtExtReceiver(uint64_t k = 2, uint64_t step = 0);
+  explicit SoftspokenOtExtReceiver(uint64_t k = 2, uint64_t step = 0,
+                                   bool mal = false);
 
   void OneTimeSetup(const std::shared_ptr<link::Context>& ctx);
 
   void OneTimeSetup(const std::shared_ptr<link::Context>& ctx,
-                    const OtSendStore& base_ot);
+                    const OtSendStore& base_ot /* rot */);
 
   // old-style interface
   void Recv(const std::shared_ptr<link::Context>& ctx,
@@ -180,24 +194,27 @@ class SoftspokenOtExtReceiver {
   uint64_t pprf_range_;                  // the number of leaves for single pprf
   AlignedVector<uint128_t> all_leaves_;  // leaves for all pprf
   uint64_t step_{32};                    // super batch size = step_ * 128
+  bool mal_{false};                      // malicous
 };
 
 // Softspoken Ot Extension interface
 inline void SoftspokenOtExtSend(
-    const std::shared_ptr<link::Context>& ctx, const OtRecvStore& base_ot,
+    const std::shared_ptr<link::Context>& ctx,
+    const OtRecvStore& base_ot /* rot */,
     absl::Span<std::array<uint128_t, 2>> send_blocks, uint64_t k = 2,
-    bool cot = false) {
-  auto ssSender = SoftspokenOtExtSender(k);
+    bool cot = false, bool mal = false) {
+  auto ssSender = SoftspokenOtExtSender(k, 0, mal);
   ssSender.OneTimeSetup(ctx, base_ot);
   ssSender.Send(ctx, send_blocks, cot);
 }
 
 inline void SoftspokenOtExtRecv(const std::shared_ptr<link::Context>& ctx,
-                                const OtSendStore& base_ot,
+                                const OtSendStore& base_ot /* rot */,
                                 const dynamic_bitset<uint128_t>& choices,
                                 absl::Span<uint128_t> recv_blocks,
-                                uint64_t k = 2, bool cot = false) {
-  auto ssReceiver = SoftspokenOtExtReceiver(k);
+                                uint64_t k = 2, bool cot = false,
+                                bool mal = false) {
+  auto ssReceiver = SoftspokenOtExtReceiver(k, 0, mal);
   ssReceiver.OneTimeSetup(ctx, base_ot);
   ssReceiver.Recv(ctx, choices, recv_blocks, cot);
 }

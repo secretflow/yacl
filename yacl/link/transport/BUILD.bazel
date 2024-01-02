@@ -51,6 +51,14 @@ yacl_cc_library(
     ],
 )
 
+yacl_cc_test(
+    name = "channel_mem_test",
+    srcs = ["channel_mem_test.cc"],
+    deps = [
+        ":channel_mem",
+    ],
+)
+
 cc_proto_library(
     name = "ic_transport_proto",
     deps = ["@org_interconnection//interconnection/link"],

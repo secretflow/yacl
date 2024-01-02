@@ -19,11 +19,22 @@
 #include "absl/types/span.h"
 
 #include "yacl/base/byte_container_view.h"
+#include "yacl/crypto/utils/secparam.h"
+
+/* security parameter declaration */
+YACL_MODULE_DECLARE("aes_gcm", SecParam::C::k128, SecParam::S::INF);
 
 namespace yacl::crypto {
 
-enum class GcmCryptoSchema : int { AES128_GCM, AES256_GCM };
+enum class GcmCryptoSchema : int {
+  AES128_GCM, /* security level = 128 */
+  AES256_GCM, /* security level = 256 */
+  // SM4_GCM /* TODO openssl 3.2 supports SM4 GCM */
+};
 
+// -------------
+// GCM Interface
+// -------------
 class GcmCrypto {
  public:
   GcmCrypto(GcmCryptoSchema schema, ByteContainerView key, ByteContainerView iv)
@@ -41,14 +52,14 @@ class GcmCrypto {
                ByteContainerView mac, absl::Span<uint8_t> plaintext) const;
 
  private:
-  // GCM crypto schema
-  const GcmCryptoSchema schema_;
-  // Symmetric key
-  const std::vector<uint8_t> key_;
-  // Initial vector
-  const std::vector<uint8_t> iv_;
+  const GcmCryptoSchema schema_;    // GCM crypto schema
+  const std::vector<uint8_t> key_;  // Symmetric key
+  const std::vector<uint8_t> iv_;   // Initialize vector
 };
 
+// ---------------
+// Implementations
+// ---------------
 class Aes128GcmCrypto : public GcmCrypto {
  public:
   Aes128GcmCrypto(ByteContainerView key, ByteContainerView iv)
@@ -60,6 +71,25 @@ class Aes256GcmCrypto : public GcmCrypto {
   Aes256GcmCrypto(ByteContainerView key, ByteContainerView iv)
       : GcmCrypto(GcmCryptoSchema::AES256_GCM, key, iv) {}
 };
-// TODO: Add SM4 GCM when openssl supports.
+
+// class Sm4GcmCrypto : public GcmCrypto {
+//  public:
+//   Sm4GcmCrypto(ByteContainerView key, ByteContainerView iv)
+//       : GcmCrypto(GcmCryptoSchema::SM4_GCM, key, iv) {}
+// };
+
+/* to a string which openssl recognizes */
+inline const char* ToString(GcmCryptoSchema scheme) {
+  switch (scheme) {
+    case GcmCryptoSchema::AES128_GCM:
+      return "aes-128-gcm";
+    case GcmCryptoSchema::AES256_GCM:
+      return "aes-256-gcm";
+    // case GcmCryptoSchema::SM4_GCM:
+    //   return "sm4-gcm";
+    default:
+      YACL_THROW("Unsupported gcm scheme: {}", static_cast<int>(scheme));
+  }
+}
 
 }  // namespace yacl::crypto

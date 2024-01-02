@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <vector>
+
 #include "c/blake3.h"
 
 #include "yacl/base/byte_container_view.h"
@@ -24,6 +26,17 @@ namespace yacl::crypto {
 // https://github.com/BLAKE3-team/BLAKE3-specs/blob/master/blake3.pdf
 // https://github.com/BLAKE3-team/BLAKE3
 // blake3 hash implements HashInterface.
+//
+// Notice: output_len would affect security level (default output_len = 32, 256
+// bits). An N-bits Blake3 would provide N bits of first and second preimage
+// resistance and N/2 bits of collision resistance (N <= 256).
+//
+// For more discussions, see:
+// 1. https://github.com/BLAKE3-team/BLAKE3/blob/master/c/README.md Security
+// Notes
+// 2. https://github.com/BLAKE3-team/BLAKE3/issues/194
+// 3. https://github.com/BLAKE3-team/BLAKE3/issues/278
+//
 class Blake3Hash : public HashInterface {
  public:
   Blake3Hash();

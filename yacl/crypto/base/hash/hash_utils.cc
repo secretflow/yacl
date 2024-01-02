@@ -27,7 +27,7 @@ namespace yacl::crypto {
 std::array<uint8_t, 32> Sha256(ByteContainerView data) {
   auto buf = SslHash(HashAlgorithm::SHA256).Update(data).CumulativeHash();
   YACL_ENFORCE(buf.size() >= 32);
-  std::array<uint8_t, 32> out;
+  std::array<uint8_t, 32> out{};
   memcpy(out.data(), buf.data(), 32);
   return out;
 }
@@ -35,7 +35,7 @@ std::array<uint8_t, 32> Sha256(ByteContainerView data) {
 std::array<uint8_t, 32> Sm3(ByteContainerView data) {
   auto buf = SslHash(HashAlgorithm::SM3).Update(data).CumulativeHash();
   YACL_ENFORCE(buf.size() >= 32);
-  std::array<uint8_t, 32> out;
+  std::array<uint8_t, 32> out{};
   memcpy(out.data(), buf.data(), 32);
   return out;
 }
@@ -43,7 +43,7 @@ std::array<uint8_t, 32> Sm3(ByteContainerView data) {
 std::array<uint8_t, 64> Blake2(ByteContainerView data) {
   auto buf = SslHash(HashAlgorithm::BLAKE2B).Update(data).CumulativeHash();
   YACL_ENFORCE(buf.size() >= 64);
-  std::array<uint8_t, 64> out;
+  std::array<uint8_t, 64> out{};
   memcpy(out.data(), buf.data(), 64);
   return out;
 }
@@ -53,7 +53,7 @@ std::array<uint8_t, 32> Blake3(ByteContainerView data) {
   blake3_hasher hasher;
   blake3_hasher_init(&hasher);
   blake3_hasher_update(&hasher, data.data(), data.size());
-  std::array<uint8_t, BLAKE3_OUT_LEN> digest;
+  std::array<uint8_t, BLAKE3_OUT_LEN> digest{};
   blake3_hasher_finalize(&hasher, digest.data(), BLAKE3_OUT_LEN);
   return digest;
 }

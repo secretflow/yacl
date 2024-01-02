@@ -35,7 +35,7 @@ struct TestParams {
 
 class SgrrParamTest : public ::testing::TestWithParam<TestParams> {};
 
-TEST_P(SgrrParamTest, Works) {
+TEST_P(SgrrParamTest, SemiHonestWorks) {
   size_t n = GetParam().n;
 
   auto index = RandInRange(n);
@@ -47,11 +47,45 @@ TEST_P(SgrrParamTest, Works) {
 
   std::future<void> sender = std::async([&] {
     SgrrOtExtRecv(lctxs[0], std::move(base_ot.recv), n, index,
-                  absl::MakeSpan(recv_out));
+                  absl::MakeSpan(recv_out), false);
   });
   std::future<void> receiver = std::async([&] {
     SgrrOtExtSend(lctxs[1], std::move(base_ot.send), n,
-                  absl::MakeSpan(send_out));
+                  absl::MakeSpan(send_out), false);
+  });
+  sender.get();
+  receiver.get();
+
+  EXPECT_EQ(send_out.size(), n);
+  EXPECT_EQ(recv_out.size(), n);
+
+  for (size_t i = 0; i < n; ++i) {
+    if (index != i) {
+      EXPECT_NE(recv_out[i], 0);
+      EXPECT_EQ(send_out[i], recv_out[i]);
+    } else {
+      EXPECT_EQ(0, recv_out[i]);
+    }
+  }
+}
+
+TEST_P(SgrrParamTest, MaliciousWorks) {
+  size_t n = GetParam().n;
+
+  auto index = RandInRange(n);
+  auto lctxs = link::test::SetupWorld(2);
+  auto base_ot = MockRots(math::Log2Ceil(n));  // mock many base OTs
+
+  std::vector<uint128_t> send_out(n);
+  std::vector<uint128_t> recv_out(n);
+
+  std::future<void> sender = std::async([&] {
+    SgrrOtExtRecv(lctxs[0], std::move(base_ot.recv), n, index,
+                  absl::MakeSpan(recv_out), true);
+  });
+  std::future<void> receiver = std::async([&] {
+    SgrrOtExtSend(lctxs[1], std::move(base_ot.send), n,
+                  absl::MakeSpan(send_out), true);
   });
   sender.get();
   receiver.get();

@@ -34,17 +34,22 @@ class GaloisField {
   virtual std::string GetLibraryName() const = 0;
   virtual std::string GetFieldName() const = 0;
 
-  // The order of Finite Field will always be k-th power of a prime number p.
-  // And in extension field, field order and field modulus are different and not
-  // directly related, which is unlike in normal prime field that field order is
-  // just field modulus.
-  // Note, the origin order(p^k) of extension field(degree k>1) is actually
-  // useless for field computation. So we usually disable `GetOrder` for
-  // extension field and set it to be 0, except we are dealing within a subfield
-  // from the upper extension field.
+  // The order of Finite Field will always be k-th power(p^k) of a prime number
+  // p. And in extension field, field order and field modulus are different and
+  // not directly related, which is unlike in normal prime field that field
+  // order is just field modulus.
+  // !Note, we will set the default order to be 0 for extension field, since the
+  // origin order(p^k) of extension field(degree k>1) is actually useless for
+  // field computation. Actually, we often deal within a subgroup(additive or
+  // multiplicative) over the extension field, so we provide the other two
+  // interfaces for `order`(GetMulGroupOrder and GetAddGroupOrder).
   virtual MPInt GetOrder() const = 0;
-  virtual MPInt GetExtensionDegree() const = 0;  // the k of GF(p^k)
-  virtual MPInt GetBaseFieldOrder() const = 0;   // the p of GF(p^k)
+  virtual uint64_t GetExtensionDegree() const = 0;  // the k of GF(p^k)
+  virtual MPInt GetBaseFieldOrder() const = 0;      // the p of GF(p^k)
+  // Get order of a multiplicative (sub)group over field
+  virtual MPInt GetMulGroupOrder() const = 0;
+  // Get order of a additive (sub)group over field
+  virtual MPInt GetAddGroupOrder() const = 0;
 
   // get the additive identity
   virtual Item GetIdentityZero() const = 0;

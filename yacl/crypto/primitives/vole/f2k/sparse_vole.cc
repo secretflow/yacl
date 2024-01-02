@@ -14,15 +14,12 @@
 
 #include "yacl/crypto/primitives/vole/f2k/sparse_vole.h"
 
+#include <algorithm>
 #include <numeric>
-
-#include "sparse_vole.h"
 
 #include "yacl/base/aligned_vector.h"
 #include "yacl/base/byte_container_view.h"
-#include "yacl/crypto/primitives/ot/gywz_ote.h"
-#include "yacl/crypto/primitives/ot/sgrr_ote.h"
-#include "yacl/crypto/tools/random_permutation.h"
+#include "yacl/base/int128.h"
 #include "yacl/math/f2k/f2k.h"
 #include "yacl/math/gadget.h"
 #include "yacl/utils/serialize.h"
@@ -63,9 +60,8 @@ void SpVoleSend(const std::shared_ptr<link::Context>& ctx,
   GywzOtExtSend(ctx, send_ot, n, output);
   ParaCrHashInplace_128(output.subspan(0, n));
   uint128_t send_msg = w;
-  for (uint32_t i = 0; i < n; ++i) {
-    send_msg ^= output[i];
-  }
+  send_msg = std::reduce(output.begin(), output.begin() + n, send_msg,
+                         std::bit_xor<uint128_t>());
   ctx->SendAsync(ctx->NextRank(), SerializeUint128(send_msg), "SpVole_msg");
 }
 
@@ -77,9 +73,8 @@ void SpVoleRecv(const std::shared_ptr<link::Context>& ctx,
   output[index] = 0;
   auto recv_buff = ctx->Recv(ctx->NextRank(), "SpVole_msg");
   auto recv_msg = DeserializeUint128(ByteContainerView(recv_buff));
-  for (uint32_t i = 0; i < n; ++i) {
-    recv_msg ^= output[i];
-  }
+  recv_msg = std::reduce(output.begin(), output.begin() + n, recv_msg,
+                         std::bit_xor<uint128_t>());
   output[index] = recv_msg ^ v;
 }
 
@@ -142,7 +137,7 @@ void SpVoleRecv(const std::shared_ptr<link::Context>& ctx,
 
 void MpVoleSend(const std::shared_ptr<link::Context>& ctx,
                 const OtSendStore& /*cot*/ send_ot, const MpVoleParam& param,
-                absl::Span<uint128_t> w, absl::Span<uint128_t> output) {
+                absl::Span<const uint128_t> w, absl::Span<uint128_t> output) {
   YACL_ENFORCE(param.assumption_ == LpnNoiseAsm::RegularNoise);
   YACL_ENFORCE(output.size() >= param.mp_vole_size_);
   YACL_ENFORCE(w.size() >= param.noise_num_);
@@ -174,9 +169,8 @@ void MpVoleSend(const std::shared_ptr<link::Context>& ctx,
   for (uint32_t i = 0; i < batch_num; ++i) {
     auto this_size = (i == batch_num - 1) ? last_batch_size : batch_size;
     auto this_span = output.subspan(i * batch_size, this_size);
-    for (const auto element : this_span) {
-      send_msg[i] ^= element;
-    }
+    send_msg[i] = std::reduce(this_span.begin(), this_span.end(), send_msg[i],
+                              std::bit_xor<uint128_t>());
   }
 
   ctx->SendAsync(
@@ -187,7 +181,7 @@ void MpVoleSend(const std::shared_ptr<link::Context>& ctx,
 
 void MpVoleRecv(const std::shared_ptr<link::Context>& ctx,
                 const OtRecvStore& /*cot*/ recv_ot, const MpVoleParam& param,
-                absl::Span<uint128_t> v, absl::Span<uint128_t> output) {
+                absl::Span<const uint128_t> v, absl::Span<uint128_t> output) {
   YACL_ENFORCE(param.assumption_ == LpnNoiseAsm::RegularNoise);
   YACL_ENFORCE(output.size() >= param.mp_vole_size_);
   YACL_ENFORCE(v.size() >= param.noise_num_);
@@ -227,17 +221,17 @@ void MpVoleRecv(const std::shared_ptr<link::Context>& ctx,
     auto this_size = (i == batch_num - 1) ? last_batch_size : batch_size;
     auto this_span = output.subspan(i * batch_size, this_size);
     this_span[indexes[i]] = 0;  // set punctured value as zero
-    for (const auto element : this_span) {
-      recv_msg[i] ^= element;
-    }
+    recv_msg[i] = std::reduce(this_span.begin(), this_span.end(), recv_msg[i],
+                              std::bit_xor<uint128_t>());
     this_span[indexes[i]] = recv_msg[i] ^ v[i];
   }
 }
 
-void MpVoleSend_fixindex(const std::shared_ptr<link::Context>& ctx,
-                         const OtSendStore& /*cot*/ send_ot,
-                         const MpVoleParam& param, absl::Span<uint128_t> w,
-                         absl::Span<uint128_t> output) {
+void MpVoleSend_fixed_index(const std::shared_ptr<link::Context>& ctx,
+                            const OtSendStore& /*cot*/ send_ot,
+                            const MpVoleParam& param,
+                            absl::Span<const uint128_t> w,
+                            absl::Span<uint128_t> output) {
   YACL_ENFORCE(param.assumption_ == LpnNoiseAsm::RegularNoise);
   YACL_ENFORCE(output.size() >= param.mp_vole_size_);
   YACL_ENFORCE(w.size() >= param.noise_num_);
@@ -249,8 +243,10 @@ void MpVoleSend_fixindex(const std::shared_ptr<link::Context>& ctx,
   const auto batch_length = math::Log2Ceil(batch_size);
   const auto last_batch_length = math::Log2Ceil(last_batch_size);
 
+  // Copy vector w
+  auto spvole_sum = AlignedVector<uint128_t>(w.data(), w.data() + batch_num);
   // send message buff for GYWZ OTe
-  auto gywz_send_msgs = std::vector<uint128_t>(
+  auto gywz_send_msgs = AlignedVector<uint128_t>(
       batch_length * (kSuperBatch - 1) + last_batch_length);
 
   const auto super_batch_num = math::DivCeil(batch_num, kSuperBatch);
@@ -265,21 +261,25 @@ void MpVoleSend_fixindex(const std::shared_ptr<link::Context>& ctx,
         this_size = last_batch_size;
         this_length = last_batch_length;
       }
-
-      auto this_span =
-          output.subspan((s * kSuperBatch + i) * batch_size, this_size);
+      auto batch_idx = s * kSuperBatch + i;
+      auto this_span = output.subspan(batch_idx * batch_size, this_size);
 
       // TODO: @wenfan
       // "Slice" would force to slice original OtStore from "begin" to "end",
       // which might cause unexpected error.
       // It would be better to use "NextSlice" here, but it's not a const
-      auto ot_slice =
-          send_ot.Slice((s * kSuperBatch + i) * batch_length,
-                        (s * kSuperBatch + i) * batch_length + this_length);
+      auto ot_slice = send_ot.Slice(batch_idx * batch_length,
+                                    batch_idx * batch_length + this_length);
       auto send_span =
           absl::MakeSpan(gywz_send_msgs.data() + i * batch_length, this_length);
       // GywzOtExt is single-point COT
-      GywzOtExtSend_fixindex(ot_slice, this_size, this_span, send_span);
+      GywzOtExtSend_fixed_index(ot_slice, this_size, this_span, send_span);
+      // Use CrHash to break the correlation
+      ParaCrHashInplace_128(this_span);
+      // this_span xor
+      spvole_sum[batch_idx] =
+          std::reduce(this_span.begin(), this_span.end(), spvole_sum[batch_idx],
+                      std::bit_xor<uint128_t>());
     }
 
     auto msg_length = kSuperBatch * batch_length;
@@ -292,29 +292,18 @@ void MpVoleSend_fixindex(const std::shared_ptr<link::Context>& ctx,
                    "GYWZ_OTE: messages");
   }
 
-  // Break the correlation
-  ParaCrHashInplace_128(output.subspan(0, param.mp_vole_size_));
-
-  auto send_msgs = AlignedVector<uint128_t>(w.data(), w.data() + batch_num);
-
-  for (uint32_t i = 0; i < batch_num; ++i) {
-    auto this_size = (i == batch_num - 1) ? last_batch_size : batch_size;
-    auto this_span = output.subspan(i * batch_size, this_size);
-    for (const auto element : this_span) {
-      send_msgs[i] ^= element;
-    }
-  }
-
+  auto& send_msgs = spvole_sum;
   ctx->SendAsync(
       ctx->NextRank(),
       ByteContainerView(send_msgs.data(), send_msgs.size() * sizeof(uint128_t)),
-      "MpVole_msg");
+      "MPVOLE:messages");
 }
 
-void MpVoleRecv_fixindex(const std::shared_ptr<link::Context>& ctx,
-                         const OtRecvStore& /*cot*/ recv_ot,
-                         const MpVoleParam& param, absl::Span<uint128_t> v,
-                         absl::Span<uint128_t> output) {
+void MpVoleRecv_fixed_index(const std::shared_ptr<link::Context>& ctx,
+                            const OtRecvStore& /*cot*/ recv_ot,
+                            const MpVoleParam& param,
+                            absl::Span<const uint128_t> v,
+                            absl::Span<uint128_t> output) {
   YACL_ENFORCE(param.assumption_ == LpnNoiseAsm::RegularNoise);
   YACL_ENFORCE(output.size() >= param.mp_vole_size_);
   YACL_ENFORCE(v.size() >= param.noise_num_);
@@ -329,6 +318,9 @@ void MpVoleRecv_fixindex(const std::shared_ptr<link::Context>& ctx,
   const auto& indexes = param.indexes_;
 
   const auto super_batch_num = math::DivCeil(batch_num, kSuperBatch);
+
+  // Copy vector v
+  auto spvole_sum = AlignedVector<uint128_t>(v.begin(), v.begin() + batch_num);
 
   for (uint32_t s = 0; s < super_batch_num; ++s) {
     const uint32_t bound =
@@ -351,48 +343,45 @@ void MpVoleRecv_fixindex(const std::shared_ptr<link::Context>& ctx,
         this_size = last_batch_size;
         this_length = last_batch_length;
       }
-
-      auto this_span =
-          output.subspan((s * kSuperBatch + i) * batch_size, this_size);
+      auto batch_idx = s * kSuperBatch + i;
+      auto this_span = output.subspan(batch_idx * batch_size, this_size);
       // TODO: @wenfan
       // "Slice" would force to slice original OtStore from "begin" to "end",
       // which might cause unexpected error.
       // It would be better to use "NextSlice" here, but it's not a const
-      auto ot_slice =
-          recv_ot.Slice((s * kSuperBatch + i) * batch_length,
-                        (s * kSuperBatch + i) * batch_length + this_length);
+      auto ot_slice = recv_ot.Slice(batch_idx * batch_length,
+                                    batch_idx * batch_length + this_length);
       auto recv_span =
           absl::MakeSpan(gywz_recv_msgs.data() + i * batch_length, this_length);
       // GywzOtExt is single-point COT
-      GywzOtExtRecv_fixindex(ot_slice, this_size, this_span, recv_span);
+      GywzOtExtRecv_fixed_index(ot_slice, this_size, this_span, recv_span);
+      // Use CrHash to break the correlation
+      ParaCrHashInplace_128(this_span);
+      // this_span xor
+      spvole_sum[batch_idx] =
+          std::reduce(this_span.begin(), this_span.end(), spvole_sum[batch_idx],
+                      std::bit_xor<uint128_t>());
     }
   }
 
   // Break the correlation
-  ParaCrHashInplace_128(output.subspan(0, param.mp_vole_size_));
 
-  auto recv_buff = ctx->Recv(ctx->NextRank(), "MpVole_msg");
-  YACL_ENFORCE(static_cast<uint64_t>(recv_buff.size()) >=
+  auto recv_buff = ctx->Recv(ctx->NextRank(), "MPVOLE:messages");
+  YACL_ENFORCE(static_cast<uint64_t>(recv_buff.size()) ==
                batch_num * sizeof(uint128_t));
-
   auto recv_msgs =
       absl::MakeSpan(reinterpret_cast<uint128_t*>(recv_buff.data()), batch_num);
 
   for (uint32_t i = 0; i < batch_num; ++i) {
-    auto this_size = (i == batch_num - 1) ? last_batch_size : batch_size;
-    auto this_span = output.subspan(i * batch_size, this_size);
-    this_span[indexes[i]] = 0;  // set punctured value as zero
-    for (const auto element : this_span) {
-      recv_msgs[i] ^= element;
-    }
-    this_span[indexes[i]] = recv_msgs[i] ^ v[i];
+    output[i * batch_size + indexes[i]] ^= recv_msgs[i] ^ spvole_sum[i];
   }
 }
 
-void MpVoleSend_fixindex(const std::shared_ptr<link::Context>& ctx,
-                         const OtSendStore& /*cot*/ send_ot,
-                         const MpVoleParam& param, absl::Span<uint64_t> w,
-                         absl::Span<uint64_t> output) {
+void MpVoleSend_fixed_index(const std::shared_ptr<link::Context>& ctx,
+                            const OtSendStore& /*cot*/ send_ot,
+                            const MpVoleParam& param,
+                            absl::Span<const uint64_t> w,
+                            absl::Span<uint64_t> output) {
   YACL_ENFORCE(param.assumption_ == LpnNoiseAsm::RegularNoise);
   YACL_ENFORCE(output.size() >= param.mp_vole_size_);
   YACL_ENFORCE(w.size() >= param.noise_num_);
@@ -404,12 +393,16 @@ void MpVoleSend_fixindex(const std::shared_ptr<link::Context>& ctx,
   const auto batch_length = math::Log2Ceil(batch_size);
   const auto last_batch_length = math::Log2Ceil(last_batch_size);
 
-  // send message buff for GYWZ OTe
-  auto gywz_send_msgs = std::vector<uint128_t>(
+  // copy w
+  auto spvole_sum = AlignedVector<uint64_t>(w.begin(), w.begin() + batch_num);
+  // GywzOtExt need uint128_t buffer
+  auto spvole_buff =
+      AlignedVector<uint128_t>(1 << std::max(batch_length, last_batch_length));
+  auto spvole_span = absl::MakeSpan(spvole_buff);
+  // send message buffer for GYWZ OTe
+  auto gywz_send_msgs = AlignedVector<uint128_t>(
       batch_length * (kSuperBatch - 1) + last_batch_length);
 
-  std::vector<uint128_t> mpvole_buff(param.mp_vole_size_);
-  auto mpvole_span = absl::MakeSpan(mpvole_buff);
   const auto super_batch_num = math::DivCeil(batch_num, kSuperBatch);
 
   for (uint32_t s = 0; s < super_batch_num; ++s) {
@@ -418,24 +411,37 @@ void MpVoleSend_fixindex(const std::shared_ptr<link::Context>& ctx,
     for (uint32_t i = 0; i < bound; ++i) {
       auto this_size = batch_size;
       auto this_length = batch_length;
+
       if (s == (super_batch_num - 1) && i == (bound - 1)) {
         this_size = last_batch_size;
         this_length = last_batch_length;
       }
-
-      auto this_span =
-          mpvole_span.subspan((s * kSuperBatch + i) * batch_size, this_size);
+      // full_size = 1 << this_length, would avoid copying in GywzOtExt
+      auto full_size = 1 << this_length;
+      auto batch_idx = s * kSuperBatch + i;
+      auto this_span = spvole_span.subspan(0, full_size);
 
       // TODO: @wenfan
       // "Slice" would force to slice original OtStore from "begin" to "end",
       // which might cause unexpected error.
       // It would be better to use "NextSlice" here, but it's not a const
-      auto ot_slice =
-          send_ot.Slice((s * kSuperBatch + i) * batch_length,
-                        (s * kSuperBatch + i) * batch_length + this_length);
+      auto ot_slice = send_ot.Slice(batch_idx * batch_length,
+                                    batch_idx * batch_length + this_length);
       auto send_span =
           absl::MakeSpan(gywz_send_msgs.data() + i * batch_length, this_length);
-      GywzOtExtSend_fixindex(ot_slice, this_size, this_span, send_span);
+      // GywzOtExt is single-point COT
+      GywzOtExtSend_fixed_index(ot_slice, full_size, this_span, send_span);
+      // Use CrHash to break the correlation
+      ParaCrHashInplace_128(this_span.subspan(0, this_size));
+      // convert to uint64_t
+      std::transform(this_span.begin(), this_span.begin() + this_size,
+                     output.data() + batch_idx * batch_size,
+                     [](uint128_t t) -> uint64_t { return t; });
+      // this_span xor
+      spvole_sum[batch_idx] =
+          std::reduce(output.data() + batch_idx * batch_size,
+                      output.data() + batch_idx * batch_size + this_size,
+                      spvole_sum[batch_idx], std::bit_xor<uint64_t>());
     }
 
     auto msg_length = kSuperBatch * batch_length;
@@ -448,30 +454,18 @@ void MpVoleSend_fixindex(const std::shared_ptr<link::Context>& ctx,
                    "GYWZ_OTE: messages");
   }
 
-  // Break the correlation
-  ParaCrHashInplace_128(mpvole_span.subspan(0, param.mp_vole_size_));
-
-  auto send_msgs = AlignedVector<uint64_t>(w.data(), w.data() + batch_num);
-
-  for (uint32_t i = 0; i < batch_num; ++i) {
-    auto this_size = (i == batch_num - 1) ? last_batch_size : batch_size;
-    auto this_span = output.subspan(i * batch_size, this_size);
-    for (uint32_t j = 0; j < this_size; ++j) {
-      this_span[j] = mpvole_span[batch_size * i + j];
-      send_msgs[i] ^= this_span[j];
-    }
-  }
-
+  auto& send_msgs = spvole_sum;
   ctx->SendAsync(
       ctx->NextRank(),
       ByteContainerView(send_msgs.data(), send_msgs.size() * sizeof(uint64_t)),
-      "MpVole_msg");
+      "MPVOLE:messages");
 }
 
-void MpVoleRecv_fixindex(const std::shared_ptr<link::Context>& ctx,
-                         const OtRecvStore& /*cot*/ recv_ot,
-                         const MpVoleParam& param, absl::Span<uint64_t> v,
-                         absl::Span<uint64_t> output) {
+void MpVoleRecv_fixed_index(const std::shared_ptr<link::Context>& ctx,
+                            const OtRecvStore& /*cot*/ recv_ot,
+                            const MpVoleParam& param,
+                            absl::Span<const uint64_t> v,
+                            absl::Span<uint64_t> output) {
   YACL_ENFORCE(param.assumption_ == LpnNoiseAsm::RegularNoise);
   YACL_ENFORCE(output.size() >= param.mp_vole_size_);
   YACL_ENFORCE(v.size() >= param.noise_num_);
@@ -485,9 +479,14 @@ void MpVoleRecv_fixindex(const std::shared_ptr<link::Context>& ctx,
 
   const auto& indexes = param.indexes_;
 
-  std::vector<uint128_t> mpvole_buff(param.mp_vole_size_);
-  auto mpvole_span = absl::MakeSpan(mpvole_buff);
   const auto super_batch_num = math::DivCeil(batch_num, kSuperBatch);
+
+  // Copy vector v
+  auto spvole_sum = AlignedVector<uint64_t>(v.begin(), v.begin() + batch_num);
+  // GywzOtExt need uint128_t buffer
+  auto spvole_buff =
+      AlignedVector<uint128_t>(1 << std::max(batch_length, last_batch_length));
+  auto spvole_span = absl::MakeSpan(spvole_buff);
 
   for (uint32_t s = 0; s < super_batch_num; ++s) {
     const uint32_t bound =
@@ -510,42 +509,42 @@ void MpVoleRecv_fixindex(const std::shared_ptr<link::Context>& ctx,
         this_size = last_batch_size;
         this_length = last_batch_length;
       }
-
-      auto this_span =
-          mpvole_span.subspan((s * kSuperBatch + i) * batch_size, this_size);
+      // full_size = 1 << this_length, would avoid copying in GywzOtExt
+      auto full_size = 1 << this_length;
+      auto batch_idx = s * kSuperBatch + i;
+      auto this_span = spvole_span.subspan(0, full_size);
       // TODO: @wenfan
       // "Slice" would force to slice original OtStore from "begin" to "end",
       // which might cause unexpected error.
       // It would be better to use "NextSlice" here, but it's not a const
-      auto ot_slice =
-          recv_ot.Slice((s * kSuperBatch + i) * batch_length,
-                        (s * kSuperBatch + i) * batch_length + this_length);
+      auto ot_slice = recv_ot.Slice(batch_idx * batch_length,
+                                    batch_idx * batch_length + this_length);
       auto recv_span =
           absl::MakeSpan(gywz_recv_msgs.data() + i * batch_length, this_length);
-      GywzOtExtRecv_fixindex(ot_slice, this_size, this_span, recv_span);
+      // GywzOtExt is single-point COT
+      GywzOtExtRecv_fixed_index(ot_slice, full_size, this_span, recv_span);
+      // Use CrHash to break the correlation
+      ParaCrHashInplace_128(this_span.subspan(0, this_size));
+      // convert to uint64_t
+      std::transform(this_span.begin(), this_span.begin() + this_size,
+                     output.data() + batch_idx * batch_size,
+                     [](uint128_t t) -> uint64_t { return t; });
+      // this_span xor
+      spvole_sum[batch_idx] =
+          std::reduce(output.data() + batch_idx * batch_size,
+                      output.data() + batch_idx * batch_size + this_size,
+                      spvole_sum[batch_idx], std::bit_xor<uint64_t>());
     }
   }
 
-  // Break the correlation
-  ParaCrHashInplace_128(mpvole_span.subspan(0, param.mp_vole_size_));
-
-  auto recv_buff = ctx->Recv(ctx->NextRank(), "MpVole_msg");
-  YACL_ENFORCE(static_cast<uint64_t>(recv_buff.size()) >=
+  auto recv_buff = ctx->Recv(ctx->NextRank(), "MPVOLE:messages");
+  YACL_ENFORCE(static_cast<uint64_t>(recv_buff.size()) ==
                batch_num * sizeof(uint64_t));
-
   auto recv_msgs =
       absl::MakeSpan(reinterpret_cast<uint64_t*>(recv_buff.data()), batch_num);
 
   for (uint32_t i = 0; i < batch_num; ++i) {
-    auto this_size = (i == batch_num - 1) ? last_batch_size : batch_size;
-    auto this_span = output.subspan(i * batch_size, this_size);
-    // set punctured value as zero
-    mpvole_span[i * batch_size + indexes[i]] = 0;
-    for (uint32_t j = 0; j < this_size; ++j) {
-      this_span[j] = mpvole_span[i * batch_size + j];
-      recv_msgs[i] ^= this_span[j];
-    }
-    this_span[indexes[i]] = recv_msgs[i] ^ v[i];
+    output[i * batch_size + indexes[i]] ^= recv_msgs[i] ^ spvole_sum[i];
   }
 }
 

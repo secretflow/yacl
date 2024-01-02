@@ -18,23 +18,26 @@
 #include <memory>
 #include <vector>
 
-#include "yacl/crypto/primitives/ot/ferret_ote.h"
-#include "yacl/crypto/primitives/ot/gywz_ote.h"
 #include "yacl/crypto/utils/secparam.h"
+#include "yacl/math/gadget.h"
+
+/* submodules */
+#include "yacl/crypto/primitives/ot/gywz_ote.h"
+
+/* security parameter declaration */
+YACL_MODULE_DECLARE("ferret_ote_rn", SecParam::C::k128, SecParam::S::INF);
 
 namespace yacl::crypto {
 
-YACL_MODULE_DECLARE("ferret_ote_rn", SecParam::C::k128, SecParam::S::INF);
-
-uint64_t MpCotRNHelper(uint64_t idx_num, uint64_t idx_range) {
+inline uint64_t MpCotRNHelper(uint64_t idx_num, uint64_t idx_range) {
   const auto batch_size = (idx_range + idx_num - 1) / idx_num;
   const auto last_size = idx_range - batch_size * (idx_num - 1);
   return math::Log2Ceil(batch_size) * (idx_num - 1) + math::Log2Ceil(last_size);
 }
 
-void MpCotRNSend(const std::shared_ptr<link::Context>& ctx,
-                 const OtSendStore& cot, uint64_t idx_range, uint64_t idx_num,
-                 absl::Span<uint128_t> out) {
+inline void MpCotRNSend(const std::shared_ptr<link::Context>& ctx,
+                        const OtSendStore& cot, uint64_t idx_range,
+                        uint64_t idx_num, absl::Span<uint128_t> out) {
   const auto full_size = idx_range;
   const auto batch_num = idx_num;
   const auto batch_size = full_size / batch_num;
@@ -52,9 +55,9 @@ void MpCotRNSend(const std::shared_ptr<link::Context>& ctx,
   }
 }
 
-void MpCotRNRecv(const std::shared_ptr<link::Context>& ctx,
-                 const OtRecvStore& cot, uint64_t idx_range, uint64_t idx_num,
-                 absl::Span<uint128_t> out) {
+inline void MpCotRNRecv(const std::shared_ptr<link::Context>& ctx,
+                        const OtRecvStore& cot, uint64_t idx_range,
+                        uint64_t idx_num, absl::Span<uint128_t> out) {
   const auto full_size = idx_range;
   const auto batch_num = idx_num;
   const auto batch_size = full_size / batch_num;

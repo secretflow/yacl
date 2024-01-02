@@ -62,8 +62,8 @@ class VerifiableSecretSharing {
    * @param threshold
    * @param prime
    */
-  VerifiableSecretSharing(size_t total, size_t threshold, math::MPInt prime)
-      : total_(total), threshold_(threshold), prime_(std::move(prime)) {
+  VerifiableSecretSharing(size_t total, size_t threshold, const MPInt& prime)
+      : total_(total), threshold_(threshold), prime_(prime) {
     YACL_ENFORCE(total >= threshold);
   }
 
@@ -79,8 +79,8 @@ class VerifiableSecretSharing {
    *
    */
   struct Share {
-    math::MPInt x;  // The x-coordinate of the share.
-    math::MPInt y;  // The y-coordinate of the share.
+    MPInt x;  // The x-coordinate of the share.
+    MPInt y;  // The y-coordinate of the share.
   };
 
   /**
@@ -90,7 +90,7 @@ class VerifiableSecretSharing {
    * @param poly
    * @return std::vector<Share>
    */
-  std::vector<Share> CreateShare(const math::MPInt& secret, Polynomial& poly);
+  std::vector<Share> CreateShare(const MPInt& secret, Polynomial& poly) const;
 
   /**
    * @brief Recover the secret from the given shares using Lagrange
@@ -98,9 +98,9 @@ class VerifiableSecretSharing {
    *
    * @param shares
    * @param poly
-   * @return math::MPInt
+   * @return MPInt
    */
-  math::MPInt RecoverSecret(absl::Span<const Share> shares);
+  MPInt RecoverSecret(absl::Span<const Share> shares) const;
 
   // New name for the type representing the result of GenerateShareWithCommits
   // function.
@@ -117,9 +117,9 @@ class VerifiableSecretSharing {
    * @return ShareWithCommitsResult
    */
   ShareWithCommitsResult CreateShareWithCommits(
-      const math::MPInt& secret,
+      const MPInt& secret,
       const std::unique_ptr<yacl::crypto::EcGroup>& ecc_group,
-      Polynomial& poly);
+      Polynomial& poly) const;
 
   /**
    * @brief Get the Total object
@@ -139,15 +139,15 @@ class VerifiableSecretSharing {
   /**
    * @brief Get the prime modulus used in the scheme.
    *
-   * @return math::MPInt
+   * @return MPInt
    */
-  math::MPInt GetPrime() const { return prime_; }
+  MPInt GetPrime() const { return prime_; }
 
  private:
-  size_t total_;       // Total number of shares in the scheme.
-  size_t threshold_;   // Minimum number of shares required to reconstruct the
-                       // secret.
-  math::MPInt prime_;  // Prime modulus used in the scheme.
+  size_t total_;      // Total number of shares in the scheme.
+  size_t threshold_;  // Minimum number of shares required to reconstruct the
+                      // secret.
+  MPInt prime_;       // Prime modulus used in the scheme.
 };
 
 /**
@@ -160,7 +160,7 @@ class VerifiableSecretSharing {
  */
 std::vector<yacl::crypto::EcPoint> CreateCommits(
     const std::unique_ptr<yacl::crypto::EcGroup>& ecc_group,
-    const std::vector<math::MPInt>& coefficients);
+    const std::vector<MPInt>& coefficients);
 
 /**
  * @brief Verify the commitments and shares in the Verifiable Secret Sharing
@@ -176,6 +176,6 @@ std::vector<yacl::crypto::EcPoint> CreateCommits(
 bool VerifyCommits(const std::unique_ptr<yacl::crypto::EcGroup>& ecc_group,
                    const VerifiableSecretSharing::Share& share,
                    const std::vector<yacl::crypto::EcPoint>& commits,
-                   const math::MPInt& prime);
+                   const MPInt& prime);
 
 }  // namespace yacl::crypto

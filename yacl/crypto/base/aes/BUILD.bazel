@@ -25,12 +25,7 @@ yacl_cc_binary(
         "//yacl/crypto/tools:prg",
         "//yacl/crypto/utils:rand",
         "@com_github_google_benchmark//:benchmark_main",
-    ] + select({
-        "@platforms//cpu:x86_64": [
-            "@com_github_intel_ipp//:ipp",
-        ],
-        "//conditions:default": [],
-    }),
+    ],
 )
 
 yacl_cc_library(
@@ -39,7 +34,10 @@ yacl_cc_library(
         "aes_intrinsics.h",
     ],
     copts = AES_COPT_FLAGS,
-    deps = ["//yacl/base:int128"] + select({
+    deps = [
+        "//yacl/base:int128",
+        "//yacl/crypto/utils:secparam",
+    ] + select({
         "@platforms//cpu:aarch64": [
             "@com_github_dltcollab_sse2neon//:sse2neon",
         ],

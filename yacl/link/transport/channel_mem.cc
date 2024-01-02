@@ -24,6 +24,7 @@ ChannelMem::ChannelMem(size_t /*self_rank*/, size_t /*peer_rank*/,
 
 void ChannelMem::SetPeer(const std::shared_ptr<ChannelMem>& peer_task) {
   peer_channel_ = peer_task;
+  finished_ = false;
 }
 
 void ChannelMem::SendImpl(const std::string& key, ByteContainerView value) {
@@ -63,6 +64,18 @@ void ChannelMem::OnMessage(const std::string& msg_key,
     recv_msgs_.emplace(msg_key, value);
   }
   msg_db_cond_.notify_all();
+}
+
+void ChannelMem::WaitLinkTaskFinish() {
+  bool expect = false;
+  if (!finished_.compare_exchange_strong(expect, true)) {
+    return;
+  }
+
+  SendImpl(kFinKey, "");
+  auto recv = Recv(kFinKey);
+  recv.reset();
+  finished_ = true;
 }
 
 }  // namespace yacl::link::transport

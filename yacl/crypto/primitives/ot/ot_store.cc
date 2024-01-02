@@ -538,7 +538,7 @@ MockOtStore MockRots(uint64_t num, dynamic_bitset<uint128_t> choices) {
   AlignedVector<uint128_t> recv_blocks;
   AlignedVector<std::array<uint128_t, 2>> send_blocks;
 
-  Prg<uint128_t> gen(RandSeed());
+  Prg<uint128_t> gen(FastRandSeed());
   for (uint64_t i = 0; i < num; ++i) {
     send_blocks.push_back({gen(), gen()});
     recv_blocks.push_back(send_blocks[i][choices[i]]);
@@ -559,7 +559,7 @@ MockOtStore MockCots(uint64_t num, uint128_t delta,
   AlignedVector<uint128_t> recv_blocks;
   AlignedVector<uint128_t> send_blocks;
 
-  Prg<uint128_t> gen(RandSeed());
+  Prg<uint128_t> gen(FastRandSeed());
   for (uint64_t i = 0; i < num; ++i) {
     auto msg = gen();
     send_blocks.push_back(msg);
@@ -575,12 +575,12 @@ MockOtStore MockCots(uint64_t num, uint128_t delta,
 }
 
 MockOtStore MockCompactOts(uint64_t num) {
-  uint128_t delta = RandU128();
+  uint128_t delta = FastRandU128();
   delta |= 0x1;  // make sure its last bits = 1;
   AlignedVector<uint128_t> recv_blocks;
   AlignedVector<uint128_t> send_blocks;
 
-  Prg<uint128_t> gen(RandSeed());
+  Prg<uint128_t> gen(FastRandSeed());
   for (uint64_t i = 0; i < num; ++i) {
     auto recv_msg = gen();
     auto choice = recv_msg & 0x1;

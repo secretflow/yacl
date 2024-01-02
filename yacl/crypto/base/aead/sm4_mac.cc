@@ -15,9 +15,6 @@
 #include "yacl/crypto/base/aead/sm4_mac.h"
 
 #include "yacl/base/exception.h"
-#include "yacl/crypto/base/hash/ssl_hash.h"
-#include "yacl/crypto/base/hmac_sm3.h"
-#include "yacl/crypto/base/symmetric_crypto.h"
 
 namespace yacl::crypto {
 

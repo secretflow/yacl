@@ -14,12 +14,17 @@
 
 #include "yacl/crypto/primitives/ot/softspoken_ote.h"
 
+#include <sys/socket.h>
+
+#include <algorithm>
+#include <cstddef>
 #include <cstdint>
 
 #include "yacl/base/aligned_vector.h"
-#include "yacl/base/dynamic_bitset.h"
-#include "yacl/crypto/primitives/ot/base_ot.h"
-#include "yacl/crypto/utils/rand.h"
+#include "yacl/base/byte_container_view.h"
+#include "yacl/math/f2k/f2k.h"
+#include "yacl/utils/matrix_utils.h"
+#include "yacl/utils/serialize.h"
 
 #ifndef __aarch64__
 // sse
@@ -34,21 +39,52 @@
 #include <array>
 #include <vector>
 
-#include "ot_store.h"
-
-#include "yacl/base/byte_container_view.h"
-#include "yacl/base/exception.h"
-#include "yacl/base/int128.h"
-#include "yacl/crypto/primitives/ot/sgrr_ote.h"
-#include "yacl/crypto/tools/random_permutation.h"
-#include "yacl/utils/matrix_utils.h"
-
 namespace yacl::crypto {
 
 namespace {
 
 constexpr uint64_t kBatchSize = 128;
 constexpr uint64_t kKappa = 128;
+constexpr size_t kS = 64;  // statistical security parameter
+
+template <typename T = uint64_t>
+struct CheckMsg {
+  T x = 0;
+  std::array<T, kKappa> t{0};
+
+  // pack the check_msg into one byte buffer (for networking)
+  Buffer Pack() {
+    Buffer out((kKappa + 1) * sizeof(T));
+    memcpy(out.data<uint8_t>(), &x, sizeof(T));
+    memcpy(out.data<uint8_t>() + sizeof(T), t.data(), sizeof(T) * kKappa);
+    return out;
+  }
+
+  // unpack the check_msg from byte buffer (for networking)
+  void Unpack(ByteContainerView buf) {
+    std::memcpy(&x, buf.data(), sizeof(T));
+    std::memcpy(t.data(), buf.data() + sizeof(T), kKappa * sizeof(T));
+  }
+};
+
+inline dynamic_bitset<uint128_t> ExtendChoice(
+    const dynamic_bitset<uint128_t>& choices, size_t final_size) {
+  // Extend choices to batch_num * kBlockNum bits
+  // 1st part (valid_ot_num bits): original ot choices
+  // 2nd part (verify_ot_num bits): rand bits used for checking
+  // 3rd party (the rest bits): padding 1;
+  dynamic_bitset<uint128_t> choices_ext = choices;
+
+  // 2nd part Extension
+  Prg<bool> gen;
+  for (size_t i = 0; i < kS; i++) {
+    choices_ext.push_back(gen());
+  }
+
+  // 3rd part Extension
+  choices_ext.resize(final_size);
+  return choices_ext;
+}
 
 inline void XorBlock(absl::Span<const uint128_t> in, absl::Span<uint128_t> out,
                      const uint128_t block) {
@@ -79,21 +115,14 @@ inline void XorReduce(absl::Span<uint128_t> inout) {
 }
 
 template <>
-inline void XorReduce<1>(absl::Span<uint128_t> inout) {
-  const uint64_t buf_size = inout.size();
-  constexpr uint64_t stride = 1;
-  for (uint64_t i = 0; i < buf_size; i += 2 * stride) {
-    inout[i] = reinterpret_cast<uint128_t>(
-        _mm_xor_si128(reinterpret_cast<__m128i>(inout[i]),
-                      reinterpret_cast<__m128i>(inout[i + stride])));
-  }
-}
+inline void XorReduce<0>([[maybe_unused]] absl::Span<uint128_t> inout) {}
 
 inline void XorReduce(uint64_t k, absl::Span<uint128_t> inout) {
+  YACL_ENFORCE(k <= 64);
   const uint64_t buf_size = inout.size();
 
   for (uint64_t depth = 1; depth <= k; ++depth) {
-    uint64_t stride = 1 << (depth - 1);
+    uint64_t stride = static_cast<uint64_t>(1) << (depth - 1);
     for (uint64_t i = 0; i < buf_size; i += 2 * stride) {
       for (uint64_t j = 0; j < depth; ++j) {
         inout[i + j] ^= inout[i + j + stride];
@@ -105,30 +134,21 @@ inline void XorReduce(uint64_t k, absl::Span<uint128_t> inout) {
 
 inline void XorReduceImpl(uint64_t k, absl::Span<uint128_t> inout) {
   switch (k) {
-    case 1:
-      XorReduce<1>(inout);
-      break;
-    case 2:
-      XorReduce<2>(inout);
-      break;
-    case 3:
-      XorReduce<3>(inout);
-      break;
-    case 4:
-      XorReduce<4>(inout);
-      break;
-    case 5:
-      XorReduce<5>(inout);
-      break;
-    case 6:
-      XorReduce<6>(inout);
-      break;
-    case 7:
-      XorReduce<7>(inout);
-      break;
-    case 8:
-      XorReduce<8>(inout);
-      break;
+#define SWITCH_CASE(n)   \
+  case n:                \
+    XorReduce<n>(inout); \
+    break;
+
+    SWITCH_CASE(1);
+    SWITCH_CASE(2);
+    SWITCH_CASE(3);
+    SWITCH_CASE(4);
+    SWITCH_CASE(5);
+    SWITCH_CASE(6);
+    SWITCH_CASE(7);
+    SWITCH_CASE(8);
+
+#undef SWITCH_CASE
     default:
       XorReduce(k, inout);
       break;
@@ -137,8 +157,9 @@ inline void XorReduceImpl(uint64_t k, absl::Span<uint128_t> inout) {
 
 }  // namespace
 
-SoftspokenOtExtSender::SoftspokenOtExtSender(uint64_t k, uint64_t step)
-    : k_(k), step_(step) {
+SoftspokenOtExtSender::SoftspokenOtExtSender(uint64_t k, uint64_t step,
+                                             bool mal)
+    : k_(k), step_(step), mal_(mal) {
   counter_ = 0;
   pprf_num_ = (kKappa + k_ - 1) / k_;
   pprf_range_ = static_cast<uint64_t>(1) << k_;
@@ -152,6 +173,8 @@ SoftspokenOtExtSender::SoftspokenOtExtSender(uint64_t k, uint64_t step)
   punctured_idx_ = AlignedVector<uint128_t>(pprf_num_);
   // remove the empty entries in punctured_leaves_
   compress_leaves_ = AlignedVector<uint128_t>(total_size - pprf_num_);
+  // init delta
+  delta_ = MakeUint128(0, 0);
 
   // set default step or super batch
   if (step_ == 0) {
@@ -165,8 +188,9 @@ SoftspokenOtExtSender::SoftspokenOtExtSender(uint64_t k, uint64_t step)
   }
 }
 
-SoftspokenOtExtReceiver::SoftspokenOtExtReceiver(uint64_t k, uint64_t step)
-    : k_(k), step_(step) {
+SoftspokenOtExtReceiver::SoftspokenOtExtReceiver(uint64_t k, uint64_t step,
+                                                 bool mal)
+    : k_(k), step_(step), mal_(mal) {
   counter_ = 0;
   pprf_num_ = (kKappa + k_ - 1) / k_;
   pprf_range_ = static_cast<uint64_t>(1) << k_;
@@ -192,6 +216,7 @@ void SoftspokenOtExtSender::OneTimeSetup(
   if (inited_) {
     return;
   }
+
   // generate base-OT
   auto choices = RandBits(kKappa, true);
   auto base_ot = BaseOtRecv(ctx, choices, kKappa);
@@ -208,16 +233,7 @@ void SoftspokenOtExtSender::OneTimeSetup(
   // FIXME: Copy base_ot, since NextSlice is not const
   auto dup_base_ot = base_ot;
   // set delta
-  // delta_ = base_ot.CopyChoice().data()[0];
-  delta_ = 0;
-  for (uint32_t i = 0; i < 128; ++i) {
-    delta_ |= static_cast<uint128_t>(base_ot.GetChoice(i)) << i;
-  }
-
-  std::vector<std::array<uint128_t, 2>> recv_msgs(kKappa);
-  auto recv_buf = ctx->Recv(ctx->NextRank(), "Softspoken_OneTimeSetup");
-  std::memcpy(recv_msgs.data(), recv_buf.data(), recv_buf.size());
-  auto recv_span = absl::MakeSpan(recv_msgs);
+  delta_ = base_ot.CopyChoice().data()[0];
 
   // One-time Setup for Softspoken
   // k 1-out-of-2 ROT to (2^k-1)-out-of-(2^k) ROT
@@ -226,19 +242,13 @@ void SoftspokenOtExtSender::OneTimeSetup(
     const uint64_t range_limit = static_cast<uint64_t>(1) << k_limit;
     // i-th OT instances
     auto sub_ot = dup_base_ot.NextSlice(k_limit);
-    // TODO: [low efficiency] It would copy dynamic_bitset<uint128_t>.
+    // TODO(@wenfan): [low efficiency] It would copy dynamic_bitset<uint128_t>.
     // punctured index for i-th pprf
-    // punctured_idx_[i] = sub_ot.CopyChoice().data()[0];
-    punctured_idx_[i] = 0;
-    for (uint32_t j = 0; j < k_limit; ++j) {
-      punctured_idx_[i] |= (sub_ot.GetChoice(j)) << j;
-    }
-
+    punctured_idx_[i] = sub_ot.CopyChoice().data()[0];
     // punctured leaves for the i-th pprf
     auto leaves =
         absl::MakeSpan(punctured_leaves_.data() + i * pprf_range_, range_limit);
-    SgrrOtExtRecv_fixindex(sub_ot, range_limit, leaves,
-                           recv_span.subspan(i * k_, k_limit));
+    SgrrOtExtRecv(ctx, sub_ot, range_limit, punctured_idx_[i], leaves, mal_);
 
     // if the j-th bit of punctured index is 1, set mask as all one;
     // set mask as all zero otherwise.
@@ -283,9 +293,6 @@ void SoftspokenOtExtReceiver::OneTimeSetup(
   auto dup_base_ot = base_ot;
   // One-time Setup for Softspoken
   // k 1-out-of-2 ROT to (2^k-1)-out-of-(2^k) ROT
-  std::vector<std::array<uint128_t, 2>> send_msgs(kKappa);
-  auto send_span = absl::MakeSpan(send_msgs);
-
   for (uint64_t i = 0; i < pprf_num_; ++i) {
     const uint64_t k_limit = std::min(k_, kKappa - i * k_);
     const uint64_t range_limit = static_cast<uint64_t>(1) << k_limit;
@@ -294,14 +301,8 @@ void SoftspokenOtExtReceiver::OneTimeSetup(
     // leaves in i-th pprf
     auto leaves =
         absl::MakeSpan(all_leaves_.data() + i * pprf_range_, range_limit);
-    SgrrOtExtSend_fixindex(sub_ot, range_limit, leaves,
-                           send_span.subspan(i * k_, k_limit));
+    SgrrOtExtSend(ctx, sub_ot, range_limit, leaves, mal_);
   }
-
-  ctx->SendAsync(
-      ctx->NextRank(),
-      ByteContainerView(send_msgs.data(), kKappa * 2 * sizeof(uint128_t)),
-      "Softspoken_OneTimeSetup");
   inited_ = true;
 }
 
@@ -410,6 +411,9 @@ OtRecvStore SoftspokenOtExtReceiver::GenCot(
   return out;
 }
 
+// Generate Smallfield VOLE and Subspace VOLE
+// Reference: https://eprint.iacr.org/2022/192.pdf Figure 7 & Figure 8
+// s.t.  W = choice * delta + V
 OtRecvStore SoftspokenOtExtReceiver::GenCot(
     const std::shared_ptr<link::Context>& ctx,
     const dynamic_bitset<uint128_t>& choices) {
@@ -531,15 +535,21 @@ void SoftspokenOtExtSender::Send(
   const uint64_t batch_size = kBatchSize;
   const uint64_t super_batch_size = step * batch_size;
   const uint64_t numOt = send_blocks.size();
+  const uint64_t expand_numOt =
+      (numOt + kS + kBatchSize - 1) / kBatchSize * kBatchSize;
   const uint64_t super_batch_num = numOt / super_batch_size;
   const uint64_t batch_offset = super_batch_num * super_batch_size;
   const uint64_t batch_num =
-      (numOt - batch_offset + kBatchSize - 1) / kBatchSize;
+      (expand_numOt - batch_offset + kBatchSize - 1) / kBatchSize;
+  const uint64_t all_batch_num = super_batch_num * step + batch_num;
+  YACL_ENFORCE(all_batch_num * kBatchSize == expand_numOt);
 
+  AlignedVector<std::array<uint128_t, kKappa>, 32> allV(all_batch_num);
   // OT extension
   // AVX need to be aligned to 32 bytes.
-  AlignedVector<std::array<uint128_t, kKappa>, 32> V(step);
-  AlignedVector<std::array<uint128_t, kKappa>, 32> V_xor_delta(step);
+  // Extra one array for consitency check in batch_num for-loop.
+  AlignedVector<std::array<uint128_t, kKappa>, 32> V(step + 1);
+  AlignedVector<std::array<uint128_t, kKappa>, 32> V_xor_delta(step + 1);
   // Hash Buffer to perform AES/PRG
   // Xor Buffer to perform XorReduce ( \sum x PRG(M_x) )
   auto hash_buff = AlignedVector<uint128_t>(compress_leaves_.size());
@@ -559,6 +569,10 @@ void SoftspokenOtExtSender::Send(
       GenSfVole(absl::MakeSpan(hash_buff), absl::MakeSpan(xor_buff),
                 absl::MakeSpan(recv_U.data() + s * pprf_num_, pprf_num_),
                 absl::MakeSpan(V[s]));
+      if (mal_) {
+        allV[t * step + s] = V[s];
+      }
+
       // 3. Matrix Transpose
       MatrixTranspose128(&V[s]);
       XorBlock(absl::MakeSpan(V[s]), absl::MakeSpan(V_xor_delta[s]), delta);
@@ -588,20 +602,59 @@ void SoftspokenOtExtSender::Send(
     // 2. smallfield/subspace VOLE
     GenSfVole(absl::MakeSpan(hash_buff), absl::MakeSpan(xor_buff),
               absl::MakeSpan(recv_U), absl::MakeSpan(V[t]));
-    // 3. Matrix Transpose
-    MatrixTranspose128(&V[t]);
-    XorBlock(absl::MakeSpan(V[t]), absl::MakeSpan(V_xor_delta[t]), delta);
-    // 4. perform CrHash to break the correlation if cot flag is false
-    if (!cot) {
-      ParaCrHashInplace_128(absl::MakeSpan(V[t]));
-      ParaCrHashInplace_128(absl::MakeSpan(V_xor_delta[t]));
+    if (mal_) {
+      allV[super_batch_num * step + t] = V[t];
     }
 
-    const uint64_t limit =
-        std::min(kBatchSize, numOt - batch_offset - t * kBatchSize);
-    for (uint64_t j = 0; j < limit; ++j) {
-      send_blocks[batch_offset + t * kBatchSize + j][0] = V[t][j];
-      send_blocks[batch_offset + t * kBatchSize + j][1] = V_xor_delta[t][j];
+    // 3. Matrix Transpose
+    if (numOt > batch_offset + t * kBatchSize) {
+      MatrixTranspose128(&V[t]);
+      XorBlock(absl::MakeSpan(V[t]), absl::MakeSpan(V_xor_delta[t]), delta);
+      // 4. perform CrHash to break the correlation if cot flag is false
+      if (!cot) {
+        ParaCrHashInplace_128(absl::MakeSpan(V[t]));
+        ParaCrHashInplace_128(absl::MakeSpan(V_xor_delta[t]));
+      }
+
+      const uint64_t limit =
+          std::min(kBatchSize, numOt - batch_offset - t * kBatchSize);
+      for (uint64_t j = 0; j < limit; ++j) {
+        send_blocks[batch_offset + t * kBatchSize + j][0] = V[t][j];
+        send_blocks[batch_offset + t * kBatchSize + j][1] = V_xor_delta[t][j];
+      }
+    }
+  }
+
+  if (mal_) {
+    // Sender generates a random seed and sends it to receiver.
+    uint128_t seed = SecureRandSeed();
+    ctx->SendAsync(ctx->NextRank(), SerializeUint128(seed),
+                   fmt::format("SSMal-Seed"));
+
+    // Consistency check
+    std::vector<uint64_t> rand_samples(all_batch_num * 2);
+    PrgAesCtr(seed, absl::Span<uint64_t>(rand_samples));
+
+    CheckMsg<uint128_t> check_msgs;
+    for (size_t i = 0; i < all_batch_num; ++i) {
+      for (size_t k = 0; k < kKappa; ++k) {
+        check_msgs.t[k] ^= ClMul64(
+            absl::MakeSpan(rand_samples.data() + i * 2, 2),
+            absl::MakeSpan(reinterpret_cast<uint64_t*>(allV[i].data() + k), 2));
+      }
+    }
+
+    CheckMsg msgs;
+    std::array<uint64_t, kKappa> check_vals;
+    for (size_t k = 0; k < kKappa; ++k) {
+      check_vals[k] = Reduce64(check_msgs.t[k]);
+    }
+
+    msgs.Unpack(ctx->Recv(ctx->NextRank(), fmt::format("MAL-SS-CHECK-FINAL")));
+
+    for (size_t k = 0; k < kKappa; ++k) {
+      auto recv_check_val = msgs.t[k] ^ (p_idx_mask_[k] & msgs.x);
+      YACL_ENFORCE(recv_check_val == check_vals[k]);
     }
   }
 }
@@ -614,18 +667,26 @@ void SoftspokenOtExtReceiver::Recv(const std::shared_ptr<link::Context>& ctx,
   if (!inited_) {
     OneTimeSetup(ctx);
   }
+
   YACL_ENFORCE(choices.size() == recv_blocks.size());
   const uint64_t& step = step_;
   const uint64_t batch_size = kBatchSize;
   const uint64_t super_batch_size = step * batch_size;
   const uint64_t numOt = recv_blocks.size();
+  const uint64_t expand_numOt =
+      (numOt + kS + kBatchSize - 1) / kBatchSize * kBatchSize;
   const uint64_t super_batch_num = numOt / super_batch_size;
   const uint64_t batch_offset = super_batch_num * super_batch_size;
   const uint64_t batch_num =
-      (numOt - batch_offset + kBatchSize - 1) / kBatchSize;
+      (expand_numOt - batch_offset + kBatchSize - 1) / kBatchSize;
+  const uint64_t all_batch_num = super_batch_num * step + batch_num;
+  YACL_ENFORCE(all_batch_num * kBatchSize == expand_numOt);
 
+  AlignedVector<std::array<uint128_t, kKappa>, 32> allW(all_batch_num);
+  auto choice_ext = ExtendChoice(choices, expand_numOt);
   // AVX need to be aligned to 32 bytes.
-  AlignedVector<std::array<uint128_t, kKappa>, 32> W(step);
+  // Extra one array for consitency check in batch_num for-loop.
+  AlignedVector<std::array<uint128_t, kKappa>, 32> W(step + 1);
   // AES Buffer & Xor Buffer to perform AES/PRG and XorReduce
   auto xor_buff = AlignedVector<uint128_t>(pprf_num_ * pprf_range_);
   AlignedVector<uint128_t> U(pprf_num_ * step);
@@ -635,15 +696,17 @@ void SoftspokenOtExtReceiver::Recv(const std::shared_ptr<link::Context>& ctx,
     // The same as IKNP OTe, see `yacl/crypto/primitive/ot/iknp_ote_cc`
     // 1. smallfield/subspace VOLE
     for (uint64_t s = 0; s < step; ++s) {
-      GenSfVole(choices.data()[t * step + s], absl::MakeSpan(xor_buff),
+      GenSfVole(choice_ext.data()[t * step + s], absl::MakeSpan(xor_buff),
                 absl::MakeSpan(U.data() + s * pprf_num_, pprf_num_),
                 absl::MakeSpan(W[s]));
+      if (mal_) {
+        allW[t * step + s] = W[s];
+      }
     }
     // 2. send the masked choices
     ctx->SendAsync(ctx->NextRank(),
                    ByteContainerView(U.data(), U.size() * sizeof(uint128_t)),
                    "softspoken_switch_u");
-
     for (uint64_t s = 0; s < step; ++s) {
       // 3. matrix transpose
       MatrixTranspose128(&W[s]);
@@ -661,24 +724,61 @@ void SoftspokenOtExtReceiver::Recv(const std::shared_ptr<link::Context>& ctx,
   for (uint64_t t = 0; t < batch_num; ++t) {
     // The same as IKNP OTe
     // 1. smallfield/subspace VOLE
-    GenSfVole(choices.data()[super_batch_num * step + t],
+    GenSfVole(choice_ext.data()[super_batch_num * step + t],
               absl::MakeSpan(xor_buff), absl::MakeSpan(U),
               absl::MakeSpan(W[t]));
+    if (mal_) {
+      allW[super_batch_num * step + t] = W[t];
+    }
     // 2. send the masked choices
     ctx->SendAsync(ctx->NextRank(),
                    ByteContainerView(U.data(), pprf_num_ * sizeof(uint128_t)),
                    "softspoken_switch_u");
+
     // 3. matrix transpose
-    MatrixTranspose128(&W[t]);
-    const uint64_t limit =
-        std::min(kBatchSize, numOt - batch_offset - t * kBatchSize);
-    // 4. perform CrHash to break the correlation if cot flag is false
-    if (!cot) {
-      ParaCrHashInplace_128(absl::MakeSpan(W[t]));
+    if (numOt > batch_offset + t * kBatchSize) {
+      MatrixTranspose128(&W[t]);
+      const uint64_t limit =
+          std::min(kBatchSize, numOt - batch_offset - t * kBatchSize);
+      // 4. perform CrHash to break the correlation if cot flag is false
+      if (!cot) {
+        ParaCrHashInplace_128(absl::MakeSpan(W[t]));
+      }
+      for (uint64_t j = 0; j < limit; ++j) {
+        recv_blocks[batch_offset + t * kBatchSize + j] = W[t][j];
+      }
     }
-    for (uint64_t j = 0; j < limit; ++j) {
-      recv_blocks[batch_offset + t * kBatchSize + j] = W[t][j];
+  }
+
+  if (mal_) {
+    // Recevies the random seed from sender
+    uint128_t seed = DeserializeUint128(
+        ctx->Recv(ctx->NextRank(), fmt::format("SSMal-Seed")));
+
+    // Consistency check
+    std::vector<uint64_t> rand_samples(all_batch_num * 2);
+    PrgAesCtr(seed, absl::Span<uint64_t>(rand_samples));
+
+    CheckMsg<uint128_t> check_msgs;
+    auto choice_span = absl::MakeSpan(
+        reinterpret_cast<uint64_t*>(choice_ext.data()), all_batch_num * 2);
+    check_msgs.x ^= ClMul64(absl::MakeSpan(rand_samples), choice_span);
+
+    for (size_t i = 0; i < all_batch_num; ++i) {
+      for (size_t k = 0; k < kKappa; ++k) {
+        check_msgs.t[k] ^= ClMul64(
+            absl::MakeSpan(rand_samples.data() + i * 2, 2),
+            absl::MakeSpan(reinterpret_cast<uint64_t*>(allW[i].data() + k), 2));
+      }
     }
+
+    CheckMsg msgs;
+    msgs.x = Reduce64(check_msgs.x);
+    for (size_t k = 0; k < kKappa; ++k) {
+      msgs.t[k] = Reduce64(check_msgs.t[k]);
+    }
+    auto buf = msgs.Pack();
+    ctx->SendAsync(ctx->NextRank(), buf, fmt::format("MAL-SS-CHECK-FINAL"));
   }
 }
 

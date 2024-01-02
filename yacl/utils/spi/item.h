@@ -17,6 +17,7 @@
 #include <any>
 #include <atomic>
 #include <cstdint>
+#include <utility>
 #include <vector>
 
 #include "absl/types/span.h"
@@ -113,7 +114,7 @@ class Item {
     try {
       return std::any_cast<T&>(v_);
     } catch (const std::bad_any_cast& e) {
-      YACL_THROW(
+      YACL_THROW_WITH_STACK(
           "{}, Item as lvalue: cannot cast from {} to {}, please use 'c++filt "
           "-t <symbol>' tool to see a human-readable name.",
           ToString(), v_.type().name(), typeid(T&).name());
@@ -125,7 +126,7 @@ class Item {
     try {
       return std::any_cast<T&&>(std::move(v_));
     } catch (const std::bad_any_cast& e) {
-      YACL_THROW(
+      YACL_THROW_WITH_STACK(
           "{}, Item as rvalue: cannot cast from {} to {}, please use 'c++filt "
           "-t <symbol>' tool to see a human-readable name",
           ToString(), v_.type().name(), typeid(T&&).name());
@@ -137,7 +138,7 @@ class Item {
     try {
       return std::any_cast<const T&>(v_);
     } catch (const std::bad_any_cast& e) {
-      YACL_THROW(
+      YACL_THROW_WITH_STACK(
           "{}, Item as a const ref: cannot cast from {} to {}, please use "
           "'c++filt -t <symbol>' tool to see a human-readable name. ",
           ToString(), v_.type().name(), typeid(const T&).name());
@@ -149,7 +150,7 @@ class Item {
     try {
       return std::any_cast<std::remove_pointer_t<T>>(&v_);
     } catch (const std::bad_any_cast& e) {
-      YACL_THROW(
+      YACL_THROW_WITH_STACK(
           "{}, Item as a pointer: cannot cast from {} to {}, please use "
           "'c++filt -t <symbol>' tool to see a human-readable name",
           ToString(), v_.type().name(),
@@ -221,9 +222,22 @@ class Item {
 
   bool HasValue() const noexcept { return v_.has_value(); }
 
+  // Check the type that directly stored, which is, container type + data type
   template <typename T>
-  bool IsHoldType() const noexcept {
+  bool WrappedTypeIs() const noexcept {
     return v_.type() == typeid(T);
+  }
+
+  // Check the underlying date type regardless of the wrapping container type
+  template <typename T>
+  bool DataTypeIs() const noexcept {
+    if (IsArray()) {
+      return WrappedTypeIs<std::vector<T>>() ||
+             WrappedTypeIs<absl::Span<T>>() ||
+             WrappedTypeIs<absl::Span<const T>>();
+    } else {
+      return WrappedTypeIs<T>();
+    }
   }
 
   bool IsArray() const { return (meta_ & 1) != 0; }
@@ -235,7 +249,7 @@ class Item {
     static_assert(!std::is_same_v<T, Item>,
                   "Cannot compare to another Item, since the Type info is "
                   "discarded at runtime");
-    return HasValue() && IsHoldType<T>() && As<T>() == other;
+    return HasValue() && WrappedTypeIs<T>() && As<T>() == other;
   }
 
   template <typename T>
@@ -249,7 +263,7 @@ class Item {
 
   OperandType operator,(const Item& other) const {
     return static_cast<OperandType>(((meta_ & 1) << 1) | (other.meta_ & 1));
-  };
+  }
 
   // operations only for array
   template <typename T>

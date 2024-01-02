@@ -18,21 +18,13 @@
 #include <array>
 #include <vector>
 
-#include "c/blake3.h"
-
 #include "yacl/base/block.h"
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/int128.h"
-#include "yacl/crypto/base/aes/aes_opt.h"
-#include "yacl/crypto/base/hash/hash_utils.h"
-#include "yacl/crypto/base/symmetric_crypto.h"
-#include "yacl/crypto/tools/prg.h"
-#include "yacl/crypto/tools/random_oracle.h"
-#include "yacl/crypto/utils/rand.h"
 #include "yacl/utils/matrix_utils.h"
 #include "yacl/utils/serialize.h"
-namespace yacl::crypto {
 
+namespace yacl::crypto {
 namespace {
 
 constexpr int kKappa = YACL_MODULE_SECPARAM_C_UINT("kkrt_ote");
@@ -80,7 +72,8 @@ class KkrtGroupPRF : public IGroupPRF {
 
   size_t Size() const override { return size_; }
 
-  // According to KKRT paper, the final PRF output should be: H(q ^ (c(r) & s))
+  // According to KKRT paper, the final PRF output should be: H(q ^ (c(r) &
+  // s))
   uint128_t Eval(size_t group_idx, uint128_t input) override {
     YACL_ENFORCE_LT(group_idx, size_);
     KkrtRow prc_buf;
@@ -95,7 +88,8 @@ class KkrtGroupPRF : public IGroupPRF {
     return RO_Blake3_128(ByteContainerView(prc_buf.data(), sizeof(prc_buf)));
   }
 
-  // According to KKRT paper, the final PRF output should be: H(q ^ (c(r) & s))
+  // According to KKRT paper, the final PRF output should be: H(q ^ (c(r) &
+  // s))
   void Eval(size_t group_idx, uint128_t input, uint8_t* outbuf,
             size_t bufsize) override {
     YACL_ENFORCE_LT(group_idx, size_);

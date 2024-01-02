@@ -14,11 +14,21 @@
 
 #pragma once
 
-#include "yacl/crypto/primitives/ot/ferret_ote.h"
 #include "yacl/crypto/primitives/ot/ot_store.h"
-#include "yacl/crypto/primitives/ot/softspoken_ote.h"
-#include "yacl/crypto/utils/rand.h"
+#include "yacl/crypto/utils/secparam.h"
 #include "yacl/math/gadget.h"
+
+/* submodules */
+#include "yacl/crypto/primitives/ot/ferret_ote.h"
+#include "yacl/crypto/primitives/ot/gywz_ote.h"
+#include "yacl/crypto/primitives/ot/sgrr_ote.h"
+#include "yacl/crypto/primitives/ot/softspoken_ote.h"
+#include "yacl/crypto/tools/crhash.h"
+#include "yacl/crypto/tools/rp.h"
+#include "yacl/crypto/utils/rand.h"
+
+/* security parameter declaration */
+YACL_MODULE_DECLARE("sparse_vole", SecParam::C::INF, SecParam::S::INF);
 
 namespace yacl::crypto {
 
@@ -36,7 +46,7 @@ namespace yacl::crypto {
 //                 const OtRecvStore& /*rot*/ recv_ot, uint32_t n, uint32_t
 //                 index, uint128_t v, absl::Span<uint128_t> output);
 
-// Single-point f2k-Vole (by GYWZ-OTe)
+// Single-point GF(2^128)-Vole (by GYWZ-OTe)
 // the type of ot_store must be COT
 void SpVoleSend(const std::shared_ptr<link::Context>& ctx,
                 const OtSendStore& /*cot*/ send_ot, uint32_t n, uint128_t w,
@@ -57,11 +67,12 @@ struct MpVoleParam {
   std::vector<uint32_t> indexes_;
   LpnNoiseAsm assumption_;
 
-  MpVoleParam() {}
+  MpVoleParam() : MpVoleParam(1, 2) {}
 
   MpVoleParam(uint64_t noise_num, uint64_t mp_vole_size,
               LpnNoiseAsm assumption = LpnNoiseAsm::RegularNoise) {
     YACL_ENFORCE(assumption == LpnNoiseAsm::RegularNoise);
+    YACL_ENFORCE(noise_num > 0);
     noise_num_ = noise_num;
     mp_vole_size_ = mp_vole_size;
     assumption_ = assumption;
@@ -90,7 +101,7 @@ struct MpVoleParam {
     for (uint32_t i = 0; i < noise_num_ - 1; ++i) {
       indexes_[i] = indexes[i] % sp_vole_size_;
     }
-    indexes_[noise_num_ - 1] = indexes[noise_num_ - 1] % last_sp_vole_size_;
+    indexes_[noise_num_ - 1] %= last_sp_vole_size_;
   }
 };
 
@@ -103,41 +114,50 @@ struct MpVoleParam {
 //                 const OtRecvStore& /*rot*/ recv_ot, const MpVoleParam& param,
 //                 absl::Span<uint128_t> v, absl::Span<uint128_t> output);
 
-// Multi-point f2k-Vole with Regular Noise (GYWZ-OTe based)
+// Multi-point GF(2^128)-Vole with Regular Noise (GYWZ-OTe based)
 void MpVoleSend(const std::shared_ptr<link::Context>& ctx,
                 const OtSendStore& /*cot*/ send_ot, const MpVoleParam& param,
-                absl::Span<uint128_t> w, absl::Span<uint128_t> output);
+                absl::Span<const uint128_t> w, absl::Span<uint128_t> output);
 
 void MpVoleRecv(const std::shared_ptr<link::Context>& ctx,
                 const OtRecvStore& /*cot*/ recv_ot, const MpVoleParam& param,
-                absl::Span<uint128_t> v, absl::Span<uint128_t> output);
+                absl::Span<const uint128_t> v, absl::Span<uint128_t> output);
 
+//
+// --------------------------
+//         Customized
+// --------------------------
+//
 // Multi-point f2k-Vole with Regular Noise (GYWZ-OTe based)
 // Most efficiency! Punctured indexes would be determined by the choices of
-// OtStore. But "FixIndexMpVoleSend_Cot/FixIndexMpVoleRecv_Cot" would not check
-// the indexes determined by OtStore and the indexes provided by MpVoleParam are
-// same.
-
+// OtStore. But "MpVoleSend_fixed_index/MpVoleRecv_fixed_index" would not check
+// whether the indexes determined by OtStore and the indexes provided by
+// MpVoleParam are same.、
+//
 // GF(2^128)
-void MpVoleSend_fixindex(const std::shared_ptr<link::Context>& ctx,
-                         const OtSendStore& /*cot*/ send_ot,
-                         const MpVoleParam& param, absl::Span<uint128_t> w,
-                         absl::Span<uint128_t> output);
+void MpVoleSend_fixed_index(const std::shared_ptr<link::Context>& ctx,
+                            const OtSendStore& /*cot*/ send_ot,
+                            const MpVoleParam& param,
+                            absl::Span<const uint128_t> w,
+                            absl::Span<uint128_t> output);
 
-void MpVoleRecv_fixindex(const std::shared_ptr<link::Context>& ctx,
-                         const OtRecvStore& /*cot*/ recv_ot,
-                         const MpVoleParam& param, absl::Span<uint128_t> v,
-                         absl::Span<uint128_t> output);
+void MpVoleRecv_fixed_index(const std::shared_ptr<link::Context>& ctx,
+                            const OtRecvStore& /*cot*/ recv_ot,
+                            const MpVoleParam& param,
+                            absl::Span<const uint128_t> v,
+                            absl::Span<uint128_t> output);
 
 // GF(2^64)
-void MpVoleSend_fixindex(const std::shared_ptr<link::Context>& ctx,
-                         const OtSendStore& /*cot*/ send_ot,
-                         const MpVoleParam& param, absl::Span<uint64_t> w,
-                         absl::Span<uint64_t> output);
+void MpVoleSend_fixed_index(const std::shared_ptr<link::Context>& ctx,
+                            const OtSendStore& /*cot*/ send_ot,
+                            const MpVoleParam& param,
+                            absl::Span<const uint64_t> w,
+                            absl::Span<uint64_t> output);
 
-void MpVoleRecv_fixindex(const std::shared_ptr<link::Context>& ctx,
-                         const OtRecvStore& /*cot*/ recv_ot,
-                         const MpVoleParam& param, absl::Span<uint64_t> v,
-                         absl::Span<uint64_t> output);
+void MpVoleRecv_fixed_index(const std::shared_ptr<link::Context>& ctx,
+                            const OtRecvStore& /*cot*/ recv_ot,
+                            const MpVoleParam& param,
+                            absl::Span<const uint64_t> v,
+                            absl::Span<uint64_t> output);
 
 }  // namespace yacl::crypto

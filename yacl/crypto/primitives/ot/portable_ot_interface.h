@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <memory>
+
 #ifndef HAS_OT_INTERFACE
 #define HAS_OT_INTERFACE
 #else
@@ -21,6 +23,10 @@
 #endif
 
 #include "yacl/crypto/primitives/ot/base_ot_interface.h"
+#include "yacl/crypto/utils/secparam.h"
+
+/* security parameter declaration */
+YACL_MODULE_DECLARE("base_ot_portable", SecParam::C::k128, SecParam::S::INF);
 
 namespace yacl::crypto {
 

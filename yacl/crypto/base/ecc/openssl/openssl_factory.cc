@@ -147,7 +147,7 @@ std::unique_ptr<EcGroup> OpensslGroup::Create(const CurveMeta &meta) {
       gptr != nullptr,
       "Openssl create curve group {} fail, nid={}, err code maybe={} (guessed)",
       meta.LowerName(), kName2Nid.at(meta.LowerName()), ERR_get_error());
-  return std::unique_ptr<EcGroup>(new OpensslGroup(meta, EC_GROUP_PTR(gptr)));
+  return std::unique_ptr<EcGroup>(new OpensslGroup(meta, UniqueEcGroup(gptr)));
 }
 
 bool OpensslGroup::IsSupported(const CurveMeta &meta) {

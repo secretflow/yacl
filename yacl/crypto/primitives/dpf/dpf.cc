@@ -12,15 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "dpf.h"
+#include "yacl/crypto/primitives/dpf/dpf.h"
 
-#include <chrono>
 #include <future>
 #include <sstream>
 
 #include "spdlog/spdlog.h"
-
-#include "yacl/crypto/tools/prg.h"
 
 #include "yacl/crypto/primitives/dpf/serializable.pb.h"
 
@@ -45,7 +42,7 @@ std::tuple<uint128_t, bool, uint128_t, bool> SplitDpfSeed(uint128_t seed) {
   bool t_left;
   bool t_right;
 
-  // TODO: check if this implementation is secure and efficient
+  // TODO(@shanzhu.cjm): check if this implementation is secure and efficient
   Prg<uint128_t, 3 * sizeof(uint128_t)> prng(seed);
 
   seed_left = prng();
@@ -61,9 +58,9 @@ std::tuple<uint128_t, bool, uint128_t, bool> SplitDpfSeed(uint128_t seed) {
 
 }  // namespace
 
-/////////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------
 // Full domain key generation and evaluation
-/////////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------
 
 void DpfContext::Gen(DpfKey& first_key, DpfKey& second_key, DpfInStore alpha,
                      DpfOutStore beta, uint128_t first_mk, uint128_t second_mk,

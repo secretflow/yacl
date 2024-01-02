@@ -26,6 +26,8 @@
 
 namespace yacl::link::transport {
 
+#define YACL_UNLIKELY(x) __builtin_expect(!!(x), 0)
+
 namespace {
 // use acsii control code inside ack/fin msg key.
 // avoid conflict to normal msg key.
@@ -53,11 +55,15 @@ std::string BuildChannelKey(std::string_view msg_key, size_t seq_id) {
 }
 
 std::pair<std::string, size_t> SplitChannelKey(std::string_view key) {
-  auto pos = key.find(kSeqKey);
-
   std::pair<std::string, size_t> ret;
-  ret.first = key.substr(0, pos);
-  ret.second = ViewToSizeT(key.substr(pos + kSeqKey.size()));
+  auto pos = key.find(kSeqKey);
+  if (YACL_UNLIKELY(pos == std::string_view::npos)) {
+    ret.first = key;
+    ret.second = 0;
+  } else {
+    ret.first = key.substr(0, pos);
+    ret.second = ViewToSizeT(key.substr(pos + kSeqKey.size()));
+  }
 
   return ret;
 }
@@ -556,12 +562,23 @@ void Channel::SendAsync(const std::string& msg_key, Buffer&& value) {
   YACL_ENFORCE(!waiting_finish_.load(),
                "SendAsync is not allowed when channel is closing");
   NormalMessageKeyEnforce(msg_key);
-  size_t seq_id = msg_seq_id_.fetch_add(1) + 1;
-  auto key = BuildChannelKey(msg_key, seq_id);
+
+  size_t seq_id = 0;
+  std::string key;
+  if (YACL_UNLIKELY(disable_msg_seq_id_)) {
+    key = msg_key;
+  } else {
+    seq_id = msg_seq_id_.fetch_add(1) + 1;
+    key = BuildChannelKey(msg_key, seq_id);
+  }
   send_msgs_.Push(Message(seq_id, std::move(key), std::move(value)));
 }
 
 void Channel::Send(const std::string& msg_key, ByteContainerView value) {
+  if (YACL_UNLIKELY(disable_msg_seq_id_)) {
+    YACL_THROW("Send is not allowed when msg_seq_id is disabled");
+  }
+
   YACL_ENFORCE(!waiting_finish_.load(),
                "Send is not allowed when channel is closing");
   NormalMessageKeyEnforce(msg_key);
@@ -577,6 +594,10 @@ void Channel::SendAsyncThrottled(const std::string& msg_key,
 }
 
 void Channel::SendAsyncThrottled(const std::string& msg_key, Buffer&& value) {
+  if (YACL_UNLIKELY(disable_msg_seq_id_)) {
+    return SendAsync(msg_key, value);
+  }
+
   YACL_ENFORCE(!waiting_finish_.load(),
                "SendAsync is not allowed when channel is closing");
   NormalMessageKeyEnforce(msg_key);
@@ -722,5 +743,7 @@ void Channel::OnRequest(const ::google::protobuf::Message& request,
     link_->FillResponseError(request, response);
   }
 }
+
+#undef YACL_UNLIKELY
 
 }  // namespace yacl::link::transport

@@ -20,10 +20,16 @@
 #include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
 #include "yacl/crypto/primitives/ot/ot_store.h"
-#include "yacl/crypto/primitives/ot/softspoken_ote.h"
-#include "yacl/crypto/utils/rand.h"
+#include "yacl/crypto/utils/secparam.h"
 #include "yacl/math/f2k/f2k.h"
 #include "yacl/math/gadget.h"
+
+/* submodules */
+#include "yacl/crypto/primitives/ot/softspoken_ote.h"
+#include "yacl/crypto/utils/rand.h"
+
+/* security parameter declaration */
+YACL_MODULE_DECLARE("base_vole", SecParam::C::INF, SecParam::S::INF);
 
 namespace yacl::crypto {
 
@@ -124,6 +130,7 @@ void inline GilboaVoleSend(const std::shared_ptr<link::Context>& ctx,
   const size_t size = w.size();
 
   auto sender = SoftspokenOtExtSender(2);
+  // setup Softspoken by base_ot
   sender.OneTimeSetup(ctx, base_ot);
   auto send_ot = sender.GenCot(ctx, size * T_bits);
   Ot2VoleSend<T, K>(send_ot, w);
@@ -138,6 +145,7 @@ void inline GilboaVoleRecv(const std::shared_ptr<link::Context>& ctx,
   YACL_ENFORCE(size == v.size());
 
   auto receiver = SoftspokenOtExtReceiver(2);
+  // setup Softspoken by base_ot
   receiver.OneTimeSetup(ctx, base_ot);
   auto recv_ot = receiver.GenCot(ctx, size * T_bits);
   Ot2VoleRecv<T, K>(recv_ot, u, v);

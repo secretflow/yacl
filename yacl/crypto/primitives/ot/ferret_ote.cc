@@ -20,12 +20,6 @@
 #include <vector>
 
 #include "yacl/base/aligned_vector.h"
-#include "yacl/crypto/primitives/ot/ferret_ote_rn.h"
-#include "yacl/crypto/primitives/ot/ferret_ote_un.h"
-#include "yacl/crypto/primitives/ot/gywz_ote.h"
-#include "yacl/crypto/primitives/ot/ot_store.h"
-#include "yacl/crypto/tools/linear_code.h"
-#include "yacl/math/gadget.h"
 #include "yacl/utils/cuckoo_index.h"
 #include "yacl/utils/serialize.h"
 

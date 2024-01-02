@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
 #include <future>
 #include <memory>
 #include <vector>
@@ -311,6 +313,54 @@ BENCHMARK_DEFINE_F(OtBench, FerretOTe)(benchmark::State& state) {
     state.ResumeTiming();
   }
 }
+#define DELCARE_MAL_SOFTSPOKEN_BENCH(K)                                        \
+  BENCHMARK_DEFINE_F(OtBench, MalSoftspokenOTe##K)(benchmark::State & state) { \
+    YACL_ENFORCE(lctxs_.size() == 2);                                          \
+    for (auto _ : state) {                                                     \
+      state.PauseTiming();                                                     \
+      {                                                                        \
+        const auto num_ot = state.range(0);                                    \
+        std::vector<std::array<uint128_t, 2>> send_blocks(num_ot);             \
+        std::vector<uint128_t> recv_blocks(num_ot);                            \
+        auto choices = RandBits<dynamic_bitset<uint128_t>>(num_ot);            \
+        auto base_ot = MockRots(128);                                          \
+        auto ssSenderTask = std::async([&] {                                   \
+          auto ssSender = SoftspokenOtExtSender(K, 0, true);                   \
+          ssSender.OneTimeSetup(lctxs_[0], base_ot.recv);                      \
+          return ssSender;                                                     \
+        });                                                                    \
+        auto ssReceiverTask = std::async([&] {                                 \
+          auto ssReceiver = SoftspokenOtExtReceiver(K, 0, true);               \
+          ssReceiver.OneTimeSetup(lctxs_[1], base_ot.send);                    \
+          return ssReceiver;                                                   \
+        });                                                                    \
+        auto ssSender = ssSenderTask.get();                                    \
+        auto ssReceiver = ssReceiverTask.get();                                \
+        state.ResumeTiming();                                                  \
+        /* true (default) for COT, false for ROT */                            \
+        auto sender = std::async([&] {                                         \
+          ssSender.Send(lctxs_[0], absl::MakeSpan(send_blocks), true);         \
+        });                                                                    \
+        auto receiver = std::async([&] {                                       \
+          ssReceiver.Recv(lctxs_[1], choices, absl::MakeSpan(recv_blocks),     \
+                          true);                                               \
+        });                                                                    \
+        sender.get();                                                          \
+        receiver.get();                                                        \
+        state.PauseTiming();                                                   \
+      }                                                                        \
+      state.ResumeTiming();                                                    \
+    }                                                                          \
+  }
+
+DELCARE_MAL_SOFTSPOKEN_BENCH(1)
+DELCARE_MAL_SOFTSPOKEN_BENCH(2)
+DELCARE_MAL_SOFTSPOKEN_BENCH(3)
+DELCARE_MAL_SOFTSPOKEN_BENCH(4)
+DELCARE_MAL_SOFTSPOKEN_BENCH(5)
+DELCARE_MAL_SOFTSPOKEN_BENCH(6)
+DELCARE_MAL_SOFTSPOKEN_BENCH(7)
+DELCARE_MAL_SOFTSPOKEN_BENCH(8)
 
 #define BM_REGISTER_SIMPLEST_OT(Arguments) \
   BENCHMARK_REGISTER_F(OtBench, SimplestOT)->Apply(Arguments);
@@ -340,6 +390,16 @@ BENCHMARK_DEFINE_F(OtBench, FerretOTe)(benchmark::State& state) {
   BENCHMARK_REGISTER_F(OtBench, SoftspokenOTe7)->Apply(Arguments); \
   BENCHMARK_REGISTER_F(OtBench, SoftspokenOTe8)->Apply(Arguments);
 
+#define BM_REGISTER_MAL_SOFTSPOKEN_OTE(Arguments)                     \
+  BENCHMARK_REGISTER_F(OtBench, MalSoftspokenOTe1)->Apply(Arguments); \
+  BENCHMARK_REGISTER_F(OtBench, MalSoftspokenOTe2)->Apply(Arguments); \
+  BENCHMARK_REGISTER_F(OtBench, MalSoftspokenOTe3)->Apply(Arguments); \
+  BENCHMARK_REGISTER_F(OtBench, MalSoftspokenOTe4)->Apply(Arguments); \
+  BENCHMARK_REGISTER_F(OtBench, MalSoftspokenOTe5)->Apply(Arguments); \
+  BENCHMARK_REGISTER_F(OtBench, MalSoftspokenOTe6)->Apply(Arguments); \
+  BENCHMARK_REGISTER_F(OtBench, MalSoftspokenOTe7)->Apply(Arguments); \
+  BENCHMARK_REGISTER_F(OtBench, MalSoftspokenOTe8)->Apply(Arguments);
+
 #define BM_REGISTER_FERRET_OTE(Arguments) \
   BENCHMARK_REGISTER_F(OtBench, FerretOTe)->Apply(Arguments);
 
@@ -350,6 +410,7 @@ BENCHMARK_DEFINE_F(OtBench, FerretOTe)(benchmark::State& state) {
   BM_REGISTER_KKRT_OTE(Arguments)       \
   BM_REGISTER_SGRR_OTE(Arguments)       \
   BM_REGISTER_GYWZ_OTE(Arguments)       \
+  BM_REGISTER_FERRET_OTE(Arguments)     \
   BM_REGISTER_SOFTSPOKEN_OTE(Arguments) \
-  BM_REGISTER_FERRET_OTE(Arguments)
+  BM_REGISTER_MAL_SOFTSPOKEN_OTE(Arguments)
 }  // namespace yacl::crypto

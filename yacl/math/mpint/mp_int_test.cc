@@ -124,6 +124,8 @@ TEST_F(MPIntTest, PowWorks) {
   MPInt out;
   MPInt::Pow(MPInt::_2_, 1111, &out);
   EXPECT_EQ(out, 1_mp << 1111);
+  MPInt::Pow(MPInt::_2_, 0, &out);
+  EXPECT_EQ(out, 1_mp);
 
   out.Set(123);
   out.PowInplace(3);

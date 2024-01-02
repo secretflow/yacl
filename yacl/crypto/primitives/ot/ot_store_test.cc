@@ -25,6 +25,7 @@
 #include "gtest/gtest.h"
 
 #include "yacl/base/exception.h"
+#include "yacl/crypto/tools/prg.h"
 #include "yacl/crypto/utils/rand.h"
 #include "yacl/link/test_util.h"
 
@@ -64,7 +65,7 @@ RandOtSendStore(uint64_t /*num*/) {
 inline std::pair<OtSendStore, std::vector<std::array<uint128_t, 2>>>
 RandCompactOtSendStore(uint64_t num) {
   auto inputs = RandVec<uint128_t>(num);
-  auto delta = RandU128();
+  auto delta = FastRandU128();
   std::vector<std::array<uint128_t, 2>> blocks;
   for (uint64_t i = 0; i < num; i++) {
     blocks.push_back({inputs[i], inputs[i] ^ delta});
@@ -268,7 +269,7 @@ TEST(MockRotTest, Works) {
 TEST(MockCotTest, Works) {
   // GIVEN
   const size_t ot_num = 2;
-  auto delta = RandU128();
+  auto delta = FastRandU128();
 
   // WHEN
   auto cot = MockCots(ot_num, delta);

@@ -123,10 +123,12 @@ TEST_P(GywzParamTest, FixIndexSpCotWork) {
   std::vector<uint128_t> recv_out(n);
 
   std::future<void> sender = std::async([&] {
-    GywzOtExtRecv_fixindex(lctxs[0], base_ot.recv, n, absl::MakeSpan(recv_out));
+    GywzOtExtRecv_fixed_index(lctxs[0], base_ot.recv, n,
+                              absl::MakeSpan(recv_out));
   });
   std::future<void> receiver = std::async([&] {
-    GywzOtExtSend_fixindex(lctxs[1], base_ot.send, n, absl::MakeSpan(send_out));
+    GywzOtExtSend_fixed_index(lctxs[1], base_ot.send, n,
+                              absl::MakeSpan(send_out));
   });
   sender.get();
   receiver.get();

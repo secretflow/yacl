@@ -14,7 +14,13 @@
 
 #include "yacl/math/galois_field/gf_spi.h"
 
+#include "yacl/math/galois_field/gf_configs.h"
+
 namespace yacl::math {
+
+DEFINE_ARG(MPInt, Mod);
+DEFINE_ARG(uint64_t, Degree);
+DEFINE_ARG(uint64_t, MaxBitSize);
 
 GaloisFieldFactory& GaloisFieldFactory::Instance() {
   static GaloisFieldFactory factory;
