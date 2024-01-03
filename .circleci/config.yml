@@ -14,6 +14,20 @@
 
 version: 2.1
 
+parameters:
+  GHA_Event:
+    type: string
+    default: ""
+  GHA_Actor:
+    type: string
+    default: ""
+  GHA_Action:
+    type: string
+    default: ""
+  GHA_Meta:
+    type: string
+    default: ""
+
 setup: true
 
 orbs:
@@ -21,6 +35,7 @@ orbs:
 
 workflows:
   unittest-workflow:
+    when: << pipeline.parameters.GHA_Action >>
     jobs:
       - path-filtering/filter:
           base-revision: main
