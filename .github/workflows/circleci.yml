@@ -15,6 +15,7 @@ jobs:
       run: echo For security reasons, all pull requests need to be approved first before running any automated CI.
   trigger-circleci:
     runs-on: ubuntu-latest
+    environment: 'ci'
     needs: [approve] # Require the first step to finish
     steps:
       - name: secretflow-yacl-ci
