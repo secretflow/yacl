@@ -265,7 +265,7 @@ class Context {
   void ConnectToMesh(
       spdlog::level::level_enum connect_log_level = spdlog::level::debug);
 
-  std::unique_ptr<Context> Spawn();
+  std::unique_ptr<Context> Spawn(const std::string& id = "");
 
   // Create a new Context from a subset of original parities.
   // Party which not in `sub_parties` should not call the SubWorld() method.
@@ -327,7 +327,6 @@ class Context {
   // stateful properties.
   size_t counter_ = 0U;  // collective algorithm counter.
   std::map<P2PDirection, int> p2p_counter_;
-
   size_t child_counter_ = 0U;
 
   uint64_t recv_timeout_ms_;
