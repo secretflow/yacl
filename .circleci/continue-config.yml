@@ -106,6 +106,8 @@ workflows:
   unittest:
     when: << pipeline.parameters.build-and-run >>
     jobs:
+      - hold:
+          type: approval
       - linux_ut:
           matrix:
             parameters:
