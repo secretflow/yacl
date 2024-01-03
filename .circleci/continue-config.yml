@@ -106,8 +106,14 @@ workflows:
   unittest:
     when: << pipeline.parameters.build-and-run >>
     jobs:
+      - hold:
+          type: approval
       - linux_ut:
           matrix:
             parameters:
               resource_class: ["2xlarge", "arm-xlarge"]
-      - macOS_ut_arm64
+          requires:
+            - hold
+      - macOS_ut_arm64:
+          requires:
+            - hold
