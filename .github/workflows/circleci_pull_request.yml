@@ -1,5 +1,5 @@
 ---
-name: Trigger CircleCI
+name: Trigger CircleCI (PR)
 on:
   pull_request_target:
     types: [assigned]
