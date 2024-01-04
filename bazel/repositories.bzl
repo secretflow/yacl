@@ -50,7 +50,6 @@ def yacl_deps():
     _simplest_ot()
     _org_interconnection()
 
-
 def _simplest_ot():
     maybe(
         http_archive,
