@@ -14,13 +14,12 @@
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
-
-SECRETFLOW_GIT = "https://github.com/secretflow"
 
 IC_COMMIT_ID = "e9a64bfe1ae57f358b41790a1bdd82c390dd50da"
+IC_SHA256 = "1b8be4bd3f95d180c177b24a6ab3f8477a0e6e917058f8fb1d0013a17d7f5aba"
 
 SIMPLEST_OT_COMMIT_ID = "4e39b7c35721c7fd968da6e047f59c0ac92e8088"
+SIMPLEST_OT_SHA256 = "326e411c63b1cbd6697e9561a74f9d417df9394a988bf5c5e14775f14c612063"
 
 def yacl_deps():
     _rule_proto()
@@ -48,19 +47,30 @@ def yacl_deps():
     _com_github_libtom_libtommath()
     _com_github_herumi_mcl()
 
+    _simplest_ot()
+    _org_interconnection()
+
+
+def _simplest_ot():
     maybe(
-        git_repository,
+        http_archive,
         name = "simplest_ot",
-        commit = SIMPLEST_OT_COMMIT_ID,
-        recursive_init_submodules = True,
-        remote = "{}/simplest-ot.git".format(SECRETFLOW_GIT),
+        urls = [
+            "https://github.com/secretflow/simplest-ot/archive/{commit}.tar.gz".format(commit = SIMPLEST_OT_COMMIT_ID),
+        ],
+        strip_prefix = "simple-ot-{commit}".format(commit = SIMPLEST_OT_COMMIT_ID),
+        sha256 = SIMPLEST_OT_SHA256,
     )
 
+def _org_interconnection():
     maybe(
-        git_repository,
+        http_archive,
         name = "org_interconnection",
-        commit = IC_COMMIT_ID,
-        remote = "{}/interconnection.git".format(SECRETFLOW_GIT),
+        urls = [
+            "https://github.com/secretflow/interconnection/archive/{commit}.tar.gz".format(commit = IC_COMMIT_ID),
+        ],
+        strip_prefix = "interconnection-{commit}".format(commit = IC_COMMIT_ID),
+        sha256 = IC_SHA256,
     )
 
     # Add homebrew openmp for macOS, somehow..homebrew installs to different location on Apple Silcon/Intel macs.. so we need two rules here
