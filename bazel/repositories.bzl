@@ -58,7 +58,7 @@ def _simplest_ot():
         urls = [
             "https://github.com/secretflow/simplest-ot/archive/{commit}.tar.gz".format(commit = SIMPLEST_OT_COMMIT_ID),
         ],
-        strip_prefix = "simple-ot-{commit}".format(commit = SIMPLEST_OT_COMMIT_ID),
+        strip_prefix = "simplest-ot-{commit}".format(commit = SIMPLEST_OT_COMMIT_ID),
         sha256 = SIMPLEST_OT_SHA256,
     )
 
