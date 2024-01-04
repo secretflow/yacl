@@ -1,12 +1,7 @@
 ---
 name: Trigger CircleCI
 on:
-  push:
-    branches:
-    - main
-  pull_request:
-    branches:
-    - main
+  push
 jobs:
   trigger-circleci:
     runs-on: ubuntu-latest
