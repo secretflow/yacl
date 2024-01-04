@@ -54,13 +54,15 @@ jobs:
           command: git clone https://github.com/secretflow/devtools.git ../devtools
       - run:
           name: Setup GCS
-          command: ../devtools/base64_converter.py --str ${gcs_content} --out_file ../gcs.json
+          command: |
+            echo ${gcs_content} > ../gcs.data
+            ../devtools/gcs_setup.py --in_file=../gcs.data --out_file=../gcs.json --min_download
       - run:
           name: "build and test"
           command: |
             set +e
             declare -i test_status
-            bazel test //... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors --jobs 16 --remote_cache=https://storage.googleapis.com/secretflow --google_credentials=../gcs.json --remote_download_minimal | tee test_result.log; test_status=${PIPESTATUS[0]}
+            bazel test //... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors --jobs 16 | tee test_result.log; test_status=${PIPESTATUS[0]}
 
             git clone https://github.com/secretflow/devtools.git
             sh devtools/rename-junit-xml.sh
@@ -91,13 +93,15 @@ jobs:
           command: git clone https://github.com/secretflow/devtools.git ../devtools
       - run:
           name: Setup GCS
-          command: ../devtools/base64_converter.py --str ${gcs_content} --out_file ../gcs.json
+          command: |
+            echo ${gcs_content} > ../gcs.data
+            ../devtools/gcs_setup.py --in_file=../gcs.data --out_file=../gcs.json --min_download
       - run:
           name: "build and test"
           command: |
             set +e
             declare -i test_status
-            bazel test //... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors --remote_cache=https://storage.googleapis.com/secretflow --google_credentials=../gcs.json --remote_download_minimal | tee test_result.log; test_status=${PIPESTATUS[0]}
+            bazel test //... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; test_status=${PIPESTATUS[0]}
 
             git clone https://github.com/secretflow/devtools.git
             sh devtools/rename-junit-xml.sh
