@@ -14,6 +14,8 @@
 
 #pragma once
 
+// test
+
 #include "yacl/link/algorithm/allgather.h"
 #include "yacl/link/algorithm/barrier.h"
 #include "yacl/link/algorithm/broadcast.h"
