@@ -56,7 +56,7 @@ jobs:
           name: Setup GCS
           command: |
             echo ${gcs_content} > ../gcs.data
-            ../devtools/gcs_setup.py --in_file=../gcs.data --out_file=../gcs.json --min_download
+            ../devtools/bazel_cache_setup.py --in_file=../gcs.data --out_file=../gcs.json --min_download
       - run:
           name: "build and test"
           command: |
@@ -95,7 +95,7 @@ jobs:
           name: Setup GCS
           command: |
             echo ${gcs_content} > ../gcs.data
-            ../devtools/gcs_setup.py --in_file=../gcs.data --out_file=../gcs.json --min_download
+            ../devtools/bazel_cache_setup.py --in_file=../gcs.data --out_file=../gcs.json --min_download
       - run:
           name: "build and test"
           command: |
