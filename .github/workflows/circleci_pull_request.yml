@@ -2,7 +2,7 @@
 name: Trigger CircleCI (PR)
 on:
   pull_request_target:
-    types: [assigned]
+    types: [assigned, opened, synchronize, reopened]
 jobs:
   approve: # First step
     runs-on: ubuntu-latest
