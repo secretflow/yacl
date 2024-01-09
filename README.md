@@ -2,9 +2,21 @@
 
 [![CircleCI](https://dl.circleci.com/status-badge/img/gh/secretflow/yacl/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/secretflow/yacl/tree/main)
 
-A C++ library that contains common cryptgraphy, network and io modules which other SecretFlow code depends on.
+Yacl is a C++ library that contains common cryptgraphy, network and io modules which other SecretFlow code depends on. The crypto modules in Yacl implement many state-of-art secure computation protocols, including primitives like OT, VOLE, TPRE, and tools like PRG, RO. See the full list of Yacl's supported algorithms in [ALGORITHMS.md](ALGORITHMS.md).
 
-Repo layout:
+Supported platforms:
+- Linux x86_64
+- Linux aarch64
+- macOS x86_64
+- macOS Apple Silicon
+- Windows WSL2 x86_64
+
+Note: Yacl has not been tested on Windows x86_64.
+
+
+## Overview
+
+Yacl includes the following folders:
 
 - [base](yacl/base/): some basic types and utils in yacl.
 - [crypto](yacl/crypto/): a crypto library desigend for secure computation and so on.
@@ -15,24 +27,8 @@ Repo layout:
 - [io](yacl/io/): a simple streaming-based io library.
 - [link](yacl/link/): a simple rpc-based MPI framework, providing the [SPMD](https://en.wikipedia.org/wiki/SPMD) parallel programming capability.
 
-## Supported crypto algorithms
 
-See **Full List** of supported algorithms in: [ALGORITHMS.md](ALGORITHMS.md)
-
-**Selected algorithms**:
-
-- Oblivious Transfer (and extensions): [Simplest OT](https://eprint.iacr.org/2015/267.pdf), [IKNP OTe](https://www.iacr.org/archive/crypto2003/27290145/27290145.pdf), [Ferret OTe](https://eprint.iacr.org/2020/924), [KKRT OTe](https://eprint.iacr.org/2016/799.pdf), [SGRR OTe](https://eprint.iacr.org/2019/1084.pdf).
-- VOLE: [Silent VOLE](https://eprint.iacr.org/2019/1159.pdf), [Sparse VOLE (GF128)](https://eprint.iacr.org/2019/1084.pdf)
-- Distributed Point Function: [BGI16](https://eprint.iacr.org/2018/707.pdf)
-- Threshold Proxy-Re-encryption: [umbral with GM](https://github.com/nucypher/umbral-doc/blob/master/umbral-doc.pdf).
-
-## Supported platforms
-
-|     | Linux x86_64 | Linux aarch64 | macOS x86_64 | macOS Apple Silicon | Windows x86_64 | Windows WSL2 x86_64 |
-|-----|--------------|---------------|--------------|---------------------|----------------|---------------------|
-| CPU | yes          | yes           | yes          | yes                 | no             | yes                 |
-
-## Build
+## Getting Started
 
 ### Prerequisite
 
