@@ -7,7 +7,9 @@ Yacl is a C++ library that contains common cryptgraphy, network and io modules w
 Supported platforms:
 | Linux x86_64 | Linux aarch64 | macOS x86_64 | macOS Apple Silicon | Windows x86_64 | Windows WSL2 x86_64 |
 |--------------|---------------|--------------|---------------------|----------------|---------------------|
-| yes          | yes           | yes          | yes                 | no             | yes                 |
+| yes          | yes           | yes          | yes                 | no             | yes*                |
+
+\* Yacl has not been thoroughly tested on Windows WSL2 x86_64.
 
 ## Repo Layout
 
