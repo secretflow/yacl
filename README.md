@@ -13,6 +13,17 @@ Supported platforms:
 
 Note: Yacl has not been tested on Windows x86_64.
 
+Repo layout:
+
+- [base](yacl/base/): some basic types and utils in yacl.
+- [crypto](yacl/crypto/): a crypto library desigend for secure computation and so on.
+  - [base](yacl/crypto/base): **basic/standarized crypto**, i.e. AES, hashing.
+  - [primitives](yacl/crypto/primitives/): **crypto primitives**, i.e. OT, DPF.
+  - [tools](yacl/crypto/tools/): **theoretical crypto tools**, i.e. Random Oracle (RO), PRG.
+  - [utils](yacl/crypto/utils/): easy-to-use **crypto utilities**.
+- [io](yacl/io/): a simple streaming-based io library.
+- [link](yacl/link/): a simple rpc-based MPI framework, providing the [SPMD](https://en.wikipedia.org/wiki/SPMD) parallel programming capability.
+
 ## Prerequisites
 
 - **bazel**: the recommended verion is described in [.bazelversion](.bazelversion) file. We recommend to use the official [bazelisk](https://github.com/bazelbuild/bazelisk?tab=readme-ov-file#installation) to manage bazel version.
