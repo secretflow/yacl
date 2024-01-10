@@ -5,13 +5,9 @@
 Yacl is a C++ library that contains common cryptgraphy, network and io modules which other SecretFlow code depends on. The crypto modules in Yacl implement many state-of-art secure computation protocols, including primitives like OT, VOLE, TPRE, and tools like PRG, RO. Check the full list of Yacl's supported algorithms in [ALGORITHMS.md](ALGORITHMS.md).
 
 Supported platforms:
-- Linux x86_64
-- Linux aarch64
-- macOS x86_64
-- macOS Apple Silicon
-- Windows WSL2 x86_64
-
-Note: Yacl has not been tested on Windows x86_64.
+| Linux x86_64 | Linux aarch64 | macOS x86_64 | macOS Apple Silicon | Windows x86_64 | Windows WSL2 x86_64 |
+|--------------|---------------|--------------|---------------------|----------------|---------------------|
+| yes          | yes           | yes          | yes                 | no             | yes                 |
 
 ## Repo Layout
 
