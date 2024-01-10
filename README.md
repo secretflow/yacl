@@ -15,12 +15,11 @@ Note: Yacl has not been tested on Windows x86_64.
 
 ## Prerequisites
 
-- gcc >= 10.3
-- cmake
-- ninja
-- nasm
-- bazel
-- omp
+- **bazel**: the recommended verion is described in [.bazelversion](.bazelversion) file. We recommend to use the official [bazelisk](https://github.com/bazelbuild/bazelisk?tab=readme-ov-file#installation) to manage bazel version.
+- **gcc >= 10.3**
+- **[cmake](https://cmake.org/getting-started/)**
+- **[ninja/ninja-build](https://ninja-build.org/)**
+- **Perl 5 with core modules** (Required by [OpenSSL](https://github.com/openssl/openssl/blob/master/INSTALL.md#prerequisites))
 
 ## Build & UnitTest
 ``` sh
