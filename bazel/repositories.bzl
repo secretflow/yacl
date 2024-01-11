@@ -223,10 +223,10 @@ def _com_github_google_benchmark():
         http_archive,
         name = "com_github_google_benchmark",
         type = "tar.gz",
-        strip_prefix = "benchmark-1.8.2",
-        sha256 = "2aab2980d0376137f969d92848fbb68216abb07633034534fc8c65cc4e7a0e93",
+        strip_prefix = "benchmark-1.8.3",
+        sha256 = "6bc180a57d23d4d9515519f92b0c83d61b05b5bab188961f36ac7b06b0d9e9ce",
         urls = [
-            "https://github.com/google/benchmark/archive/refs/tags/v1.8.2.tar.gz",
+            "https://github.com/google/benchmark/archive/refs/tags/v1.8.3.tar.gz",
         ],
     )
 
