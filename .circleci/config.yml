@@ -31,7 +31,7 @@ parameters:
 setup: true
 
 orbs:
-  path-filtering: circleci/path-filtering@0.1.4
+  path-filtering: circleci/path-filtering@0.1.7
 
 workflows:
   unittest-workflow:
