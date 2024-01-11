@@ -1,6 +1,7 @@
 # YACL (Yet Another Common crypto Library)
 
 [![CircleCI](https://dl.circleci.com/status-badge/img/gh/secretflow/yacl/tree/main.svg?style=svg)](https://dl.circleci.com/status-badge/redirect/gh/secretflow/yacl/tree/main)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/secretflow/yacl/badge)](https://securityscorecards.dev/viewer/?uri=github.com/secretflow/yacl)
 
 Yacl is a C++ library that contains common cryptgraphy, network and io modules which other SecretFlow code depends on. The crypto modules in Yacl implement many state-of-art secure computation protocols, including primitives like OT, VOLE, TPRE, and tools like PRG, RO. Check the full list of Yacl's supported algorithms in [ALGORITHMS.md](ALGORITHMS.md).
 
