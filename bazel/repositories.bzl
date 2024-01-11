@@ -356,13 +356,13 @@ def _com_github_herumi_mcl():
     maybe(
         http_archive,
         name = "com_github_herumi_mcl",
-        strip_prefix = "mcl-1.84.0",
-        sha256 = "dc655c2eb5b2426736d8ab92ed501de0ac78472f1ee7083919a98a8aca3e76a3",
+        strip_prefix = "mcl-1.86.0",
+        sha256 = "a3ab1cd01a6419f46210fd5874e795e37a4565fa305e0302301b31ffed208872",
         type = "tar.gz",
         build_file = "@yacl//bazel:mcl.BUILD",
         patch_args = ["-p1"],
         patches = [
             "@yacl//bazel:patches/mcl.patch",
         ],
-        urls = ["https://github.com/herumi/mcl/archive/refs/tags/v1.84.0.tar.gz"],
+        urls = ["https://github.com/herumi/mcl/archive/refs/tags/v1.86.0.tar.gz"],
     )
