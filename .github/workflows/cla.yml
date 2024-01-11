@@ -6,7 +6,7 @@ on:
   pull_request_target:
     types: [opened, closed, synchronize]
 permissions:
-  contents: write
+  pull-requests: write
 jobs:
   CLAssistant:
     uses: secretflow/.github/.github/workflows/cla.yml@main
