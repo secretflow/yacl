@@ -83,7 +83,7 @@ class ExAccCode : public ExAccCodeInterface {
   explicit ExAccCode(uint32_t n, uint32_t m) : n_(n), m_(m) {
     YACL_ENFORCE(m >= n);
     YACL_ENFORCE(n > d,
-                 "ExAccCode: Dimension should be much greater than Weight");
+                 "ExAccCode: Length should be much greater than Weight");
   };
 
   uint32_t GetDimention() const override { return m_; }
@@ -94,7 +94,7 @@ class ExAccCode : public ExAccCodeInterface {
 
   // Expand Accumulate Code
   // dual LPN problem  --> G = A * B
-  // thus, dual encode would be xG = (xA) * B = y * B, y[i] = sum_{j<i} x[i]s
+  // thus, dual encode would be xG = (xA) * B = y * B, y[i] = sum_{j<=i} x[j]
   void DualEncode(absl::Span<uint128_t> in,
                   absl::Span<uint128_t> out) const override {
     DualEncodeImpl<uint128_t>(in, out);
@@ -134,7 +134,7 @@ class ExAccCode : public ExAccCodeInterface {
     YACL_ENFORCE(in.size() >= m_);
     YACL_ENFORCE(out.size() >= n_);
 
-    // y[i] = sum_{j<=i} x[i]
+    // y[i] = sum_{j<=i} x[j]
     Accumulate<T>(in);
     // d-Local Linear Code
     Expand<T>(absl::MakeConstSpan(in), out);
@@ -149,7 +149,7 @@ class ExAccCode : public ExAccCodeInterface {
     YACL_ENFORCE(out0.size() >= n_);
     YACL_ENFORCE(out1.size() >= n_);
 
-    // y[i] = sum_{j<i} x[i]
+    // y[i] = sum_{j<=i} x[j]
     Accumulate<T>(in0);
     Accumulate<K>(in1);
     // d-Local Linear Code
