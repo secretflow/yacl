@@ -82,8 +82,7 @@ class ExAccCode : public ExAccCodeInterface {
 
   explicit ExAccCode(uint32_t n, uint32_t m) : n_(n), m_(m) {
     YACL_ENFORCE(m >= n);
-    YACL_ENFORCE(n > d,
-                 "ExAccCode: Length should be much greater than Weight");
+    YACL_ENFORCE(n > d, "ExAccCode: Length should be much greater than Weight");
   };
 
   uint32_t GetDimention() const override { return m_; }
