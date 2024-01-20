@@ -15,6 +15,7 @@
 #pragma once
 
 #include <cstdint>
+#include <map>
 #include <string>
 #include <utility>
 
@@ -22,12 +23,14 @@
 
 #include "yacl/base/exception.h"
 #include "yacl/crypto/utils/compile_time_utils.h"
+#include "yacl/math/gadget.h"
 
 namespace yacl::crypto {
 
 // ------------------
 // Security parameter
 // ------------------
+
 class SecParam {
  public:
   // Computational Security Parameter: A number associated with the amount of
@@ -154,6 +157,32 @@ class LpnParam {
     return {10485760, 452000, 1280, LpnNoiseAsm::RegularNoise};
   }
 };
+
+// --------------------------------------
+// dual LPN Parameter (security related)
+// --------------------------------------
+
+// Linear Test, more details could be found in
+// https://eprint.iacr.org/2022/1014.pdf Definition 2.5 bias( Reg_t^N ) equal or
+// less than e^{-td/N} where t is the number of noise in dual-LPN problem, d is
+// the minimum weight of vectors in dual-LPN matrix. Thus, we can view d/N as
+// the minimum distance ratio for dual-LPN matrix.
+//
+// Implementation of GenRegNoiseWeight is mostly from:
+// https://github.com/osu-crypto/libOTe/blob/master/libOTe/TwoChooseOne/ConfigureCode.cpp
+// which would return the number of noise in MpVole
+//
+uint64_t inline GenRegNoiseWeight(double min_dist_ratio, uint64_t sec) {
+  if (min_dist_ratio > 0.5 || min_dist_ratio <= 0) {
+    YACL_THROW("mini distance too small, rate {}", min_dist_ratio);
+  }
+
+  auto d = std::log2(1 - 2 * min_dist_ratio);
+  auto t = std::max<uint64_t>(128, -double(sec) / d);
+
+  return math::RoundUpTo(t, 8);
+}
+
 }  // namespace yacl::crypto
 
 // ------------------

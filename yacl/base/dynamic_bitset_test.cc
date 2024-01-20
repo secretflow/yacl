@@ -123,7 +123,7 @@ TYPED_TEST(DynamicBitsetTest, PushPopTest) {
   EXPECT_EQ(bitset, check2);
 }
 
-TYPED_TEST(DynamicBitsetTest, AppendTest) {
+TYPED_TEST(DynamicBitsetTest, AppendBlockTest) {
   // GIVEN
   auto bitset = dynamic_bitset<TypeParam>("0100101");
   auto block = static_cast<TypeParam>(crypto::FastRandU128());
@@ -134,6 +134,37 @@ TYPED_TEST(DynamicBitsetTest, AppendTest) {
   // THEN
   bitset >>= 7;  // right shift to remove the original bits
   auto check = static_cast<TypeParam>(*bitset.data());
+  EXPECT_EQ(block, check);
+}
+
+TYPED_TEST(DynamicBitsetTest, AppendBitSetTest) {
+  // GIVEN
+  auto bitset0 = dynamic_bitset<TypeParam>("010010101010101");
+  auto block = static_cast<TypeParam>(*bitset0.data());
+
+  auto size = bitset0.size();
+  // WHEN
+  bitset0.append(bitset0);
+
+  // THEN
+  bitset0 >>= size;  // right shift to remove the original bits
+  auto check = static_cast<TypeParam>(*bitset0.data());
+  EXPECT_EQ(block, check);
+}
+
+TYPED_TEST(DynamicBitsetTest, AppendBitSetTest2) {
+  // GIVEN
+  auto bitset0 = dynamic_bitset<TypeParam>("010010");
+  auto bitset1 = dynamic_bitset<TypeParam>("010010101010101");
+  auto block = static_cast<TypeParam>(*bitset1.data());
+
+  auto size = bitset0.size();
+  // WHEN
+  bitset0.append(bitset1);
+
+  // THEN
+  bitset0 >>= size;  // right shift to remove the original bits
+  auto check = static_cast<TypeParam>(*bitset1.data());
   EXPECT_EQ(block, check);
 }
 

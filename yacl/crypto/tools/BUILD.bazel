@@ -17,6 +17,15 @@ load("//bazel:yacl.bzl", "yacl_cc_binary", "yacl_cc_library", "yacl_cc_test")
 package(default_visibility = ["//visibility:public"])
 
 yacl_cc_library(
+    name = "common",
+    hdrs = ["common.h"],
+    deps = [
+        "//yacl/link",
+        "//yacl/utils:serialize",
+    ],
+)
+
+yacl_cc_library(
     name = "prg",
     srcs = ["prg.cc"],
     hdrs = ["prg.h"],

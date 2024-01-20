@@ -12,11 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/primitives/vole/f2k/base_vole.h"
+#include "yacl/crypto/primitives/vole/base_vole.h"
 
 #include <gtest/gtest.h>
 
-#include <cstdint>
 #include <future>
 #include <thread>
 #include <utility>
@@ -31,11 +30,6 @@
 
 namespace yacl::crypto {
 
-namespace {
-uint64_t GfMul(uint64_t lhs, uint64_t rhs) { return GfMul64(lhs, rhs); }
-uint128_t GfMul(uint128_t lhs, uint128_t rhs) { return GfMul128(lhs, rhs); }
-}  // namespace
-
 struct TestParams {
   size_t num;
 };
@@ -44,6 +38,9 @@ class BaseVoleTest : public ::testing::TestWithParam<TestParams> {};
 
 using GF64 = uint64_t;
 using GF128 = uint128_t;
+
+// Semi-honst / Malicious
+enum SM : bool { Semi = false, Mal = true };
 
 #define DECLARE_OT2VOLE_TEST(type0, type1)                                \
   TEST_P(BaseVoleTest, Ot2Vole_##type0##x##type1##_Work) {                \
@@ -65,7 +62,7 @@ using GF128 = uint128_t;
     type1 delta = delta128;                                               \
     for (uint64_t i = 0; i < vole_num; ++i) {                             \
       type1 ui = u[i];                                                    \
-      EXPECT_EQ(GfMul(ui, delta), w[i] ^ v[i]);                           \
+      EXPECT_EQ(math::GfMul(ui, delta), w[i] ^ v[i]);                     \
     }                                                                     \
   }
 
@@ -73,36 +70,45 @@ DECLARE_OT2VOLE_TEST(GF64, GF64);    // Vole: GF(2^64) x GF(2^64)
 DECLARE_OT2VOLE_TEST(GF64, GF128);   // subfield Vole: GF(2^64) x GF(2^128)
 DECLARE_OT2VOLE_TEST(GF128, GF128);  // Vole: GF(2^128) x GF(2^128)
 
-#define DECLARE_GILBOAVOLE_TEST(type0, type1)                              \
-  TEST_P(BaseVoleTest, GilboaVole_##type0##x##type1##_Work) {              \
-    auto lctxs = link::test::SetupWorld(2);                                \
-    const uint64_t vole_num = GetParam().num;                              \
-    auto rot = MockRots(128);                                              \
-    auto delta128 = rot.recv.CopyChoice().data()[0];                       \
-    std::vector<type0> u(vole_num);                                        \
-    std::vector<type1> v(vole_num);                                        \
-    std::vector<type1> w(vole_num);                                        \
-    auto sender = std::async([&] {                                         \
-      GilboaVoleSend<type0, type1>(lctxs[0], rot.recv, absl::MakeSpan(w)); \
-    });                                                                    \
-    auto receiver = std::async([&] {                                       \
-      GilboaVoleRecv<type0, type1>(lctxs[1], rot.send, absl::MakeSpan(u),  \
-                                   absl::MakeSpan(v));                     \
-    });                                                                    \
-    sender.get();                                                          \
-    receiver.get();                                                        \
-    type1 delta = delta128;                                                \
-    for (uint64_t i = 0; i < vole_num; ++i) {                              \
-      type1 ui = u[i];                                                     \
-      EXPECT_EQ(GfMul(ui, delta), w[i] ^ v[i]);                            \
-    }                                                                      \
+#define DECLARE_GILBOAVOLE_TEST(kase, type0, type1)                       \
+  TEST_P(BaseVoleTest, kase##_GilboaVole_##type0##x##type1##_Work) {      \
+    auto lctxs = link::test::SetupWorld(2);                               \
+    const uint64_t vole_num = GetParam().num;                             \
+    auto rot = MockRots(128);                                             \
+    auto delta128 = rot.recv.CopyChoice().data()[0];                      \
+    std::vector<type0> u(vole_num);                                       \
+    std::vector<type1> v(vole_num);                                       \
+    std::vector<type1> w(vole_num);                                       \
+    auto sender = std::async([&] {                                        \
+      GilboaVoleSend<type0, type1>(lctxs[0], rot.recv, absl::MakeSpan(w), \
+                                   SM::kase);                             \
+    });                                                                   \
+    auto receiver = std::async([&] {                                      \
+      GilboaVoleRecv<type0, type1>(lctxs[1], rot.send, absl::MakeSpan(u), \
+                                   absl::MakeSpan(v), SM::kase);          \
+    });                                                                   \
+    sender.get();                                                         \
+    receiver.get();                                                       \
+    type1 delta = delta128;                                               \
+    for (uint64_t i = 0; i < vole_num; ++i) {                             \
+      type1 ui = u[i];                                                    \
+      EXPECT_EQ(math::GfMul(ui, delta), w[i] ^ v[i]);                     \
+    }                                                                     \
   }
 
-DECLARE_GILBOAVOLE_TEST(GF64, GF64);    // Vole: GF(2^64) x GF(2^64)
-DECLARE_GILBOAVOLE_TEST(GF64, GF128);   // subfield Vole: GF(2^64) x GF(2^128)
-DECLARE_GILBOAVOLE_TEST(GF128, GF128);  // Vole: GF(2^128) x GF(2^128)
+// Semi-honest Base Vole
+DECLARE_GILBOAVOLE_TEST(Semi, GF64, GF64);  // Vole: GF(2^64) x GF(2^64)
+DECLARE_GILBOAVOLE_TEST(Semi, GF64,
+                        GF128);  // subfield Vole: GF(2^64) x GF(2^128)
+DECLARE_GILBOAVOLE_TEST(Semi, GF128, GF128);  // Vole: GF(2^128) x GF(2^128)
 
-INSTANTIATE_TEST_SUITE_P(Works_Instances, BaseVoleTest,
+// Malicious Base Vole
+DECLARE_GILBOAVOLE_TEST(Mal, GF64, GF64);  // Vole: GF(2^64) x GF(2^64)
+DECLARE_GILBOAVOLE_TEST(Mal, GF64,
+                        GF128);  // subfield Vole: GF(2^64) x GF(2^128)
+DECLARE_GILBOAVOLE_TEST(Mal, GF128, GF128);  // Vole: GF(2^128) x GF(2^128)
+
+INSTANTIATE_TEST_SUITE_P(f2kVOLE, BaseVoleTest,
                          testing::Values(TestParams{4}, TestParams{5},  //
                                          TestParams{7},                 //
                                          TestParams{1 << 8},

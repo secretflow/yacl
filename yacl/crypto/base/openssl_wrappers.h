@@ -27,6 +27,7 @@
 #include "openssl/decoder.h"
 #include "openssl/ec.h"
 #include "openssl/encoder.h"
+#include "openssl/err.h"
 #include "openssl/evp.h"
 #include "openssl/pem.h"
 #include "openssl/provider.h"
@@ -109,6 +110,17 @@ inline UniqueCipher FetchEvpCipher(const std::string& cipher_str) {
 
 inline UniqueMac FetchEvpHmac() {
   return UniqueMac(EVP_MAC_fetch(nullptr, OSSL_MAC_NAME_HMAC, nullptr));
+}
+
+// see: https://en.wikibooks.org/wiki/OpenSSL/Error_handling
+inline std::string GetOSSLErr() {
+  BIO* bio = BIO_new(BIO_s_mem());
+  ERR_print_errors(bio);
+  char* buf;
+  size_t len = BIO_get_mem_data(bio, &buf);
+  std::string ret(buf, len);
+  BIO_free(bio);
+  return ret;
 }
 
 // ---------------------------------

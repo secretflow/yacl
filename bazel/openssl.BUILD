@@ -33,8 +33,8 @@ CONFIGURE_OPTIONS = [
     "--libdir=lib",
     "no-legacy",
     "no-weak-ssl-ciphers",
-    "no-shared",
     "no-tests",
+    "no-shared",
     "no-ui-console",
 ]
 
@@ -59,7 +59,6 @@ yacl_configure_make(
     }),
     lib_name = "openssl",
     lib_source = ":all_srcs",
-    out_binaries = ["openssl"],
     # Note that for Linux builds, libssl must come before libcrypto on the linker command-line.
     # As such, libssl must be listed before libcrypto
     out_static_libs = [

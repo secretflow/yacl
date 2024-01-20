@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:yacl.bzl", "yacl_cc_binary", "yacl_cc_library")
+load("//bazel:yacl.bzl", "yacl_cc_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -20,6 +20,8 @@ yacl_cc_library(
     name = "gadget",
     hdrs = ["gadget.h"],
     deps = [
+        "//yacl/base:aligned_vector",
+        "//yacl/math/f2k",
         "@com_google_absl//absl/strings",
     ],
 )

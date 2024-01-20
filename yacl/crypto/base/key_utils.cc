@@ -16,6 +16,7 @@
 
 #include <cstddef>
 
+#include "yacl/crypto/base/openssl_wrappers.h"
 #include "yacl/io/stream/file_io.h"
 
 namespace yacl::crypto {
@@ -351,8 +352,8 @@ Buffer ExportX509CertToBuf(const openssl::UniqueX509& x509) {
   openssl::UniqueBio bio(BIO_new(BIO_s_mem()));  // create an empty bio
 
   // export certificate to bio
-  OSSL_RET_1(PEM_write_bio_X509(bio.get(), x509.get()),
-             "Failed PEM_export_bio_X509.");
+  OSSL_RET_1(PEM_write_bio_X509(bio.get(), x509.get()));
+
   return BioToBuf(bio);
 }
 

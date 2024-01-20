@@ -14,36 +14,18 @@
 
 #pragma once
 
-#include <cstdint>
-#include <type_traits>
-
 #include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
-#include "yacl/crypto/primitives/ot/ot_store.h"
-#include "yacl/crypto/utils/secparam.h"
 #include "yacl/math/f2k/f2k.h"
 #include "yacl/math/gadget.h"
 
 /* submodules */
+#include "yacl/crypto/primitives/ot/ot_store.h"
 #include "yacl/crypto/primitives/ot/softspoken_ote.h"
-#include "yacl/crypto/utils/rand.h"
+#include "yacl/crypto/utils/secparam.h"
 
-/* security parameter declaration */
 YACL_MODULE_DECLARE("base_vole", SecParam::C::INF, SecParam::S::INF);
-
 namespace yacl::crypto {
-
-namespace vole::internal {
-
-uint128_t inline GfMul(absl::Span<uint128_t> a, absl::Span<uint128_t> b) {
-  return GfMul128(a, b);
-}
-
-uint64_t inline GfMul(absl::Span<uint64_t> a, absl::Span<uint64_t> b) {
-  return GfMul64(a, b);
-}
-
-}  // namespace vole::internal
 
 // Convert OT to f2k-VOLE (non-interactive)
 // the type of ot_store must be COT
@@ -78,7 +60,7 @@ void inline Ot2VoleSend(OtSendStore& send_ot, absl::Span<K> w) {
     for (size_t j = 0; j < T_bits; ++j) {
       w_buff[j] = send_ot.GetBlock(i * T_bits + j, 0);
     }
-    w[i] = vole::internal::GfMul(absl::MakeSpan(w_buff), absl::MakeSpan(basis));
+    w[i] = math::GfMul(absl::MakeSpan(w_buff), absl::MakeSpan(basis));
   }
 }
 
@@ -109,7 +91,7 @@ void inline Ot2VoleRecv(OtRecvStore& recv_ot, absl::Span<T> u,
     for (size_t j = 0; j < T_bits; ++j) {
       v_buff[j] = recv_ot.GetBlock(i * T_bits + j);
     }
-    v[i] = vole::internal::GfMul(absl::MakeSpan(v_buff), absl::MakeSpan(basis));
+    v[i] = math::GfMul(absl::MakeSpan(v_buff), absl::MakeSpan(basis));
   }
 }
 
@@ -125,11 +107,12 @@ void inline Ot2VoleRecv(OtRecvStore& recv_ot, absl::Span<T> u,
 // GilboaVoleSend<uint64_t,uint128_t> / GilboaVoleRecv<uint64_t,uint128_t>
 template <typename T, typename K>
 void inline GilboaVoleSend(const std::shared_ptr<link::Context>& ctx,
-                           const OtRecvStore& base_ot, absl::Span<K> w) {
+                           const OtRecvStore& base_ot, absl::Span<K> w,
+                           bool mal = false) {
   constexpr size_t T_bits = sizeof(T) * 8;
   const size_t size = w.size();
 
-  auto sender = SoftspokenOtExtSender(2);
+  auto sender = SoftspokenOtExtSender(2, mal);
   // setup Softspoken by base_ot
   sender.OneTimeSetup(ctx, base_ot);
   auto send_ot = sender.GenCot(ctx, size * T_bits);
@@ -139,12 +122,12 @@ void inline GilboaVoleSend(const std::shared_ptr<link::Context>& ctx,
 template <typename T, typename K>
 void inline GilboaVoleRecv(const std::shared_ptr<link::Context>& ctx,
                            const OtSendStore& base_ot, absl::Span<T> u,
-                           absl::Span<K> v) {
+                           absl::Span<K> v, bool mal = false) {
   constexpr size_t T_bits = sizeof(T) * 8;
   const size_t size = u.size();
   YACL_ENFORCE(size == v.size());
 
-  auto receiver = SoftspokenOtExtReceiver(2);
+  auto receiver = SoftspokenOtExtReceiver(2, mal);
   // setup Softspoken by base_ot
   receiver.OneTimeSetup(ctx, base_ot);
   auto recv_ot = receiver.GenCot(ctx, size * T_bits);

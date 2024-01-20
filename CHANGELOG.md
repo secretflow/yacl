@@ -8,6 +8,9 @@ All notable changes to this project will be documented in this file.
 > - Add `[Bugfix]` prefix for bug fixes
 > - Add `[API]` prefix for API changes
 
+## Staging
+- [Feature] Add Silent Vole (malicious version)
+
 ## 2024-01-09
 - [YACL] v0.4.2
 - [Dependency] Bump: Openssl 3.0.12 (experimental)
