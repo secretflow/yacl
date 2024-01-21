@@ -48,7 +48,8 @@ struct VoleParam {
   bool is_mal_{false};
 
   // Constructor
-  VoleParam(CodeType code, uint64_t vole_num, bool mal = false) {}
+  VoleParam([[maybe_unused]] CodeType code, [[maybe_unused]] uint64_t vole_num,
+            [[maybe_unused]] bool mal = false) {}
 
   VoleParam(CodeType code, uint64_t vole_num, uint64_t sec, bool mal = false) {
     codetype_ = code;
