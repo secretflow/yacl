@@ -14,9 +14,6 @@
 
 #pragma once
 
-#include <cstdint>
-#include <memory>
-
 #include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
 #include "yacl/crypto/utils/secparam.h"
@@ -26,29 +23,13 @@
 #include "yacl/crypto/primitives/code/code_interface.h"
 #include "yacl/crypto/primitives/code/ea_code.h"
 #include "yacl/crypto/primitives/code/silver_code.h"
-#include "yacl/crypto/primitives/ot/ferret_ote.h"
-#include "yacl/crypto/primitives/vole/f2k/base_vole.h"
-#include "yacl/crypto/primitives/vole/f2k/sparse_vole.h"
+#include "yacl/crypto/primitives/vole/base_vole.h"
+#include "yacl/crypto/primitives/vole/mp_vole.h"
 #include "yacl/crypto/utils/rand.h"
 
 /* security parameter declaration */
 YACL_MODULE_DECLARE("silent_vole", SecParam::C::k128, SecParam::S::INF);
-
 namespace yacl::crypto {
-
-enum class CodeType {
-  // Support Silver & ExAcc only
-  Silver5,
-  Silver11,
-  ExAcc7,
-  ExAcc11,
-  ExAcc21,
-  ExAcc40,
-  // TODO(@wenfan)
-  // Support ExConv Code
-  ExConv7x24,
-  ExConv21x24
-};
 
 // Silent Vector OLE Implementation
 //
@@ -70,7 +51,7 @@ enum class CodeType {
 //  > OT extension functionality, for more details about its implementation, see
 //  `yacl/crypto/primitives/ot/softspoken_ote.h`
 //  > base VOLE and multi-point VOLE functionalities, for more details about its
-//  implementation, see `yacl/crypto/primitives/vole/f2k/sparse_vole.h`
+//  implementation, see `yacl/crypto/primitives/vole/mp_vole.h`
 //  > Dual LPN problem, for more details, please see the original papers
 //    1) Silver (https://eprint.iacr.org/2021/1150.pdf) Most
 //    efficiency, but not recommended to use due to its security flaw.
@@ -82,16 +63,30 @@ enum class CodeType {
 // would get delta and vector c, such that c = a * delta + b
 // > Silent Vole aims to generate large amount of VOLE correlation, thus the
 // length of a,b,c should be greater than 256 at least.
-// > When small amount of VOLE correlation is needed (less than 256), see
-// `yacl/crypto/primitives/vole/f2k/sparse_vole.h` and use
+// > When small amount of VOLE correlation is needed (less than 256), use
 // `GilboaVoleSend/GilboaVoleRecv` instead.
+
+// dual-LPN code type
+enum class CodeType {
+  // Support Silver & ExAcc only
+  Silver5,
+  Silver11,
+  ExAcc7,
+  ExAcc11,
+  ExAcc21,
+  ExAcc40,
+  // TODO: @wenfan
+  // Support ExConv Code
+  ExConv7x24,
+  ExConv21x24
+};
 
 class SilentVoleSender {
  public:
-  explicit SilentVoleSender(CodeType code) {
-    ss_sender_ = SoftspokenOtExtSender(2);
+  explicit SilentVoleSender(CodeType code, bool mal = false) {
     codetype_ = code;
-    delta_ = MakeUint128(0, 0);  // init delta_
+    is_mal_ = mal;
+    ss_sender_ = SoftspokenOtExtSender(2, is_mal_);
   }
 
   void OneTimeSetup(const std::shared_ptr<link::Context>& ctx) {
@@ -129,8 +124,9 @@ class SilentVoleSender {
 
  private:
   bool is_inited_{false};
+  bool is_mal_{false};
   CodeType codetype_;
-  uint128_t delta_;
+  uint128_t delta_{0};
   SoftspokenOtExtSender ss_sender_;
 
   template <typename T, typename K>
@@ -139,9 +135,10 @@ class SilentVoleSender {
 
 class SilentVoleReceiver {
  public:
-  explicit SilentVoleReceiver(CodeType code) {
-    ss_receiver_ = SoftspokenOtExtReceiver(2);
+  explicit SilentVoleReceiver(CodeType code, bool mal = false) {
     codetype_ = code;
+    is_mal_ = mal;
+    ss_receiver_ = SoftspokenOtExtReceiver(2, is_mal_);
   }
 
   void OneTimeSetup(const std::shared_ptr<link::Context>& ctx) {
@@ -167,6 +164,7 @@ class SilentVoleReceiver {
 
  private:
   bool is_inited_{false};
+  bool is_mal_{false};
   CodeType codetype_;
   SoftspokenOtExtReceiver ss_receiver_;
 

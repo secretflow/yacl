@@ -45,17 +45,6 @@ const std::array<AES_KEY, 2> kPrfKey = {AES_set_encrypt_key(0),
 // https://github.com/emp-toolkit/emp-ot/blob/master/emp-ot/ferret/twokeyprp.h
 //
 
-// std::array<uint128_t, 2> SplitSeed(const std::array<AES_KEY, 2>& keys,
-//                                    uint128_t seed) {
-//   std::array<uint128_t, 2> tmp = {seed, seed};
-//   // Uncomment the following if you want to use CrHash:
-//   // kDefaltRp.Gen({seed ^ 1, seed ^ 2}, absl::MakeSpan(tmp));
-
-//   // Use two-key prf
-//   ParaEnc<2, 1>(tmp.data(), keys.data());
-//   return {tmp[0] ^ seed, tmp[1] ^ seed};
-// }
-
 inline dynamic_bitset<uint128_t> MakeDynamicBitset(uint128_t input,
                                                    size_t bits) {
   dynamic_bitset<uint128_t> out;
@@ -90,6 +79,62 @@ std::vector<uint128_t> SplitAllSeeds(absl::Span<uint128_t> seeds) {
   ParaEnc<2>(out.data(), kPrfKey.data(), split_num);
 
   return out;
+}
+
+struct CheckMsg {
+  std::array<uint8_t, 32> t;
+  std::array<uint8_t, 32> s;
+
+  void Pack(absl::Span<uint8_t> out) {
+    YACL_ENFORCE(out.size() >= 64);
+    memcpy(out.data(), t.data(), 32);
+    memcpy(out.data() + 32, s.data(), 32);
+  }
+
+  Buffer Pack() {
+    auto ret = Buffer(64);
+    Pack(absl::MakeSpan(ret.data<uint8_t>(), ret.size()));
+    return ret;
+  }
+
+  void Unpack(ByteContainerView in) {
+    YACL_ENFORCE(in.size() == 64);
+    memcpy(t.data(), in.data(), 32);
+    memcpy(s.data(), in.data() + 32, 32);
+  }
+};
+
+CheckMsg GenCheckMsg(uint32_t n, absl::Span<uint128_t> output) {
+  auto t = std::array<uint8_t, 32>();
+
+  std::vector<std::array<uint8_t, 32>> tmp;
+  for (uint32_t i = 0; i < n; ++i) {
+    tmp.emplace_back(Blake3(ByteContainerView(&output[i], sizeof(uint128_t))));
+    // t = t xor tmp
+    std::transform(tmp[i].cbegin(), tmp[i].cend(), t.cbegin(), t.begin(),
+                   std::bit_xor<uint8_t>());
+  }
+  auto s = Blake3(ByteContainerView(tmp.data(), tmp.size() * 32));
+  return {t, s};
+}
+
+bool VerifyCheckMsg(uint32_t n, uint32_t index, absl::Span<uint128_t> output,
+                    const CheckMsg& proof) {
+  auto t = proof.t;
+  auto& s = proof.s;
+
+  std::vector<std::array<uint8_t, 32>> tmp;
+  for (uint32_t i = 0; i < n; ++i) {
+    tmp.emplace_back(Blake3(ByteContainerView(&output[i], sizeof(uint128_t))));
+    // t = t xor tmp
+    std::transform(tmp[i].cbegin(), tmp[i].cend(), t.cbegin(), t.begin(),
+                   std::bit_xor<uint8_t>());
+  }
+  std::transform(t.cbegin(), t.cend(), tmp[index].cbegin(), tmp[index].begin(),
+                 std::bit_xor<uint8_t>());
+
+  auto hash = Blake3(ByteContainerView(tmp.data(), tmp.size() * 32));
+  return ByteContainerView(hash) == ByteContainerView(s);
 }
 
 }  // namespace
@@ -156,33 +201,13 @@ void SgrrOtExtRecv(const std::shared_ptr<link::Context>& ctx,
 
   // check consistency
   if (mal) {
-    size_t size = n;
+    auto recv_buf = ctx->Recv(ctx->NextRank(), "SGRR:PROOF");
+    YACL_ENFORCE(recv_buf.size() == 64);
+    CheckMsg proof;
+    proof.Unpack(recv_buf);
 
-    std::vector<std::array<uint8_t, 32>> s;
-    std::array<std::array<uint8_t, 32>, 2> t = {};  // set zeros
-
-    for (size_t i = 0; i < size; ++i) {
-      s.emplace_back(Blake3(ByteContainerView(&output[i], sizeof(uint128_t))));
-      // t[0] = t[0] xor s[i]
-      std::transform(s[i].cbegin(), s[i].cend(), t[0].cbegin(), t[0].begin(),
-                     std::bit_xor<uint8_t>());
-    }
-    // t[0] = t[0] xor s[index]
-    std::transform(s[index].cbegin(), s[index].cend(), t[0].cbegin(),
-                   t[0].begin(), std::bit_xor<uint8_t>());
-
-    auto buff = ctx->Recv(ctx->NextRank(), "SGRR_OTE:RECV-PROOF");
-    YACL_ENFORCE(buff.size() == 64);
-    std::array<std::array<uint8_t, 32>, 2> recv_t;
-    memcpy(recv_t.data(), buff.data(), buff.size());
-
-    // s[index] = t[0] xor recv_t[index]
-    std::transform(recv_t[0].cbegin(), recv_t[0].cend(), t[0].cbegin(),
-                   s[index].begin(), std::bit_xor<uint8_t>());
-
-    t[1] = Blake3(ByteContainerView(s.data(), s.size() * 32));
-    YACL_ENFORCE(ByteContainerView(t[1]) == ByteContainerView(recv_t[1]));
-
+    YACL_ENFORCE(VerifyCheckMsg(n, index, output, proof),
+                 "Malicious SgrrOtExt Consistency check: fail!");
     // refresh output
     ParaCrHashInplace_128(output.subspan(0, n));
     output[index] = 0;
@@ -233,61 +258,54 @@ void SgrrOtExtSend(const std::shared_ptr<link::Context>& ctx,
 
   // prove consistency
   if (mal) {
-    size_t size = n;
-    std::vector<std::array<uint8_t, 32>> s;
-    std::array<std::array<uint8_t, 32>, 2> t = {};  // set zeros
-    for (size_t i = 0; i < size; ++i) {
-      s.emplace_back(Blake3(ByteContainerView(&output[i], sizeof(uint128_t))));
-      // t[0] = t[0] xor s[i]
-      std::transform(s[i].cbegin(), s[i].cend(), t[0].cbegin(), t[0].begin(),
-                     std::bit_xor<uint8_t>());
-    }
-    t[1] = Blake3(ByteContainerView(s.data(), s.size() * 32));
-    ctx->SendAsync(ctx->NextRank(), ByteContainerView(t.data(), 64),
-                   "SGRR_OTE:SEND-PROOF");
-    // Refresh output
+    auto proof = GenCheckMsg(n, output);
+    ctx->SendAsync(ctx->NextRank(), proof.Pack(), "SGRR:PROOF");
+    // refresh output
     ParaCrHashInplace_128(output.subspan(0, n));
   }
 }
 
-// Notice that:
-//  > In such case, punctured index would be the choice of cot
-//  > punctured index might be greater than n
-// So, please do NOT use "FixIndexSgrrOtExtRecv" and "FixIndexSgrrOtExtSend",
-// unless you are certainly sure how do these algorithms work.
+// Notice that: In such case, punctured index would be the choice of cot, which
+// means punctured index might be greater than n. So, please do NOT use
+// "FixIndexSgrrOtExtRecv" and "FixIndexSgrrOtExtSend", unless you are certainly
+// sure how do these algorithms work.
 void SgrrOtExtRecv_fixed_index(const std::shared_ptr<link::Context>& ctx,
                                const OtRecvStore& base_ot, uint32_t n,
-                               absl::Span<uint128_t> output) {
-  uint32_t ot_num = math::Log2Ceil(n);
+                               absl::Span<uint128_t> output, bool mal) {
+  const uint64_t buf_size = SgrrOtExtHelper(n, mal);
   auto recv_buf = ctx->Recv(ctx->NextRank(), "SGRR_OTE:RECV-CORR");
-  YACL_ENFORCE(recv_buf.size() >=
-               static_cast<int64_t>(ot_num * 2 * sizeof(uint128_t)));
-  auto recv_msgs = absl::MakeSpan(
-      reinterpret_cast<std::array<uint128_t, 2>*>(recv_buf.data()), ot_num);
-  SgrrOtExtRecv_fixed_index(base_ot, n, output, absl::MakeSpan(recv_msgs));
+  YACL_ENFORCE_EQ(static_cast<uint64_t>(recv_buf.size()), buf_size);
+  SgrrOtExtRecv_fixed_index(
+      base_ot, n, output,
+      absl::MakeSpan(recv_buf.data<const uint8_t>(), buf_size), mal);
 }
 
 void SgrrOtExtSend_fixed_index(const std::shared_ptr<link::Context>& ctx,
                                const OtSendStore& base_ot, uint32_t n,
-                               absl::Span<uint128_t> output) {
-  uint32_t ot_num = math::Log2Ceil(n);
-  std::vector<std::array<uint128_t, 2>> send_msgs(ot_num);
-  SgrrOtExtSend_fixed_index(base_ot, n, output, absl::MakeSpan(send_msgs));
+                               absl::Span<uint128_t> output, bool mal) {
+  const uint64_t buf_size = SgrrOtExtHelper(n, mal);
+  auto send_buf = Buffer(buf_size);
+  SgrrOtExtSend_fixed_index(base_ot, n, output,
+                            absl::MakeSpan(send_buf.data<uint8_t>(), buf_size),
+                            mal);
 
-  ctx->SendAsync(
-      ctx->NextRank(),
-      ByteContainerView(send_msgs.data(), ot_num * 2 * sizeof(uint128_t)),
-      "SGRR_OTE:SEND-CORR");
+  ctx->SendAsync(ctx->NextRank(), ByteContainerView(send_buf),
+                 "SGRR_OTE:SEND-CORR");
 }
 
 void SgrrOtExtRecv_fixed_index(const OtRecvStore& base_ot, uint32_t n,
                                absl::Span<uint128_t> output,
-                               absl::Span<std::array<uint128_t, 2>> recv_msgs) {
-  uint32_t ot_num = math::Log2Ceil(n);
+                               absl::Span<const uint8_t> recv_buf, bool mal) {
+  const uint32_t ot_num = math::Log2Ceil(n);
+  const uint64_t buf_size = SgrrOtExtHelper(n, mal);
   YACL_ENFORCE_GE(n, (uint32_t)1);                 // range should > 1
   YACL_ENFORCE_GE((uint32_t)128, base_ot.Size());  // base ot num < 128
   YACL_ENFORCE_GE(base_ot.Size(), ot_num);         //
-  YACL_ENFORCE_GE(recv_msgs.size(), ot_num);
+  YACL_ENFORCE_EQ(static_cast<uint64_t>(recv_buf.size()), buf_size);
+
+  auto recv_msgs = absl::MakeConstSpan(
+      reinterpret_cast<const std::array<uint128_t, 2>*>(recv_buf.data()),
+      ot_num);
 
   // we need log(n) 1-2 OTs from log(n) ROTs
   // most significant bit first
@@ -323,20 +341,36 @@ void SgrrOtExtRecv_fixed_index(const OtRecvStore& base_ot, uint32_t n,
       output[inserted_idx] = insert_val;
     }
   }
+
+  if (mal) {
+    auto index = GetPuncturedIndex(choice, ot_num - 1);
+    CheckMsg proof;
+    proof.Unpack(absl::MakeConstSpan(recv_buf.data() + buf_size - 64, 64));
+
+    YACL_ENFORCE(VerifyCheckMsg(n, index, output, proof),
+                 "Malicious SgrrOtExt Consistency check: fail!");
+    // refresh output
+    ParaCrHashInplace_128(output.subspan(0, n));
+    output[index] = 0;
+  }
 }
 
 void SgrrOtExtSend_fixed_index(const OtSendStore& base_ot, uint32_t n,
                                absl::Span<uint128_t> output,
-                               absl::Span<std::array<uint128_t, 2>> send_msgs) {
-  uint32_t ot_num = math::Log2Ceil(n);
+                               absl::Span<uint8_t> send_buf, bool mal) {
+  const uint32_t ot_num = math::Log2Ceil(n);
+  const uint64_t buf_size = SgrrOtExtHelper(n, mal);
   YACL_ENFORCE_GE(base_ot.Size(), ot_num);
   YACL_ENFORCE_GE(n, (uint32_t)1);
-  YACL_ENFORCE_GE(send_msgs.size(), ot_num);
+  YACL_ENFORCE_EQ(static_cast<uint64_t>(send_buf.size()), buf_size);
 
   output[0] = SecureRandSeed();
-
+  auto send_msgs = absl::MakeSpan(
+      reinterpret_cast<std::array<uint128_t, 2>*>(send_buf.data()), ot_num);
   // generate the final level seeds based on master_seed
   for (uint32_t i = 0; i < ot_num; ++i) {
+    send_msgs[i][0] = base_ot.GetBlock(i, 1);
+    send_msgs[i][1] = base_ot.GetBlock(i, 0);
     //  for each seeds in level i
     const uint32_t iter_num = 1 << i;
     auto splits = SplitAllSeeds(output.subspan(0, iter_num));
@@ -350,10 +384,11 @@ void SgrrOtExtSend_fixed_index(const OtSendStore& base_ot, uint32_t n,
            std::min(2 * iter_num, n) * sizeof(uint128_t));
   }
 
-  // mask the ROT messages and send back
-  for (uint32_t i = 0; i < ot_num; ++i) {
-    send_msgs[i][0] ^= base_ot.GetBlock(i, 1);
-    send_msgs[i][1] ^= base_ot.GetBlock(i, 0);
+  if (mal) {
+    auto proof = GenCheckMsg(n, output);
+    proof.Pack(absl::MakeSpan(send_buf.data() + buf_size - 64, 64));
+    // refresh output
+    ParaCrHashInplace_128(output.subspan(0, n));
   }
 }
 

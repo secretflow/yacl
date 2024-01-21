@@ -235,6 +235,11 @@ void SoftspokenOtExtSender::OneTimeSetup(
   // set delta
   delta_ = base_ot.CopyChoice().data()[0];
 
+  auto recv_size = 128 * 2 * sizeof(uint128_t) + pprf_num_ * (mal_ ? 64 : 0);
+  auto recv_buf = ctx->Recv(ctx->NextRank(), "SGRR_OTE:RECV-CORR");
+  YACL_ENFORCE((uint64_t)recv_buf.size() == recv_size);
+  auto recv_span = absl::MakeSpan((recv_buf.data<const uint8_t>()), recv_size);
+  auto single_buf_size = SgrrOtExtHelper(pprf_range_, mal_);
   // One-time Setup for Softspoken
   // k 1-out-of-2 ROT to (2^k-1)-out-of-(2^k) ROT
   for (uint64_t i = 0; i < pprf_num_; ++i) {
@@ -248,8 +253,11 @@ void SoftspokenOtExtSender::OneTimeSetup(
     // punctured leaves for the i-th pprf
     auto leaves =
         absl::MakeSpan(punctured_leaves_.data() + i * pprf_range_, range_limit);
-    SgrrOtExtRecv(ctx, sub_ot, range_limit, punctured_idx_[i], leaves, mal_);
-
+    // prepare for cur_recv_buf
+    auto cur_buf_size = SgrrOtExtHelper(range_limit, mal_);
+    auto cur_recv_buf = recv_span.subspan(single_buf_size * i, cur_buf_size);
+    // SgrrOtExt
+    SgrrOtExtRecv_fixed_index(sub_ot, range_limit, leaves, cur_recv_buf, mal_);
     // if the j-th bit of punctured index is 1, set mask as all one;
     // set mask as all zero otherwise.
     for (uint64_t j = 0; j < k_limit; ++j) {
@@ -291,6 +299,11 @@ void SoftspokenOtExtReceiver::OneTimeSetup(
   }
   // FIXME: Copy base_ot, since NextSlice is not const
   auto dup_base_ot = base_ot;
+  // Send Message Buffer
+  auto send_size = 128 * 2 * sizeof(uint128_t) + pprf_num_ * (mal_ ? 64 : 0);
+  auto send_buf = Buffer(send_size);
+  auto send_span = absl::MakeSpan(send_buf.data<uint8_t>(), send_size);
+  auto single_buf_size = SgrrOtExtHelper(pprf_range_, mal_);
   // One-time Setup for Softspoken
   // k 1-out-of-2 ROT to (2^k-1)-out-of-(2^k) ROT
   for (uint64_t i = 0; i < pprf_num_; ++i) {
@@ -301,8 +314,14 @@ void SoftspokenOtExtReceiver::OneTimeSetup(
     // leaves in i-th pprf
     auto leaves =
         absl::MakeSpan(all_leaves_.data() + i * pprf_range_, range_limit);
-    SgrrOtExtSend(ctx, sub_ot, range_limit, leaves, mal_);
+    // prepare cur_send_buf
+    auto cur_buf_size = SgrrOtExtHelper(range_limit, mal_);
+    auto cur_send_span = send_span.subspan(i * single_buf_size, cur_buf_size);
+    // SgrrOtExt
+    SgrrOtExtSend_fixed_index(sub_ot, range_limit, leaves, cur_send_span, mal_);
   }
+  ctx->SendAsync(ctx->NextRank(), ByteContainerView(send_buf),
+                 "SGRR_OTE:SEND-CORR");
   inited_ = true;
 }
 

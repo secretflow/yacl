@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/primitives/vole/f2k/silent_vole.h"
+#include "yacl/crypto/primitives/vole/silent_vole.h"
 
 #include <algorithm>
 #include <memory>
@@ -20,34 +20,17 @@
 #include "yacl/base/aligned_vector.h"
 #include "yacl/base/dynamic_bitset.h"
 #include "yacl/base/int128.h"
-#include "yacl/math/gadget.h"
 
 namespace yacl::crypto {
 
 namespace {
 
-// Linear Test, more details could be found in
-// https://eprint.iacr.org/2022/1014.pdf Definition 2.5 bias( Reg_t^N ) equal or
-// less than e^{-td/N} where t is the number of noise in dual-LPN problem, d is
-// the minimum weight of vectors in dual-LPN matrix. Thus, we can view d/N as
-// the minimum distance ratio for dual-LPN matrix.
-//
-// Implementation of GenRegNoiseWeight is mostly from:
-// https://github.com/osu-crypto/libOTe/blob/master/libOTe/TwoChooseOne/ConfigureCode.cpp
-// which would return the number of noise in MpVole
-//
-uint64_t GenRegNoiseWeight(double min_dist_ratio, uint64_t security_param) {
-  if (min_dist_ratio > 0.5 || min_dist_ratio <= 0) {
-    YACL_THROW("mini distance too small, rate {}", min_dist_ratio);
-  }
+//  minimum distance for dual-LPN code
+static std::map<CodeType, double> kMinDistanceRatio = {
+    {CodeType::Silver5, 0.2}, {CodeType::Silver11, 0.2},
+    {CodeType::ExAcc7, 0.05}, {CodeType::ExAcc11, 0.1},
+    {CodeType::ExAcc21, 0.1}, {CodeType::ExAcc40, 0.2}};
 
-  auto d = -std::log2(1 - 2 * min_dist_ratio);
-  auto t = std::max<uint64_t>(128, double(security_param) / d);
-
-  return math::RoundUpTo(t, 8);
-}
-
-// Silent Vole internal parameters
 template <typename T>
 struct VoleParam {
   uint64_t vole_num_;   // vole num
@@ -62,16 +45,26 @@ struct VoleParam {
   uint64_t mp_vole_ot_num_;    // mp vole (cot/rot-based)
   uint64_t require_ot_num_;    // total ot num
 
-  // Constructor
-  VoleParam(CodeType code, uint64_t vole_num)
-      : VoleParam(code, vole_num, YACL_MODULE_SECPARAM_C_UINT("silent_vole")) {}
+  bool is_mal_{false};
 
-  VoleParam(CodeType code, uint64_t vole_num, uint64_t sec) {
-    // default
-    uint64_t gap = 0;
-    uint64_t code_scaler = 2;
-    double min_dist_ratio = 0.2;
+  // Constructor
+  VoleParam([[maybe_unused]] CodeType code, [[maybe_unused]] uint64_t vole_num,
+            [[maybe_unused]] bool mal = false) {}
+
+  VoleParam(CodeType code, uint64_t vole_num, uint64_t sec, bool mal = false) {
     codetype_ = code;
+    is_mal_ = mal;
+    vole_num_ = vole_num;
+    assumption_ = LpnNoiseAsm::RegularNoise;
+
+    // default
+    uint64_t gap = 0;  // Silver Parameters
+    uint64_t code_scaler = 2;
+    // check
+    YACL_ENFORCE(
+        kMinDistanceRatio.count(code),
+        "Error: could not found the minimum distance for current code.");
+    double min_dist_ratio = kMinDistanceRatio[code];
 
     switch (codetype_) {
       case CodeType::Silver5:
@@ -80,24 +73,9 @@ struct VoleParam {
       case CodeType::Silver11:
         gap = 32;
         break;
-      case CodeType::ExAcc7:
-        min_dist_ratio = 0.05;
-        break;
-      case CodeType::ExAcc11:
-      case CodeType::ExAcc21:
-        min_dist_ratio = 0.1;
-        break;
-      case CodeType::ExAcc40:
-        min_dist_ratio = 0.2;
-        break;
-      // TODO(@wenfan)
-      // support ExConv Code
       default:
         break;
     }
-
-    vole_num_ = vole_num;
-    assumption_ = LpnNoiseAsm::RegularNoise;
 
     auto noise_num = GenRegNoiseWeight(min_dist_ratio, sec);
     // Note that: the size of SpVole must be greater than one.
@@ -107,13 +85,14 @@ struct VoleParam {
                  static_cast<uint64_t>(2));
     auto mp_vole_size = sp_vole_size * noise_num + gap;
 
-    mp_param_ = MpVoleParam(noise_num, mp_vole_size, assumption_);
+    // initialize parameters for MpVole
+    mp_param_ = MpVoleParam(noise_num, mp_vole_size, assumption_, is_mal_);
 
     code_size_ = mp_param_.mp_vole_size_ / code_scaler;
     // base_vole + mp_vole
     base_vole_ot_num_ =
-        mp_param_.noise_num_ * sizeof(T) * 8;     // base_vole (cot-based)
-    mp_vole_ot_num_ = mp_param_.require_ot_num_;  // mp_vole (cot/rot-based)
+        mp_param_.base_vole_num_ * sizeof(T) * 8;  // base_vole (cot-based)
+    mp_vole_ot_num_ = mp_param_.require_ot_num_;   // mp_vole (cot/rot-based)
     require_ot_num_ = base_vole_ot_num_ + mp_vole_ot_num_;
   }
 };
@@ -229,7 +208,8 @@ void SilentVoleSender::SendImpl(const std::shared_ptr<link::Context>& ctx,
   }
 
   const auto vole_num = c.size();
-  auto param = VoleParam<T>(codetype_, vole_num);
+  auto param = VoleParam<T>(
+      codetype_, vole_num, YACL_MODULE_SECPARAM_C_UINT("silent_vole"), is_mal_);
   auto& mp_param = param.mp_param_;
 
   // [Warning] copy, low efficiency
@@ -238,16 +218,23 @@ void SilentVoleSender::SendImpl(const std::shared_ptr<link::Context>& ctx,
   auto base_vole_cot = all_cot.NextSlice(param.base_vole_ot_num_);  // base-vole
 
   // base vole, w = u * delta + v
-  AlignedVector<K> w(mp_param.noise_num_);
+  std::vector<K> w(mp_param.base_vole_num_);
   Ot2VoleSend<T, K>(base_vole_cot, absl::MakeSpan(w));
 
   // mp vole
-  AlignedVector<K> mp_vole_output(mp_param.mp_vole_size_);
-  MpVoleSend_fixed_index(ctx, mp_vole_cot, mp_param, absl::MakeSpan(w),
-                         absl::MakeSpan(mp_vole_output));
+  auto mpvole = MpVoleSender<T, K>(mp_param);
+  // w would be moved into mpvole
+  mpvole.OneTimeSetup(static_cast<K>(delta_), std::move(w));
+  // mp_vole output
+  // AlignedVector<K> mp_vole_output(mp_param.mp_vole_size_);
+  auto buf = Buffer(mp_param.mp_vole_size_ * sizeof(K));
+  auto mp_vole_output = absl::MakeSpan(buf.data<K>(), mp_param.mp_vole_size_);
+  // mpvole with fixed index
+  // which means punctured index would be determined by mp_vole_cot choices
+  mpvole.Send(ctx, mp_vole_cot, mp_vole_output, true);
   // dual LPN
   // compressing mp_vole_output into c
-  DualLpnEncode(param, absl::MakeSpan(mp_vole_output), c);
+  DualLpnEncode(param, mp_vole_output, c);
 }
 
 template <typename T, typename K>
@@ -259,27 +246,19 @@ void SilentVoleReceiver::RecvImpl(const std::shared_ptr<link::Context>& ctx,
 
   const auto vole_num = a.size();
   YACL_ENFORCE(vole_num == b.size());
-  auto param = VoleParam<T>(codetype_, vole_num);
+  auto param = VoleParam<T>(
+      codetype_, vole_num, YACL_MODULE_SECPARAM_C_UINT("silent_vole"), is_mal_);
   auto& mp_param = param.mp_param_;
 
-  auto choices = RandBits<dynamic_bitset<uint128_t>>(param.require_ot_num_);
   // generate punctured indexes for MpVole
   mp_param.GenIndexes();
-  // set mp-cot choices by punctured indexes
-  {
-    uint64_t pos = 0;
-    auto sp_vole_length = math::Log2Ceil(mp_param.sp_vole_size_);
-    auto last_length = math::Log2Ceil(mp_param.last_sp_vole_size_);
-    for (size_t i = 0; i < mp_param.noise_num_; ++i) {
-      auto this_length =
-          (i == mp_param.noise_num_ - 1) ? last_length : sp_vole_length;
-      uint32_t bound = 1 << this_length;
-      for (uint32_t mask = 1; mask < bound; mask <<= 1) {
-        choices.set(pos, mp_param.indexes_[i] & mask);
-        ++pos;
-      }
-    }
-  }
+  // convert MpVole indexes to ot choices
+  auto choices = mp_param.GenChoices();  // size param.mp_vole_ot_num_
+  // generate the choices of base VOLE
+  auto base_choices =
+      RandBits<dynamic_bitset<uint128_t>>(param.base_vole_ot_num_);
+  // append choices and base_vole_choices
+  choices.append(base_choices);
 
   // [Warning] copy, low efficiency
   auto all_cot = ss_receiver_.GenCot(ctx, choices);  // generate Cot by choices
@@ -287,26 +266,28 @@ void SilentVoleReceiver::RecvImpl(const std::shared_ptr<link::Context>& ctx,
   auto base_vole_cot = all_cot.NextSlice(param.base_vole_ot_num_);  // base vole
 
   // base vole, w = u * delta + v
-  AlignedVector<T> u(mp_param.noise_num_);
-  AlignedVector<K> v(mp_param.noise_num_);
+  std::vector<T> u(mp_param.base_vole_num_);
+  std::vector<K> v(mp_param.base_vole_num_);
 
-  // VOLE or subfield VOLE
+  // base (subfield) VOLE
   Ot2VoleRecv<T, K>(base_vole_cot, absl::MakeSpan(u), absl::MakeSpan(v));
 
   // mp vole
-  // construct sparse noise
-  auto sparse_noise = AlignedVector<T>(mp_param.mp_vole_size_);
-  for (uint32_t i = 0; i < mp_param.noise_num_; ++i) {
-    sparse_noise[i * mp_param.sp_vole_size_ + mp_param.indexes_[i]] = u[i];
-  }
-  AlignedVector<K> mp_vole_output(mp_param.mp_vole_size_);
-  MpVoleRecv_fixed_index(ctx, mp_vole_cot, mp_param, absl::MakeSpan(v),
-                         absl::MakeSpan(mp_vole_output));
-
+  auto mpvole = MpVoleReceiver<T, K>(mp_param);
+  // u && v would be moved into mpvole
+  mpvole.OneTimeSetup(std::move(u), std::move(v));
+  // sparse_noise && mp_vole output
+  AlignedVector<T> sparse_noise(mp_param.mp_vole_size_);
+  // AlignedVector<K> mp_vole_output(mp_param.mp_vole_size_);
+  auto buf = Buffer(mp_param.mp_vole_size_ * sizeof(K));
+  auto mp_vole_output = absl::MakeSpan(buf.data<K>(), mp_param.mp_vole_size_);
+  // mpvole with fixed index
+  // which means punctured index would be determined by mp_vole_cot choices
+  mpvole.Recv(ctx, mp_vole_cot, absl::MakeSpan(sparse_noise), mp_vole_output,
+              true);
   // dual LPN
   // compressing sparse_noise into a, mp_vole_output into b
-  DualLpnEncode2(param, absl::MakeSpan(sparse_noise), a,
-                 absl::MakeSpan(mp_vole_output), b);
+  DualLpnEncode2(param, absl::MakeSpan(sparse_noise), a, mp_vole_output, b);
 }
 
 }  // namespace yacl::crypto

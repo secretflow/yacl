@@ -28,7 +28,6 @@ yacl_cc_library(
         "//yacl/utils:scope_guard",
         "@com_github_openssl_openssl//:openssl",
     ],
-    alwayslink = True,
 )
 
 yacl_cc_library(

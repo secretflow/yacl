@@ -140,8 +140,8 @@ inline uint64_t GfMul64(uint64_t x, uint64_t y) {
 }
 
 // Inner product <x,y>
-inline std::pair<uint128_t, uint128_t> ClMul128(absl::Span<uint128_t> x,
-                                                absl::Span<uint128_t> y) {
+inline std::pair<uint128_t, uint128_t> ClMul128(absl::Span<const uint128_t> x,
+                                                absl::Span<const uint128_t> y) {
   YACL_ENFORCE(x.size() == y.size());
 
   const uint64_t size = x.size();
@@ -156,13 +156,15 @@ inline std::pair<uint128_t, uint128_t> ClMul128(absl::Span<uint128_t> x,
   return std::make_pair(toU128(ret_high), toU128(ret_low));
 }
 
-inline uint128_t GfMul128(absl::Span<uint128_t> x, absl::Span<uint128_t> y) {
+inline uint128_t GfMul128(absl::Span<const uint128_t> x,
+                          absl::Span<const uint128_t> y) {
   YACL_ENFORCE(x.size() == y.size());
   auto [high, low] = ClMul128(x, y);
   return Reduce128(high, low);
 }
 
-inline uint128_t ClMul64(absl::Span<uint64_t> x, absl::Span<uint64_t> y) {
+inline uint128_t ClMul64(absl::Span<const uint64_t> x,
+                         absl::Span<const uint64_t> y) {
   YACL_ENFORCE(x.size() == y.size());
 
   const uint64_t size = x.size();
@@ -190,7 +192,8 @@ inline uint128_t ClMul64(absl::Span<uint64_t> x, absl::Span<uint64_t> y) {
   return toU128(ret);
 }
 
-inline uint64_t GfMul64(absl::Span<uint64_t> x, absl::Span<uint64_t> y) {
+inline uint64_t GfMul64(absl::Span<const uint64_t> x,
+                        absl::Span<const uint64_t> y) {
   YACL_ENFORCE(x.size() == y.size());
   return Reduce64(ClMul64(x, y));
 }

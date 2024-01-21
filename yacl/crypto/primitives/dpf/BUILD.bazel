@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
+load("//bazel:yacl.bzl", "AES_COPT_FLAGS", "yacl_cc_library", "yacl_cc_test")
 load("@rules_proto//proto:defs.bzl", "proto_library")
 load("@rules_cc//cc:defs.bzl", "cc_proto_library")
 
@@ -51,4 +51,37 @@ proto_library(
 cc_proto_library(
     name = "serializable_cc_proto",
     deps = [":serializable_proto"],
+)
+
+yacl_cc_library(
+    name = "mpfss",
+    srcs = ["mpfss.cc"],
+    hdrs = ["mpfss.h"],
+    copts = AES_COPT_FLAGS,
+    deps = [
+        "//yacl/base:aligned_vector",
+        "//yacl/base:dynamic_bitset",
+        "//yacl/base:int128",
+        "//yacl/crypto/primitives/ot:gywz_ote",
+        "//yacl/crypto/primitives/ot:ot_store",
+        "//yacl/crypto/primitives/ot:sgrr_ote",
+        "//yacl/crypto/tools:crhash",
+        "//yacl/crypto/utils:rand",
+        "//yacl/crypto/utils:secparam",
+        "//yacl/math:gadget",
+        "//yacl/math/f2k",
+    ],
+)
+
+yacl_cc_test(
+    name = "mpfss_test",
+    srcs = ["mpfss_test.cc"],
+    copts = AES_COPT_FLAGS,
+    deps = [
+        ":mpfss",
+        "//yacl/crypto/utils:rand",
+        "//yacl/link:test_util",
+        "//yacl/math:gadget",
+        "//yacl/math/f2k",
+    ],
 )
