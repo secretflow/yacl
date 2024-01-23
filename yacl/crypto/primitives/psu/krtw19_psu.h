@@ -20,15 +20,15 @@
 #include "yacl/base/int128.h"
 #include "yacl/link/link.h"
 
-namespace yacl::crypto::psu {
+namespace yacl::crypto {
 
 // Scalable Private Set Union from Symmetric-Key Techniques
 // https://eprint.iacr.org/2019/776.pdf
 
-void KrtwPsuSend(std::shared_ptr<yacl::link::Context>,
+void KrtwPsuSend(const std::shared_ptr<yacl::link::Context>&,
                  const std::vector<uint128_t>&);
 
-std::vector<uint128_t> KrtwPsuRecv(std::shared_ptr<yacl::link::Context>,
+std::vector<uint128_t> KrtwPsuRecv(const std::shared_ptr<yacl::link::Context>&,
                                    const std::vector<uint128_t>&);
 
-}  // namespace yacl::crypto::psu
+}  // namespace yacl::crypto

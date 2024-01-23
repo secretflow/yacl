@@ -31,7 +31,7 @@ struct TestParams {
   std::vector<uint128_t> items_b;
 };
 
-namespace yacl::crypto::psu {
+namespace yacl::crypto {
 
 class KrtwPsuTest : public testing::TestWithParam<TestParams> {};
 
@@ -60,7 +60,7 @@ TEST_P(KrtwPsuTest, Works) {
 std::vector<uint128_t> CreateRangeItems(size_t begin, size_t size) {
   std::vector<uint128_t> ret;
   for (size_t i = 0; i < size; i++) {
-    ret.push_back(yacl::crypto::Blake3_128(std::to_string(begin + i)));
+    ret.push_back(Blake3_128(std::to_string(begin + i)));
   }
   return ret;
 }
@@ -68,9 +68,9 @@ std::vector<uint128_t> CreateRangeItems(size_t begin, size_t size) {
 INSTANTIATE_TEST_SUITE_P(
     Works_Instances, KrtwPsuTest,
     testing::Values(
-        TestParams{{}, {}},                               //
-        TestParams{{}, {yacl::crypto::Blake3_128("a")}},  //
-        TestParams{{yacl::crypto::Blake3_128("a")}, {}},  //
+        TestParams{{}, {}},                 //
+        TestParams{{}, {Blake3_128("a")}},  //
+        TestParams{{Blake3_128("a")}, {}},  //
         // No overlap
         TestParams{CreateRangeItems(0, 1024), CreateRangeItems(1024, 1024)},  //
         // Partial overlap
@@ -79,4 +79,4 @@ INSTANTIATE_TEST_SUITE_P(
         TestParams{CreateRangeItems(0, 1024), CreateRangeItems(0, 1024)}  //
         ));
 
-}  // namespace yacl::crypto::psu
+}  // namespace yacl::crypto
