@@ -39,7 +39,7 @@ namespace yacl::crypto {
 //
 // Assume we have a function F(*), where F(alpha)=beta, F(*!=alpha)=0.
 // DPF splits the finction into two parts F1 and F2, and ensures F1(alpha)=r,
-// F2(alpha)=r+beta, and F1(*!=alpha)=r, F2(*!=alpha)=-r
+// F2(alpha)=-r+beta, and F1(*!=alpha)=r, F2(*!=alpha)=-r
 //
 // alpha : arbitrary length mapping input
 // beta  : 128bit mapping output

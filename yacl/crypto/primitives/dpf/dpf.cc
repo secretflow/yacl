@@ -66,8 +66,8 @@ void DpfContext::Gen(DpfKey& first_key, DpfKey& second_key, DpfInStore alpha,
                      DpfOutStore beta, uint128_t first_mk, uint128_t second_mk,
                      bool enable_evalall) {
   YACL_ENFORCE(this->in_bitnum_ > 0);
-  YACL_ENFORCE(this->in_bitnum_ > log(alpha));
-  YACL_ENFORCE(this->in_bitnum_ < 64);
+  YACL_ENFORCE(this->in_bitnum_ > log2(alpha));
+  YACL_ENFORCE(this->in_bitnum_ <= 64);
   YACL_ENFORCE(this->ss_bitnum_ > 0);
   YACL_ENFORCE(this->ss_bitnum_ <= 64);
 
@@ -183,7 +183,7 @@ void DpfContext::Gen(DpfKey& first_key, DpfKey& second_key, DpfInStore alpha,
 }  // namespace flcrypto
 
 DpfOutStore DpfContext::Eval(DpfKey& key, DpfInStore x) {
-  YACL_ENFORCE(this->in_bitnum_ > log(x));
+  YACL_ENFORCE(this->in_bitnum_ > log2(x));
   YACL_ENFORCE(key.enable_evalall == false);
 
   uint128_t seed_working = key.GetSeed();  // the initial value
