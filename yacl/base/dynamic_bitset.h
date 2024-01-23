@@ -789,6 +789,8 @@ class dynamic_bitset {
   template <typename BlockInputIterator>
   constexpr void append(BlockInputIterator first, BlockInputIterator last);
 
+  constexpr void append(const dynamic_bitset<Block, Allocator>& other);
+
   /**
    * @brief      Sets the bits to the result of binary AND on corresponding
    * pairs of bits of *this and @p rhs.
@@ -2481,6 +2483,24 @@ constexpr void dynamic_bitset<Block, Allocator>::append(
 
   assert(check_consistency());
 }
+
+template <typename Block, typename Allocator>
+constexpr void dynamic_bitset<Block, Allocator>::append(
+    const dynamic_bitset<Block, Allocator>& other) {
+  const auto final_size = size() + other.size();
+  const auto block_num = other.num_blocks();
+  if (&other != this) {
+    auto other_data = other.data();
+    append(other_data, other_data + block_num);
+  } else {
+    // Append a bitset to itself might cause an automatic reallocation
+    for (size_t i = 0; i < block_num; ++i) {
+      append(other.data()[i]);
+    }
+  }
+  resize(final_size);
+}
+
 template <typename Block, typename Allocator>
 constexpr dynamic_bitset<Block, Allocator>&
 dynamic_bitset<Block, Allocator>::operator&=(

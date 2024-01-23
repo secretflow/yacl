@@ -60,10 +60,10 @@ def _org_interconnection():
         http_archive,
         name = "org_interconnection",
         urls = [
-            "https://github.com/secretflow/interconnection/archive/3afbd63192023028e5c5a440abf6882c65fc0fca.tar.gz",
+            "https://github.com/secretflow/interconnection/archive/0dbbc9154db1f00c3b1fd0c747957f35249ab8db.tar.gz",
         ],
-        strip_prefix = "interconnection-3afbd63192023028e5c5a440abf6882c65fc0fca",
-        sha256 = "a34e703e9990afb4d1546e65b9fb732d4558b0d0bb5e2efa3dc345ca16259ad0",
+        strip_prefix = "interconnection-0dbbc9154db1f00c3b1fd0c747957f35249ab8db",
+        sha256 = "72c89daeaa8827a988fec924bafd0058403099c4c5f5058b8041248079f0f51b",
     )
 
     # Add homebrew openmp for macOS, somehow..homebrew installs to different location on Apple Silcon/Intel macs.. so we need two rules here
@@ -128,13 +128,13 @@ def _com_github_madler_zlib():
         http_archive,
         name = "zlib",
         build_file = "@yacl//bazel:zlib.BUILD",
-        strip_prefix = "zlib-1.3",
-        sha256 = "b5b06d60ce49c8ba700e0ba517fa07de80b5d4628a037f4be8ad16955be7a7c0",
+        strip_prefix = "zlib-1.3.1",
+        sha256 = "17e88863f3600672ab49182f217281b6fc4d3c762bde361935e436a95214d05c",
         type = ".tar.gz",
         patch_args = ["-p1"],
         patches = ["@yacl//bazel:patches/zlib.patch"],
         urls = [
-            "https://github.com/madler/zlib/archive/refs/tags/v1.3.tar.gz",
+            "https://github.com/madler/zlib/archive/refs/tags/v1.3.1.tar.gz",
         ],
     )
 
@@ -154,11 +154,11 @@ def _com_google_absl():
     maybe(
         http_archive,
         name = "com_google_absl",
-        sha256 = "987ce98f02eefbaf930d6e38ab16aa05737234d7afbab2d5c4ea7adbe50c28ed",
+        sha256 = "338420448b140f0dfd1a1ea3c3ce71b3bc172071f24f4d9a57d59b45037da440",
         type = "tar.gz",
-        strip_prefix = "abseil-cpp-20230802.1",
+        strip_prefix = "abseil-cpp-20240116.0",
         urls = [
-            "https://github.com/abseil/abseil-cpp/archive/refs/tags/20230802.1.tar.gz",
+            "https://github.com/abseil/abseil-cpp/archive/refs/tags/20240116.0.tar.gz",
         ],
     )
 
@@ -252,10 +252,10 @@ def _rule_python():
     maybe(
         http_archive,
         name = "rules_python",
-        sha256 = "0a8003b044294d7840ac7d9d73eef05d6ceb682d7516781a4ec62eeb34702578",
-        strip_prefix = "rules_python-0.24.0",
+        sha256 = "d71d2c67e0bce986e1c5a7731b4693226867c45bfe0b7c5e0067228a536fc580",
+        strip_prefix = "rules_python-0.29.0",
         urls = [
-            "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.24.0.tar.gz",
+            "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.29.0.tar.gz",
         ],
     )
 
@@ -263,10 +263,10 @@ def _rules_foreign_cc():
     maybe(
         http_archive,
         name = "rules_foreign_cc",
-        sha256 = "476303bd0f1b04cc311fc258f1708a5f6ef82d3091e53fd1977fa20383425a6a",
-        strip_prefix = "rules_foreign_cc-0.10.1",
+        sha256 = "2463288e7b2256a1dc61d62c0f970dcbe5dfc22e90c58e60d3119ce2e47209af",
+        strip_prefix = "rules_foreign_cc-c2e097455d2bbf92b2ae71611d1261ba79eb8aa8",
         urls = [
-            "https://github.com/bazelbuild/rules_foreign_cc/archive/refs/tags/0.10.1.tar.gz",
+            "https://github.com/bazelbuild/rules_foreign_cc/archive/c2e097455d2bbf92b2ae71611d1261ba79eb8aa8.tar.gz",
         ],
     )
 

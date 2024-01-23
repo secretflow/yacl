@@ -45,11 +45,11 @@ TEST_P(SgrrParamTest, SemiHonestWorks) {
   std::vector<uint128_t> send_out(n);
   std::vector<uint128_t> recv_out(n);
 
-  std::future<void> sender = std::async([&] {
+  std::future<void> receiver = std::async([&] {
     SgrrOtExtRecv(lctxs[0], std::move(base_ot.recv), n, index,
                   absl::MakeSpan(recv_out), false);
   });
-  std::future<void> receiver = std::async([&] {
+  std::future<void> sender = std::async([&] {
     SgrrOtExtSend(lctxs[1], std::move(base_ot.send), n,
                   absl::MakeSpan(send_out), false);
   });
@@ -79,11 +79,11 @@ TEST_P(SgrrParamTest, MaliciousWorks) {
   std::vector<uint128_t> send_out(n);
   std::vector<uint128_t> recv_out(n);
 
-  std::future<void> sender = std::async([&] {
+  std::future<void> receiver = std::async([&] {
     SgrrOtExtRecv(lctxs[0], std::move(base_ot.recv), n, index,
                   absl::MakeSpan(recv_out), true);
   });
-  std::future<void> receiver = std::async([&] {
+  std::future<void> sender = std::async([&] {
     SgrrOtExtSend(lctxs[1], std::move(base_ot.send), n,
                   absl::MakeSpan(send_out), true);
   });
@@ -92,6 +92,88 @@ TEST_P(SgrrParamTest, MaliciousWorks) {
 
   EXPECT_EQ(send_out.size(), n);
   EXPECT_EQ(recv_out.size(), n);
+
+  for (size_t i = 0; i < n; ++i) {
+    if (index != i) {
+      EXPECT_NE(recv_out[i], 0);
+      EXPECT_EQ(send_out[i], recv_out[i]);
+    } else {
+      EXPECT_EQ(0, recv_out[i]);
+    }
+  }
+}
+
+TEST_P(SgrrParamTest, SemiHonestFixedIndextWorks) {
+  size_t n = GetParam().n;
+
+  auto lctxs = link::test::SetupWorld(2);
+  auto ot_num = math::Log2Ceil(n);
+  auto index = RandInRange(n);
+  dynamic_bitset<uint128_t> choices;
+  choices.append(index);
+  choices.resize(ot_num);
+  auto base_ot = MockRots(ot_num, choices);  // mock many base OTs
+
+  // SPDLOG_INFO("index is {}", index);
+
+  std::vector<uint128_t> send_out(n);
+  std::vector<uint128_t> recv_out(n);
+
+  std::future<void> receiver = std::async([&] {
+    SgrrOtExtRecv_fixed_index(lctxs[0], std::move(base_ot.recv), n,
+                              absl::MakeSpan(recv_out));
+  });
+  std::future<void> sender = std::async([&] {
+    SgrrOtExtSend_fixed_index(lctxs[1], std::move(base_ot.send), n,
+                              absl::MakeSpan(send_out));
+  });
+  sender.get();
+  receiver.get();
+
+  for (size_t i = 0; i < n; ++i) {
+    if (index != i) {
+      EXPECT_NE(recv_out[i], 0);
+      EXPECT_EQ(send_out[i], recv_out[i]);
+    } else {
+      EXPECT_EQ(0, recv_out[i]);
+    }
+  }
+}
+
+TEST_P(SgrrParamTest, MaliciousFixedIndextWorks) {
+  size_t n = GetParam().n;
+
+  auto lctxs = link::test::SetupWorld(2);
+  auto ot_num = math::Log2Ceil(n);
+  auto index = RandInRange(n);
+  dynamic_bitset<uint128_t> choices;
+  choices.append(index);
+  choices.resize(ot_num);
+  auto base_ot = MockRots(ot_num, choices);  // mock many base OTs
+
+  // SPDLOG_INFO("index is {}", index);
+
+  std::vector<uint128_t> send_out(n);
+  std::vector<uint128_t> recv_out(n);
+
+  std::future<void> receiver = std::async([&] {
+    auto recv_buf = lctxs[0]->Recv(lctxs[0]->NextRank(), "SGRR_OTE:RECV-CORR");
+    YACL_ENFORCE(recv_buf.size() ==
+                 static_cast<int64_t>(SgrrOtExtHelper(n, true)));
+    SgrrOtExtRecv_fixed_index(
+        std::move(base_ot.recv), n, absl::MakeSpan(recv_out),
+        absl::MakeSpan(recv_buf.data<const uint8_t>(), recv_buf.size()), true);
+  });
+  std::future<void> sender = std::async([&] {
+    auto send_buf = Buffer(SgrrOtExtHelper(n, true));
+    SgrrOtExtSend_fixed_index(
+        std::move(base_ot.send), n, absl::MakeSpan(send_out),
+        absl::MakeSpan(send_buf.data<uint8_t>(), send_buf.size()), true);
+    lctxs[1]->SendAsync(lctxs[1]->NextRank(), ByteContainerView(send_buf),
+                        "SGRR_OTE:SEND-CORR");
+  });
+  sender.get();
+  receiver.get();
 
   for (size_t i = 0; i < n; ++i) {
     if (index != i) {

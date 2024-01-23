@@ -35,12 +35,13 @@ TEST(OpensslTest, ShouldWork) {
   // initialize a provider that was previously added with
   auto prov = openssl::UniqueProv(
       OSSL_PROVIDER_load(libctx.get(), GetProviderPath().c_str()));
-  YACL_ENFORCE(prov != nullptr);
+  YACL_ENFORCE(prov != nullptr, ERR_error_string(ERR_get_error(), nullptr));
 
   // get provider's entropy source EVP_RAND* rand;
-  auto yes = EVP_RAND_fetch(libctx.get(), "Yes",
-                            nullptr); /* yes = yacl entropy source */
-  YACL_ENFORCE(yes != nullptr);
+  auto* yes = EVP_RAND_fetch(libctx.get(), "Yes",
+                             nullptr); /* yes = yacl entropy source */
+
+  YACL_ENFORCE(yes != nullptr, ERR_error_string(ERR_get_error(), nullptr));
   auto* yes_ctx = EVP_RAND_CTX_new(yes, nullptr);
   YACL_ENFORCE(yes_ctx != nullptr);
   EVP_RAND_instantiate(yes_ctx, 128, 0, nullptr, 0, nullptr);
@@ -73,69 +74,68 @@ TEST(OpensslTest, ShouldWork) {
   EVP_RAND_CTX_free(rctx);
 }
 
-// //   https://www.openssl.org/docs/man3.0/man7/EVP_RAND-SEED-SRC.html
-// TEST(OpensslTest, Example1) {
-//   EVP_RAND* rand;
-//   EVP_RAND_CTX* seed;
-//   EVP_RAND_CTX* rctx;
-//   unsigned char bytes[100];
-//   OSSL_PARAM params[2];
-//   OSSL_PARAM* p = params;
-//   unsigned int strength = 128;
+//   https://www.openssl.org/docs/man3.0/man7/EVP_RAND-SEED-SRC.html
+TEST(OpensslTest, Example1) {
+  EVP_RAND* rand;
+  EVP_RAND_CTX* seed;
+  EVP_RAND_CTX* rctx;
+  unsigned char bytes[100];
+  OSSL_PARAM params[2];
+  OSSL_PARAM* p = params;
+  unsigned int strength = 128;
 
-//   /* Create a seed source */
-//   rand = EVP_RAND_fetch(nullptr, "SEED-SRC", nullptr);
-//   seed = EVP_RAND_CTX_new(rand, nullptr);
-//   EVP_RAND_instantiate(seed, 128, 0, nullptr, 0, nullptr);
+  /* Create a seed source */
+  rand = EVP_RAND_fetch(nullptr, "SEED-SRC", nullptr);
+  seed = EVP_RAND_CTX_new(rand, nullptr);
+  EVP_RAND_instantiate(seed, 128, 0, nullptr, 0, nullptr);
 
-//   /* Feed this into a DRBG */
-//   auto* tmp = EVP_RAND_fetch(nullptr, "CTR-DRBG", nullptr);
-//   // EVP_RAND_CTX_new() creates a new context for the RAND implementation
-//   rand.
-//   // If not NULL, parent specifies the seed source for this implementation.
-//   rctx = EVP_RAND_CTX_new(tmp, seed);
-//   YACL_ENFORCE(rctx != nullptr);
+  /* Feed this into a DRBG */
+  auto* tmp = EVP_RAND_fetch(nullptr, "CTR-DRBG", nullptr);
+  // EVP_RAND_CTX_new() creates a new context for the RAND implementation rand.
+  // If not NULL, parent specifies the seed source for this implementation.
+  rctx = EVP_RAND_CTX_new(tmp, seed);
+  YACL_ENFORCE(rctx != nullptr);
 
-//   /* Configure the DRBG */
-//   *p++ = OSSL_PARAM_construct_utf8_string(OSSL_DRBG_PARAM_CIPHER,
-//                                           (char*)"AES-256-CTR", 0);
-//   *p = OSSL_PARAM_construct_end();
-//   EVP_RAND_instantiate(rctx, strength, 0, nullptr, 0, params);
+  /* Configure the DRBG */
+  *p++ = OSSL_PARAM_construct_utf8_string(OSSL_DRBG_PARAM_CIPHER,
+                                          (char*)"AES-256-CTR", 0);
+  *p = OSSL_PARAM_construct_end();
+  EVP_RAND_instantiate(rctx, strength, 0, nullptr, 0, params);
 
-//   int ret =
-//       EVP_RAND_generate(rctx, bytes, sizeof(bytes), strength, 0, nullptr, 0);
-//   EXPECT_EQ(ret, 1);
+  int ret =
+      EVP_RAND_generate(rctx, bytes, sizeof(bytes), strength, 0, nullptr, 0);
+  EXPECT_EQ(ret, 1);
 
-//   EVP_RAND_free(rand);
-//   EVP_RAND_free(tmp);
-//   EVP_RAND_CTX_free(rctx);
-//   EVP_RAND_CTX_free(seed);
-// }
+  EVP_RAND_free(rand);
+  EVP_RAND_free(tmp);
+  EVP_RAND_CTX_free(rctx);
+  EVP_RAND_CTX_free(seed);
+}
 
-// // https://www.openssl.org/docs/man3.0/man7/EVP_RAND-CTR-DRBG.html
-// TEST(OpensslTest, Example2) {
-//   EVP_RAND* rand;
-//   EVP_RAND_CTX* rctx;
-//   unsigned char bytes[100];
-//   OSSL_PARAM params[2];
-//   OSSL_PARAM* p = params;
-//   unsigned int strength = 128;
+// https://www.openssl.org/docs/man3.0/man7/EVP_RAND-CTR-DRBG.html
+TEST(OpensslTest, Example2) {
+  EVP_RAND* rand;
+  EVP_RAND_CTX* rctx;
+  unsigned char bytes[100];
+  OSSL_PARAM params[2];
+  OSSL_PARAM* p = params;
+  unsigned int strength = 128;
 
-//   rand = EVP_RAND_fetch(nullptr, "CTR-DRBG", nullptr);
-//   rctx = EVP_RAND_CTX_new(rand, nullptr);
+  rand = EVP_RAND_fetch(nullptr, "CTR-DRBG", nullptr);
+  rctx = EVP_RAND_CTX_new(rand, nullptr);
 
-//   *p++ = OSSL_PARAM_construct_utf8_string(OSSL_DRBG_PARAM_CIPHER,
-//                                           (char*)"AES-256-CTR", 0);
-//   *p = OSSL_PARAM_construct_end();
-//   int ret0 = EVP_RAND_instantiate(rctx, strength, 0, nullptr, 0, params);
-//   EXPECT_EQ(ret0, 1);
+  *p++ = OSSL_PARAM_construct_utf8_string(OSSL_DRBG_PARAM_CIPHER,
+                                          (char*)"AES-256-CTR", 0);
+  *p = OSSL_PARAM_construct_end();
+  int ret0 = EVP_RAND_instantiate(rctx, strength, 0, nullptr, 0, params);
+  EXPECT_EQ(ret0, 1);
 
-//   int ret1 =
-//       EVP_RAND_generate(rctx, bytes, sizeof(bytes), strength, 0, nullptr, 0);
-//   EXPECT_EQ(ret1, 1);
+  int ret1 =
+      EVP_RAND_generate(rctx, bytes, sizeof(bytes), strength, 0, nullptr, 0);
+  EXPECT_EQ(ret1, 1);
 
-//   EVP_RAND_free(rand);
-//   EVP_RAND_CTX_free(rctx);
-// }
+  EVP_RAND_free(rand);
+  EVP_RAND_CTX_free(rctx);
+}
 
 }  // namespace yacl::crypto

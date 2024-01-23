@@ -29,7 +29,6 @@ yacl_cc_library(
         "//yacl/crypto/utils:rand",
         "//yacl/crypto/utils:secparam",
         "//yacl/math:gadget",
-        "//yacl/math/f2k",
         "//yacl/utils:serialize",
     ],
 )
@@ -48,18 +47,17 @@ yacl_cc_test(
 )
 
 yacl_cc_library(
-    name = "sparse_vole",
-    srcs = ["sparse_vole.cc"],
-    hdrs = ["sparse_vole.h"],
+    name = "mp_vole",
+    hdrs = ["mp_vole.h"],
     copts = AES_COPT_FLAGS,
     deps = [
         "//yacl/base:aligned_vector",
         "//yacl/base:dynamic_bitset",
         "//yacl/base:int128",
-        "//yacl/crypto/primitives/ot:ferret_ote",
+        "//yacl/crypto/base/hash:hash_utils",
+        "//yacl/crypto/primitives/dpf:mpfss",
         "//yacl/crypto/primitives/ot:ot_store",
-        "//yacl/crypto/primitives/ot:sgrr_ote",
-        "//yacl/crypto/primitives/ot:softspoken_ote",
+        "//yacl/crypto/tools:common",
         "//yacl/crypto/utils:rand",
         "//yacl/crypto/utils:secparam",
         "//yacl/math:gadget",
@@ -69,11 +67,11 @@ yacl_cc_library(
 )
 
 yacl_cc_test(
-    name = "sparse_vole_test",
-    srcs = ["sparse_vole_test.cc"],
+    name = "mp_vole_test",
+    srcs = ["mp_vole_test.cc"],
     copts = AES_COPT_FLAGS,
     deps = [
-        ":sparse_vole",
+        ":mp_vole",
         "//yacl/crypto/utils:rand",
         "//yacl/link:test_util",
         "//yacl/math:gadget",
@@ -88,19 +86,17 @@ yacl_cc_library(
     copts = AES_COPT_FLAGS,
     deps = [
         ":base_vole",
-        ":sparse_vole",
+        ":mp_vole",
         "//yacl/base:aligned_vector",
         "//yacl/base:dynamic_bitset",
         "//yacl/base:int128",
         "//yacl/crypto/primitives/code:code_interface",
         "//yacl/crypto/primitives/code:ea_code",
         "//yacl/crypto/primitives/code:silver_code",
-        "//yacl/crypto/primitives/ot:ferret_ote",
         "//yacl/crypto/primitives/ot:ot_store",
         "//yacl/crypto/primitives/ot:softspoken_ote",
         "//yacl/crypto/utils:secparam",
         "//yacl/link:context",
-        "//yacl/math:gadget",
     ],
 )
 
@@ -126,7 +122,6 @@ yacl_cc_binary(
     deps = [
         ":base_vole",
         ":silent_vole",
-        ":sparse_vole",
         "//yacl/crypto/utils:rand",
         "//yacl/link:test_util",
         "@com_github_google_benchmark//:benchmark_main",

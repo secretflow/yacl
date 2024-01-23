@@ -57,6 +57,7 @@ yacl_cc_library(
     deps = [
         "//yacl/base:exception",
         "//yacl/base:int128",
+        "//yacl/math:gadget",
     ],
 )
 

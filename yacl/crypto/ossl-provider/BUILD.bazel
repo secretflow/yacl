@@ -57,6 +57,8 @@ yacl_cc_library(
     name = "provider",
     srcs = [
         "provider.cc",
+    ],
+    hdrs = [
         "rand_impl.h",
         "version.h",
     ],
