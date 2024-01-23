@@ -1,17 +1,3 @@
-diff --git a/gzlib.c b/gzlib.c
-index 29fc448..9bbf509 100644
---- a/gzlib.c
-+++ b/gzlib.c
-@@ -579,4 +579,9 @@ unsigned ZLIB_INTERNAL gz_intmax(void) {
-     } while (p > q);
-     return q >> 1;
- }
-+#else
-+unsigned ZLIB_INTERNAL gz_intmax()
-+{
-+    return INT_MAX;
-+}
- #endif
 diff --git a/CMakeLists.txt b/CMakeLists.txt
 index 7f1b69f..7bd357b 100644
 --- a/CMakeLists.txt
