@@ -129,7 +129,7 @@ def _com_github_madler_zlib():
         name = "zlib",
         build_file = "@yacl//bazel:zlib.BUILD",
         strip_prefix = "zlib-1.3",
-        sha256 = "9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23",
+        sha256 = "17e88863f3600672ab49182f217281b6fc4d3c762bde361935e436a95214d05c",
         type = ".tar.gz",
         patch_args = ["-p1"],
         patches = ["@yacl//bazel:patches/zlib.patch"],
