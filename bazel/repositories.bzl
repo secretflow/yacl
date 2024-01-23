@@ -134,7 +134,7 @@ def _com_github_madler_zlib():
         patch_args = ["-p1"],
         patches = ["@yacl//bazel:patches/zlib.patch"],
         urls = [
-            "https://github.com/madler/zlib/archive/refs/tags/v1.3.tar.gz",
+            "https://github.com/madler/zlib/archive/refs/tags/v1.3.1.tar.gz",
         ],
     )
 
