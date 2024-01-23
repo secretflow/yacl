@@ -21,12 +21,6 @@
 #include <unordered_set>
 #include <utility>
 
-#include "yacl/crypto/base/hash/hash_utils.h"
-#include "yacl/crypto/primitives/ot/base_ot.h"
-#include "yacl/crypto/primitives/ot/iknp_ote.h"
-#include "yacl/crypto/primitives/ot/kkrt_ote.h"
-#include "yacl/crypto/utils/rand.h"
-#include "yacl/math/gadget.h"
 #include "yacl/utils/serialize.h"
 
 namespace yacl::crypto {
@@ -48,16 +42,9 @@ static std::mt19937 gen(rd());
 
 struct U128Hasher {
   size_t operator()(const uint128_t& x) const {
-    return yacl::math::UniversalHash<uint64_t>(
-        1, absl::MakeSpan(reinterpret_cast<const uint64_t*>(&x),
-                          sizeof x / sizeof(uint64_t)));
-  }
-
-  static uint64_t CRHash(const uint128_t& x) {
-    auto hash =
-        Blake3(absl::MakeSpan(reinterpret_cast<const uint8_t*>(&x), sizeof x));
-    uint64_t ret;
-    std::memcpy(&ret, hash.data(), sizeof ret);
+    auto hash = Blake3_128({&x, sizeof x});
+    size_t ret;
+    std::memcpy(&ret, &hash, 1);
     return ret;
   }
 };
@@ -67,7 +54,7 @@ auto HashInputs(const std::vector<uint128_t>& elem_hashes, size_t count) {
   std::vector<std::vector<uint128_t>> hashing(num_bins);
   for (auto elem : elem_hashes) {
     auto hash = U128Hasher{}(elem);
-    hashing[hash % num_bins].push_back(elem);
+    hashing[hash % num_bins].emplace_back(elem);
   }
   return hashing;
 }
@@ -148,14 +135,14 @@ void KrtwPsuSend(const std::shared_ptr<yacl::link::Context>& ctx,
       std::vector<uint64_t> coeffs(BIN_SIZE);
       auto buf = ctx->Recv(ctx->PrevRank(), "Receive coefficients");
       std::memcpy(coeffs.data(), buf.data(), buf.size());
-      auto y = Evaluate(coeffs, U128Hasher::CRHash(elem)) ^ eval;
+      auto y = Evaluate(coeffs, U128Hasher{}(elem)) ^ eval;
       ctx->SendAsync(ctx->NextRank(), SerializeUint128(y), "Send evaluation");
     }
   }
 
-  // Step 4. Send new elements through OT
+  // Step 4. Sends new elements through OT
   std::vector<std::array<uint128_t, 2>> keys(num_ot);
-  choice = RandBits(NUM_BASE_OT);
+  choice = SecureRandBits(NUM_BASE_OT);
   base_ot = BaseOtRecv(ctx, choice, NUM_BASE_OT);
   IknpOtExtSend(ctx, base_ot, absl::MakeSpan(keys));
   std::vector<uint128_t> ciphers(num_ot);
@@ -205,7 +192,7 @@ std::vector<uint128_t> KrtwPsuRecv(
       auto seed = FastRandU64();
       std::vector<uint64_t> xs(BIN_SIZE), ys(BIN_SIZE);
       for (size_t i{}; i != BIN_SIZE; ++i) {
-        xs[i] = (i < bin_size   ? U128Hasher::CRHash(hashing[bin_idx][i])
+        xs[i] = (i < bin_size   ? U128Hasher{}(hashing[bin_idx][i])
                  : i > bin_size ? FastRandU64()
                                 : BOT);
         ys[i] = oprf->Eval(oprf_idx, xs[i]) ^ seed;
@@ -219,7 +206,7 @@ std::vector<uint128_t> KrtwPsuRecv(
     }
   }
 
-  // Step 4. Receive new elements through OT
+  // Step 4. Receives new elements through OT
   std::vector<uint128_t> keys(num_ot);
   base_ot = BaseOtSend(ctx, NUM_BASE_OT);
   IknpOtExtRecv(ctx, base_ot, ot_choice, absl::MakeSpan(keys));

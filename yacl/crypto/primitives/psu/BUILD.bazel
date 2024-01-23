@@ -34,7 +34,7 @@ yacl_cc_library(
         "//yacl/crypto/primitives/ot:kkrt_ote",
         "//yacl/crypto/utils:rand",
         "//yacl/link",
-        "//yacl/math:gadget",
+        "//yacl/math/f2k",
         "@com_google_absl//absl/types:span",
     ],
 )
