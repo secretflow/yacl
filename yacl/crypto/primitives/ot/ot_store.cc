@@ -40,7 +40,7 @@ void SliceBase::ConsistencyCheck() const {
   YACL_ENFORCE(internal_buf_size_ >= internal_use_size_,
                "Buffer size should great or equal to slice size, got {} >= {}",
                internal_buf_size_, internal_use_size_);
-  YACL_ENFORCE(internal_buf_size_ > internal_buf_ctr_, "Slice out of range!");
+  YACL_ENFORCE(internal_buf_size_ >= internal_buf_ctr_, "Slice out of range!");
 }
 
 void SliceBase::InitCtrs(uint64_t use_ctr, uint64_t use_size, uint64_t buf_ctr,
