@@ -24,7 +24,6 @@
 
 /* submodules */
 #include "yacl/crypto/base/aes/aes_opt.h"
-#include "yacl/crypto/primitives/ot/gywz_ote.h"
 #include "yacl/crypto/primitives/ot/ot_store.h"
 #include "yacl/crypto/tools/crhash.h"
 #include "yacl/crypto/tools/prg.h"
