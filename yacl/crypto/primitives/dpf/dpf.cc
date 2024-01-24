@@ -138,7 +138,7 @@ void DpfContext::Gen(DpfKey& first_key, DpfKey& second_key, DpfInStore alpha,
   DpfOutStore prg0 = DpfPRG(seeds_working[0]);
   DpfOutStore prg1 = DpfPRG(seeds_working[1]);
 
-  // if enable_evalall, we have only one last_cw_vec, otherwise, we
+  // if !enable_evalall, we have only one last_cw_vec, otherwise, we
   // have multiple last_cw_vec
   YACL_ENFORCE(first_key.last_cw_vec.empty());
   YACL_ENFORCE(second_key.last_cw_vec.empty());
@@ -180,7 +180,7 @@ void DpfContext::Gen(DpfKey& first_key, DpfKey& second_key, DpfInStore alpha,
     }
   }
   // return {std::move(first_key), std::move(second_key)};
-}  // namespace flcrypto
+}
 
 DpfOutStore DpfContext::Eval(DpfKey& key, DpfInStore x) {
   YACL_ENFORCE(this->in_bitnum_ > log2(x));
