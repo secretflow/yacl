@@ -213,7 +213,7 @@ TEST_F(MPIntFieldTest, VectorIoWorks) {
 
   // subspan
   auto item1 = Item::Take<MPInt>({0_mp, 1_mp, 2_mp, 3_mp});
-  auto item2 = item1.SubSpan<MPInt>(0, 1);
+  auto item2 = item1.SubItem<MPInt>(0, 1);
   ASSERT_TRUE(item2.IsView());
   ASSERT_FALSE(item2.IsReadOnly());
   ASSERT_TRUE(item2.WrappedTypeIs<absl::Span<MPInt>>());
