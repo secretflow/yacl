@@ -86,6 +86,8 @@ uint128_t inline GfMul(uint64_t a, uint128_t b) {
 //   f2k-Universal Hash
 // ------------------------
 
+// see difference between universal hash and collision-resistent hash functions:
+// https://crypto.stackexchange.com/a/88247/61581
 template <typename T>
 T UniversalHash(T seed, absl::Span<const T> data) {
   T ret = 0;
