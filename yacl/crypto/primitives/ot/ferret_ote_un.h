@@ -173,7 +173,7 @@ inline void MpCotUNRecv(const std::shared_ptr<link::Context>& ctx,
     r[i].resize(spcot_range_n);
 
     auto cot_slice = cot.Slice(slice_begin, slice_begin + spot_option);
-    GywzOtExtRecv(ctx, cot_slice, spcot_range_n, spcot_idx, 
+    GywzOtExtRecv(ctx, cot_slice, spcot_range_n, spcot_idx,
                   absl::MakeSpan(r[i]));
     slice_begin += spot_option;
   }
