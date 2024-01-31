@@ -20,6 +20,7 @@
 #include "yacl/io/msgpack/spec_traits.h"
 #include "yacl/math/galois_field/gf_spi.h"
 #include "yacl/utils/parallel.h"
+#include "yacl/utils/spi/sketch/scalar_define.h"
 
 namespace yacl::math {
 
@@ -85,28 +86,6 @@ class GFScalarSketch : public GaloisField {
   virtual T DeserializeT(ByteContainerView buffer) const = 0;
 
  private:
-#define DefineBoolUnaryFunc(FuncName)                                     \
-  Item FuncName(const Item& x) const override {                           \
-    if (x.IsArray()) {                                                    \
-      auto xsp = x.AsSpan<T>();                                           \
-      /* std::vector<bool> cannot write in parallel */                    \
-      std::vector<uint8_t> res;                                           \
-      res.resize(xsp.length());                                           \
-      yacl::parallel_for(0, xsp.length(), [&](int64_t beg, int64_t end) { \
-        for (int64_t i = beg; i < end; ++i) {                             \
-          res[i] = FuncName(xsp[i]);                                      \
-        }                                                                 \
-      });                                                                 \
-      /* convert std::vector<uint8_t> to std::vector<bool> */             \
-      std::vector<bool> bv;                                               \
-      bv.resize(res.size());                                              \
-      std::copy(res.begin(), res.end(), bv.begin());                      \
-      return Item::Take(std::move(bv));                                   \
-    } else {                                                              \
-      return FuncName(x.As<T>());                                         \
-    }                                                                     \
-  }
-
   // if x is scalar, returns bool
   // if x is vectored, returns std::vector<bool>
   DefineBoolUnaryFunc(IsIdentityOne);
@@ -151,39 +130,6 @@ class GFScalarSketch : public GaloisField {
   //   operations defined on set    //
   //================================//
 
-#define DefineUnaryFunc(FuncName)                                         \
-  Item FuncName(const Item& x) const override {                           \
-    using RES_T = decltype(FuncName(std::declval<const T>()));            \
-                                                                          \
-    if (x.IsArray()) {                                                    \
-      auto xsp = x.AsSpan<T>();                                           \
-      std::vector<RES_T> res;                                             \
-      res.resize(xsp.length());                                           \
-      yacl::parallel_for(0, xsp.length(), [&](int64_t beg, int64_t end) { \
-        for (int64_t i = beg; i < end; ++i) {                             \
-          res[i] = FuncName(xsp[i]);                                      \
-        }                                                                 \
-      });                                                                 \
-      return Item::Take(std::move(res));                                  \
-    } else {                                                              \
-      return FuncName(x.As<T>());                                         \
-    }                                                                     \
-  }
-
-#define DefineUnaryInplaceFunc(FuncName)                                  \
-  void FuncName(Item* x) const override {                                 \
-    if (x->IsArray()) {                                                   \
-      auto xsp = x->AsSpan<T>();                                          \
-      yacl::parallel_for(0, xsp.length(), [&](int64_t beg, int64_t end) { \
-        for (int64_t i = beg; i < end; ++i) {                             \
-          FuncName(&xsp[i]);                                              \
-        }                                                                 \
-      });                                                                 \
-    } else {                                                              \
-      FuncName(x->As<T*>());                                              \
-    }                                                                     \
-  }
-
   // get the additive inverse −a for all elements in set
   DefineUnaryFunc(Neg);
   DefineUnaryInplaceFunc(NegInplace);
@@ -191,65 +137,6 @@ class GFScalarSketch : public GaloisField {
   // get the multiplicative inverse 1/b for every nonzero element in set
   DefineUnaryFunc(Inv);
   DefineUnaryInplaceFunc(InvInplace);
-
-#define DefineBinaryFunc(FuncName)                                             \
-  Item FuncName(const Item& x, const Item& y) const override {                 \
-    using RES_T =                                                              \
-        decltype(FuncName(std::declval<const T>(), std::declval<const T>()));  \
-                                                                               \
-    switch (x, y) {                                                            \
-      case OperandType::Scalar2Scalar: {                                       \
-        return FuncName(x.As<T>(), y.As<T>());                                 \
-      }                                                                        \
-      case OperandType::Vector2Vector: {                                       \
-        auto xsp = x.AsSpan<T>();                                              \
-        auto ysp = y.AsSpan<T>();                                              \
-        YACL_ENFORCE_EQ(                                                       \
-            xsp.length(), ysp.length(),                                        \
-            "operands must have the same length, x.len={}, y.len={}",          \
-            xsp.length(), ysp.length());                                       \
-                                                                               \
-        std::vector<RES_T> res;                                                \
-        res.resize(xsp.length());                                              \
-        yacl::parallel_for(0, xsp.length(), [&](int64_t beg, int64_t end) {    \
-          for (int64_t i = beg; i < end; ++i) {                                \
-            res[i] = FuncName(xsp[i], ysp[i]);                                 \
-          }                                                                    \
-        });                                                                    \
-        return Item::Take(std::move(res));                                     \
-      }                                                                        \
-      default:                                                                 \
-        YACL_THROW("GFScalarSketch method [{}] doesn't support broadcast now", \
-                   #FuncName);                                                 \
-    }                                                                          \
-  }
-
-#define DefineBinaryInplaceFunc(FuncName)                                      \
-  void FuncName(yacl::Item* x, const yacl::Item& y) const override {           \
-    switch (*x, y) {                                                           \
-      case OperandType::Scalar2Scalar: {                                       \
-        FuncName(x->As<T*>(), y.As<T>());                                      \
-        return;                                                                \
-      }                                                                        \
-      case OperandType::Vector2Vector: {                                       \
-        auto xsp = x->AsSpan<T>();                                             \
-        auto ysp = y.AsSpan<T>();                                              \
-        YACL_ENFORCE_EQ(                                                       \
-            xsp.length(), ysp.length(),                                        \
-            "operands must have the same length, x.len={}, y.len={}",          \
-            xsp.length(), ysp.length());                                       \
-        yacl::parallel_for(0, xsp.length(), [&](int64_t beg, int64_t end) {    \
-          for (int64_t i = beg; i < end; ++i) {                                \
-            FuncName(&xsp[i], ysp[i]);                                         \
-          }                                                                    \
-        });                                                                    \
-        return;                                                                \
-      }                                                                        \
-      default:                                                                 \
-        YACL_THROW("GFScalarSketch method [{}] doesn't support broadcast now", \
-                   #FuncName);                                                 \
-    }                                                                          \
-  }
 
   DefineBinaryFunc(Add);
   DefineBinaryInplaceFunc(AddInplace);
@@ -264,34 +151,11 @@ class GFScalarSketch : public GaloisField {
   DefineBinaryInplaceFunc(DivInplace);
 
   Item Pow(const Item& x, const MPInt& y) const override {
-    if (x.IsArray()) {
-      auto xsp = x.AsSpan<T>();
-      std::vector<T> res;
-      res.resize(xsp.length());
-      yacl::parallel_for(0, xsp.length(), [&](int64_t beg, int64_t end) {
-        for (int64_t i = beg; i < end; ++i) {
-          res[i] = Pow(xsp[i], y);
-        }
-      });
-      return Item::Take(std::move(res));
-    } else {
-      return Pow(x.As<T>(), y);
-    }
+    CallUnaryFunc(Pow, T, x, y);
   }
 
   void PowInplace(Item* x, const MPInt& y) const override {
-    if (x->IsArray()) {
-      auto xsp = x->AsSpan<T>();
-      yacl::parallel_for(0, xsp.length(), [&](int64_t beg, int64_t end) {
-        for (int64_t i = beg; i < end; ++i) {
-          PowInplace(&xsp[i], y);
-        }
-      });
-      return;
-    } else {
-      PowInplace(x->As<T*>(), y);
-      return;
-    }
+    CallUnaryInplaceFunc(PowInplace, T, x, y);
   }
 
   Item Random() const override { return RandomT(); }

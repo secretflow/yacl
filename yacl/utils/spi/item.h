@@ -46,8 +46,11 @@ struct is_container<
 template <typename T>
 constexpr bool is_container_v = is_container<T>::value;
 
+// If T is a reference type, then is_const<T>::value is always false. The
+// proper way to check a potential-reference type for const-ness is to
+// remove the reference: is_const<typename remove_reference<T>::type>
 template <typename T>
-constexpr bool is_const_t =
+constexpr bool is_const_v =
     std::is_const_v<std::remove_pointer_t<std::remove_reference_t<T>>>;
 
 template <class T>
@@ -62,37 +65,34 @@ enum class OperandType : int {
 
 class Item {
  public:
+  // Take or copy scalar
   template <typename T, typename _ = std::enable_if_t<!is_container_v<T>>>
-  /* implicit */ Item(T&& value) : v_(std::forward<T>(value)) {
+  /* implicit */ constexpr Item(T&& value) : v_(std::forward<T>(value)) {
     Setup(false, false, false);
   }
 
+  // Ref a vector/span
   template <typename T, typename _ = std::enable_if_t<is_container_v<T>>>
   static Item Ref(T& c) {
-    Item item;
-    item.v_ = absl::MakeSpan(c);
-    // If T is a reference type then is_const<T>::value is always false. The
-    // proper way to check a potentially-reference type for const-ness is to
-    // remove the reference: is_const<typename remove_reference<T>::type>
-    item.Setup(true, true, is_const_t<decltype(c.data())>);
-    return item;
+    return Item{absl::MakeSpan(c)};
   }
 
   template <typename T>
   static Item Ref(T* ptr, size_t len) {
-    Item item;
-    item.v_ = absl::MakeSpan(ptr, len);
-    item.Setup(true, true, is_const_t<T>);
-    return item;
+    return Item{absl::MakeSpan(ptr, len)};
   }
 
+  // Take vector
   template <typename T>
   static Item Take(std::vector<T>&& v) {
-    Item item;
-    item.v_ = std::move(v);
-    item.Setup(true, false, false);
-    return item;
+    return Item{std::move(v)};
   }
+
+  Item(const Item&) = default;
+  Item(Item&&) = default;
+  Item& operator=(const Item&) = default;
+  Item& operator=(Item&&) = default;
+  virtual ~Item() = default;
 
   template <typename T>
   explicit operator T() const& {
@@ -172,7 +172,7 @@ class Item {
     // const array case
     if (IsReadOnly()) {
       YACL_ENFORCE(
-          is_const_t<T>,
+          is_const_v<T>,
           "This is a read-only item, please use AsSpan<const T> instead");
 
       // const value -> const T
@@ -218,6 +218,22 @@ class Item {
       // non-const value -> const T
       return absl::MakeConstSpan(As<std::vector<RawT>>());
     }
+  }
+
+  template <typename T>
+  absl::Span<T> ResizeAndSpan(size_t expected_size) {
+    auto sp = AsSpan<T>();
+    if (sp.size() == expected_size) {
+      return sp;
+    }
+
+    // size doesn't match, now we try to resize
+    YACL_ENFORCE(IsArray() && !IsView() && !IsReadOnly(),
+                 "Resize item fail, actual size={}, resize={}, item_info: {}",
+                 sp.size(), expected_size, ToString());
+    auto& vec = As<std::vector<T>>();
+    vec.resize(expected_size);
+    return absl::MakeSpan(vec);
   }
 
   bool HasValue() const noexcept { return v_.has_value(); }
@@ -267,24 +283,50 @@ class Item {
 
   // operations only for array
   template <typename T>
-  Item SubSpan(size_t pos, size_t len = absl::Span<T>::npos) {
+  Item SubItem(size_t pos, size_t len = absl::Span<T>::npos) {
     YACL_ENFORCE(IsArray(), "You cannot do slice for scalar value");
 
-    if (IsReadOnly() || is_const_t<T>) {
+    if (IsReadOnly() || is_const_v<T>) {
       // force const
-      return SubConstSpanImpl<remove_cvref_t<T>>(pos, len);
+      return SubConstItemImpl<remove_cvref_t<T>>(pos, len);
     }
 
-    return SubSpanImpl<remove_cvref_t<T>>(pos, len);
+    return SubItemImpl<remove_cvref_t<T>>(pos, len);
   }
 
   template <typename T>
-  Item SubSpan(size_t pos, size_t len = absl::Span<T>::npos) const {
+  Item SubItem(size_t pos, size_t len = absl::Span<T>::npos) const {
     YACL_ENFORCE(IsArray(), "You cannot do slice for scalar value");
-    return SubConstSpanImpl<remove_cvref_t<T>>(pos, len);
+    return SubConstItemImpl<remove_cvref_t<T>>(pos, len);
   }
 
-  std::string ToString() const;
+  virtual std::string ToString() const;
+
+ protected:
+  template <typename T>
+  constexpr explicit Item(const absl::Span<T>& span) : v_(span) {
+    Setup(true, true, is_const_v<T>);
+  }
+
+  template <typename T>
+  constexpr explicit Item(std::vector<T>&& vec) : v_(std::move(vec)) {
+    Setup(true, false, false);
+  }
+
+  template <int slot, int len = 1>
+  constexpr void SetSlot(uint8_t value) {
+    static_assert(slot >= 3 && slot + len <= sizeof(meta_) * 8);
+    constexpr auto mask = ((static_cast<decltype(meta_)>(1) << len) - 1)
+                          << slot;
+    meta_ &= ~mask;  // set target bits to zero
+    meta_ |= ((value << slot) & mask);
+  }
+
+  template <int slot, int len = 1>
+  constexpr uint8_t GetSlot() const {
+    static_assert(slot >= 3 && slot + len <= sizeof(meta_) * 8);
+    return (meta_ >> slot) & ((static_cast<decltype(meta_)>(1) << len) - 1);
+  }
 
  private:
   constexpr Item() {}
@@ -297,9 +339,9 @@ class Item {
 
   // For developer: This is not a const func. DO NOT add const qualifier
   template <typename T>
-  Item SubSpanImpl(size_t pos, size_t len) {
+  Item SubItemImpl(size_t pos, size_t len) {
     YACL_ENFORCE(!IsReadOnly(),
-                 "Cannot make a read-write subspan of a const span");
+                 "Cannot make a read-write sub-item of a const span");
 
     Item item;
     if (IsView()) {
@@ -314,7 +356,7 @@ class Item {
   }
 
   template <typename T>
-  Item SubConstSpanImpl(size_t pos, size_t len) const {
+  Item SubConstItemImpl(size_t pos, size_t len) const {
     Item item;
     if (IsView()) {
       if (IsReadOnly()) {
@@ -352,12 +394,12 @@ class Item {
     return res.load();
   }
 
+  std::any v_;
   // The format of meta:
   // bit 0 -> is array?  0 - scalar; 1 - array
   // bit 1 -> is view ?  0 - hold value;    1 - ref/view
   // bit 2 -> is const?  0 - rw;     1 - read-only
   uint8_t meta_ = 0;
-  std::any v_;
 };
 
 std::ostream& operator<<(std::ostream& os, const Item& a);

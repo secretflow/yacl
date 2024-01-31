@@ -1,4 +1,4 @@
-# Copyright 2023 Ant Group Co., Ltd.
+# Copyright 2024 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,35 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:yacl.bzl", "yacl_cc_binary", "yacl_cc_library", "yacl_cc_test")
+load("//bazel:yacl.bzl", "yacl_cc_library")
 
 package(default_visibility = ["//visibility:public"])
 
 yacl_cc_library(
-    name = "argument",
-    srcs = [
-        "argument.cc",
-    ],
-    hdrs = [
-        "argument.h",
-    ],
+    name = "sketch",
     deps = [
-        ":arg_impl",
+        ":sketch_macros",
     ],
 )
 
 yacl_cc_library(
-    name = "arg_impl",
-    srcs = [
-        "arg_kv.cc",
-        "arg_set.cc",
-    ],
+    name = "sketch_macros",
     hdrs = [
-        "arg_k.h",
-        "arg_kv.h",
-        "arg_set.h",
-    ],
-    deps = [
-        "//yacl/base:exception",
+        "scalar_call.h",
+        "scalar_define.h",
     ],
 )

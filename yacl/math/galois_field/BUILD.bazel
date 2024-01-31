@@ -34,6 +34,7 @@ yacl_cc_library(
         "//yacl/io/msgpack:buffer",
         "//yacl/io/msgpack:spec_traits",
         "//yacl/utils:parallel",
+        "//yacl/utils/spi/sketch",
         "@com_google_absl//absl/types:span",
     ],
 )

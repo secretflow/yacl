@@ -169,7 +169,7 @@ void MpfssSend(const std::shared_ptr<link::Context>& ctx,
   }
   ctx->SendAsync(
       ctx->NextRank(),
-      ByteContainerView(send_msgs.data(), send_msgs.size() * sizeof(uint128_t)),
+      ByteContainerView(send_msgs.data(), send_msgs.size() * sizeof(uint64_t)),
       "MpVole_msg");
 }
 
