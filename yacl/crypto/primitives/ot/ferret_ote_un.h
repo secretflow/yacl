@@ -122,8 +122,7 @@ inline void MpCotUNSend(const std::shared_ptr<link::Context>& ctx,
     const auto spot_option = math::Log2Ceil(spcot_range_n);
 
     s[i].resize(spcot_range_n);
-    auto cot_slice =
-        cot.Slice(slice_begin, slice_begin + spot_option);
+    auto cot_slice = cot.Slice(slice_begin, slice_begin + spot_option);
     GywzOtExtSend(ctx, cot_slice, spcot_range_n, absl::MakeSpan(s[i]));
     slice_begin += spot_option;
   }
@@ -173,9 +172,9 @@ inline void MpCotUNRecv(const std::shared_ptr<link::Context>& ctx,
 
     r[i].resize(spcot_range_n);
 
-    auto cot_slice =
-        cot.Slice(slice_begin, slice_begin + spot_option);
-    GywzOtExtRecv(ctx, cot_slice, spcot_range_n, spcot_idx, absl::MakeSpan(r[i]));
+    auto cot_slice = cot.Slice(slice_begin, slice_begin + spot_option);
+    GywzOtExtRecv(ctx, cot_slice, spcot_range_n, spcot_idx, 
+                  absl::MakeSpan(r[i]));
     slice_begin += spot_option;
   }
 
