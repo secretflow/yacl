@@ -81,7 +81,7 @@ inline std::unique_ptr<FerretSimpleMap> MakeSimpleMap(
 // Multi-Point Correlated OT ("length") Extension Implementation
 //
 // This implementation bases on Ferret, for more theoretical details, see
-// https://eprint.iacr.org/2020/924.pdf, section 4, figure 6.
+// https://eprint.iacr.org/2020/924.pdf, section 4, figure 7.
 //
 //              +---------+    +------------+
 //              |   COT   | => |   MP-COT   |
@@ -122,10 +122,9 @@ inline void MpCotUNSend(const std::shared_ptr<link::Context>& ctx,
     const auto spot_option = math::Log2Ceil(spcot_range_n);
 
     s[i].resize(spcot_range_n);
-    auto cot_slice =
-        cot.Slice(slice_begin, slice_begin + math::Log2Ceil(spcot_range_n));
-    GywzOtExtSend(ctx, cot_slice, spot_option, absl::MakeSpan(s[i]));
-    slice_begin += math::Log2Ceil(spcot_range_n);
+    auto cot_slice = cot.Slice(slice_begin, slice_begin + spot_option);
+    GywzOtExtSend(ctx, cot_slice, spcot_range_n, absl::MakeSpan(s[i]));
+    slice_begin += spot_option;
   }
 
   // calculate the final result for each bin
@@ -173,10 +172,10 @@ inline void MpCotUNRecv(const std::shared_ptr<link::Context>& ctx,
 
     r[i].resize(spcot_range_n);
 
-    auto cot_slice =
-        cot.Slice(slice_begin, slice_begin + math::Log2Ceil(spcot_range_n));
-    GywzOtExtRecv(ctx, cot_slice, spot_option, spcot_idx, absl::MakeSpan(r[i]));
-    slice_begin += math::Log2Ceil(spcot_range_n);
+    auto cot_slice = cot.Slice(slice_begin, slice_begin + spot_option);
+    GywzOtExtRecv(ctx, cot_slice, spcot_range_n, spcot_idx,
+                  absl::MakeSpan(r[i]));
+    slice_begin += spot_option;
   }
 
   // calculate the final result for each (non-empty) bin
