@@ -2,14 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
-> Instruction:
->
-> - Add `[Feature]` prefix for new features
-> - Add `[Bugfix]` prefix for bug fixes
-> - Add `[API]` prefix for API changes
-
-## Staging
+## 2024-02-01
+- [Tag] release/0.4.3
 - [Feature] Add Silent Vole (malicious version)
+- [Bugifx] Multiple bugfixes
 
 ## 2024-01-09
 - [YACL] v0.4.2
