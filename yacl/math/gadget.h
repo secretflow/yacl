@@ -23,13 +23,13 @@
 namespace yacl::math {
 
 inline uint64_t Log2Floor(uint64_t x) {
-  YACL_ENFORCE(x != 0);
+  YACL_ENFORCE(x != 0, "log2(0) is undefined");
   return (8 * sizeof(uint64_t) - absl::countl_zero(x)) - 1;
 }
 
 inline uint64_t Log2Ceil(uint64_t x) {
-  YACL_ENFORCE(x >= 1);
-  return Log2Floor(x - 1) + 1;
+  YACL_ENFORCE(x != 0, "log2(0) is undefined");
+  return x == 1 ? 1 : Log2Floor(x - 1) + 1;
 }
 
 constexpr uint64_t DivCeil(uint64_t x, uint64_t y) {

@@ -29,6 +29,7 @@ void CheckExceptionContains(const std::exception& e,
 
 TEST(Exception, StackTrace) {
   try {
+    EXPECT_FALSE(GetStacktraceString().empty());
     YACL_THROW("test");
   } catch (const Exception& e) {
     // e.g.

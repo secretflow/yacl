@@ -137,8 +137,6 @@ MPInt MPIntField::DeepCopy(const MPInt &x) const { return x; }
 
 std::string MPIntField::ToString(const MPInt &x) const { return x.ToString(); }
 
-Buffer MPIntField::Serialize(const MPInt &x) const { return x.Serialize(); }
-
 size_t MPIntField::Serialize(const MPInt &x, uint8_t *buf,
                              size_t buf_len) const {
   return x.Serialize(buf, buf_len);

@@ -139,7 +139,7 @@ void GywzOtExtRecv(const std::shared_ptr<link::Context>& ctx,
                    absl::Span<uint128_t> output) {
   const uint32_t height = math::Log2Ceil(n);
   YACL_ENFORCE(cot.Size() == height);
-  YACL_ENFORCE_GE(n, (uint32_t)1);
+  YACL_ENFORCE_GT(n, (uint32_t)1);
   YACL_ENFORCE_GT(n, index);
 
   // Convert index into ot choices
@@ -174,7 +174,7 @@ void GywzOtExtSend(const std::shared_ptr<link::Context>& ctx,
                    absl::Span<uint128_t> output) {
   const uint32_t height = math::Log2Ceil(n);
   YACL_ENFORCE(cot.Size() == height);
-  YACL_ENFORCE_GE(n, (uint32_t)1);
+  YACL_ENFORCE_GT(n, (uint32_t)1);
 
   // get delta from cot
   uint128_t delta = cot.GetDelta();
@@ -201,7 +201,7 @@ void GywzOtExtRecv_ferret(const std::shared_ptr<link::Context>& ctx,
                           absl::Span<uint128_t> output) {
   uint32_t height = math::Log2Ceil(n);
   YACL_ENFORCE(cot.Size() == height);
-  YACL_ENFORCE_GE(n, (uint32_t)1);
+  YACL_ENFORCE_GT(n, (uint32_t)1);
   YACL_ENFORCE(cot.Type() == OtStoreType::Compact);
 
   uint32_t index = 0;
@@ -230,7 +230,7 @@ void GywzOtExtSend_ferret(const std::shared_ptr<link::Context>& ctx,
                           absl::Span<uint128_t> output) {
   uint32_t height = math::Log2Ceil(n);
   YACL_ENFORCE(cot.Size() == height);
-  YACL_ENFORCE_GE(n, (uint32_t)1);
+  YACL_ENFORCE_GT(n, (uint32_t)1);
   YACL_ENFORCE(cot.Type() == OtStoreType::Compact);
 
   // get delta from cot
@@ -256,7 +256,7 @@ void GywzOtExtRecv_fixed_index(const std::shared_ptr<link::Context>& ctx,
                                absl::Span<uint128_t> output) {
   const uint32_t height = math::Log2Ceil(n);
   YACL_ENFORCE(cot.Size() == height);
-  YACL_ENFORCE_GE(n, (uint32_t)1);
+  YACL_ENFORCE_GT(n, (uint32_t)1);
 
   auto recv_buf = ctx->Recv(ctx->NextRank(), "GYWZ_OTE: messages");
   YACL_ENFORCE(recv_buf.size() >=
@@ -272,7 +272,7 @@ void GywzOtExtSend_fixed_index(const std::shared_ptr<link::Context>& ctx,
                                absl::Span<uint128_t> output) {
   uint32_t height = math::Log2Ceil(n);
   YACL_ENFORCE(cot.Size() == height);
-  YACL_ENFORCE_GE(n, (uint32_t)1);
+  YACL_ENFORCE_GT(n, (uint32_t)1);
 
   AlignedVector<uint128_t> left_sums(height);
   GywzOtExtSend_fixed_index(cot, n, output, absl::MakeSpan(left_sums));
@@ -288,7 +288,7 @@ void GywzOtExtRecv_fixed_index(const OtRecvStore& cot, uint32_t n,
                                absl::Span<uint128_t> recv_msgs) {
   const uint32_t height = math::Log2Ceil(n);
   YACL_ENFORCE(cot.Size() == height);
-  YACL_ENFORCE_GE(n, (uint32_t)1);
+  YACL_ENFORCE_GT(n, (uint32_t)1);
   YACL_ENFORCE(recv_msgs.size() >= height);
 
   uint32_t index = 0;
@@ -309,7 +309,7 @@ void GywzOtExtSend_fixed_index(const OtSendStore& cot, uint32_t n,
                                absl::Span<uint128_t> send_msgs) {
   uint32_t height = math::Log2Ceil(n);
   YACL_ENFORCE(cot.Size() == height);
-  YACL_ENFORCE_GE(n, (uint32_t)1);
+  YACL_ENFORCE_GT(n, (uint32_t)1);
   YACL_ENFORCE(send_msgs.size() >= height);
 
   uint128_t delta = cot.GetDelta();
