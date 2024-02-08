@@ -16,11 +16,10 @@
 
 #include <cstdint>
 
-#include "yacl/io/msgpack/buffer.h"
-#include "yacl/io/msgpack/spec_traits.h"
 #include "yacl/math/galois_field/gf_spi.h"
 #include "yacl/utils/parallel.h"
 #include "yacl/utils/spi/sketch/scalar_define.h"
+#include "yacl/utils/spi/sketch/scalar_tools.h"
 
 namespace yacl::math {
 
@@ -77,7 +76,6 @@ class GFScalarSketch : public GaloisField {
   // To human-readable string
   virtual std::string ToString(const T& x) const = 0;
 
-  virtual Buffer Serialize(const T& x) const = 0;
   // serialize field element(s) to already allocated buffer.
   // if buf is nullptr, then calc serialize size only
   // @return: the actual size of serialized buffer
@@ -161,8 +159,7 @@ class GFScalarSketch : public GaloisField {
   Item Random() const override { return RandomT(); }
 
   Item Random(size_t count) const override {
-    std::vector<T> res;
-    res.resize(count);
+    std::vector<T> res(count);
     yacl::parallel_for(0, count, [&](int64_t beg, int64_t end) {
       for (int64_t i = beg; i < end; ++i) {
         res[i] = RandomT();
@@ -200,93 +197,14 @@ class GFScalarSketch : public GaloisField {
   }
 
   Buffer Serialize(const Item& x) const override {
-    Buffer buf;
-    io::StreamBuffer sbuf(&buf);
-    msgpack::packer<io::StreamBuffer> packer(sbuf);
-
-    if (x.IsArray()) {
-      auto xsp = x.AsSpan<T>();
-      if (xsp.empty()) {
-        packer.pack_array(0);
-        return buf;
-      }
-
-      // reserve space and pack header
-      auto item_size = Serialize(xsp[0], nullptr, 0) + 5;
-      sbuf.Expand(item_size * xsp.length() * 1.1);
-      packer.pack_array(xsp.length());
-
-      // todo: need parallel
-      size_t total_sz = 0;
-      for (size_t i = 0; i < xsp.length(); ++i) {
-        auto body_sz = Serialize(xsp[i], nullptr, 0);
-        total_sz += body_sz;
-        packer.pack_str(body_sz);
-        if (sbuf.FreeSize() < body_sz) {
-          size_t exp_size = (total_sz / (i + 1) + 5) * (xsp.length() - i);
-          sbuf.Expand(std::max(exp_size, body_sz));
-        }
-        body_sz = Serialize(xsp[i], reinterpret_cast<uint8_t*>(sbuf.PosLoc()),
-                            sbuf.FreeSize());
-        sbuf.IncPos(body_sz);
-      }
-      return buf;
-    } else {
-      auto& xt = x.As<T>();
-      auto sz = Serialize(xt, nullptr, 0);
-      sbuf.Expand(sz + 5);
-
-      packer.pack_str(sz);  // pack header and size
-      // write payload
-      auto body_sz = Serialize(xt, reinterpret_cast<uint8_t*>(sbuf.PosLoc()),
-                               sbuf.FreeSize());
-      sbuf.IncPos(body_sz);
-      return buf;
-    }
+    return ScalarSketchTools::Serialize<T>(this, x);
   }
 
   // serialize field element(s) to already allocated buffer.
   // if buf is nullptr, then calc approximate serialize size only
   // @return: the actual size of serialized buffer
   size_t Serialize(const Item& x, uint8_t* buf, size_t buf_len) const override {
-    if (x.IsArray()) {
-      auto xsp = x.AsSpan<T>();
-      if (buf == nullptr) {  // just calc size
-        buf_len = io::msgpack_traits::HeadSizeOfArray(xsp.length());
-        for (size_t i = 0; i < xsp.length(); ++i) {
-          auto body_sz = Serialize(xsp[i], nullptr, 0);
-          buf_len += (body_sz + io::msgpack_traits::HeadSizeOfStr(body_sz));
-        }
-        return buf_len;
-      }
-
-      // actual pack
-      io::FixedBuffer sbuf(reinterpret_cast<char*>(buf), buf_len);
-      msgpack::packer<io::FixedBuffer> packer(sbuf);
-      packer.pack_array(xsp.length());
-      for (size_t i = 0; i < xsp.length(); ++i) {
-        packer.pack_str(Serialize(xsp[i], nullptr, 0));
-        auto body_sz = Serialize(
-            xsp[i], reinterpret_cast<uint8_t*>(sbuf.PosLoc()), sbuf.FreeSize());
-        sbuf.IncPos(body_sz);
-      }
-      return sbuf.WrittenSize();
-    } else {
-      auto& xt = x.As<T>();
-      if (buf == nullptr) {
-        auto body_sz = Serialize(xt, nullptr, 0);
-        return body_sz + io::msgpack_traits::HeadSizeOfStr(body_sz);
-      }
-
-      io::FixedBuffer sbuf(reinterpret_cast<char*>(buf), buf_len);
-      msgpack::packer<io::FixedBuffer> packer(sbuf);
-
-      auto sz = Serialize(xt, nullptr, 0);
-      packer.pack_str(sz);  // pack header and size
-      auto body_sz = Serialize(xt, reinterpret_cast<uint8_t*>(sbuf.PosLoc()),
-                               sbuf.FreeSize());
-      return sbuf.WrittenSize() + body_sz;
-    }
+    return ScalarSketchTools::Serialize<T>(this, x, buf, buf_len);
   }
 
   Item Deserialize(ByteContainerView buffer) const override {

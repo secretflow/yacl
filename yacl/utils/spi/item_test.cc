@@ -25,6 +25,7 @@ TEST(ItemTest, RefRW) {
   EXPECT_TRUE(item.IsArray());
   EXPECT_TRUE(item.IsView());
   EXPECT_FALSE(item.IsReadOnly());
+  EXPECT_EQ(item.Size<int>(), 3);
 
   auto v_ref = item.AsSpan<int>();
   v_ref[1] = 10;
@@ -40,6 +41,7 @@ TEST(ItemTest, RefRW) {
   EXPECT_TRUE(s_item.IsArray());
   EXPECT_TRUE(s_item.IsView());
   EXPECT_FALSE(s_item.IsReadOnly());
+  EXPECT_EQ(s_item.Size<int>(), 2);
 
   auto s_ref = s_item.AsSpan<int>();
   s_ref[1] = 100;
@@ -54,6 +56,7 @@ TEST(ItemTest, RefRW) {
   EXPECT_TRUE(c_item.IsArray());
   EXPECT_TRUE(c_item.IsView());
   EXPECT_TRUE(c_item.IsReadOnly());
+  EXPECT_EQ(c_item.Size<int>(), 2);
 
   // Exception: This is a read-only item, please use AsSpan<const T> instead
   EXPECT_ANY_THROW(c_item.AsSpan<int>());
@@ -72,6 +75,7 @@ TEST(ItemTest, RefRO) {
   EXPECT_TRUE(item.IsArray());
   EXPECT_TRUE(item.IsView());
   EXPECT_TRUE(item.IsReadOnly());
+  EXPECT_EQ(item.Size<int>(), 3);
 
   // Exception: This is a read-only item, please use AsSpan<const T> instead
   EXPECT_ANY_THROW(item.AsSpan<int>());
@@ -89,6 +93,7 @@ TEST(ItemTest, RefRO) {
   EXPECT_TRUE(s_item.IsArray());
   EXPECT_TRUE(s_item.IsView());
   EXPECT_TRUE(s_item.IsReadOnly());
+  EXPECT_EQ(s_item.Size<int>(), 2);
   // Exception: This is a read-only item, please use AsSpan<const T> instead
   EXPECT_ANY_THROW(s_item.AsSpan<int>());
   auto s_ref = s_item.AsSpan<const int>();
@@ -98,6 +103,7 @@ TEST(ItemTest, RefRO) {
   EXPECT_TRUE(s_item2.IsArray());
   EXPECT_TRUE(s_item2.IsView());
   EXPECT_TRUE(s_item2.IsReadOnly());
+  EXPECT_EQ(s_item2.Size<int>(), 1);
   auto s_ref2 = s_item2.AsSpan<int>();
   EXPECT_EQ(s_ref2[0], 3);
 }
@@ -108,22 +114,26 @@ TEST(ItemTest, RefPtr) {
   EXPECT_TRUE(item.IsArray());
   EXPECT_TRUE(item.IsView());
   EXPECT_FALSE(item.IsReadOnly());
+  EXPECT_EQ(item.Size<int>(), 3);
 
   const int arr2[] = {1, 2, 3};
   item = Item::Ref(arr2, 3);
   EXPECT_TRUE(item.IsArray());
   EXPECT_TRUE(item.IsView());
   EXPECT_TRUE(item.IsReadOnly());
+  EXPECT_EQ(item.Size<int>(), 3);
 }
 
 TEST(ItemTest, ResizeAndSpan) {
   auto item = Item::Take(std::vector<int>());
   EXPECT_EQ(item.AsSpan<int>().size(), 0);
+  EXPECT_EQ(item.Size<int>(), 0);
 
   auto sp = item.ResizeAndSpan<int>(100);
   EXPECT_EQ(sp.size(), 100);
-  sp[29] = 456;
+  EXPECT_EQ(item.Size<int>(), 100);
 
+  sp[29] = 456;
   EXPECT_EQ(item.SubItem<int>(29, 20).AsSpan<int>()[0], 456);
 }
 

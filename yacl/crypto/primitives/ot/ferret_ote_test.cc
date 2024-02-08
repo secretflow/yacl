@@ -120,7 +120,8 @@ TEST_P(FerretOtExtTest, CheetahWorks) {
 
 INSTANTIATE_TEST_SUITE_P(
     Works_Instances, FerretOtExtTest,
-    testing::Values(FerretParams{10485760, LpnNoiseAsm::RegularNoise},
+    testing::Values(FerretParams{81921, LpnNoiseAsm::RegularNoise},
+                    FerretParams{10485760, LpnNoiseAsm::RegularNoise},
                     FerretParams{10485761, LpnNoiseAsm::RegularNoise},
                     FerretParams{1 << 20, LpnNoiseAsm::RegularNoise}
                     // FerretParams{1 << 21, LpnNoiseAsm::RegularNoise},

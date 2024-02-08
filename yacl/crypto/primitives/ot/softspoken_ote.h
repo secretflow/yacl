@@ -154,6 +154,9 @@ class SoftspokenOtExtReceiver {
   void GenRot(const std::shared_ptr<link::Context>& ctx, uint64_t num_ot,
               OtRecvStore* out);
 
+  void GenRot(const std::shared_ptr<link::Context>& ctx,
+              const dynamic_bitset<uint128_t>& choices, OtRecvStore* out);
+
   // [Warning] low efficiency
   void GenCot(const std::shared_ptr<link::Context>& ctx, uint64_t num_ot,
               OtRecvStore* out);
@@ -163,6 +166,9 @@ class SoftspokenOtExtReceiver {
 
   // OtStore-style interface
   // [Warning] low efficiency
+  OtRecvStore GenRot(const std::shared_ptr<link::Context>& ctx,
+                     const dynamic_bitset<uint128_t>& choices);
+
   OtRecvStore GenRot(const std::shared_ptr<link::Context>& ctx,
                      uint64_t num_ot);
 

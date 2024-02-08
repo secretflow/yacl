@@ -87,6 +87,9 @@ std::string ReceiverLoopBrpc::Start(const std::string& host,
   // Start the server.
   brpc::ServerOptions options;
   options.has_builtin_services = false;
+  options.h2_settings.stream_window_size = brpc::H2Settings::MAX_WINDOW_SIZE;
+  options.h2_settings.connection_window_size =
+      brpc::H2Settings::MAX_WINDOW_SIZE;
   if (ssl_opts != nullptr) {
     options.mutable_ssl_options()->default_cert.certificate =
         ssl_opts->cert.certificate_path;

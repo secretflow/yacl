@@ -18,8 +18,12 @@ package(default_visibility = ["//visibility:public"])
 
 yacl_cc_library(
     name = "sketch",
+    hdrs = [
+        "scalar_tools.h",
+    ],
     deps = [
         ":sketch_macros",
+        "//yacl/utils/spi:item",
     ],
 )
 
@@ -28,5 +32,10 @@ yacl_cc_library(
     hdrs = [
         "scalar_call.h",
         "scalar_define.h",
+    ],
+    deps = [
+        "//yacl/io/msgpack:buffer",
+        "//yacl/io/msgpack:spec_traits",
+        "@com_github_msgpack_msgpack//:msgpack",
     ],
 )

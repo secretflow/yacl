@@ -80,7 +80,6 @@ inline std::string Format() { return ""; }
 //       |- logic_error
 //       |- runtime_error
 //           |- io_error
-
 class Exception : public std::exception {
  public:
   Exception() = default;
@@ -161,7 +160,7 @@ class LinkError : public NetworkError {
   fmt::format("[{}:{}] {}", __FILE__, __LINE__, fmt::format(__VA_ARGS__))
 
 using stacktrace_t = std::array<void*, ::yacl::internal::kMaxStackTraceDep>;
-//
+
 // add absl::InitializeSymbolizer to main function to get
 // human-readable names stack trace
 //
@@ -170,7 +169,8 @@ using stacktrace_t = std::array<void*, ::yacl::internal::kMaxStackTraceDep>;
 //   absl::InitializeSymbolizer(argv[0]);
 //   ...
 // }
-//
+
+std::string GetStacktraceString();
 
 #define YACL_THROW_HELPER(ExceptionName, AppendStack, ...)                     \
   do {                                                                         \

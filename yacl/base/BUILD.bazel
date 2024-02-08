@@ -18,7 +18,7 @@ package(default_visibility = ["//visibility:public"])
 
 yacl_cc_library(
     name = "exception",
-    srcs = [],
+    srcs = ["exception.cc"],
     hdrs = ["exception.h"],
     deps = [
         "@com_github_fmtlib_fmt//:fmtlib",

@@ -261,6 +261,28 @@ class Item {
   bool IsReadOnly() const { return (meta_ & (1 << 2)) != 0; }
 
   template <typename T>
+  size_t Size() const {
+    if (!IsArray()) {
+      return 1;
+    }
+
+    using RawT = std::remove_cv_t<T>;
+
+    if (IsView()) {
+      if (IsReadOnly()) {
+        // const value -> const T
+        return As<absl::Span<const RawT>>().size();
+      }
+      // non-const value -> const T
+      return As<absl::Span<RawT>>().size();
+    } else {
+      // vector
+      // non-const value -> const T
+      return absl::MakeConstSpan(As<std::vector<RawT>>()).size();
+    }
+  }
+
+  template <typename T>
   bool operator==(const T& other) const {
     static_assert(!std::is_same_v<T, Item>,
                   "Cannot compare to another Item, since the Type info is "
