@@ -29,7 +29,7 @@ inline uint64_t Log2Floor(uint64_t x) {
 
 inline uint64_t Log2Ceil(uint64_t x) {
   YACL_ENFORCE(x != 0, "log2(0) is undefined");
-  return x == 1 ? 1 : Log2Floor(x - 1) + 1;
+  return x == 1 ? 0 : Log2Floor(x - 1) + 1;
 }
 
 constexpr uint64_t DivCeil(uint64_t x, uint64_t y) {
