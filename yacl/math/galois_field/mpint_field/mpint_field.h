@@ -71,7 +71,6 @@ class MPIntField : public GFScalarSketch<MPInt> {
   MPInt DeepCopy(const MPInt &x) const override;
   std::string ToString(const MPInt &x) const override;
 
-  Buffer Serialize(const MPInt &x) const override;
   size_t Serialize(const MPInt &x, uint8_t *buf, size_t buf_len) const override;
   MPInt DeserializeT(ByteContainerView buffer) const override;
 

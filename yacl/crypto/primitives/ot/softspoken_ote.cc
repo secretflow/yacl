@@ -218,7 +218,7 @@ void SoftspokenOtExtSender::OneTimeSetup(
   }
 
   // generate base-OT
-  auto choices = RandBits(kKappa, true);
+  auto choices = SecureRandBits(kKappa);
   auto base_ot = BaseOtRecv(ctx, choices, kKappa);
 
   OneTimeSetup(ctx, base_ot);
@@ -367,7 +367,24 @@ void SoftspokenOtExtReceiver::GenRot(const std::shared_ptr<link::Context>& ctx,
                                      uint64_t num_ot, OtRecvStore* out) {
   YACL_ENFORCE(out->Size() == num_ot);
   YACL_ENFORCE(out->Type() == OtStoreType::Normal);
-  auto choices = RandBits<dynamic_bitset<uint128_t>>(num_ot);
+  auto choices = SecureRandBits<dynamic_bitset<uint128_t>>(num_ot);
+  auto recv_blocks = std::vector<uint128_t>(num_ot);
+  Recv(ctx, choices, absl::MakeSpan(recv_blocks), false);
+
+  // out->SetChoices did not implement
+  // [Warning] low efficiency
+  for (uint64_t i = 0; i < num_ot; ++i) {
+    out->SetBlock(i, recv_blocks[i]);
+    out->SetChoice(i, choices[i]);
+  }
+}
+
+void SoftspokenOtExtReceiver::GenRot(const std::shared_ptr<link::Context>& ctx,
+                                     const dynamic_bitset<uint128_t>& choices,
+                                     OtRecvStore* out) {
+  const uint64_t num_ot = choices.size();
+  YACL_ENFORCE(out->Size() == num_ot);
+  YACL_ENFORCE(out->Type() == OtStoreType::Normal);
   auto recv_blocks = std::vector<uint128_t>(num_ot);
   Recv(ctx, choices, absl::MakeSpan(recv_blocks), false);
 
@@ -383,7 +400,7 @@ void SoftspokenOtExtReceiver::GenCot(const std::shared_ptr<link::Context>& ctx,
                                      uint64_t num_ot, OtRecvStore* out) {
   YACL_ENFORCE(out->Size() == num_ot);
   YACL_ENFORCE(out->Type() == OtStoreType::Normal);
-  auto choices = RandBits<dynamic_bitset<uint128_t>>(num_ot);
+  auto choices = SecureRandBits<dynamic_bitset<uint128_t>>(num_ot);
   auto recv_blocks = std::vector<uint128_t>(num_ot);
   Recv(ctx, choices, absl::MakeSpan(recv_blocks), true);
 
@@ -418,6 +435,15 @@ OtRecvStore SoftspokenOtExtReceiver::GenRot(
   OtRecvStore out(num_ot, OtStoreType::Normal);
   // [Warning] low efficiency.
   GenRot(ctx, num_ot, &out);
+  return out;
+}
+
+OtRecvStore SoftspokenOtExtReceiver::GenRot(
+    const std::shared_ptr<link::Context>& ctx,
+    const dynamic_bitset<uint128_t>& choices) {
+  OtRecvStore out(choices.size(), OtStoreType::Normal);
+  // [Warning] low efficiency.
+  GenRot(ctx, choices, &out);
   return out;
 }
 

@@ -157,4 +157,30 @@ INSTANTIATE_TEST_SUITE_P(TestWork, GywzParamTest,
                                          TestParams{1 << 10},  //
                                          TestParams{1 << 15}));
 
+// Edge Case
+// n should be greater than 1
+TEST(GywzEdgeTest, Work) {
+  size_t n = 1;
+
+  auto index = RandInRange(n);
+  auto lctxs = link::test::SetupWorld(2);
+  uint128_t delta = SecureRandSeed();
+  auto base_ot = MockCots(math::Log2Ceil(n), delta);  // mock many base OTs
+
+  std::vector<uint128_t> send_out(n);
+  std::vector<uint128_t> recv_out(n);
+
+  std::future<void> sender = std::async([&] {
+    ASSERT_THROW(GywzOtExtRecv(lctxs[0], base_ot.recv, n, index,
+                               absl::MakeSpan(recv_out)),
+                 ::yacl::Exception);
+  });
+  std::future<void> receiver = std::async([&] {
+    ASSERT_THROW(
+        GywzOtExtSend(lctxs[1], base_ot.send, n, absl::MakeSpan(send_out)),
+        ::yacl::Exception);
+  });
+  sender.get();
+  receiver.get();
+}
 }  // namespace yacl::crypto

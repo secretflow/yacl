@@ -120,8 +120,9 @@ CheckMsg GenCheckMsg(uint32_t n, absl::Span<uint128_t> output) {
 
 bool VerifyCheckMsg(uint32_t n, uint32_t index, absl::Span<uint128_t> output,
                     const CheckMsg& proof) {
+  YACL_ENFORCE_LT(index, n);
   auto t = proof.t;
-  auto& s = proof.s;
+  const auto& s = proof.s;
 
   std::vector<std::array<uint8_t, 32>> tmp;
   for (uint32_t i = 0; i < n; ++i) {
@@ -143,9 +144,10 @@ void SgrrOtExtRecv(const std::shared_ptr<link::Context>& ctx,
                    const OtRecvStore& base_ot, uint32_t n, uint32_t index,
                    absl::Span<uint128_t> output, bool mal) {
   uint32_t ot_num = math::Log2Ceil(n);
-  YACL_ENFORCE_GE(n, (uint32_t)1);                 // range should > 1
+  YACL_ENFORCE_GT(n, (uint32_t)1);                 // range should > 1
   YACL_ENFORCE_GE((uint32_t)128, base_ot.Size());  // base ot num < 128
   YACL_ENFORCE_GE(base_ot.Size(), ot_num);         //
+  YACL_ENFORCE_LT(index, n);                       // index < n
 
   // we need log(n) 1-2 OTs from log(n) ROTs
   // most significant bit first
@@ -219,7 +221,7 @@ void SgrrOtExtSend(const std::shared_ptr<link::Context>& ctx,
                    absl::Span<uint128_t> output, bool mal) {
   uint32_t ot_num = math::Log2Ceil(n);
   YACL_ENFORCE_GE(base_ot.Size(), ot_num);
-  YACL_ENFORCE_GE(n, (uint32_t)1);
+  YACL_ENFORCE_GT(n, (uint32_t)1);
 
   std::vector<std::array<uint128_t, 2>> send_msgs(ot_num);
   output[0] = SecureRandSeed();
@@ -298,18 +300,20 @@ void SgrrOtExtRecv_fixed_index(const OtRecvStore& base_ot, uint32_t n,
                                absl::Span<const uint8_t> recv_buf, bool mal) {
   const uint32_t ot_num = math::Log2Ceil(n);
   const uint64_t buf_size = SgrrOtExtHelper(n, mal);
-  YACL_ENFORCE_GE(n, (uint32_t)1);                 // range should > 1
+  YACL_ENFORCE_GT(n, (uint32_t)1);                 // range should > 1
   YACL_ENFORCE_GE((uint32_t)128, base_ot.Size());  // base ot num < 128
   YACL_ENFORCE_GE(base_ot.Size(), ot_num);         //
   YACL_ENFORCE_EQ(static_cast<uint64_t>(recv_buf.size()), buf_size);
 
-  auto recv_msgs = absl::MakeConstSpan(
-      reinterpret_cast<const std::array<uint128_t, 2>*>(recv_buf.data()),
-      ot_num);
-
   // we need log(n) 1-2 OTs from log(n) ROTs
   // most significant bit first
   dynamic_bitset<uint128_t> choice = base_ot.CopyChoice();
+  const uint64_t index = GetPuncturedIndex(choice, ot_num - 1);
+  YACL_ENFORCE_LT(index, n);  // index < n
+
+  auto recv_msgs = absl::MakeConstSpan(
+      reinterpret_cast<const std::array<uint128_t, 2>*>(recv_buf.data()),
+      ot_num);
 
   // for each level
   for (uint32_t i = 0; i < ot_num; ++i) {
@@ -343,7 +347,6 @@ void SgrrOtExtRecv_fixed_index(const OtRecvStore& base_ot, uint32_t n,
   }
 
   if (mal) {
-    auto index = GetPuncturedIndex(choice, ot_num - 1);
     CheckMsg proof;
     proof.Unpack(absl::MakeConstSpan(recv_buf.data() + buf_size - 64, 64));
 
@@ -361,7 +364,7 @@ void SgrrOtExtSend_fixed_index(const OtSendStore& base_ot, uint32_t n,
   const uint32_t ot_num = math::Log2Ceil(n);
   const uint64_t buf_size = SgrrOtExtHelper(n, mal);
   YACL_ENFORCE_GE(base_ot.Size(), ot_num);
-  YACL_ENFORCE_GE(n, (uint32_t)1);
+  YACL_ENFORCE_GT(n, (uint32_t)1);
   YACL_ENFORCE_EQ(static_cast<uint64_t>(send_buf.size()), buf_size);
 
   output[0] = SecureRandSeed();

@@ -114,8 +114,6 @@ TEST_P(SgrrParamTest, SemiHonestFixedIndextWorks) {
   choices.resize(ot_num);
   auto base_ot = MockRots(ot_num, choices);  // mock many base OTs
 
-  // SPDLOG_INFO("index is {}", index);
-
   std::vector<uint128_t> send_out(n);
   std::vector<uint128_t> recv_out(n);
 
@@ -150,8 +148,6 @@ TEST_P(SgrrParamTest, MaliciousFixedIndextWorks) {
   choices.append(index);
   choices.resize(ot_num);
   auto base_ot = MockRots(ot_num, choices);  // mock many base OTs
-
-  // SPDLOG_INFO("index is {}", index);
 
   std::vector<uint128_t> send_out(n);
   std::vector<uint128_t> recv_out(n);
@@ -191,5 +187,37 @@ INSTANTIATE_TEST_SUITE_P(Works_Instances, SgrrParamTest,
                                          TestParams{1024},              //
                                          TestParams{1 << 10},           //
                                          TestParams{1 << 15}));
+
+// Edge Case
+// n should be greater than 1
+TEST(SgrrEdgeTest, Work) {
+  size_t n = 1;
+
+  auto index = RandInRange(n);
+  auto lctxs = link::test::SetupWorld(2);
+  auto base_ot = MockRots(math::Log2Ceil(n));  // mock many base OTs
+
+  std::vector<uint128_t> send_out(n);
+  std::vector<uint128_t> recv_out(n);
+
+  std::future<void> receiver = std::async([&] {
+    ASSERT_THROW(SgrrOtExtRecv(lctxs[0], std::move(base_ot.recv), n, index,
+                               absl::MakeSpan(recv_out), false),
+                 ::yacl::Exception);
+    ASSERT_THROW(SgrrOtExtRecv(lctxs[0], std::move(base_ot.recv), n, index,
+                               absl::MakeSpan(recv_out), true),
+                 ::yacl::Exception);
+  });
+  std::future<void> sender = std::async([&] {
+    ASSERT_THROW(SgrrOtExtSend(lctxs[1], std::move(base_ot.send), n,
+                               absl::MakeSpan(send_out), false),
+                 ::yacl::Exception);
+    ASSERT_THROW(SgrrOtExtSend(lctxs[1], std::move(base_ot.send), n,
+                               absl::MakeSpan(send_out), true),
+                 ::yacl::Exception);
+  });
+  sender.get();
+  receiver.get();
+}
 
 }  // namespace yacl::crypto

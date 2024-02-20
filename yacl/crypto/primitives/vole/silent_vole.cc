@@ -256,7 +256,7 @@ void SilentVoleReceiver::RecvImpl(const std::shared_ptr<link::Context>& ctx,
   auto choices = mp_param.GenChoices();  // size param.mp_vole_ot_num_
   // generate the choices of base VOLE
   auto base_choices =
-      RandBits<dynamic_bitset<uint128_t>>(param.base_vole_ot_num_);
+      SecureRandBits<dynamic_bitset<uint128_t>>(param.base_vole_ot_num_);
   // append choices and base_vole_choices
   choices.append(base_choices);
 

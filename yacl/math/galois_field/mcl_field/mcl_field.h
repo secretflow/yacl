@@ -97,7 +97,6 @@ class MclField : public GFScalarSketch<T> {
   // To human-readable string
   std::string ToString(const T& x) const override;
 
-  Buffer Serialize(const T& x) const override;
   size_t Serialize(const T& x, uint8_t* buf, size_t buf_len) const override;
 
   T DeserializeT(ByteContainerView buffer) const override;

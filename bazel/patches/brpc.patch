@@ -75,20 +75,10 @@ index be02c50a..186abe54 100644
          }
          return true;
 diff --git a/BUILD.bazel b/BUILD.bazel
-index 5d317c90..5bb62a6e 100644
+index 0bdaa4d3..b23881b3 100644
 --- a/BUILD.bazel
 +++ b/BUILD.bazel
-@@ -45,13 +45,17 @@ COPTS = [
- }) + select({
-     "//bazel/config:brpc_with_rdma": ["-DBRPC_WITH_RDMA=1"],
-     "//conditions:default": [""],
-+}) + select({
-+    # Force linux aarch to use O1 build
-+    "@bazel_tools//src/conditions:linux_aarch64": ["-O1"],
-+    "//conditions:default": [""],
- })
-
- LINKOPTS = [
+@@ -51,7 +51,7 @@ LINKOPTS = [
      "-pthread",
      "-ldl",
  ] + select({
@@ -97,7 +87,7 @@ index 5d317c90..5bb62a6e 100644
          "-framework CoreFoundation",
          "-framework CoreGraphics",
          "-framework CoreData",
-@@ -215,7 +219,7 @@ BUTIL_SRCS = [
+@@ -217,7 +217,7 @@ BUTIL_SRCS = [
      "src/butil/recordio.cc",
      "src/butil/popen.cpp",
  ] + select({
@@ -106,16 +96,13 @@ index 5d317c90..5bb62a6e 100644
          "src/butil/time/time_mac.cc",
          "src/butil/mac/scoped_mach_port.cc",
      ],
-@@ -324,15 +328,14 @@ cc_library(
+@@ -326,17 +326,17 @@ cc_library(
      visibility = ["//visibility:public"],
      deps = [
          "@com_github_gflags_gflags//:gflags",
 -        "@com_github_madler_zlib//:zlib",
 +        "@zlib//:zlib",
          "@com_google_protobuf//:protobuf",
--        "@openssl//:crypto",
--        "@openssl//:ssl",
-+        "@com_github_openssl_openssl//:openssl",
      ] + select({
          "//bazel/config:brpc_with_glog": ["@com_github_google_glog//:glog"],
          "//conditions:default": [],
@@ -123,6 +110,10 @@ index 5d317c90..5bb62a6e 100644
 -        "@bazel_tools//tools/osx:darwin": [":macos_lib"],
 +        "@bazel_tools//src/conditions:darwin": [":macos_lib"],
          "//conditions:default": [],
+     }) + select({
+         "//bazel/config:brpc_with_boringssl": ["@boringssl//:ssl", "@boringssl//:crypto"],
+-        "//conditions:default": ["@openssl//:ssl", "@openssl//:crypto"],
++        "//conditions:default": ["@com_github_openssl_openssl//:openssl"],
      }),
  )
 

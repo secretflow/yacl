@@ -277,14 +277,6 @@ std::string MclField<T, degree>::ToString(const T& x) const {
 }
 
 template <typename T, size_t degree>
-Buffer MclField<T, degree>::Serialize(const T& x) const {
-  Buffer buf(BASE_FP_SIZE * degree);
-  auto size = x.serialize(buf.data(), buf.size());
-  buf.resize(size);
-  return buf;
-}
-
-template <typename T, size_t degree>
 size_t MclField<T, degree>::Serialize(const T& x, uint8_t* buf,
                                       size_t buf_len) const {
   if (buf == nullptr) {
