@@ -165,7 +165,7 @@ TEST(GywzEdgeTest, Work) {
   auto index = RandInRange(n);
   auto lctxs = link::test::SetupWorld(2);
   uint128_t delta = SecureRandSeed();
-  auto base_ot = MockCots(math::Log2Ceil(n), delta);  // mock many base OTs
+  auto base_ot = MockCots(1, delta);  // mock many base OTs
 
   std::vector<uint128_t> send_out(n);
   std::vector<uint128_t> recv_out(n);
