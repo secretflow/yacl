@@ -195,7 +195,7 @@ TEST(SgrrEdgeTest, Work) {
 
   auto index = RandInRange(n);
   auto lctxs = link::test::SetupWorld(2);
-  auto base_ot = MockRots(math::Log2Ceil(n));  // mock many base OTs
+  auto base_ot = MockRots(1);  // mock many base OTs
 
   std::vector<uint128_t> send_out(n);
   std::vector<uint128_t> recv_out(n);
