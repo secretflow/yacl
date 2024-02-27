@@ -142,11 +142,11 @@ def _com_google_protobuf():
     maybe(
         http_archive,
         name = "com_google_protobuf",
-        sha256 = "ba0650be1b169d24908eeddbe6107f011d8df0da5b1a5a4449a913b10e578faf",
-        strip_prefix = "protobuf-3.19.4",
+        sha256 = "7beed9c511d632cff7c22ac0094dd7720e550153039d5da7e059bcceb488474a",
+        strip_prefix = "protobuf-25.0",
         type = "tar.gz",
         urls = [
-            "https://github.com/protocolbuffers/protobuf/releases/download/v3.19.4/protobuf-all-3.19.4.tar.gz",
+            "https://github.com/protocolbuffers/protobuf/releases/download/v25.0/protobuf-25.0.tar.gz",
         ],
     )
 
