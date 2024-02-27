@@ -90,6 +90,7 @@ def _com_github_brpc_brpc():
         patches = [
             "@yacl//bazel:patches/brpc.patch",
             "@yacl//bazel:patches/brpc_m1.patch",
+            "@yacl//bazel:patches/brpc_pb.patch",
         ],
         urls = [
             "https://github.com/apache/brpc/archive/refs/tags/1.8.0.tar.gz",
