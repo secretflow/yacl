@@ -157,6 +157,11 @@ def _com_google_absl():
         sha256 = "3c743204df78366ad2eaf236d6631d83f6bc928d1705dd0000b872e53b73dc6a",
         type = "tar.gz",
         strip_prefix = "abseil-cpp-20240116.1",
+        # back port https://github.com/abseil/abseil-cpp/issues/1629
+        patch_args = ["-p1"],
+        patches = [
+            "@yacl//bazel:patches/abseil_nvcc.patch",
+        ],
         urls = [
             "https://github.com/abseil/abseil-cpp/archive/refs/tags/20240116.1.tar.gz",
         ],
