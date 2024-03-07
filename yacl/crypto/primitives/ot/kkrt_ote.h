@@ -45,7 +45,7 @@ using KkrtRow = std::array<uint128_t, kKkrtWidth>;
 // This implementation bases on KKRT OTE, for more theoretical details, see
 // https://eprint.iacr.org/2016/799.pdf (Charpter 2).
 //
-//             (1-out-of-2)    (1-out-of-n)
+//             (1-out-of-2)    (1-out-of-N)
 //              +---------+    +---------+
 //              |   ROT   | => |   ROT   |
 //              +---------+    +---------+
