@@ -94,7 +94,7 @@ inline dynamic_bitset<uint128_t> ExtendChoice(
   // Extend choices to batch_num * kBlockNum bits
   // 1st part (valid_ot_num bits): original ot choices
   // 2nd part (verify_ot_num bits): rand bits used for checking
-  // 3rd party (the rest bits): padding 0;
+  // 3rd part (the rest bits): padding 0;
   dynamic_bitset<uint128_t> choices_ext = choices;
 
   // 2nd part Extension
