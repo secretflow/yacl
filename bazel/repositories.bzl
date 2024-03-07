@@ -90,6 +90,7 @@ def _com_github_brpc_brpc():
         patches = [
             "@yacl//bazel:patches/brpc.patch",
             "@yacl//bazel:patches/brpc_m1.patch",
+            "@yacl//bazel:patches/brpc_pb.patch",
         ],
         urls = [
             "https://github.com/apache/brpc/archive/refs/tags/1.8.0.tar.gz",
@@ -142,11 +143,11 @@ def _com_google_protobuf():
     maybe(
         http_archive,
         name = "com_google_protobuf",
-        sha256 = "ba0650be1b169d24908eeddbe6107f011d8df0da5b1a5a4449a913b10e578faf",
-        strip_prefix = "protobuf-3.19.4",
+        sha256 = "2c6a36c7b5a55accae063667ef3c55f2642e67476d96d355ff0acb13dbb47f09",
+        strip_prefix = "protobuf-21.12",
         type = "tar.gz",
         urls = [
-            "https://github.com/protocolbuffers/protobuf/releases/download/v3.19.4/protobuf-all-3.19.4.tar.gz",
+            "https://github.com/protocolbuffers/protobuf/releases/download/v21.12/protobuf-all-21.12.tar.gz",
         ],
     )
 
@@ -157,6 +158,11 @@ def _com_google_absl():
         sha256 = "3c743204df78366ad2eaf236d6631d83f6bc928d1705dd0000b872e53b73dc6a",
         type = "tar.gz",
         strip_prefix = "abseil-cpp-20240116.1",
+        # back port https://github.com/abseil/abseil-cpp/issues/1629
+        patch_args = ["-p1"],
+        patches = [
+            "@yacl//bazel:patches/abseil_nvcc.patch",
+        ],
         urls = [
             "https://github.com/abseil/abseil-cpp/archive/refs/tags/20240116.1.tar.gz",
         ],
@@ -356,13 +362,13 @@ def _com_github_herumi_mcl():
     maybe(
         http_archive,
         name = "com_github_herumi_mcl",
-        strip_prefix = "mcl-1.86.0",
-        sha256 = "a3ab1cd01a6419f46210fd5874e795e37a4565fa305e0302301b31ffed208872",
+        strip_prefix = "mcl-1.87",
+        sha256 = "3c7438e240ed385182c3bdf597913dd77841598126eba1afa29dd78a339c8110",
         type = "tar.gz",
         build_file = "@yacl//bazel:mcl.BUILD",
         patch_args = ["-p1"],
         patches = [
             "@yacl//bazel:patches/mcl.patch",
         ],
-        urls = ["https://github.com/herumi/mcl/archive/refs/tags/v1.86.0.tar.gz"],
+        urls = ["https://github.com/herumi/mcl/archive/refs/tags/v1.87.tar.gz"],
     )
