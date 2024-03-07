@@ -52,7 +52,7 @@ namespace yacl::crypto {
 //
 // Security assumptions:
 //  *. correlation-robust hash function, for more details about its
-//  implementation, see `yacl/crypto-tools/rp.h`
+//  implementation, see `yacl/crypto/tools/rp.h`
 
 void IknpOtExtSend(const std::shared_ptr<link::Context> &ctx,
                    const OtRecvStore &base_ot,
