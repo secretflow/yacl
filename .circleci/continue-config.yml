@@ -33,22 +33,9 @@ parameters:
     type: boolean
     default: false
 
-# Define a job to be invoked later in a workflow.
-# See: https://circleci.com/docs/2.0/configuration-reference/#jobs
-jobs:
-  linux_ut:
-    # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
-    # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
-    docker:
-      - image: secretflow/ubuntu-base-ci:latest
-    parameters:
-      resource_class:
-        type: string
-    resource_class: << parameters.resource_class >>
-    # Add steps to the job
-    # See: https://circleci.com/docs/2.0/configuration-reference/#steps
+commands:
+  build_and_test:
     steps:
-      - checkout
       - run:
           name: Checkout devtools
           command: git clone https://github.com/secretflow/devtools.git ../devtools
@@ -67,20 +54,33 @@ jobs:
             git clone https://github.com/secretflow/devtools.git
             sh devtools/rename-junit-xml.sh
 
-            find bazel-bin/ -executable -type f -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar.gz
             find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz
             exit ${test_status}
       - store_test_results:
           path: test-results
       - store_artifacts:
-          path: test_binary.tar.gz
-      - store_artifacts:
           path: test_logs.tar.gz
+
+# Define a job to be invoked later in a workflow.
+# See: https://circleci.com/docs/2.0/configuration-reference/#jobs
+jobs:
+  linux_ut:
+    # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
+    # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
+    docker:
+      - image: secretflow/ubuntu-base-ci:latest
+    parameters:
+      resource_class:
+        type: string
+    resource_class: << parameters.resource_class >>
+    # Add steps to the job
+    # See: https://circleci.com/docs/2.0/configuration-reference/#steps
+    steps:
+      - checkout
+      - build_and_test
   macOS_ut_arm64:
     macos:
-      xcode: 15.1
-    environment:
-      HOMEBREW_NO_AUTO_UPDATE: 1
+      xcode: 15.1.0
     resource_class: macos.m1.medium.gen1
     steps:
       - checkout
@@ -88,33 +88,7 @@ jobs:
           name: "Install homebrew dependencies"
           command: |
             brew install bazelisk cmake ninja libomp wget md5sha1sum
-      - run:
-          name: Checkout devtools
-          command: git clone https://github.com/secretflow/devtools.git ../devtools
-      - run:
-          name: Setup GCS
-          command: |
-            echo ${gcs_content} > ../gcs.data
-            ../devtools/bazel_cache_setup.py --in_file=../gcs.data --out_file=../gcs.json --min_download
-      - run:
-          name: "build and test"
-          command: |
-            set +e
-            declare -i test_status
-            bazel test //... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors | tee test_result.log; test_status=${PIPESTATUS[0]}
-
-            git clone https://github.com/secretflow/devtools.git
-            sh devtools/rename-junit-xml.sh
-
-            find bazel-bin/ -perm +111 -type f -name "*_test"  -print0 | xargs -0 tar -cvzf test_binary.tar.gz
-            find bazel-testlogs/ -type f -name "test.log"  -print0 | xargs -0 tar -cvzf test_logs.tar.gz
-            exit ${test_status}
-      - store_test_results:
-          path: test-results
-      - store_artifacts:
-          path: test_binary.tar.gz
-      - store_artifacts:
-          path: test_logs.tar.gz
+      - build_and_test
 
 # Invoke jobs via workflows
 # See: https://circleci.com/docs/2.0/configuration-reference/#workflows
