@@ -14,6 +14,8 @@
 
 #include "yacl/utils/spi/argument/arg_kv.h"
 
+#include "yacl/math/mpint/mp_int.h"
+
 namespace yacl {
 
 const std::string& SpiArg::Key() const { return key_; }
@@ -28,6 +30,33 @@ SpiArg& SpiArg::operator=(const char* value) {
 SpiArg& SpiArg::operator=(const std::string& value) {
   value_ = absl::AsciiStrToLower(value);
   return *this;
+}
+
+#define TRY_TYPE(type)                                              \
+  if (t == typeid(type)) {                                          \
+    return fmt::format("{}={}", key_, std::any_cast<type>(value_)); \
+  }
+
+std::string SpiArg::ToString() const {
+  const auto& t = value_.type();
+  // Place the types with a high probability of being hit at the front.
+  TRY_TYPE(std::string);
+  TRY_TYPE(int64_t);  // mac-m1 doesn't support int128
+  TRY_TYPE(uint64_t);
+  TRY_TYPE(bool);
+  TRY_TYPE(double);
+
+  TRY_TYPE(int8_t);
+  TRY_TYPE(int16_t);
+  TRY_TYPE(int32_t);
+  TRY_TYPE(uint8_t);
+  TRY_TYPE(uint16_t);
+  TRY_TYPE(uint32_t);
+  TRY_TYPE(float);
+  TRY_TYPE(char);
+  TRY_TYPE(unsigned char);
+  TRY_TYPE(yacl::math::MPInt);  // MPInt is a first-class citizen in SPI
+  return fmt::format("{}=Object<{}>", key_, t.name());
 }
 
 }  // namespace yacl

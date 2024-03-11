@@ -216,7 +216,7 @@ TEST_F(MPIntFieldTest, VectorIoWorks) {
   auto item2 = item1.SubItem<MPInt>(0, 1);
   ASSERT_TRUE(item2.IsView());
   ASSERT_FALSE(item2.IsReadOnly());
-  ASSERT_TRUE(item2.WrappedTypeIs<absl::Span<MPInt>>());
+  ASSERT_TRUE(item2.RawTypeIs<absl::Span<MPInt>>());
   ASSERT_TRUE(gf->Equal(item2, Item::Take<MPInt>({0_mp})));
 
   // deepcopy

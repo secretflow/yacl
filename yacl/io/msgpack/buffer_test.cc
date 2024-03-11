@@ -15,6 +15,7 @@
 #include "yacl/io/msgpack/buffer.h"
 
 #include "gtest/gtest.h"
+#include "msgpack.hpp"
 
 namespace yacl::io::test {
 
@@ -29,6 +30,17 @@ TEST(TestStreamBuffer, SimpleWorks) {
   sbuf.write("d", 1);
 
   EXPECT_EQ(std::string(buffer.data<char>(), buffer.size()), "abcd");
+}
+
+TEST(TestStreamBuffer, ShadowBufferWorks) {
+  yacl::Buffer buf;
+  yacl::io::StreamBuffer sbuf(&buf);
+  msgpack::pack(sbuf, 1.2);
+
+  ShadowBuffer sd_buf;
+  msgpack::pack(sd_buf, 1.2);
+
+  EXPECT_EQ(sd_buf.GetDataSize(), buf.size());
 }
 
 }  // namespace yacl::io::test

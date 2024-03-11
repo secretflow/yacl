@@ -101,8 +101,8 @@ class DpfKey {
 
   uint32_t GetSecParam() const { return sec_param_; }
 
-  std::string Serialize() const;
-  void Deserialize(const std::string& s);
+  Buffer Serialize() const;
+  void Deserialize(ByteContainerView s);
 
  private:
   bool rank_{};            // only support two parties (0/1), compulsory param

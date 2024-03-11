@@ -18,6 +18,7 @@
 #include "spdlog/spdlog.h"
 
 #include "yacl/utils/spi/argument/arg_kv.h"
+#include "yacl/utils/spi/argument/util.h"
 
 namespace yacl {
 
@@ -26,11 +27,11 @@ class SpiArgKey {
  public:
   using ValueType = T;
 
-  explicit SpiArgKey(const std::string &key)
-      : key_(absl::AsciiStrToLower(key)) {}
+  explicit SpiArgKey(const std::string &key) : key_(util::ToSnakeCase(key)) {}
 
   const std::string &Key() const & { return key_; }
 
+  // If value is a string, it will be automatically converted to lowercase
   SpiArg operator=(T &&value) const { return {key_, std::forward<T>(value)}; }
   SpiArg operator=(const T &value) const { return {key_, value}; }
 
@@ -52,6 +53,8 @@ class SpiArgKey {
 #define DEFINE_ARG_uint(ArgName) DEFINE_ARG(uint, ArgName)
 #define DEFINE_ARG_int64(ArgName) DEFINE_ARG(int64_t, ArgName)
 #define DEFINE_ARG_uint64(ArgName) DEFINE_ARG(uint64_t, ArgName)
+#define DEFINE_ARG_double(ArgName) DEFINE_ARG(double, ArgName)
+// Note: The arg value will be automatically converted to lowercase
 #define DEFINE_ARG_string(ArgName) DEFINE_ARG(std::string, ArgName)
 
 // declare an arg
@@ -60,6 +63,8 @@ class SpiArgKey {
 #define DECLARE_ARG_uint(ArgName) DECLARE_ARG(uint, ArgName)
 #define DECLARE_ARG_int64(ArgName) DECLARE_ARG(int64_t, ArgName)
 #define DECLARE_ARG_uint64(ArgName) DECLARE_ARG(uint64_t, ArgName)
+#define DECLARE_ARG_double(ArgName) DECLARE_ARG(double, ArgName)
+// Note: The arg value will be automatically converted to lowercase
 #define DECLARE_ARG_string(ArgName) DECLARE_ARG(std::string, ArgName)
 
 }  // namespace yacl

@@ -41,6 +41,29 @@ yacl_cc_library(
         "arg_set.h",
     ],
     deps = [
+        ":util",
         "//yacl/base:exception",
+        "//yacl/math/mpint",
     ],
+)
+
+yacl_cc_library(
+    name = "util",
+    srcs = [
+        "util.cc",
+    ],
+    hdrs = [
+        "util.h",
+    ],
+    deps = [
+        "@com_google_absl//absl/strings",
+    ],
+)
+
+yacl_cc_test(
+    name = "util_test",
+    srcs = [
+        "util_test.cc",
+    ],
+    deps = [":util"],
 )

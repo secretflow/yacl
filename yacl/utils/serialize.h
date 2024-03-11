@@ -19,19 +19,36 @@
 #include "yacl/base/buffer.h"
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/int128.h"
+#include "yacl/utils/serializer.h"
+#include "yacl/utils/serializer_adapter.h"
 
 namespace yacl {
 
-Buffer SerializeArrayOfBuffers(const std::vector<ByteContainerView>& bufs);
+// deprecated. please call SerializeVars(...) directly
+inline Buffer SerializeArrayOfBuffers(
+    const std::vector<ByteContainerView>& bufs) {
+  return SerializeVars(bufs);
+}
 
-std::vector<Buffer> DeserializeArrayOfBuffers(ByteContainerView buf);
+// deprecated. please call DeserializeVars(...) directly
+inline std::vector<Buffer> DeserializeArrayOfBuffers(ByteContainerView buf) {
+  return DeserializeVars<std::vector<Buffer>>(buf);
+}
 
-Buffer SerializeInt128(int128_t v);
+// deprecated. please call SerializeVars(...) directly
+inline Buffer SerializeInt128(int128_t v) { return SerializeVars(v); }
 
-int128_t DeserializeInt128(ByteContainerView buf);
+// deprecated. please call DeserializeVars(...) directly
+inline int128_t DeserializeInt128(ByteContainerView buf) {
+  return DeserializeVars<int128_t>(buf);
+}
 
-Buffer SerializeUint128(uint128_t v);
+// deprecated. please call SerializeVars(...) directly
+inline Buffer SerializeUint128(uint128_t v) { return SerializeVars(v); }
 
-uint128_t DeserializeUint128(ByteContainerView buf);
+// deprecated. please call DeserializeVars(...) directly
+inline uint128_t DeserializeUint128(ByteContainerView buf) {
+  return DeserializeVars<uint128_t>(buf);
+}
 
 }  // namespace yacl

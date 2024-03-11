@@ -57,8 +57,8 @@ const std::vector<MclFieldMeta> kMclFieldMetas = {
 std::unique_ptr<GaloisField> MclFieldFactory::Create(
     const std::string& field_name, const SpiArgs& args) {
   auto mod = args.GetRequired(ArgMod);
-  auto degree = args.Get(ArgDegree, 1);
-  auto maxBitSize = args.Get(ArgMaxBitSize, 512);
+  auto degree = args.GetOrDefault(ArgDegree, 1);
+  auto maxBitSize = args.GetOrDefault(ArgMaxBitSize, 512);
   auto it = kMclFieldMetas.cbegin();
   for (; it != kMclFieldMetas.cend(); it++) {
     if (it->IsEquivalent({field_name, degree, maxBitSize})) {
@@ -92,8 +92,8 @@ std::unique_ptr<GaloisField> MclFieldFactory::Create(
 
 bool MclFieldFactory::Check(const std::string& field_name,
                             const SpiArgs& args) {
-  auto degree = args.Get(ArgDegree, 1);
-  auto maxBitSize = args.Get(ArgMaxBitSize, 512);
+  auto degree = args.GetOrDefault(ArgDegree, 1);
+  auto maxBitSize = args.GetOrDefault(ArgMaxBitSize, 512);
   MclFieldMeta meta = {field_name, degree, maxBitSize};
   for (auto it : kMclFieldMetas) {
     if (meta.IsEquivalent(it)) {

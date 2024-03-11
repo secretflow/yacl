@@ -117,7 +117,11 @@ class MPInt {
 
   [[nodiscard]] size_t BitCount() const;
 
+  // The size of memory allocated by this MPInt.
+  // Not equal to the byte size of the number, nor equal to the serialized size
   size_t SizeAllocated() { return n_.alloc * sizeof(mp_digit); }
+  // The size of memory used by this MPInt.
+  // Not equal to the byte size of the number, nor equal to the serialized size
   size_t SizeUsed() { return n_.used * sizeof(mp_digit); }
 
   //================================//

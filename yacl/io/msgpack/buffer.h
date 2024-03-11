@@ -81,4 +81,17 @@ class FixedBuffer {
   size_t pos_ = 0;
 };
 
+// ShadowBuffer does not store any data.
+// It is used solely for calculating the size of objects after msgpack
+// serialization.
+class ShadowBuffer {
+ public:
+  void write(const char *, size_t len) { size_ += len; }
+
+  size_t GetDataSize() const { return size_; }
+
+ private:
+  size_t size_ = 0;
+};
+
 }  // namespace yacl::io

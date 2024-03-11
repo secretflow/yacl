@@ -85,7 +85,7 @@ bool Item::IsAll(const bool &element) const {
 
 std::string Item::ToString() const {
   if (IsArray()) {
-    return fmt::format("{} Item, element_type={}, {}, Content={}",
+    return fmt::format("{} Item, element_type={}, {}, Content=[{}]",
                        IsView() ? "Span" : "Vector", v_.type().name(),
                        IsReadOnly() ? "RO" : "RW", TryRead(v_));
   } else {
