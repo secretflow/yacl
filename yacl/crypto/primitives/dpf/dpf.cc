@@ -15,11 +15,9 @@
 #include "yacl/crypto/primitives/dpf/dpf.h"
 
 #include <future>
-#include <sstream>
 
-#include "spdlog/spdlog.h"
-
-#include "yacl/crypto/primitives/dpf/serializable.pb.h"
+#include "yacl/utils/serializer.h"
+#include "yacl/utils/serializer_adapter.h"
 
 namespace yacl::crypto {
 
@@ -290,59 +288,31 @@ std::vector<DpfOutStore> DpfContext::EvalAll(DpfKey& key) {
   return result;
 }
 
-std::string DpfKey::Serialize() const {
-  DpfKeyProto proto;
-  // Set properties
-  proto.set_enable_evalall(enable_evalall);
+Buffer DpfKey::Serialize() const {
+  // var "cws_vec" 's type 'std::vector<DpfCW>' not supported, convert to STL
+  // type
+  std::vector<std::pair<uint128_t, uint8_t>> dpf_cws;
+  dpf_cws.reserve(cws_vec.size());
   for (const auto& cws : cws_vec) {
-    auto* cws_proto = proto.add_cws_vec();
-    auto i128_parts = DecomposeUInt128(cws.GetSeed());
-    cws_proto->mutable_seed()->set_hi(i128_parts.first);
-    cws_proto->mutable_seed()->set_lo(i128_parts.second);
-    cws_proto->set_t_store(cws.GetTStore());
+    dpf_cws.emplace_back(cws.GetSeed(), cws.GetTStore());
   }
-  for (const auto& last_cw : last_cw_vec) {
-    auto* last_cw_proto = proto.add_last_cw_vec();
-    auto i128_parts = DecomposeUInt128(last_cw);
-    last_cw_proto->set_hi(i128_parts.first);
-    last_cw_proto->set_lo(i128_parts.second);
-  }
-  proto.set_rank(rank_);
-  proto.set_in_bitnum(in_bitnum_);
-  proto.set_ss_bitnum(ss_bitnum_);
-  proto.set_sec_param(sec_param_);
 
-  auto i128_parts = DecomposeUInt128(mseed_);
-  proto.mutable_mseed()->set_hi(i128_parts.first);
-  proto.mutable_mseed()->set_lo(i128_parts.second);
-
-  return proto.SerializeAsString();
+  // do serialize
+  return SerializeVars(enable_evalall, dpf_cws, last_cw_vec, rank_, in_bitnum_,
+                       ss_bitnum_, sec_param_, mseed_);
 }
 
-void DpfKey::Deserialize(const std::string& s) {
-  DpfKeyProto proto;
-  proto.ParseFromString(s);
+void DpfKey::Deserialize(ByteContainerView in) {
+  std::vector<std::pair<uint128_t, uint8_t>> dpf_cws;
+  DeserializeVarsTo(in, &enable_evalall, &dpf_cws, &last_cw_vec, &rank_,
+                    &in_bitnum_, &ss_bitnum_, &sec_param_, &mseed_);
 
-  enable_evalall = proto.enable_evalall();
+  // recover "cws_vec" with type std::vector<DpfCW>
   cws_vec.clear();
-  for (const auto& cws_proto : proto.cws_vec()) {
-    cws_vec.emplace_back(
-        MakeUint128(cws_proto.seed().hi(), cws_proto.seed().lo()),
-        cws_proto.t_store());
+  cws_vec.reserve(dpf_cws.size());
+  for (const auto& cws : dpf_cws) {
+    cws_vec.emplace_back(cws.first, cws.second);
   }
-
-  last_cw_vec.clear();
-  for (const auto& last_cw_proto : proto.last_cw_vec()) {
-    last_cw_vec.emplace_back(
-        MakeUint128(last_cw_proto.hi(), last_cw_proto.lo()));
-  }
-
-  rank_ = proto.rank();
-  in_bitnum_ = proto.in_bitnum();
-  ss_bitnum_ = proto.ss_bitnum();
-  sec_param_ = proto.sec_param();
-
-  mseed_ = MakeUint128(proto.mseed().hi(), proto.mseed().lo());
 }
 
 }  // namespace yacl::crypto

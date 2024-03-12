@@ -14,21 +14,32 @@
 
 #pragma once
 
+#include <optional>
+
 #include "yacl/utils/spi/argument/arg_k.h"
 
 namespace yacl {
 
-class SpiArgs : public std::map<std::string, SpiArg> {
+class SpiArgs : private std::map<std::string, SpiArg> {
  public:
   SpiArgs(std::initializer_list<SpiArg> args);
+
+  void Insert(const SpiArg &arg);
+
+  using std::map<std::string, SpiArg>::size;
+  using std::map<std::string, SpiArg>::empty;
+  using std::map<std::string, SpiArg>::begin;
+  using std::map<std::string, SpiArg>::cbegin;
+  using std::map<std::string, SpiArg>::end;
+  using std::map<std::string, SpiArg>::cend;
 
   // Get an argument
   // If this parameter is not set, the default value is returned
   // If the user sets this parameter, but the type is not T, then an exception
   // is thrown
   template <typename T>
-  T Get(const SpiArgKey<T> &key,
-        const typename SpiArgKey<T>::ValueType &default_value) const {
+  T GetOrDefault(const SpiArgKey<T> &key,
+                 const typename SpiArgKey<T>::ValueType &default_value) const {
     auto it = find((key.Key()));
     if (it == end()) {
       return default_value;
@@ -42,8 +53,7 @@ class SpiArgs : public std::map<std::string, SpiArg> {
   // If the user sets this parameter, but the type is not T, then an exception
   // is thrown
   template <typename T>
-  auto GetRequired(const SpiArgKey<T> &key) const ->
-      typename SpiArgKey<T>::ValueType {
+  T GetRequired(const SpiArgKey<T> &key) const {
     auto it = find((key.Key()));
     YACL_ENFORCE(it != end(), "Missing required argument {}", key.Key());
     return it->second.template Value<T>();
@@ -53,14 +63,24 @@ class SpiArgs : public std::map<std::string, SpiArg> {
   // After getting the SpiArg, you can use SpiArg.HasValue() to check if it
   // contains a value
   template <typename T>
-  SpiArg GetOptional(const SpiArgKey<T> &key) const {
+  std::optional<T> GetOptional(const SpiArgKey<T> &key) const {
     auto it = find(key.Key());
     if (it == end()) {
-      return SpiArg{key.Key()};
+      return {};
     } else {
-      return it->second;
+      return it->second.template Value<T>();
     }
   }
+
+  // Check if key exists
+  template <typename T>
+  bool Exist(const SpiArgKey<T> &key) const {
+    return find(key.Key()) != end();
+  }
+
+  std::string ToString() const;
 };
+
+inline auto format_as(const SpiArgs &arg) { return arg.ToString(); }
 
 }  // namespace yacl

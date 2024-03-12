@@ -48,8 +48,8 @@ class IcDrbg : public Drbg {
                                       const SpiArgs &config) {
     YACL_ENFORCE(Check(type, config));  // make sure check passes
     return std::make_unique<IcDrbg>(
-        absl::AsciiStrToUpper(type), config.Get(ArgUseYaclEs, true),
-        config.Get(ArgSecParamC, SecParam::C::k128));
+        absl::AsciiStrToUpper(type), config.GetOrDefault(ArgUseYaclEs, true),
+        config.GetOrDefault(ArgSecParamC, SecParam::C::k128));
   }
 
   // this checker would return ture only for ctr-drbg type

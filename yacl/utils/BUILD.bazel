@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_cc//cc:defs.bzl", "cc_proto_library")
-load("@rules_proto//proto:defs.bzl", "proto_library")
 load("//bazel:yacl.bzl", "OMP_CFLAGS", "OMP_DEPS", "OMP_LINKFLAGS", "yacl_cc_binary", "yacl_cc_library", "yacl_cc_test")
 
 package(default_visibility = ["//visibility:public"])
@@ -77,25 +75,35 @@ yacl_cc_library(
     ],
 )
 
-proto_library(
-    name = "serializable_proto",
-    srcs = ["serializable.proto"],
-)
-
-cc_proto_library(
-    name = "serializable_cc_proto",
-    deps = [":serializable_proto"],
+# deprecated, use serializer instead
+yacl_cc_library(
+    name = "serialize",
+    hdrs = ["serialize.h"],
+    deps = [
+        ":serializer",
+    ],
 )
 
 yacl_cc_library(
-    name = "serialize",
-    srcs = ["serialize.cc"],
-    hdrs = ["serialize.h"],
+    name = "serializer",
+    srcs = ["serializer.cc"],
+    hdrs = [
+        "serializer.h",
+        "serializer_adapter.h",
+    ],
     deps = [
-        ":serializable_cc_proto",
-        "//yacl/base:buffer",
-        "//yacl/base:byte_container_view",
-        "//yacl/base:int128",
+        "@com_github_msgpack_msgpack//:msgpack",
+        "@yacl//yacl/base:byte_container_view",
+        "@yacl//yacl/base:int128",
+        "@yacl//yacl/io/msgpack:buffer",
+    ],
+)
+
+yacl_cc_test(
+    name = "serializer_test",
+    srcs = ["serializer_test.cc"],
+    deps = [
+        ":serializer",
     ],
 )
 

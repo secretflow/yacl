@@ -63,6 +63,33 @@ enum class OperandType : int {
   Vector2Vector = 0b11,
 };
 
+// Item is a container that can hold any type. It has 3 basic attributes:
+// - Item::IsArray(): Whether the underlying type is a scalar or a vector
+// - Item::IsView(): Whether the Item has ownership of the data
+// - Item::IsReadonly(): For reference types, whether the underlying data is
+//   writable, used to distinguish between "reference to T" and "reference to
+//   const T"
+//
+// The combination of the three attributes is as follows:
+// +---+-------+-------+----------+---------------+-------------------------+
+// | # |   Is  |   Is  |    Is    |   Underlying  |          Remark         |
+// |   | Array |  View | ReadOnly |      Type     |                         |
+// +---+-------+-------+----------+---------------+-------------------------+
+// | 1 | false |   -   |     -    |       T       |     Item own value T    |
+// +---+-------+-------+----------+---------------+-------------------------+
+// | 2 |  true | false |   false  |   vector<T>   |    Item own Array<T>    |
+// +---+-------+-------+----------+---------------+-------------------------+
+// | 3 |  true | false |   true   |   vector<T>   |        Not in use       |
+// |   |       |       |          |               |   Ignore readonly mark  |
+// +---+-------+-------+----------+---------------+-------------------------+
+// | 4 |  true |  true |   false  |    Span<T>    |    Ref to an Array<T>   |
+// +---+-------+-------+----------+---------------+-------------------------+
+// | 5 |  true |  true |   true   | Span<const T> | Ref to a const Array<T> |
+// +---+-------+-------+----------+---------------+-------------------------+
+//
+// For Item with ownership, (row #3 of the table), it currently does not
+// distinguish whether the data is read-only. If you want to represent a
+// constant vector, please use top-level const, that is, "const Item &var"
 class Item {
  public:
   // Take or copy scalar
@@ -220,27 +247,123 @@ class Item {
     }
   }
 
+  // **This is a dark magic function; do not use it if you are not familiar with
+  // its behavior.**
+  //
+  // ResizeAndSpan checks and expands the underlying array, and returns a Span
+  // for external reading and writing to the Item.
+  //
+  // The function consists of three parts:
+  //  1) Resize part: Resize the underlying array;
+  //  2) Span part: Create a writable span for the underlying data and return
+  //     it, so that the data inside the Item can be modified externally
+  //  3) Type reset part: If the original underlying type (denoted as U) is not
+  //     consistent with the target type T, attempt to erase U and reset it to
+  //     T. In this case, all existing data in the Item will be lost.
+  //
+  // Resize part: The function will attempt to resize the underlying data and
+  // perform a data type substitution when necessary:
+  //  - If the underlying data is T, create a new Vector<T> and replace it
+  //  - If the underlying data is Vector<T>, resize it to target size
+  //  - If the underlying data is Span<T>, This means it cannot be resized,
+  //    however, the function can check the actual size of the Span and if it is
+  //    greater than or equal to the target size, nothing needs to be done,
+  //    otherwise an exception is thrown.
+  //  - If the underlying data is Span<const T>, a writable Span cannot be
+  //    created and an exception is thrown.
+  //
+  // Span part: Creates and returns a Span for the underlying data.
+  //  - If the underlying data is a Vector, a Span of size "expected_size" is
+  //    created based on the vector.
+  //  - If the underlying data is a Span, and the size of the span is exactly
+  //    equal to "expected_size", then the underlying span is returned.
+  //    Otherwise, a new span of size "expected_size" is created based on that
+  //    span.
+  //
+  // Type reset part: This is the most dangerous part of the function, as it
+  // will do everything possible to accommodate user needs, which means
+  // rewriting the underlying data type when necessary.
+  // Suppose the underlying type of Item is U, and the function ends up
+  // returning Span<T>:
+  //  - If the underlying type is a scalar U,  then U is deleted and replaced
+  //    with a new Vector.
+  //  - If the underlying data is a Vector<U>, then the Vector<U> is deleted and
+  //    replaced with Vector<T>.
+  //  - If the underlying data is Span<T>, it indicates that the Item has
+  //    referential properties and the data cannot be modified, in which case
+  //    the function throws an exception.
+  //
+  // Usage example
+  //
+  // Proper use of ResizeAndSpan() can be very convenient. Here's an example:
+  //  > void func(const Item &in, Item *out) {
+  //  >   auto in_sp = in.AsSpan<T>();
+  //  >   auto out_sp = out->ResizeAndSpan<T>(in_sp.size());
+  //  >   // ... now you can write data to out_sp
+  //  > }
   template <typename T>
   absl::Span<T> ResizeAndSpan(size_t expected_size) {
-    auto sp = AsSpan<T>();
-    if (sp.size() == expected_size) {
-      return sp;
+    static_assert(!std::is_const_v<T>, "Cannot resize as a const span");
+
+    // If the underlying data is T
+    if (!IsArray()) {
+      // create a vector and replace T
+      auto vec = std::vector<T>(expected_size);
+      if (RawTypeIs<T>() && expected_size > 0) {
+        vec[0] = std::move(As<T>());
+      }
+      // Don't do this: `*this = Item(std::move(vec))`
+      // this will discard the custom slots
+      v_ = std::move(vec);
+      Setup(true, false, false);
+      // now return
+      return absl::MakeSpan(As<std::vector<T>>());
     }
 
-    // size doesn't match, now we try to resize
-    YACL_ENFORCE(IsArray() && !IsView() && !IsReadOnly(),
-                 "Resize item fail, actual size={}, resize={}, item_info: {}",
-                 sp.size(), expected_size, ToString());
-    auto& vec = As<std::vector<T>>();
-    vec.resize(expected_size);
-    return absl::MakeSpan(vec);
+    // Now the underlying data is Vector or Span
+    if (!IsView()) {
+      // Vector case
+      if (RawTypeIs<std::vector<T>>()) {
+        auto& vec = As<std::vector<T>>();
+        // do resize
+        if (vec.size() < expected_size) {
+          vec.resize(expected_size);
+        }
+        // do span
+        return absl::MakeSpan(vec.data(), expected_size);
+      } else {
+        // just discard vector<U> and replace with vector<T>
+        v_ = std::vector<T>(expected_size);
+        return absl::MakeSpan(As<std::vector<T>>());
+      }
+    }
+
+    // Now the underlying data is Span or Const_Span
+    YACL_ENFORCE(!IsReadOnly(),
+                 "The underlying data is readonly, Cannot create a read-write "
+                 "span. Item detail: {}",
+                 this->ToString());
+    YACL_ENFORCE(RawTypeIs<absl::Span<T>>(),
+                 "The underlying type of item is {}, excepted type is {}, "
+                 "cannot resize",
+                 v_.type().name(), typeid(T).name());
+    auto sp = As<absl::Span<T>>();
+    if (sp.size() == expected_size) {
+      return sp;
+    } else if (sp.size() > expected_size) {
+      return sp.subspan(0, expected_size);
+    }
+    YACL_THROW(
+        "The underlying data is Span, cannot resize. Current size={}, "
+        "expected={}",
+        sp.size(), expected_size);
   }
 
   bool HasValue() const noexcept { return v_.has_value(); }
 
   // Check the type that directly stored, which is, container type + data type
   template <typename T>
-  bool WrappedTypeIs() const noexcept {
+  bool RawTypeIs() const noexcept {
     return v_.type() == typeid(T);
   }
 
@@ -248,11 +371,10 @@ class Item {
   template <typename T>
   bool DataTypeIs() const noexcept {
     if (IsArray()) {
-      return WrappedTypeIs<std::vector<T>>() ||
-             WrappedTypeIs<absl::Span<T>>() ||
-             WrappedTypeIs<absl::Span<const T>>();
+      return RawTypeIs<std::vector<T>>() || RawTypeIs<absl::Span<T>>() ||
+             RawTypeIs<absl::Span<const T>>();
     } else {
-      return WrappedTypeIs<T>();
+      return RawTypeIs<T>();
     }
   }
 
@@ -287,7 +409,7 @@ class Item {
     static_assert(!std::is_same_v<T, Item>,
                   "Cannot compare to another Item, since the Type info is "
                   "discarded at runtime");
-    return HasValue() && WrappedTypeIs<T>() && As<T>() == other;
+    return HasValue() && RawTypeIs<T>() && As<T>() == other;
   }
 
   template <typename T>
@@ -323,6 +445,7 @@ class Item {
   }
 
   virtual std::string ToString() const;
+  friend std::ostream& operator<<(std::ostream& os, const Item& a);
 
  protected:
   template <typename T>
@@ -423,8 +546,6 @@ class Item {
   // bit 2 -> is const?  0 - rw;     1 - read-only
   uint8_t meta_ = 0;
 };
-
-std::ostream& operator<<(std::ostream& os, const Item& a);
 
 template <>
 bool Item::IsAll(const bool& element) const;

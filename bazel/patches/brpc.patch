@@ -144,18 +144,3 @@ index a2eea9cf..d5c7372f 100644
      "//conditions:default": [
          "test_file_util_linux.cc",
          "proc_maps_linux_unittest.cc",
-diff --git a/BUILD.bazel b/BUILD.bazel
-index 0bdaa4d3..43597f63 100644
---- a/BUILD.bazel
-+++ b/BUILD.bazel
-@@ -45,6 +45,10 @@ COPTS = [
- }) + select({
-     "//bazel/config:brpc_with_rdma": ["-DBRPC_WITH_RDMA=1"],
-     "//conditions:default": [""],
-+}) + select({
-+    # Force linux aarch to use O1 build
-+    "@bazel_tools//src/conditions:linux_aarch64": ["-O1"],
-+    "//conditions:default": [""],
- })
- 
- LINKOPTS = [

@@ -26,15 +26,17 @@
 #include "spdlog/spdlog.h"
 
 #include "yacl/base/exception.h"
+#include "yacl/utils/spi/argument/util.h"
 
 namespace yacl {
 
 class SpiArg {
  public:
-  explicit SpiArg(const std::string &key) : key_(absl::AsciiStrToLower(key)) {}
+  explicit SpiArg(const std::string &key) : key_(util::ToSnakeCase(key)) {}
 
+  // If value is a string, it will be automatically converted to lowercase
   template <typename T>
-  SpiArg(const std::string &key, T &&value) : key_(absl::AsciiStrToLower(key)) {
+  SpiArg(const std::string &key, T &&value) : key_(util::ToSnakeCase(key)) {
     operator=(std::forward<T>(value));
   }
 
@@ -45,6 +47,7 @@ class SpiArg {
   }
 
   // Specialized functions of operator=<T>
+  // If value is a string, it will be automatically converted to lowercase
   SpiArg &operator=(const char *value);
   SpiArg &operator=(const std::string &value);
 
@@ -61,9 +64,13 @@ class SpiArg {
     }
   }
 
+  std::string ToString() const;
+
  private:
   std::string key_;
   std::any value_;
 };
+
+inline auto format_as(const SpiArg &arg) { return arg.ToString(); }
 
 }  // namespace yacl

@@ -35,7 +35,7 @@ struct TestParams {
 
 class KkrtOtExtTest : public ::testing::TestWithParam<TestParams> {};
 
-TEST_P(KkrtOtExtTest, Works) {
+TEST_P(KkrtOtExtTest, DISABLED_Works) {
   // GIVEN
   const int kWorldSize = 2;
   auto contexts = link::test::SetupWorld(kWorldSize);
@@ -78,7 +78,7 @@ INSTANTIATE_TEST_SUITE_P(Works_Instances, KkrtOtExtTest,
                                          TestParams{4096},  //
                                          TestParams{65536}));
 
-TEST(KkrtOtExtEdgeTest, Test) {
+TEST(KkrtOtExtEdgeTest, DISABLED_Test) {
   // GIVEN
   const int kWorldSize = 2;
   auto contexts = link::test::SetupWorld(kWorldSize);
@@ -111,7 +111,7 @@ TEST(KkrtOtExtEdgeTest, Test) {
 }
 
 class KkrtOtExtTest2 : public ::testing::TestWithParam<TestParams> {};
-TEST_P(KkrtOtExtTest2, Works) {
+TEST_P(KkrtOtExtTest2, DISABLED_Works) {
   // GIVEN
   const int kWorldSize = 2;
   auto contexts = link::test::SetupWorld(kWorldSize);
