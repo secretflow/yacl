@@ -123,7 +123,7 @@ TEST_P(FssDpfEvalAllTest, Works) {
   }
 
   DpfKey k1_copy;
-  std::string k1_string = k1.Serialize();
+  auto k1_string = k1.Serialize();
   k1_copy.Deserialize(k1_string);
 
   temp0 = context.EvalAll(k0);

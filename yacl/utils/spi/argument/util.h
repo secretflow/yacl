@@ -1,37 +1,23 @@
-//
-// Copyright 2022 Ant Group Co., Ltd.
+// Copyright 2024 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//   http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-//
 
-syntax = "proto3";
+#pragma once
 
-package yacl.crypto;
+#include <string>
 
-import "yacl/utils/serializable.proto";
+namespace yacl::util {
 
-message DpfCWProto {
-  Uint128Proto seed = 1;
-  uint32 t_store = 2;
-}
+std::string ToSnakeCase(const std::string& str);
 
-message DpfKeyProto {
-  bool enable_evalall = 1;
-  repeated DpfCWProto cws_vec = 2;
-  repeated Uint128Proto last_cw_vec = 3;
-  bool rank = 4;
-  uint64 in_bitnum = 5;
-  uint64 ss_bitnum = 6;
-  uint32 sec_param = 7;
-  Uint128Proto mseed = 8;
-}
+}  // namespace yacl::util

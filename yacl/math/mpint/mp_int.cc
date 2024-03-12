@@ -514,6 +514,7 @@ void MPInt::Pow(const MPInt &a, uint32_t b, MPInt *c) {
 
 MPInt MPInt::Pow(uint32_t b) const {
   if (b == 0) {
+    YACL_ENFORCE(!IsZero(), "Power: 0^0 is illegal");
     return MPInt::_1_;
   }
 

@@ -13,8 +13,6 @@
 # limitations under the License.
 
 load("//bazel:yacl.bzl", "AES_COPT_FLAGS", "yacl_cc_library", "yacl_cc_test")
-load("@rules_proto//proto:defs.bzl", "proto_library")
-load("@rules_cc//cc:defs.bzl", "cc_proto_library")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -23,7 +21,6 @@ yacl_cc_library(
     srcs = ["dpf.cc"],
     hdrs = ["dpf.h"],
     deps = [
-        ":serializable_cc_proto",
         "//yacl/base:int128",
         "//yacl/crypto/tools:prg",
         "//yacl/link",
@@ -36,21 +33,6 @@ yacl_cc_test(
     deps = [
         ":dpf",
     ],
-)
-
-proto_library(
-    name = "serializable_proto",
-    srcs = [
-        "serializable.proto",
-    ],
-    deps = [
-        "//yacl/utils:serializable_proto",
-    ],
-)
-
-cc_proto_library(
-    name = "serializable_cc_proto",
-    deps = [":serializable_proto"],
 )
 
 yacl_cc_library(

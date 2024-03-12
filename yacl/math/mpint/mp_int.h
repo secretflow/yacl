@@ -117,7 +117,11 @@ class MPInt {
 
   [[nodiscard]] size_t BitCount() const;
 
+  // The size of memory allocated by this MPInt.
+  // Not equal to the byte size of the number, nor equal to the serialized size
   size_t SizeAllocated() { return n_.alloc * sizeof(mp_digit); }
+  // The size of memory used by this MPInt.
+  // Not equal to the byte size of the number, nor equal to the serialized size
   size_t SizeUsed() { return n_.used * sizeof(mp_digit); }
 
   //================================//
@@ -352,7 +356,7 @@ class MPInt {
       const std::function<void(T *, const T &)> &combine_inplace) {
     YACL_ENFORCE(!scalar.IsNegative(), "scalar must >= 0, get {}", scalar);
 
-    if (scalar.n_.used == 0) {
+    if (scalar.IsZero()) {
       return identity;
     }
 

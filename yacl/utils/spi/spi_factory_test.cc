@@ -53,12 +53,16 @@ class MockPaillierLib : public MockPheSpi {
 
   static std::unique_ptr<MockPheSpi> Create(const std::string &phe_name,
                                             const SpiArgs &args) {
+    fmt::println("Create MockPaillierLib with args {}", args);
+
     YACL_ENFORCE(phe_name == "paillier");
-    return std::make_unique<MockPaillierLib>(args.Get(ArgKeySize, 2048));
+    return std::make_unique<MockPaillierLib>(
+        args.GetOrDefault(ArgKeySize, 2048));
   }
 
   static bool Check(const std::string &phe_name, const SpiArgs &args) {
-    return phe_name == "paillier" && args.Get(ArgKeySize, 2048) <= 4096;
+    return phe_name == "paillier" &&
+           args.GetOrDefault(ArgKeySize, 2048) <= 4096;
   }
 
   std::string ToString() override {
@@ -83,11 +87,13 @@ class MockQuantumLib : public MockPheSpi {
   static std::unique_ptr<MockPheSpi> Create(const std::string &phe_name,
                                             const SpiArgs &args) {
     YACL_ENFORCE(phe_name == "elgamal");
-    return std::make_unique<MockQuantumLib>(args.Get(Curve, "ed25519"));
+    return std::make_unique<MockQuantumLib>(
+        args.GetOrDefault(Curve, "ed25519"));
   }
 
   static bool Check(const std::string &phe_name, const SpiArgs &args) {
-    return phe_name == "elgamal" && args.Get(Curve, "ed25519") == "ed25519";
+    return phe_name == "elgamal" &&
+           args.GetOrDefault(Curve, "ed25519") == "ed25519";
   }
 
   std::string ToString() override {
@@ -118,13 +124,17 @@ TEST(SpiFactoryTest, TestListLibs) {
   ASSERT_EQ(libs.size(), 1);
   ASSERT_TRUE(libs[0] == "mock_paillier_lib");
 
-  libs = MockPheSpiFactory::Instance().ListLibraries("paillier",
-                                                     ArgKeySize = 2048);
+  libs = MockPheSpiFactory::Instance().ListLibraries(
+      "paillier", ArgLib = "mock_paillier_lib", ArgKeySize = 2048);
   ASSERT_EQ(libs.size(), 1);
   ASSERT_TRUE(libs[0] == "mock_paillier_lib");
 
   libs = MockPheSpiFactory::Instance().ListLibraries("paillier",
                                                      ArgKeySize = 100000);
+  ASSERT_EQ(libs.size(), 0);
+
+  libs = MockPheSpiFactory::Instance().ListLibraries("paillier",
+                                                     ArgLib = "no-lib");
   ASSERT_EQ(libs.size(), 0);
 
   libs =

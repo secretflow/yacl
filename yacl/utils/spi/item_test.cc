@@ -125,6 +125,7 @@ TEST(ItemTest, RefPtr) {
 }
 
 TEST(ItemTest, ResizeAndSpan) {
+  // Vector<T> case
   auto item = Item::Take(std::vector<int>());
   EXPECT_EQ(item.AsSpan<int>().size(), 0);
   EXPECT_EQ(item.Size<int>(), 0);
@@ -133,8 +134,53 @@ TEST(ItemTest, ResizeAndSpan) {
   EXPECT_EQ(sp.size(), 100);
   EXPECT_EQ(item.Size<int>(), 100);
 
+  sp = item.ResizeAndSpan<int>(50);
+  EXPECT_EQ(sp.size(), 50);
+  EXPECT_EQ(item.Size<int>(), 100);
+
   sp[29] = 456;
   EXPECT_EQ(item.SubItem<int>(29, 20).AsSpan<int>()[0], 456);
+
+  // ... with type change
+  auto sp2 = item.ResizeAndSpan<std::string>(0);
+  EXPECT_EQ(sp2.size(), 0);
+  EXPECT_EQ(item.Size<std::string>(), 0);
+
+  // Single T case
+  item = (int)3;
+  EXPECT_FALSE(item.IsArray());
+  sp = item.ResizeAndSpan<int>(40);
+  EXPECT_TRUE(item.IsArray());
+  EXPECT_FALSE(item.IsView());
+  EXPECT_FALSE(item.IsReadOnly());
+  EXPECT_EQ(sp.size(), 40);
+  EXPECT_EQ(item.Size<int>(), 40);
+  EXPECT_EQ(sp[0], 3);
+
+  // ... with type change
+  item = "hello";
+  auto sp3 = item.ResizeAndSpan<double>(1);
+  EXPECT_EQ(sp3.size(), 1);
+  EXPECT_EQ(item.Size<double>(), 1);
+
+  // Span<T> case
+  std::vector<int> vec = {1, 2, 3};
+  item = Item::Ref(vec);
+  EXPECT_TRUE(item.IsArray());
+  EXPECT_TRUE(item.IsView());
+  sp = item.ResizeAndSpan<int>(2);
+  EXPECT_EQ(sp.size(), 2);
+  EXPECT_EQ(item.Size<int>(), 3);
+  sp[1] = 456;
+  EXPECT_EQ(vec[1], 456);
+  sp = item.ResizeAndSpan<int>(3);
+  EXPECT_EQ(sp.size(), 3);
+  EXPECT_EQ(item.Size<int>(), 3);
+  EXPECT_EQ(sp[2], 3);
+  // cannot resize a span
+  EXPECT_ANY_THROW(item.ResizeAndSpan<int>(4));
+  // cannot change type
+  EXPECT_ANY_THROW(item.ResizeAndSpan<double>(1));
 }
 
 class DummyItem : public Item {
