@@ -73,7 +73,7 @@ Low Density Parity Check Code (Silver Code)
   *Geoffroy Couteau, Peter Rindal, Srinivasan Raghuraman*\
   Crypto 2021, [eprint](https://eprint.iacr.org/2021/1150), CRR21
 
-Expanding Accumulation Code : https://eprint.iacr.org/2022/1014.pdf
+Expanding Accumulation Code
 
 - Correlated Pseudorandomness from Expand-Accumulate Codes\
   *Elette Boyle, Geoffroy Couteau, Niv Gilboa, Yuval Ishai, Lisa Kohl, Nicolas Resch, Peter Scholl*\
