@@ -147,7 +147,7 @@ def _com_google_protobuf():
         strip_prefix = "protobuf-21.12",
         type = "tar.gz",
         urls = [
-            "https://github.com/protocolbuffers/protobuf/releases/download/v21.12/protobuf-all-21.12.tar.gz",
+            "https://github.com/protocolbuffers/protobuf/releases/download/v26.0/protobuf-all-21.12.tar.gz",
         ],
     )
 
