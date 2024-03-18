@@ -60,10 +60,10 @@ def _org_interconnection():
         http_archive,
         name = "org_interconnection",
         urls = [
-            "https://github.com/secretflow/interconnection/archive/32ec6f51aeb662f84c4d06fd8a0c3675a1e801a6.tar.gz",
+            "https://github.com/secretflow/interconnection/archive/70672ae363614fddbdece4db719e0957b64fcae3.tar.gz",
         ],
-        strip_prefix = "interconnection-32ec6f51aeb662f84c4d06fd8a0c3675a1e801a6",
-        sha256 = "a6b65900c36f1f9bc9c5bfa4fbf1b66fb1045f09eca8beb3a09c4be4c80b85f3",
+        strip_prefix = "interconnection-70672ae363614fddbdece4db719e0957b64fcae3",
+        sha256 = "82ad4a5c8d40e2ebbdc35db86b594bebe1fa89b0e06a7f5f4cb9a9fba91003da",
     )
 
     # Add homebrew openmp for macOS, somehow..homebrew installs to different location on Apple Silcon/Intel macs.. so we need two rules here
