@@ -139,6 +139,56 @@ inline uint64_t GfMul64(uint64_t x, uint64_t y) {
   return Reduce64(ClMul64(x, y));
 }
 
+// inverse over Galois Field F_{2^64}
+inline uint64_t Inv64(uint64_t x) {
+  uint64_t t0 = x;
+  uint64_t t1 = GfMul64(t0, t0);
+  uint64_t t2 = GfMul64(t1, t0);
+  t0 = GfMul64(t2, t2);
+  t0 = GfMul64(t0, t0);
+  t1 = GfMul64(t1, t0);
+  t2 = GfMul64(t2, t0);
+  t0 = GfMul64(t2, t2);
+  t0 = GfMul64(t0, t0);
+  t0 = GfMul64(t0, t0);
+  t0 = GfMul64(t0, t0);
+  t1 = GfMul64(t1, t0);
+  t2 = GfMul64(t2, t0);
+  t0 = GfMul64(t2, t2);
+  t0 = GfMul64(t0, t0);
+  t0 = GfMul64(t0, t0);
+  t0 = GfMul64(t0, t0);
+  t0 = GfMul64(t0, t0);
+  t0 = GfMul64(t0, t0);
+  t0 = GfMul64(t0, t0);
+  t0 = GfMul64(t0, t0);
+  t1 = GfMul64(t1, t0);
+  t2 = GfMul64(t2, t0);
+  t0 = GfMul64(t2, t2);
+  t0 = GfMul64(t0, t0);
+  t0 = GfMul64(t0, t0);
+  t0 = GfMul64(t0, t0);
+  t0 = GfMul64(t0, t0);
+  t0 = GfMul64(t0, t0);
+  t0 = GfMul64(t0, t0);
+  t0 = GfMul64(t0, t0);
+  t0 = GfMul64(t0, t0);
+  t0 = GfMul64(t0, t0);
+  t0 = GfMul64(t0, t0);
+  t0 = GfMul64(t0, t0);
+  t0 = GfMul64(t0, t0);
+  t0 = GfMul64(t0, t0);
+  t0 = GfMul64(t0, t0);
+  t0 = GfMul64(t0, t0);
+  t1 = GfMul64(t1, t0);
+  t0 = GfMul64(t0, t2);
+  for (int i = 0; i < 32; i++) {
+    t0 = GfMul64(t0, t0);
+  }
+  t0 = GfMul64(t0, t1);
+  return t0;
+}
+
 // Inner product <x,y>
 inline std::pair<uint128_t, uint128_t> ClMul128(absl::Span<const uint128_t> x,
                                                 absl::Span<const uint128_t> y) {
