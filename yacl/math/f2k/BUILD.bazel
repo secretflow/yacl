@@ -33,7 +33,7 @@ yacl_cc_test(
     copts = AES_COPT_FLAGS,
     deps = [
         ":f2k",
-        "//yacl/crypto/utils:rand",
+        "//yacl/crypto/rand",
     ],
 )
 
@@ -43,7 +43,7 @@ yacl_cc_binary(
     copts = AES_COPT_FLAGS,
     deps = [
         ":f2k",
-        "//yacl/crypto/utils:rand",
+        "//yacl/crypto/rand",
         "@com_github_google_benchmark//:benchmark_main",
     ],
 )

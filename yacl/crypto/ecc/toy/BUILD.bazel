@@ -1,0 +1,86 @@
+# Copyright 2023 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+yacl_cc_library(
+    name = "toy",
+    srcs = [
+        "factory.cc",
+    ],
+    deps = [
+        ":montgomery",
+        ":weierstrass",
+    ],
+    alwayslink = 1,
+)
+
+yacl_cc_library(
+    name = "common",
+    srcs = [
+        "common.cc",
+    ],
+    hdrs = [
+        "common.h",
+    ],
+    deps = [
+        "//yacl/crypto/ecc:spi",
+        "//yacl/crypto/hash:ssl_hash",
+    ],
+)
+
+yacl_cc_library(
+    name = "montgomery",
+    srcs = [
+        "montgomery.cc",
+    ],
+    hdrs = [
+        "montgomery.h",
+    ],
+    deps = [
+        ":common",
+        "//yacl/crypto/hash:blake3",
+    ],
+)
+
+yacl_cc_library(
+    name = "weierstrass",
+    srcs = [
+        "weierstrass.cc",
+    ],
+    hdrs = [
+        "weierstrass.h",
+    ],
+    deps = [
+        ":common",
+    ],
+)
+
+yacl_cc_test(
+    name = "montgomery_test",
+    srcs = ["montgomery_test.cc"],
+    deps = [
+        ":toy",
+    ],
+)
+
+yacl_cc_test(
+    name = "weierstrass_test",
+    srcs = ["weierstrass_test.cc"],
+    deps = [
+        ":toy",
+    ],
+)

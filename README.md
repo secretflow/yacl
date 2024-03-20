@@ -15,11 +15,8 @@ Supported platforms:
 ## Repo Layout
 
 - [base](yacl/base/): some basic types and utils in yacl.
-- [crypto](yacl/crypto/): a crypto library desigend for secure computation and so on.
-  - [base](yacl/crypto/base): **basic/standarized crypto**, i.e. AES, hashing.
-  - [primitives](yacl/crypto/primitives/): **crypto primitives**, i.e. OT, DPF.
-  - [tools](yacl/crypto/tools/): **theoretical crypto tools**, i.e. Random Oracle (RO), PRG.
-  - [utils](yacl/crypto/utils/): easy-to-use **crypto utilities**.
+- [crypto](yacl/crypto/): **crypto algorithms** without [link](yacl/link/).
+- [kernels](yacl/kernels/): **crypto kernels** that includes [link](yacl/link/) with multi-thread support, i.e. OT, DPF.
 - [io](yacl/io/): a simple streaming-based io library.
 - [link](yacl/link/): a simple rpc-based MPI framework, providing the [SPMD](https://en.wikipedia.org/wiki/SPMD) parallel programming capability.
 

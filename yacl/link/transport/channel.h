@@ -79,6 +79,9 @@ class IChannel {
   // wait for all send and rev msg finish
   virtual void WaitLinkTaskFinish() = 0;
 
+  // abort channel immediately
+  virtual void Abort() = 0;
+
   // set send throttle window size
   virtual void SetThrottleWindowSize(size_t) = 0;
 
@@ -195,6 +198,11 @@ class Channel : public IChannel, public std::enable_shared_from_this<Channel> {
 
   void WaitLinkTaskFinish() final;
 
+  // Note: the channel can no longer be used after aborted, otherwise
+  // SendAsync/SendAsyncThrottled/Send/Recv/TestSend/TestRecv will throw
+  // yacl::LinkAborted.
+  void Abort() final;
+
   void SetThrottleWindowSize(size_t size) final {
     throttle_window_size_ = size;
   }
@@ -296,12 +304,17 @@ class Channel : public IChannel, public std::enable_shared_from_this<Channel> {
     void SendTaskFinishedNotify(size_t seq_id);
     void WaitSeqIdSendFinished(size_t seq_id);
     void WaitAllSendFinished();
+    void Abort() {
+      task_aborting_.store(true);
+      finished_cond_.notify_all();
+    }
 
    private:
     bthread::Mutex mutex_;
     size_t running_tasks_ = 0;
     utils::SegmentTree<size_t> finished_ids_;
     bthread::ConditionVariable finished_cond_;
+    std::atomic<bool> task_aborting_ = false;
   };
 
   class MessageQueue {
@@ -342,6 +355,8 @@ class Channel : public IChannel, public std::enable_shared_from_this<Channel> {
   // if WaitLinkTaskFinish is called.
   // auto ack all normal msg if true.
   std::atomic<bool> waiting_finish_ = false;
+  // for Abort
+  std::atomic<bool> aborting_ = false;
   // id count for normal msg sent to peer.
   std::atomic<size_t> msg_seq_id_ = 0;
   // ids for received normal msg from peer.

@@ -1,0 +1,17 @@
+diff --git a/include/msgpack/v1/detail/cpp11_zone.hpp b/include/msgpack/v1/detail/cpp11_zone.hpp
+index 2586f275..e325ee3b 100644
+--- a/include/msgpack/v1/detail/cpp11_zone.hpp
++++ b/include/msgpack/v1/detail/cpp11_zone.hpp
+@@ -20,6 +20,12 @@
+ #include <memory>
+ #include <vector>
+
++#if (defined __arm__ || defined __aarch64__) &&                                \
++    (defined(linux) || defined(__linux) || defined(__linux__)) &&              \
++    (defined(__GNUC__) || defined(__GNUG__))
++// This is a bug of arm linux gcc, suppressing false positives.
++#pragma GCC diagnostic ignored "-Wmismatched-new-delete"
++#endif
+ namespace msgpack {
+
+ /// @cond

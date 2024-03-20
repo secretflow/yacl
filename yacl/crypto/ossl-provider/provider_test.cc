@@ -23,7 +23,7 @@
 #include "openssl/rand.h"
 #include "openssl/randerr.h"
 
-#include "yacl/crypto/base/openssl_wrappers.h"
+#include "yacl/crypto/openssl_wrappers.h"
 #include "yacl/crypto/ossl-provider/helper.h"
 
 namespace yacl::crypto {

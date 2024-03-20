@@ -1,0 +1,56 @@
+# Copyright 2022 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+yacl_cc_library(
+    name = "gcm_crypto",
+    srcs = ["gcm_crypto.cc"],
+    hdrs = ["gcm_crypto.h"],
+    deps = [
+        "//yacl:secparam",
+        "//yacl/base:int128",
+        "//yacl/crypto:key_utils",
+    ],
+)
+
+yacl_cc_test(
+    name = "gcm_crypto_test",
+    srcs = ["gcm_crypto_test.cc"],
+    deps = [
+        ":gcm_crypto",
+    ],
+)
+
+yacl_cc_library(
+    name = "sm4_mac",
+    srcs = ["sm4_mac.cc"],
+    hdrs = ["sm4_mac.h"],
+    deps = [
+        "//yacl:secparam",
+        "//yacl/crypto/block_cipher:symmetric_crypto",
+        "//yacl/crypto/hash:ssl_hash",
+        "//yacl/crypto/hmac:hmac_sm3",
+    ],
+)
+
+yacl_cc_test(
+    name = "sm4_mac_test",
+    srcs = ["sm4_mac_test.cc"],
+    deps = [
+        ":sm4_mac",
+    ],
+)

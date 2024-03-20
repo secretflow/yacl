@@ -80,6 +80,8 @@ class ChannelMem final : public IChannel {
 
   void WaitLinkTaskFinish() final;
 
+  void Abort() override { YACL_THROW("not supported yet"); }
+
   // do nothing
   void SetThrottleWindowSize(size_t) final {}
   void TestSend(uint32_t /*timeout*/) final {}

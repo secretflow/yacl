@@ -47,7 +47,7 @@ yacl_cc_library(
     ],
     visibility = ["//visibility:public"],  # public
     deps = [
-        "//yacl/crypto/base:openssl_wrappers",  # openssl here
+        "//yacl/crypto:openssl_wrappers",  # openssl here
         "@com_google_absl//absl/strings",
     ],
 )
@@ -64,8 +64,8 @@ yacl_cc_library(
     ],
     visibility = ["//visibility:private"],
     deps = [
-        "//yacl/crypto/base:openssl_wrappers",  # openssl here
-        "//yacl/crypto/utils/entropy_source",  # use yacl es
+        "//yacl/crypto:openssl_wrappers",  # openssl here
+        "//yacl/crypto/rand/entropy_source",  # use yacl es
     ],
     alwayslink = True,  # DO NOT DELETE THIS
 )

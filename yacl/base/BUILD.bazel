@@ -147,8 +147,8 @@ yacl_cc_test(
     # copts = ["-fno-rtti"],  # for testing uint128_t
     deps = [
         ":dynamic_bitset",
+        "//yacl/crypto/rand",
         "//yacl/crypto/tools:prg",
-        "//yacl/crypto/utils:rand",
     ],
 )
 

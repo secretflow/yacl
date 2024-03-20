@@ -16,9 +16,9 @@
 
 #include "gtest/gtest.h"
 
-#include "yacl/crypto/base/ecc/mcl/mcl_util.h"
-#include "yacl/crypto/base/pairing/mcl/mcl_pairing_group.h"
-#include "yacl/crypto/utils/rand.h"
+#include "yacl/crypto/ecc/mcl/mcl_util.h"
+#include "yacl/crypto/pairing/mcl/mcl_pairing_group.h"
+#include "yacl/crypto/rand/rand.h"
 #include "yacl/math/galois_field/gf_configs.h"
 
 namespace yacl::math::hmcl::test {

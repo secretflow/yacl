@@ -135,6 +135,10 @@ class InvalidFormat : public IoError {
   using IoError::IoError;
 };
 
+class LinkAborted : public IoError {
+  using IoError::IoError;
+};
+
 class NetworkError : public IoError {
   using IoError::IoError;
 };
@@ -192,6 +196,9 @@ std::string GetStacktraceString();
 
 #define YACL_THROW_IO_ERROR(...) \
   YACL_THROW_HELPER(::yacl::IoError, false, __VA_ARGS__)
+
+#define YACL_THROW_LINK_ABORTED(...) \
+  YACL_THROW_HELPER(::yacl::LinkAborted, false, __VA_ARGS__)
 
 #define YACL_THROW_NETWORK_ERROR(...) \
   YACL_THROW_HELPER(::yacl::NetworkError, false, __VA_ARGS__)

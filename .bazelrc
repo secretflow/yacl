@@ -23,9 +23,6 @@ build --cxxopt=-std=c++17
 build --host_cxxopt=-std=c++17
 build --linkopt -lm
 
-# HACK
-build:linux --cxxopt  -Wno-error=mismatched-new-delete
-
 # Binary safety flags
 build --host_copt=-fPIE
 build --host_copt=-fstack-protector-strong

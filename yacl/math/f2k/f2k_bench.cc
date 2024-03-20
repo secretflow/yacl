@@ -17,7 +17,7 @@
 
 #include "benchmark/benchmark.h"
 
-#include "yacl/crypto/utils/rand.h"
+#include "yacl/crypto/rand/rand.h"
 #include "yacl/math/f2k/f2k.h"
 
 static void BM_ClMul128_block(benchmark::State& state) {

@@ -23,8 +23,8 @@
 #include "openssl/randerr.h"
 #include "spdlog/spdlog.h"
 
-#include "yacl/crypto/base/openssl_wrappers.h"
-#include "yacl/crypto/utils/entropy_source/entropy_source.h"
+#include "yacl/crypto/openssl_wrappers.h"
+#include "yacl/crypto/rand/entropy_source/entropy_source.h"
 
 namespace yc = yacl::crypto;
 

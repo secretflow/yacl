@@ -40,8 +40,8 @@ header: # <1>
     - '.gitignore'
     - '.gitmodules'
     - 'yacl/base/dynamic_bitset.h' # MIT
-    - 'yacl/crypto/base/aes/aes_intrinsics.h'
-    - 'yacl/crypto/base/aes/aes_opt.h'
+    - 'yacl/crypto/aes/aes_intrinsics.h'
+    - 'yacl/crypto/aes/aes_opt.h'
 
   comment: never # <9>
 

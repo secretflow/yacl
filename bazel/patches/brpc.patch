@@ -157,5 +157,5 @@ index 0bdaa4d3..43597f63 100644
 +    "@bazel_tools//src/conditions:linux_aarch64": ["-O1"],
 +    "//conditions:default": [""],
  })
- 
+
  LINKOPTS = [

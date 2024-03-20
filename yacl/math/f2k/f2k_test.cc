@@ -23,7 +23,7 @@
 
 #include "yacl/base/block.h"
 #include "yacl/base/int128.h"
-#include "yacl/crypto/utils/rand.h"
+#include "yacl/crypto/rand/rand.h"
 
 namespace {
 template <class T>
