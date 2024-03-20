@@ -1,0 +1,88 @@
+# Copyright 2022 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:yacl.bzl", "yacl_cc_binary", "yacl_cc_library", "yacl_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+yacl_cc_library(
+    name = "ssl_hash",
+    srcs = ["ssl_hash.cc"],
+    hdrs = ["ssl_hash.h"],
+    deps = [
+        ":hash_interface",
+        "//yacl/base:exception",
+        "//yacl/crypto:openssl_wrappers",
+        "//yacl/utils:scope_guard",
+        "@com_github_openssl_openssl//:openssl",
+    ],
+)
+
+yacl_cc_test(
+    name = "ssl_hash_all_test",
+    srcs = ["ssl_hash_all_test.cc"],
+    deps = [
+        ":ssl_hash",
+    ],
+)
+
+yacl_cc_library(
+    name = "blake3",
+    srcs = ["blake3.cc"],
+    hdrs = ["blake3.h"],
+    deps = [
+        ":hash_interface",
+        "//yacl/base:exception",
+        "//yacl/base:int128",
+        "@com_github_blake3team_blake3//:blake3_c",
+    ],
+)
+
+yacl_cc_test(
+    name = "blake3_test",
+    srcs = ["blake3_test.cc"],
+    deps = [
+        ":blake3",
+    ],
+)
+
+yacl_cc_binary(
+    name = "blake3_bench",
+    srcs = ["blake3_bench.cc"],
+    deps = [
+        ":blake3",
+        "@com_github_google_benchmark//:benchmark_main",
+    ],
+)
+
+yacl_cc_library(
+    name = "hash_interface",
+    srcs = ["hash_interface.h"],
+    deps = [
+        "//yacl:secparam",
+        "//yacl/base:byte_container_view",
+        "@com_github_openssl_openssl//:openssl",
+    ],
+)
+
+yacl_cc_library(
+    name = "hash_utils",
+    srcs = ["hash_utils.cc"],
+    hdrs = ["hash_utils.h"],
+    deps = [
+        ":ssl_hash",
+        "//yacl/base:int128",
+        "@com_github_blake3team_blake3//:blake3_c",
+    ],
+)

@@ -86,7 +86,6 @@ yacl_cc_library(
 
 yacl_cc_library(
     name = "serializer",
-    srcs = ["serializer.cc"],
     hdrs = [
         "serializer.h",
         "serializer_adapter.h",
@@ -206,7 +205,7 @@ yacl_cc_test(
     srcs = ["cuckoo_index_test.cc"],
     deps = [
         ":cuckoo_index",
-        "//yacl/crypto/utils:rand",
+        "//yacl/crypto/rand",
     ],
 )
 
@@ -263,5 +262,12 @@ yacl_cc_library(
     hdrs = ["thread_pool.h"],
     deps = [
         "//yacl/base:exception",
+    ],
+)
+
+yacl_cc_library(
+    name = "compile_time_utils",
+    hdrs = [
+        "compile_time_utils.h",
     ],
 )

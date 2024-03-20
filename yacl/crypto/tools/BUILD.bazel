@@ -30,9 +30,9 @@ yacl_cc_library(
     srcs = ["prg.cc"],
     hdrs = ["prg.h"],
     deps = [
+        "//yacl:secparam",
         "//yacl/base:dynamic_bitset",
-        "//yacl/crypto/base/block_cipher:symmetric_crypto",
-        "//yacl/crypto/utils:secparam",
+        "//yacl/crypto/block_cipher:symmetric_crypto",
     ],
 )
 
@@ -48,7 +48,7 @@ yacl_cc_library(
     name = "ro",
     hdrs = ["ro.h"],
     deps = [
-        "//yacl/crypto/base/hash:hash_utils",
+        "//yacl/crypto/hash:hash_utils",
     ],
 )
 
@@ -57,7 +57,7 @@ yacl_cc_test(
     srcs = ["ro_test.cc"],
     deps = [
         ":ro",
-        "//yacl/crypto/utils:rand",
+        "//yacl/crypto/rand",
     ],
 )
 
@@ -66,7 +66,7 @@ yacl_cc_library(
     srcs = ["rp.cc"],
     hdrs = ["rp.h"],
     deps = [
-        "//yacl/crypto/base/block_cipher:symmetric_crypto",
+        "//yacl/crypto/block_cipher:symmetric_crypto",
     ],
 )
 
@@ -76,7 +76,7 @@ yacl_cc_test(
     deps = [
         ":prg",
         ":rp",
-        "//yacl/crypto/utils:rand",
+        "//yacl/crypto/rand",
     ],
 )
 
@@ -86,8 +86,8 @@ yacl_cc_library(
     hdrs = ["crhash.h"],
     deps = [
         ":rp",
-        "//yacl/crypto/base/aes:aes_intrinsics",
-        "//yacl/crypto/utils:rand",
+        "//yacl/crypto/aes:aes_intrinsics",
+        "//yacl/crypto/rand",
     ],
 )
 
@@ -112,7 +112,7 @@ yacl_cc_binary(
         ":ro",
         ":rp",
         "//yacl/base:aligned_vector",
-        "//yacl/crypto/utils:rand",
+        "//yacl/crypto/rand",
         "@com_github_google_benchmark//:benchmark_main",
     ],
 )

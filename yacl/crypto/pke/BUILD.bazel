@@ -1,0 +1,65 @@
+# Copyright 2022 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+yacl_cc_library(
+    name = "asymmetric_crypto",
+    hdrs = ["asymmetric_crypto.h"],
+    deps = [
+        "//yacl/base:byte_container_view",
+    ],
+)
+
+yacl_cc_library(
+    name = "asymmetric_sm2_crypto",
+    srcs = ["asymmetric_sm2_crypto.cc"],
+    hdrs = ["asymmetric_sm2_crypto.h"],
+    deps = [
+        ":asymmetric_crypto",
+        "//yacl:secparam",
+        "//yacl/base:exception",
+        "//yacl/crypto:key_utils",
+    ],
+)
+
+yacl_cc_test(
+    name = "asymmetric_sm2_crypto_test",
+    srcs = ["asymmetric_sm2_crypto_test.cc"],
+    deps = [
+        ":asymmetric_sm2_crypto",
+    ],
+)
+
+yacl_cc_library(
+    name = "asymmetric_rsa_crypto",
+    srcs = ["asymmetric_rsa_crypto.cc"],
+    hdrs = ["asymmetric_rsa_crypto.h"],
+    deps = [
+        ":asymmetric_crypto",
+        "//yacl:secparam",
+        "//yacl/base:exception",
+        "//yacl/crypto:key_utils",
+    ],
+)
+
+yacl_cc_test(
+    name = "asymmetric_rsa_crypto_test",
+    srcs = ["asymmetric_rsa_crypto_test.cc"],
+    deps = [
+        ":asymmetric_rsa_crypto",
+    ],
+)

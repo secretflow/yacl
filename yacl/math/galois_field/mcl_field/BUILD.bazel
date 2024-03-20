@@ -31,8 +31,8 @@ yacl_cc_library(
         "//conditions:default": [],
     }),
     deps = [
-        "//yacl/crypto/base/ecc/mcl:util",
-        "//yacl/crypto/base/pairing/mcl:pairing_header",
+        "//yacl/crypto/ecc/mcl:util",
+        "//yacl/crypto/pairing/mcl:pairing_header",
         "//yacl/math/galois_field:sketch",
     ],
 )
@@ -42,7 +42,7 @@ yacl_cc_test(
     srcs = ["mcl_field_test.cc"],
     deps = [
         ":field",
-        "//yacl/crypto/base/pairing/mcl:pairing",
-        "//yacl/crypto/utils:rand",
+        "//yacl/crypto/pairing/mcl:pairing",
+        "//yacl/crypto/rand",
     ],
 )

@@ -22,10 +22,10 @@
 
 #include "yacl/base/dynamic_bitset.h"
 #include "yacl/base/int128.h"
-#include "yacl/crypto/utils/secparam.h"
+#include "yacl/secparam.h"
 
 /* submodules */
-#include "yacl/crypto/base/block_cipher/symmetric_crypto.h"
+#include "yacl/crypto/block_cipher/symmetric_crypto.h"
 
 /* security parameter declaration */
 YACL_MODULE_DECLARE("prg", SecParam::C::k128, SecParam::S::INF);

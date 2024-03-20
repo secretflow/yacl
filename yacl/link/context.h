@@ -280,6 +280,8 @@ class Context {
 
   void WaitLinkTaskFinish();
 
+  void AbortLink();
+
   void SetThrottleWindowSize(size_t);
 
   void SetChunkParallelSendSize(size_t);

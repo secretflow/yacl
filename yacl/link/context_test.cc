@@ -50,6 +50,7 @@ class MockChannel : public transport::IChannel {
   void SetRecvTimeout(uint64_t timeout_ms) override { timeout_ = timeout_ms; }
   uint64_t GetRecvTimeout() const override { return timeout_; }
   void WaitLinkTaskFinish() override {}
+  void Abort() override {}
   void SetThrottleWindowSize(size_t) override {}
   void SetChunkParallelSendSize(size_t) override {}
 

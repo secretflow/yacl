@@ -22,7 +22,7 @@
 #include "yacl/base/exception.h"
 
 /* submodules */
-#include "yacl/crypto/base/hash/hash_utils.h"
+#include "yacl/crypto/hash/hash_utils.h"
 
 namespace yacl::crypto {
 

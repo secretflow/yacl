@@ -92,7 +92,10 @@ inline size_t SerializeVarsTo(uint8_t *buf, size_t buf_len, const Ts &...obj) {
 
 namespace internal {
 
-bool ref_or_copy(msgpack::type::object_type type, std::size_t length, void *);
+inline bool ref_or_copy(msgpack::type::object_type, std::size_t, void *) {
+  // Always use reference mode to avoid pointers pointing to illegal addresses.
+  return true;
+}
 
 template <typename... Ts, std::size_t... Is>
 std::tuple<Ts...> DoDeserializeAsTuple(std::index_sequence<Is...>,

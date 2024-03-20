@@ -79,7 +79,7 @@ TEST(SerializerTest, Buffer) {
 
   auto buf = SerializeVars(hello, hello);
   auto [f1, f2] = DeserializeVars<yacl::Buffer, yacl::ByteContainerView>(buf);
-  EXPECT_STREQ(f1.data<char>(), "hello");
+  EXPECT_EQ(std::string(f1.data<char>(), f1.size()), "hello");
   EXPECT_EQ((std::string_view)f2, "hello");
 
   ByteContainerView view1, view2;

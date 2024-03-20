@@ -17,7 +17,7 @@
 #include "mcl/fp.hpp"
 #include "mcl/fp_tower.hpp"
 
-#include "yacl/crypto/base/pairing/mcl/pairing_header.h"
+#include "yacl/crypto/pairing/mcl/pairing_header.h"
 #include "yacl/math/galois_field/gf_scalar.h"
 
 namespace yacl::math::hmcl {

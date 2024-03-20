@@ -19,11 +19,11 @@
 
 #include "benchmark/benchmark.h"
 
+#include "yacl/crypto/rand/rand.h"
 #include "yacl/crypto/tools/crhash.h"
 #include "yacl/crypto/tools/prg.h"
 #include "yacl/crypto/tools/ro.h"
 #include "yacl/crypto/tools/rp.h"
-#include "yacl/crypto/utils/rand.h"
 
 namespace yacl::crypto {
 

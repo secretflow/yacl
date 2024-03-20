@@ -1,0 +1,54 @@
+# Copyright 2022 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+yacl_cc_library(
+    name = "openssl_wrappers",
+    hdrs = [
+        "openssl_wrappers.h",
+    ],
+    deps = [
+        "//yacl/base:byte_container_view",
+        "//yacl/base:exception",
+        "//yacl/crypto/hash:hash_interface",
+        "//yacl/utils:scope_guard",
+        "@com_github_openssl_openssl//:openssl",
+    ],
+)
+
+yacl_cc_library(
+    name = "key_utils",
+    srcs = ["key_utils.cc"],
+    hdrs = [
+        "key_utils.h",
+    ],
+    deps = [
+        ":openssl_wrappers",
+        "//yacl:secparam",
+        "//yacl/io/stream",
+    ],
+)
+
+yacl_cc_test(
+    name = "key_utils_test",
+    srcs = ["key_utils_test.cc"],
+    deps = [
+        ":key_utils",
+        "//yacl/crypto/pke:asymmetric_rsa_crypto",  # for test
+        "//yacl/crypto/sign:rsa_signing",  # for test
+    ],
+)

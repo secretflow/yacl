@@ -137,6 +137,16 @@ void Context::WaitLinkTaskFinish() {
   }
 }
 
+void Context::AbortLink() {
+  YACL_ENFORCE(is_sub_world_ == false,
+               "DO NOT call AbortLink on sub world link");
+  for (const auto& l : channels_) {
+    if (l) {
+      l->Abort();
+    }
+  }
+}
+
 void Context::ConnectToMesh(spdlog::level::level_enum connect_log_level) {
   SPDLOG_COND(connect_log_level, "connecting to mesh, id={}, self={}", Id(),
               Rank());
