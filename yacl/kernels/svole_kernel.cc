@@ -53,10 +53,12 @@ void SVoleKernel::init(const std::shared_ptr<link::Context>& lctx,
     // run the one-time setup (the result is cached into impl)
     std::get<SilentVoleReceiver>(core_).OneTimeSetup(lctx);
   }
+  inited_ = true;
 }
 
 void SVoleKernel::eval(const std::shared_ptr<link::Context>& lctx,
                        uint128_t* out_delta, absl::Span<uint128_t> out_c) {
+  YACL_ENFORCE(inited_);
   YACL_ENFORCE(std::holds_alternative<SilentVoleSender>(core_));
   std::get<SilentVoleSender>(core_).SfSend(lctx, out_c);
   *out_delta = std::get<SilentVoleSender>(core_).GetDelta();
@@ -65,6 +67,7 @@ void SVoleKernel::eval(const std::shared_ptr<link::Context>& lctx,
 void SVoleKernel::eval(const std::shared_ptr<link::Context>& lctx,
                        absl::Span<uint64_t> out_a,
                        absl::Span<uint128_t> out_b) {
+  YACL_ENFORCE(inited_);
   YACL_ENFORCE(std::holds_alternative<SilentVoleReceiver>(core_));
   std::get<SilentVoleReceiver>(core_).SfRecv(lctx, out_a, out_b);
 }
@@ -72,6 +75,7 @@ void SVoleKernel::eval(const std::shared_ptr<link::Context>& lctx,
 void SVoleKernel::eval_multithread(const std::shared_ptr<link::Context>& lctx,
                                    uint128_t* out_delta,
                                    absl::Span<uint128_t> out_c, int threads) {
+  YACL_ENFORCE(inited_);
   YACL_ENFORCE(std::holds_alternative<SilentVoleSender>(core_));
   YACL_ENFORCE(threads >= 1);
 
@@ -106,6 +110,7 @@ void SVoleKernel::eval_multithread(const std::shared_ptr<link::Context>& lctx,
 void SVoleKernel::eval_multithread(const std::shared_ptr<link::Context>& lctx,
                                    absl::Span<uint64_t> out_a,
                                    absl::Span<uint128_t> out_b, int threads) {
+  YACL_ENFORCE(inited_);
   YACL_ENFORCE(std::holds_alternative<SilentVoleReceiver>(core_));
   YACL_ENFORCE(out_a.size() == out_b.size());
   YACL_ENFORCE(threads >= 1);
@@ -144,6 +149,7 @@ void SVoleKernel::eval_streaming(const std::shared_ptr<link::Context>& lctx,
                                  uint128_t* out_delta,
                                  absl::Span<uint128_t> out_c, int threads,
                                  int step_size) {
+  YACL_ENFORCE(inited_);
   const size_t step_num = (out_c.size() + step_size - 1) / step_size;
   for (size_t i = 0; i < step_num; ++i) {
     auto local_step_size = (i == ((size_t)step_num - 1))
@@ -161,6 +167,7 @@ void SVoleKernel::eval_streaming(const std::shared_ptr<link::Context>& lctx,
                                  absl::Span<uint64_t> out_a,
                                  absl::Span<uint128_t> out_b, int threads,
                                  int step_size) {
+  YACL_ENFORCE(inited_);
   YACL_ENFORCE(out_a.size() == out_b.size());
   const size_t step_num = (out_a.size() + step_size - 1) / step_size;
   for (size_t i = 0; i < step_num; ++i) {
