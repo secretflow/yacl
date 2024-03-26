@@ -88,6 +88,7 @@ void SVoleKernel::eval_multithread(const std::shared_ptr<link::Context>& lctx,
   }
   tl_c[threads - 1] = out_c.subspan(iter_size * (threads - 1), last_size);
 
+  *out_delta = std::get<SilentVoleSender>(core_).GetDelta();
   uint128_t shared_seed = SyncSeedSend(lctx);
 
   auto lctx_tl = SetupLink(lctx, threads); /* thread-local link */
@@ -98,7 +99,6 @@ void SVoleKernel::eval_multithread(const std::shared_ptr<link::Context>& lctx,
     auto tl_core = core_;
     std::get<SilentVoleSender>(tl_core).SetOTCounter(tl_seed);
     std::get<SilentVoleSender>(tl_core).SfSend(lctx_tl[i], tl_c[i]);
-    *out_delta = std::get<SilentVoleSender>(tl_core).GetDelta();
   };
   for (int i = 0; i < threads; ++i) {
     pool.Submit(task, i);
