@@ -77,7 +77,7 @@ namespace yacl::crypto {
 class SoftspokenOtExtSender {
  public:
   explicit SoftspokenOtExtSender(uint64_t k = 2, uint64_t step = 0,
-                                 bool mal = false);
+                                 bool mal = false, bool compact = false);
 
   void OneTimeSetup(const std::shared_ptr<link::Context>& ctx);
 
@@ -125,22 +125,24 @@ class SoftspokenOtExtSender {
 
   // Softspoken one time setup
   bool inited_{false};
+
   uint64_t k_;           // parameter k
   uint64_t pprf_num_;    // kKappa / k
   uint64_t pprf_range_;  // the number of leaves for single pprf
-  AlignedVector<uint128_t> punctured_leaves_;  // leaves for all pprf
-  AlignedVector<uint128_t> punctured_idx_;     // pprf punctured index
+  UninitAlignedVector<uint128_t> punctured_leaves_;  // leaves for all pprf
+  UninitAlignedVector<uint128_t> punctured_idx_;     // pprf punctured index
   uint128_t delta_;  // cot delta a.k.a the choices of base OT
-  std::array<uint128_t, 128> p_idx_mask_;     // mask for punctured index
-  AlignedVector<uint128_t> compress_leaves_;  // compressed pprf leaves
-  uint64_t step_{32};                         // super batch size = step_ * 128
-  bool mal_{false};                           // malicous
+  std::array<uint128_t, 128> p_idx_mask_;           // mask for punctured index
+  UninitAlignedVector<uint128_t> compress_leaves_;  // compressed pprf leaves
+  uint64_t step_{32};    // super batch size = step_ * 128
+  bool mal_{false};      // malicous
+  bool compact_{false};  // compact mode
 };
 
 class SoftspokenOtExtReceiver {
  public:
   explicit SoftspokenOtExtReceiver(uint64_t k = 2, uint64_t step = 0,
-                                   bool mal = false);
+                                   bool mal = false, bool compact = false);
 
   void OneTimeSetup(const std::shared_ptr<link::Context>& ctx);
 
@@ -160,6 +162,7 @@ class SoftspokenOtExtReceiver {
               const dynamic_bitset<uint128_t>& choices, OtRecvStore* out);
 
   // [Warning] low efficiency
+  // Compact Softspoken would the type of OtRecvStore is "OtStoreType:Compact".
   void GenCot(const std::shared_ptr<link::Context>& ctx, uint64_t num_ot,
               OtRecvStore* out);
 
@@ -176,6 +179,7 @@ class SoftspokenOtExtReceiver {
 
   // OtStore-style interface
   // [Warning] low efficiency
+  // Compact Softspoken would return "Compact" OtRecvStore
   OtRecvStore GenCot(const std::shared_ptr<link::Context>& ctx,
                      uint64_t num_ot);
 
@@ -199,12 +203,13 @@ class SoftspokenOtExtReceiver {
 
   // Softspoken one time setup
   bool inited_{false};
-  uint64_t k_;                           // parameter k
-  uint64_t pprf_num_;                    // kkappa / k
-  uint64_t pprf_range_;                  // the number of leaves for single pprf
-  AlignedVector<uint128_t> all_leaves_;  // leaves for all pprf
-  uint64_t step_{32};                    // super batch size = step_ * 128
-  bool mal_{false};                      // malicous
+  uint64_t k_;           // parameter k
+  uint64_t pprf_num_;    // kkappa / k
+  uint64_t pprf_range_;  // the number of leaves for single pprf
+  UninitAlignedVector<uint128_t> all_leaves_;  // leaves for all pprf
+  uint64_t step_{32};                          // super batch size = step_ * 128
+  bool mal_{false};                            // malicous
+  bool compact_{false};                        // compact mode
 };
 
 // Softspoken Ot Extension interface
@@ -212,8 +217,8 @@ inline void SoftspokenOtExtSend(
     const std::shared_ptr<link::Context>& ctx,
     const OtRecvStore& base_ot /* rot */,
     absl::Span<std::array<uint128_t, 2>> send_blocks, uint64_t k = 2,
-    bool cot = false, bool mal = false) {
-  auto ssSender = SoftspokenOtExtSender(k, 0, mal);
+    bool cot = false, bool mal = false, bool compact = false) {
+  auto ssSender = SoftspokenOtExtSender(k, 0, mal, compact);
   ssSender.OneTimeSetup(ctx, base_ot);
   ssSender.Send(ctx, send_blocks, cot);
 }
@@ -223,8 +228,8 @@ inline void SoftspokenOtExtRecv(const std::shared_ptr<link::Context>& ctx,
                                 const dynamic_bitset<uint128_t>& choices,
                                 absl::Span<uint128_t> recv_blocks,
                                 uint64_t k = 2, bool cot = false,
-                                bool mal = false) {
-  auto ssReceiver = SoftspokenOtExtReceiver(k, 0, mal);
+                                bool mal = false, bool compact = false) {
+  auto ssReceiver = SoftspokenOtExtReceiver(k, 0, mal, compact);
   ssReceiver.OneTimeSetup(ctx, base_ot);
   ssReceiver.Recv(ctx, choices, recv_blocks, cot);
 }

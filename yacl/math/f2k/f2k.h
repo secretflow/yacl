@@ -140,7 +140,7 @@ inline uint64_t GfMul64(uint64_t x, uint64_t y) {
 }
 
 // inverse over Galois Field F_{2^64}
-inline uint64_t Inv64(uint64_t x) {
+inline uint64_t GfInv64(uint64_t x) {
   uint64_t t0 = x;
   uint64_t t1 = GfMul64(t0, t0);
   uint64_t t2 = GfMul64(t1, t0);
@@ -275,4 +275,18 @@ inline std::array<uint64_t, 64> GenGf64Basis() {
 
 static std::array<uint64_t, 64> gf64_basis = GenGf64Basis();
 static std::array<uint128_t, 128> gf128_basis = GenGf128Basis();
+
+inline uint128_t PackGf128(absl::Span<const uint128_t> data) {
+  const size_t size = data.size();
+  YACL_ENFORCE(size <= 128);
+  // inner product
+  return GfMul128(data, absl::MakeSpan(gf128_basis.data(), size));
+}
+
+inline uint64_t PackGf64(absl::Span<const uint64_t> data) {
+  const size_t size = data.size();
+  YACL_ENFORCE(size <= 64);
+  // inner product
+  return GfMul64(data, absl::MakeSpan(gf64_basis.data(), size));
+}
 };  // namespace yacl

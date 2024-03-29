@@ -87,8 +87,8 @@ TEST_P(FerretOtExtTest, CheetahWorks) {
   auto cots_compact = MockCompactOts(cot_num);        // mock cots
   auto delta = cots_compact.send.GetDelta();
 
-  auto send_out = AlignedVector<uint128_t>(ot_num);
-  auto recv_out = AlignedVector<uint128_t>(ot_num);
+  auto send_out = UninitAlignedVector<uint128_t>(ot_num);
+  auto recv_out = UninitAlignedVector<uint128_t>(ot_num);
   // WHEN
   auto sender = std::async([&] {
     FerretOtExtSend_cheetah(lctxs[0], cots_compact.send, lpn_param, ot_num,

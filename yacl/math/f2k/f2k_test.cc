@@ -129,3 +129,14 @@ TEST(F2kTest, GfMul64_inner_product) {
   EXPECT_EQ(ret, check);
   EXPECT_NE(ret, zero);
 }
+
+TEST(F2kTest, GfInv64_inner_product) {
+  const uint64_t size = 1001;
+
+  auto x = yacl::crypto::RandVec<uint64_t>(size);
+  for (uint64_t i = 0; i < size; ++i) {
+    auto inv = yacl::GfInv64(x[i]);
+    auto check = yacl::GfMul64(x[i], inv);
+    EXPECT_EQ(uint64_t(1), check);
+  }
+}

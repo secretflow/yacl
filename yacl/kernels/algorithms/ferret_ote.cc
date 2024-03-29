@@ -25,24 +25,8 @@
 
 namespace yacl::crypto {
 
-namespace {
-
-uint128_t GenSyncedSeed(const std::shared_ptr<link::Context>& ctx) {
-  YACL_ENFORCE(ctx->WorldSize() == 2);
-  uint128_t seed;
-
-  if (ctx->Rank() == 0) {
-    seed = SecureRandSeed();
-    ctx->SendAsync(ctx->NextRank(), SerializeUint128(seed), "SEND:Seed");
-  } else {
-    seed = DeserializeUint128(ctx->Recv(ctx->NextRank(), "RECV:Seed"));
-  }
-  return seed;
-}
-
-}  // namespace
-
-uint64_t FerretCotHelper(const LpnParam& lpn_param, uint64_t /*ot_num*/) {
+uint64_t FerretCotHelper(const LpnParam& lpn_param, uint64_t /*ot_num*/,
+                         bool mal) {
   uint64_t mpcot_cot = 0;
   if (lpn_param.noise_asm == LpnNoiseAsm::RegularNoise) {
     // for each mpcot invocation,
@@ -60,12 +44,15 @@ uint64_t FerretCotHelper(const LpnParam& lpn_param, uint64_t /*ot_num*/) {
   // The required cots are used as:
   // (1) expansion seed: kFerret_lpnK
   // (2) mpcot cot: mp_option.cot_num (just for the first batch)
-  return lpn_param.k + mpcot_cot;
+  // (3) mpcot malicious check: 128 (fixed)
+  uint64_t check_cot = (mal == true) ? 128 : 0;
+  return lpn_param.k + mpcot_cot + check_cot;
 }
 
 OtSendStore FerretOtExtSend(const std::shared_ptr<link::Context>& ctx,
                             const OtSendStore& base_cot,
-                            const LpnParam& lpn_param, uint64_t ot_num) {
+                            const LpnParam& lpn_param, uint64_t ot_num,
+                            bool mal) {
   YACL_ENFORCE(ctx->WorldSize() == 2);  // Make sure that OT has two parties
   YACL_ENFORCE(base_cot.Type() == OtStoreType::Compact);
   YACL_ENFORCE(base_cot.Size() >= FerretCotHelper(lpn_param, ot_num));
@@ -75,7 +62,7 @@ OtSendStore FerretOtExtSend(const std::shared_ptr<link::Context>& ctx,
       ot_num, 2 * lpn_param.t);
 
   // get constants: the number of cot needed for mpcot phase
-  const auto mpcot_cot_num = MpCotRNHelper(lpn_param.t, lpn_param.n);
+  const auto mpcot_cot_num = MpCotRNHelper(lpn_param.t, lpn_param.n, mal);
 
   // get constants: batch information
   const uint64_t cache_size = lpn_param.k + mpcot_cot_num;
@@ -92,11 +79,11 @@ OtSendStore FerretOtExtSend(const std::shared_ptr<link::Context>& ctx,
   auto working_v = cot_seed.CopyCotBlocks();
 
   // get lpn public matrix A
-  uint128_t seed = GenSyncedSeed(ctx);
+  uint128_t seed = SyncSeedSend(ctx);
   LocalLinearCode<10> llc(seed, lpn_param.n, lpn_param.k);
 
   // placeholder for the outputs
-  AlignedVector<uint128_t> out(ot_num);
+  UninitAlignedVector<uint128_t> out(ot_num);
   auto out_span = absl::MakeSpan(out.data(), out.size());
 
   // For uniform noise assumption only
@@ -119,7 +106,8 @@ OtSendStore FerretOtExtSend(const std::shared_ptr<link::Context>& ctx,
     auto idx_num = lpn_param.t;
     auto idx_range = batch_ot_num;
     if (lpn_param.noise_asm == LpnNoiseAsm::RegularNoise) {
-      MpCotRNSend(ctx, cot_mpcot, idx_range, idx_num, spcot_size, working_s);
+      MpCotRNSend(ctx, cot_mpcot, idx_range, idx_num, spcot_size, working_s,
+                  mal);
     } else {
       YACL_THROW("Not Implemented!");
       // MpCotUNSend(ctx, cot_mpcot, simple_map, option, working_s);
@@ -133,15 +121,15 @@ OtSendStore FerretOtExtSend(const std::shared_ptr<link::Context>& ctx,
     // update v (first lpn_k of va^s)
     if ((ot_num - i * batch_size) > batch_ot_num) {
       // update v for the next batch
-      for (uint64_t j = 0; j < lpn_param.k; ++j) {
-        working_v[j] = working_s[batch_size + j];
-      }
+      memcpy(working_v.data(), working_s.data() + batch_size,
+             lpn_param.k * sizeof(uint128_t));
 
       // manually set the cot for next batch mpcot
-      cot_mpcot.ResetSlice();
-      for (uint64_t j = 0; j < mpcot_cot_num; ++j) {
-        cot_mpcot.SetCompactBlock(j, working_s[batch_size + lpn_param.k + j]);
-      }
+      UninitAlignedVector<uint128_t> mpcot_data(mpcot_cot_num);
+      memcpy(mpcot_data.data(), working_s.data() + batch_size + lpn_param.k,
+             mpcot_cot_num * sizeof(uint128_t));
+      cot_mpcot =
+          MakeCompactOtSendStore(std::move(mpcot_data), base_cot.GetDelta());
     } else {
       break;
     }
@@ -152,7 +140,8 @@ OtSendStore FerretOtExtSend(const std::shared_ptr<link::Context>& ctx,
 
 OtRecvStore FerretOtExtRecv(const std::shared_ptr<link::Context>& ctx,
                             const OtRecvStore& base_cot,
-                            const LpnParam& lpn_param, uint64_t ot_num) {
+                            const LpnParam& lpn_param, uint64_t ot_num,
+                            bool mal) {
   YACL_ENFORCE(ctx->WorldSize() == 2);  // Make sure that OT has two parties
   YACL_ENFORCE(base_cot.Type() == OtStoreType::Compact);
   YACL_ENFORCE(base_cot.Size() >= FerretCotHelper(lpn_param, ot_num));
@@ -162,7 +151,7 @@ OtRecvStore FerretOtExtRecv(const std::shared_ptr<link::Context>& ctx,
       ot_num, 2 * lpn_param.t);
 
   // get constants: the number of cot needed for mpcot phase
-  const auto mpcot_cot_num = MpCotRNHelper(lpn_param.t, lpn_param.n);
+  const auto mpcot_cot_num = MpCotRNHelper(lpn_param.t, lpn_param.n, mal);
 
   // get constants: batch information
   const uint64_t cache_size = lpn_param.k + mpcot_cot_num;
@@ -170,7 +159,7 @@ OtRecvStore FerretOtExtRecv(const std::shared_ptr<link::Context>& ctx,
   const uint64_t batch_num = (ot_num + batch_size - 1) / batch_size;
 
   // F2, but we store it in uint128_t
-  AlignedVector<uint128_t> u(lpn_param.k);
+  UninitAlignedVector<uint128_t> u(lpn_param.k);
 
   // prepare u, w, where w = v ^ u * delta
   // FIX ME: "Slice" would would force to slice original OtStore from "begin" to
@@ -181,11 +170,11 @@ OtRecvStore FerretOtExtRecv(const std::shared_ptr<link::Context>& ctx,
   auto working_w = cot_seed.CopyBlocks();
 
   // get lpn public matrix A
-  uint128_t seed = GenSyncedSeed(ctx);
+  uint128_t seed = SyncSeedRecv(ctx);
   LocalLinearCode<10> llc(seed, lpn_param.n, lpn_param.k);
 
   // placeholder for the outputs
-  AlignedVector<uint128_t> out(ot_num);
+  UninitAlignedVector<uint128_t> out(ot_num);
   auto out_span = absl::MakeSpan(out);
 
   // For uniform noise assumption only
@@ -210,7 +199,8 @@ OtRecvStore FerretOtExtRecv(const std::shared_ptr<link::Context>& ctx,
     auto idx_range = batch_ot_num;
 
     if (lpn_param.noise_asm == LpnNoiseAsm::RegularNoise) {
-      MpCotRNRecv(ctx, cot_mpcot, idx_range, idx_num, spcot_size, working_r);
+      MpCotRNRecv(ctx, cot_mpcot, idx_range, idx_num, spcot_size, working_r,
+                  mal);
     } else {
       YACL_THROW("Not Implemented!");
       // MpCotUNRecv(ctx, cot_mpcot, simple_map, option, e, working_r);
@@ -223,15 +213,14 @@ OtRecvStore FerretOtExtRecv(const std::shared_ptr<link::Context>& ctx,
     // bool is_last_batch = (i == batch_num - 1);
     if ((ot_num - i * batch_size) > batch_ot_num) {
       // update u, w (first lpn_k of va^s)
-      for (uint64_t j = 0; j < lpn_param.k; ++j) {
-        working_w[j] = working_r[batch_size + j];
-      }
+      memcpy(working_w.data(), working_r.data() + batch_size,
+             lpn_param.k * sizeof(uint128_t));
 
       // manually set the cot for next batch mpcot
-      cot_mpcot.ResetSlice();
-      for (uint64_t j = 0; j < mpcot_cot_num; ++j) {
-        cot_mpcot.SetBlock(j, working_r[batch_size + j + lpn_param.k]);
-      }
+      UninitAlignedVector<uint128_t> mpcot_data(mpcot_cot_num);
+      memcpy(mpcot_data.data(), working_r.data() + batch_size + lpn_param.k,
+             mpcot_cot_num * sizeof(uint128_t));
+      cot_mpcot = MakeCompactOtRecvStore(std::move(mpcot_data));
     } else {
       break;
     }
@@ -243,13 +232,13 @@ OtRecvStore FerretOtExtRecv(const std::shared_ptr<link::Context>& ctx,
 void FerretOtExtSend_cheetah(const std::shared_ptr<link::Context>& ctx,
                              const OtSendStore& base_cot,
                              const LpnParam& lpn_param, uint64_t ot_num,
-                             absl::Span<uint128_t> out) {
+                             absl::Span<uint128_t> out, bool mal) {
   YACL_ENFORCE(ctx->WorldSize() == 2);  // Make sure that OT has two parties
   YACL_ENFORCE(base_cot.Type() == OtStoreType::Compact);
   YACL_ENFORCE(base_cot.Size() >= FerretCotHelper(lpn_param, ot_num));
 
   // get constants: the number of cot needed for mpcot phase
-  const auto mpcot_cot_num = MpCotRNHelper(lpn_param.t, lpn_param.n);
+  const auto mpcot_cot_num = MpCotRNHelper(lpn_param.t, lpn_param.n, mal);
 
   // get constants: batch information
   const uint64_t cache_size = lpn_param.k + mpcot_cot_num;
@@ -263,12 +252,12 @@ void FerretOtExtSend_cheetah(const std::shared_ptr<link::Context>& ctx,
   auto working_v = cot_seed.CopyCotBlocks();
 
   // get lpn public matrix A
-  uint128_t seed = GenSyncedSeed(ctx);
+  uint128_t seed = SyncSeedSend(ctx);
   LocalLinearCode<10> llc(seed, lpn_param.n, lpn_param.k);
 
   // placeholder for the outputs
   YACL_ENFORCE(out.size() == ot_num);
-  // AlignedVector<uint128_t> out(ot_num);
+  // UninitAlignedVector<uint128_t> out(ot_num);
   auto out_span = out;
 
   // For uniform noise assumption only
@@ -291,7 +280,8 @@ void FerretOtExtSend_cheetah(const std::shared_ptr<link::Context>& ctx,
     auto idx_num = lpn_param.t;
     auto idx_range = batch_ot_num;
     if (lpn_param.noise_asm == LpnNoiseAsm::RegularNoise) {
-      MpCotRNSend(ctx, cot_mpcot, idx_range, idx_num, spcot_size, working_s);
+      MpCotRNSend(ctx, cot_mpcot, idx_range, idx_num, spcot_size, working_s,
+                  mal);
     } else {
       YACL_THROW("Not Implemented!");
       // MpCotUNSend(ctx, cot_mpcot, simple_map, option, working_s);
@@ -305,17 +295,15 @@ void FerretOtExtSend_cheetah(const std::shared_ptr<link::Context>& ctx,
     // update v (first lpn_k of va^s)
     if ((ot_num - i * batch_size) > batch_ot_num) {
       // update v for the next batch
-      // for (uint64_t j = 0; j < lpn_param.k; ++j) {
-      //   working_v[j] = working_s[batch_size + j];
-      // }
       memcpy(working_v.data(), working_s.data() + batch_size,
              lpn_param.k * sizeof(uint128_t));
 
       // manually set the cot for next batch mpcot
-      cot_mpcot.ResetSlice();
-      for (uint64_t j = 0; j < mpcot_cot_num; ++j) {
-        cot_mpcot.SetCompactBlock(j, working_s[batch_size + lpn_param.k + j]);
-      }
+      UninitAlignedVector<uint128_t> mpcot_data(mpcot_cot_num);
+      memcpy(mpcot_data.data(), working_s.data() + batch_size + lpn_param.k,
+             mpcot_cot_num * sizeof(uint128_t));
+      cot_mpcot =
+          MakeCompactOtSendStore(std::move(mpcot_data), base_cot.GetDelta());
     } else {
       break;
     }
@@ -327,13 +315,13 @@ void FerretOtExtSend_cheetah(const std::shared_ptr<link::Context>& ctx,
 void FerretOtExtRecv_cheetah(const std::shared_ptr<link::Context>& ctx,
                              const OtRecvStore& base_cot,
                              const LpnParam& lpn_param, uint64_t ot_num,
-                             absl::Span<uint128_t> out) {
+                             absl::Span<uint128_t> out, bool mal) {
   YACL_ENFORCE(ctx->WorldSize() == 2);  // Make sure that OT has two parties
   YACL_ENFORCE(base_cot.Type() == OtStoreType::Compact);
   YACL_ENFORCE(base_cot.Size() >= FerretCotHelper(lpn_param, ot_num));
 
   // get constants: the number of cot needed for mpcot phase
-  const auto mpcot_cot_num = MpCotRNHelper(lpn_param.t, lpn_param.n);
+  const auto mpcot_cot_num = MpCotRNHelper(lpn_param.t, lpn_param.n, mal);
 
   // get constants: batch information
   const uint64_t cache_size = lpn_param.k + mpcot_cot_num;
@@ -341,7 +329,7 @@ void FerretOtExtRecv_cheetah(const std::shared_ptr<link::Context>& ctx,
   const uint64_t batch_num = (ot_num + batch_size - 1) / batch_size;
 
   // F2, but we store it in uint128_t
-  AlignedVector<uint128_t> u(lpn_param.k);
+  UninitAlignedVector<uint128_t> u(lpn_param.k);
 
   // prepare u, w, where w = v ^ u * delta
   auto cot_seed = base_cot.Slice(0, lpn_param.k);
@@ -349,11 +337,11 @@ void FerretOtExtRecv_cheetah(const std::shared_ptr<link::Context>& ctx,
   auto working_w = cot_seed.CopyBlocks();
 
   // get lpn public matrix A
-  uint128_t seed = GenSyncedSeed(ctx);
+  uint128_t seed = SyncSeedRecv(ctx);
   LocalLinearCode<10> llc(seed, lpn_param.n, lpn_param.k);
 
   // placeholder for the outputs
-  // AlignedVector<uint128_t> out(ot_num);
+  // UninitAlignedVector<uint128_t> out(ot_num);
   YACL_ENFORCE(out.size() == ot_num);
   auto out_span = out;
 
@@ -379,7 +367,8 @@ void FerretOtExtRecv_cheetah(const std::shared_ptr<link::Context>& ctx,
     auto idx_range = batch_ot_num;
 
     if (lpn_param.noise_asm == LpnNoiseAsm::RegularNoise) {
-      MpCotRNRecv(ctx, cot_mpcot, idx_range, idx_num, spcot_size, working_r);
+      MpCotRNRecv(ctx, cot_mpcot, idx_range, idx_num, spcot_size, working_r,
+                  mal);
     } else {
       YACL_THROW("Not Implemented!");
       // MpCotUNRecv(ctx, cot_mpcot, simple_map, option, e, working_r);
@@ -392,17 +381,14 @@ void FerretOtExtRecv_cheetah(const std::shared_ptr<link::Context>& ctx,
     // bool is_last_batch = (i == batch_num - 1);
     if ((ot_num - i * batch_size) > batch_ot_num) {
       // update u, w (first lpn_k of va^s)
-      // for (uint64_t j = 0; j < lpn_param.k; ++j) {
-      //   working_w[j] = working_r[batch_size + j];
-      // }
       memcpy(working_w.data(), working_r.data() + batch_size,
              lpn_param.k * sizeof(uint128_t));
 
       // manually set the cot for next batch mpcot
-      cot_mpcot.ResetSlice();
-      for (uint64_t j = 0; j < mpcot_cot_num; ++j) {
-        cot_mpcot.SetBlock(j, working_r[batch_size + j + lpn_param.k]);
-      }
+      UninitAlignedVector<uint128_t> mpcot_data(mpcot_cot_num);
+      memcpy(mpcot_data.data(), working_r.data() + batch_size + lpn_param.k,
+             mpcot_cot_num * sizeof(uint128_t));
+      cot_mpcot = MakeCompactOtRecvStore(std::move(mpcot_data));
     } else {
       break;
     }

@@ -62,8 +62,8 @@ BENCHMARK_DEFINE_F(OtBench, SimplestOT)(benchmark::State& state) {
 
       // preprare inputs
       auto choices = RandBits<dynamic_bitset<uint128_t>>(num_ot);
-      AlignedVector<std::array<Block, 2>> send_blocks(num_ot);
-      AlignedVector<Block> recv_blocks(num_ot);
+      UninitAlignedVector<std::array<Block, 2>> send_blocks(num_ot);
+      UninitAlignedVector<Block> recv_blocks(num_ot);
 
       state.ResumeTiming();
 
@@ -88,8 +88,8 @@ BENCHMARK_DEFINE_F(OtBench, IknpOTe)(benchmark::State& state) {
       const auto num_ot = state.range(0);
 
       // preprare inputs
-      AlignedVector<std::array<uint128_t, 2>> send_blocks(num_ot);
-      AlignedVector<uint128_t> recv_blocks(num_ot);
+      UninitAlignedVector<std::array<uint128_t, 2>> send_blocks(num_ot);
+      UninitAlignedVector<uint128_t> recv_blocks(num_ot);
       auto choices = RandBits<dynamic_bitset<uint128_t>>(num_ot);
       auto base_ot = MockRots(128);
 
@@ -119,8 +119,8 @@ BENCHMARK_DEFINE_F(OtBench, KosOTe)(benchmark::State& state) {
       const auto num_ot = state.range(0);
 
       // preprare inputs
-      AlignedVector<std::array<uint128_t, 2>> send_blocks(num_ot);
-      AlignedVector<uint128_t> recv_blocks(num_ot);
+      UninitAlignedVector<std::array<uint128_t, 2>> send_blocks(num_ot);
+      UninitAlignedVector<uint128_t> recv_blocks(num_ot);
       auto choices = RandBits<dynamic_bitset<uint128_t>>(num_ot);
       auto base_ot = MockRots(128);
 
@@ -150,8 +150,8 @@ BENCHMARK_DEFINE_F(OtBench, KkrtOTe)(benchmark::State& state) {
       const auto num_ot = state.range(0);
 
       // preprare inputs
-      AlignedVector<uint128_t> inputs(num_ot);
-      AlignedVector<uint128_t> recv_out(num_ot);
+      UninitAlignedVector<uint128_t> inputs(num_ot);
+      UninitAlignedVector<uint128_t> recv_out(num_ot);
       auto base_ot = MockRots(512);
 
       state.ResumeTiming();
@@ -181,8 +181,8 @@ BENCHMARK_DEFINE_F(OtBench, SgrrOTe)(benchmark::State& state) {
       // preprare inputs
       uint32_t choice_value = RandInRange(range_n);
       auto base_ot = MockRots(math::Log2Ceil(range_n));
-      AlignedVector<uint128_t> send_out(range_n);
-      AlignedVector<uint128_t> recv_out(range_n);
+      UninitAlignedVector<uint128_t> send_out(range_n);
+      UninitAlignedVector<uint128_t> recv_out(range_n);
 
       state.ResumeTiming();
 
@@ -214,8 +214,8 @@ BENCHMARK_DEFINE_F(OtBench, GywzOTe)(benchmark::State& state) {
       uint32_t choice_value = RandInRange(range_n);
       uint128_t delta = SecureRandSeed();
       auto base_ot = MockCots(math::Log2Ceil(range_n), delta);
-      AlignedVector<uint128_t> send_out(range_n);
-      AlignedVector<uint128_t> recv_out(range_n);
+      UninitAlignedVector<uint128_t> send_out(range_n);
+      UninitAlignedVector<uint128_t> recv_out(range_n);
 
       state.ResumeTiming();
 
@@ -313,6 +313,38 @@ BENCHMARK_DEFINE_F(OtBench, FerretOTe)(benchmark::State& state) {
     state.ResumeTiming();
   }
 }
+
+BENCHMARK_DEFINE_F(OtBench, MalFerretOTe)(benchmark::State& state) {
+  YACL_ENFORCE(lctxs_.size() == 2);
+  for (auto _ : state) {
+    state.PauseTiming();
+    {
+      const size_t num_ot = state.range(0);
+
+      // preprare inputs
+      auto lpn_param = LpnParam::GetDefault();
+      auto cot_num = FerretCotHelper(lpn_param, num_ot, true);  // make option
+      auto cots_compact = MockCompactOts(cot_num);              // mock cots
+
+      state.ResumeTiming();
+
+      // run base OT
+      auto sender = std::async([&] {
+        return FerretOtExtSend(lctxs_[0], cots_compact.send, lpn_param, num_ot,
+                               true);
+      });
+      auto receiver = std::async([&] {
+        return FerretOtExtRecv(lctxs_[1], cots_compact.recv, lpn_param, num_ot,
+                               true);
+      });
+      sender.get();
+      receiver.get();
+      state.PauseTiming();
+    }
+    state.ResumeTiming();
+  }
+}
+
 #define DELCARE_MAL_SOFTSPOKEN_BENCH(K)                                        \
   BENCHMARK_DEFINE_F(OtBench, MalSoftspokenOTe##K)(benchmark::State & state) { \
     YACL_ENFORCE(lctxs_.size() == 2);                                          \
@@ -403,6 +435,9 @@ DELCARE_MAL_SOFTSPOKEN_BENCH(8)
 #define BM_REGISTER_FERRET_OTE(Arguments) \
   BENCHMARK_REGISTER_F(OtBench, FerretOTe)->Apply(Arguments);
 
+#define BM_REGISTER_MAL_FERRET_OTE(Arguments) \
+  BENCHMARK_REGISTER_F(OtBench, MalFerretOTe)->Apply(Arguments);
+
 #define BM_REGISTER_ALL_OT(Arguments)   \
   BM_REGISTER_SIMPLEST_OT(Arguments)    \
   BM_REGISTER_IKNP_OTE(Arguments)       \
@@ -411,6 +446,7 @@ DELCARE_MAL_SOFTSPOKEN_BENCH(8)
   BM_REGISTER_SGRR_OTE(Arguments)       \
   BM_REGISTER_GYWZ_OTE(Arguments)       \
   BM_REGISTER_FERRET_OTE(Arguments)     \
+  BM_REGISTER_MAL_FERRET_OTE(Arguments) \
   BM_REGISTER_SOFTSPOKEN_OTE(Arguments) \
   BM_REGISTER_MAL_SOFTSPOKEN_OTE(Arguments)
 }  // namespace yacl::crypto

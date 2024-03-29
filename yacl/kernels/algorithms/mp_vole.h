@@ -85,6 +85,8 @@ class MpVoleSender {
     is_finish_ = false;
   }
 
+  // Multi-Point VOLE
+  // MpVoleSender.Send would set 'c' as a * delta + b.
   void Send(const std::shared_ptr<link::Context>& ctx,
             const OtSendStore& /*cot*/ send_ot, absl::Span<K> c,
             bool fixed_index = false) {
@@ -155,6 +157,9 @@ class MpVoleReceiver {
     is_setup_ = true;
   }
 
+  // Multi-Point VOLE
+  // MpVoleReceiver.Recv would set 'a' and 'b'
+  // s.t. c = a * delta + b, where a is t-weight vector.
   void Recv(const std::shared_ptr<link::Context>& ctx,
             const OtRecvStore& /*cot*/ recv_ot, absl::Span<T> a,
             absl::Span<K> b, bool fixed_index = false) {
@@ -169,10 +174,13 @@ class MpVoleReceiver {
       MpfssRecv(ctx, recv_ot, param_, b);
     }
 
+    // reset a
+    std::memset(a.data(), 0, a.size() * sizeof(T));
     std::vector<uint64_t> indexes(param_.noise_num_);
     for (size_t i = 0; i < indexes.size(); ++i) {
       auto index = i * param_.sp_vole_size_ + param_.indexes_[i];
       indexes[i] = index;
+      // insert base-VOLE value
       a[index] = pre_a_[i];
       b[index] = b[index] ^ pre_b_[i];
     }

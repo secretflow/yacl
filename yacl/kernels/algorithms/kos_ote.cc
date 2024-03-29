@@ -21,6 +21,7 @@
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/int128.h"
+#include "yacl/crypto/tools/common.h"
 #include "yacl/math/f2k/f2k.h"
 #include "yacl/utils/matrix_utils.h"
 #include "yacl/utils/serialize.h"
@@ -156,9 +157,7 @@ void KosOtExtSend(const std::shared_ptr<link::Context>& ctx,
   std::array<uint64_t, kKappa> q_check{0};
 
   // Sender generates a random seed and sends it to receiver.
-  uint128_t seed = SecureRandSeed();
-  ctx->SendAsync(ctx->NextRank(), SerializeUint128(seed),
-                 fmt::format("KOS-Seed"));
+  uint128_t seed = SyncSeedSend(ctx);
   // Generate the coefficent for consistency check
   std::vector<uint64_t> rand_samples(batch_num * 2);
   PrgAesCtr(seed, absl::MakeSpan(rand_samples));
@@ -263,8 +262,7 @@ void KosOtExtRecv(const std::shared_ptr<link::Context>& ctx,
   CheckMsg check_msgs;
 
   // Recevies the random seed from sender
-  uint128_t seed =
-      DeserializeUint128(ctx->Recv(ctx->NextRank(), fmt::format("KOS-Seed")));
+  uint128_t seed = SyncSeedRecv(ctx);
   // Generate coefficent for consistency check
   std::vector<uint64_t> rand_samples(batch_num * 2);
   PrgAesCtr(seed, absl::Span<uint64_t>(rand_samples));

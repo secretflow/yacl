@@ -94,7 +94,7 @@ class SliceBase {
 class OtRecvStore : public SliceBase {
  public:
   using BitBufPtr = std::shared_ptr<dynamic_bitset<uint128_t>>;
-  using BlkBufPtr = std::shared_ptr<AlignedVector<uint128_t>>;
+  using BlkBufPtr = std::shared_ptr<UninitAlignedVector<uint128_t>>;
 
   // full constructor for ot receiver store
   OtRecvStore(BitBufPtr bit_ptr, BlkBufPtr blk_ptr, uint64_t use_ctr,
@@ -114,10 +114,10 @@ class OtRecvStore : public SliceBase {
   OtStoreType Type() const { return type_; }
 
   // get a buffer copy of choice buf
-  std::unique_ptr<Buffer> GetChoiceBuf();
+  Buffer GetChoiceBuf();
 
   // get a buffer copy of block buf
-  std::unique_ptr<Buffer> GetBlockBuf();
+  Buffer GetBlockBuf();
 
   // reset ot store
   void Reset();
@@ -144,7 +144,7 @@ class OtRecvStore : public SliceBase {
   dynamic_bitset<uint128_t> CopyChoice() const;
 
   // copy out the sliced choice buffer [wanring: low efficiency]
-  AlignedVector<uint128_t> CopyBlocks() const;
+  UninitAlignedVector<uint128_t> CopyBlocks() const;
 
  private:
   // check the consistency of ot receiver store
@@ -169,18 +169,19 @@ class OtRecvStore : public SliceBase {
 // Easier way of generate a ot_store pointer from a given choice buffer and
 // a block buffer
 OtRecvStore MakeOtRecvStore(const dynamic_bitset<uint128_t>& choices,
-                            const AlignedVector<uint128_t>& blocks);
+                            const UninitAlignedVector<uint128_t>& blocks);
 
 OtRecvStore MakeOtRecvStore(const dynamic_bitset<uint128_t>& choices,
                             const std::vector<uint128_t>& blocks);
 
 // Easier way of generate a compact cot_store pointer from a given block buffer
 // Note: Compact ot is correlated-ot (or called delta-ot)
-OtRecvStore MakeCompactOtRecvStore(const AlignedVector<uint128_t>& blocks);
+OtRecvStore MakeCompactOtRecvStore(
+    const UninitAlignedVector<uint128_t>& blocks);
 
 OtRecvStore MakeCompactOtRecvStore(const std::vector<uint128_t>& blocks);
 
-OtRecvStore MakeCompactOtRecvStore(AlignedVector<uint128_t>&& blocks);
+OtRecvStore MakeCompactOtRecvStore(UninitAlignedVector<uint128_t>&& blocks);
 
 OtRecvStore MakeCompactOtRecvStore(std::vector<uint128_t>&& blocks);
 
@@ -189,7 +190,7 @@ OtRecvStore MakeCompactOtRecvStore(std::vector<uint128_t>&& blocks);
 // Data structure that stores multiple ot sender's data (a.k.a. the ot messages)
 class OtSendStore : public SliceBase {
  public:
-  using BlkBufPtr = std::shared_ptr<AlignedVector<uint128_t>>;
+  using BlkBufPtr = std::shared_ptr<UninitAlignedVector<uint128_t>>;
 
   // full constructor for ot receiver store
   OtSendStore(BlkBufPtr blk_ptr, uint128_t delta, uint64_t use_ctr,
@@ -209,7 +210,7 @@ class OtSendStore : public SliceBase {
   OtStoreType Type() const { return type_; }
 
   // get a buffer copy of block buf
-  std::unique_ptr<Buffer> GetBlockBuf();
+  Buffer GetBlockBuf();
 
   // reset ot store
   void Reset();
@@ -233,7 +234,7 @@ class OtSendStore : public SliceBase {
   void SetCompactBlock(uint64_t ot_idx, uint128_t val);
 
   // copy out cot blocks
-  AlignedVector<uint128_t> CopyCotBlocks() const;
+  UninitAlignedVector<uint128_t> CopyCotBlocks() const;
 
  private:
   // check the consistency of ot receiver store
@@ -249,7 +250,7 @@ class OtSendStore : public SliceBase {
 
 // Easier way of generate a ot_store pointer from a given blocks buffer
 OtSendStore MakeOtSendStore(
-    const AlignedVector<std::array<uint128_t, 2>>& blocks);
+    const UninitAlignedVector<std::array<uint128_t, 2>>& blocks);
 
 OtSendStore MakeOtSendStore(
     const std::vector<std::array<uint128_t, 2>>& blocks);
@@ -260,13 +261,13 @@ OtSendStore MakeOtSendStore(
 OtSendStore MakeCompactOtSendStore(const std::vector<uint128_t>& blocks,
                                    uint128_t delta);
 
-OtSendStore MakeCompactOtSendStore(const AlignedVector<uint128_t>& blocks,
+OtSendStore MakeCompactOtSendStore(const UninitAlignedVector<uint128_t>& blocks,
                                    uint128_t delta);
 
 OtSendStore MakeCompactOtSendStore(std::vector<uint128_t>&& blocks,
                                    uint128_t delta);
 
-OtSendStore MakeCompactOtSendStore(AlignedVector<uint128_t>&& blocks,
+OtSendStore MakeCompactOtSendStore(UninitAlignedVector<uint128_t>&& blocks,
                                    uint128_t delta);
 
 // OT Store (for mocking only)

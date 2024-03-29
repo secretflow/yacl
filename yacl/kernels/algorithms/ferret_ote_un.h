@@ -48,7 +48,7 @@ inline std::unique_ptr<FerretSimpleMap> MakeSimpleMap(
   auto out = std::make_unique<FerretSimpleMap>(bin_num);
 
   // get index set {0, 1, ..., n}, and then RP
-  AlignedVector<uint128_t> idx_blocks(n);
+  UninitAlignedVector<uint128_t> idx_blocks(n);
   std::iota(idx_blocks.begin(), idx_blocks.end(), 0);
 
   // random permutation
@@ -112,7 +112,7 @@ inline void MpCotUNSend(const std::shared_ptr<link::Context>& ctx,
   const uint64_t bin_num = cuckoo_option.NumBins();
 
   // for each bin, call single-point cot
-  AlignedVector<AlignedVector<uint128_t>> s(bin_num);
+  UninitAlignedVector<UninitAlignedVector<uint128_t>> s(bin_num);
 
   uint64_t slice_begin = 0;
   for (uint64_t i = 0; i < bin_num && !simple_map->operator[](i).empty(); ++i) {
@@ -148,7 +148,7 @@ inline void MpCotUNRecv(const std::shared_ptr<link::Context>& ctx,
   const uint64_t bin_num = cuckoo_option.NumBins();
 
   // random permutation
-  AlignedVector<uint128_t> idx_blocks(idxes.begin(), idxes.end());
+  UninitAlignedVector<uint128_t> idx_blocks(idxes.begin(), idxes.end());
   auto idxes_h = kRP.Gen(idx_blocks);
 
   CuckooIndex cuckoo_index(cuckoo_option);
@@ -156,7 +156,7 @@ inline void MpCotUNRecv(const std::shared_ptr<link::Context>& ctx,
 
   // for each (non-empty) cuckoo bin, call single-point c-ot
   std::fill(out.begin(), out.end(), 0);
-  AlignedVector<AlignedVector<uint128_t>> r(bin_num);
+  UninitAlignedVector<UninitAlignedVector<uint128_t>> r(bin_num);
 
   uint64_t slice_begin = 0;
   for (uint64_t i = 0; i < bin_num && !simple_map->operator[](i).empty(); ++i) {

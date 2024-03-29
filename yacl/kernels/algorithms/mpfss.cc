@@ -45,7 +45,7 @@ void MpfssSend(const std::shared_ptr<link::Context>& ctx,
   const auto& batch_size = param.sp_vole_size_;
   const auto& last_batch_size = param.last_sp_vole_size_;
 
-  AlignedVector<uint128_t> send_msgs(batch_num, 0);
+  UninitAlignedVector<uint128_t> send_msgs(batch_num, 0);
   std::transform(send_msgs.cbegin(), send_msgs.cend(), w.cbegin(),
                  send_msgs.begin(), op.sub);
 
@@ -86,7 +86,7 @@ void MpfssRecv(const std::shared_ptr<link::Context>& ctx,
   const auto& last_batch_size = param.last_sp_vole_size_;
   const auto& indexes = param.indexes_;
 
-  AlignedVector<uint128_t> dpf_sum(batch_num, 0);
+  UninitAlignedVector<uint128_t> dpf_sum(batch_num, 0);
 
   for (uint32_t i = 0; i < batch_num; ++i) {
     auto this_size = (i == batch_num - 1) ? last_batch_size : batch_size;
@@ -132,7 +132,7 @@ void MpfssSend(const std::shared_ptr<link::Context>& ctx,
   const auto& batch_size = param.sp_vole_size_;
   const auto& last_batch_size = param.last_sp_vole_size_;
 
-  AlignedVector<uint64_t> send_msgs(batch_num);
+  UninitAlignedVector<uint64_t> send_msgs(batch_num, 0);
   std::transform(send_msgs.cbegin(), send_msgs.cend(), w.cbegin(),
                  send_msgs.begin(), op.sub);
 
@@ -140,7 +140,8 @@ void MpfssSend(const std::shared_ptr<link::Context>& ctx,
       Buffer(std::max(batch_size, last_batch_size) * sizeof(uint128_t));
   auto dpf_span = absl::MakeSpan(dpf_buff.data<uint128_t>(),
                                  dpf_buff.size() / sizeof(uint128_t));
-  // AlignedVector<uint128_t> dpf_buff(std::max(batch_size, last_batch_size));
+  // UninitAlignedVector<uint128_t> dpf_buff(std::max(batch_size,
+  // last_batch_size));
 
   for (uint32_t i = 0; i < batch_num; ++i) {
     auto this_size = (i == batch_num - 1) ? last_batch_size : batch_size;
@@ -189,8 +190,8 @@ void MpfssRecv(const std::shared_ptr<link::Context>& ctx,
       Buffer(std::max(batch_size, last_batch_size) * sizeof(uint128_t));
   auto dpf_span = absl::MakeSpan(dpf_buf.data<uint128_t>(),
                                  dpf_buf.size() / sizeof(uint128_t));
-  // AlignedVector<uint128_t> dpf_buff(std::max(batch_size, last_batch_size));
-  AlignedVector<uint64_t> dpf_sum(batch_num, 0);
+
+  UninitAlignedVector<uint64_t> dpf_sum(batch_num, 0);
 
   for (uint32_t i = 0; i < batch_num; ++i) {
     auto this_size = (i == batch_num - 1) ? last_batch_size : batch_size;
@@ -245,11 +246,11 @@ void MpfssSend_fixed_index(const std::shared_ptr<link::Context>& ctx,
   const auto last_batch_length = math::Log2Ceil(last_batch_size);
 
   // Copy vector w
-  AlignedVector<uint128_t> dpf_sum(batch_num, 0);
+  UninitAlignedVector<uint128_t> dpf_sum(batch_num, 0);
   std::transform(dpf_sum.cbegin(), dpf_sum.cend(), w.cbegin(), dpf_sum.begin(),
                  op.sub);
   // send message buff for GYWZ OTe
-  auto gywz_send_msgs = AlignedVector<uint128_t>(
+  auto gywz_send_msgs = UninitAlignedVector<uint128_t>(
       batch_length * (kSuperBatch - 1) + last_batch_length);
 
   const auto super_batch_num = math::DivCeil(batch_num, kSuperBatch);
@@ -320,7 +321,7 @@ void MpfssRecv_fixed_index(const std::shared_ptr<link::Context>& ctx,
   const auto super_batch_num = math::DivCeil(batch_num, kSuperBatch);
 
   // Copy vector v
-  auto dpf_sum = AlignedVector<uint128_t>(batch_num, 0);
+  auto dpf_sum = UninitAlignedVector<uint128_t>(batch_num, 0);
 
   for (uint32_t s = 0; s < super_batch_num; ++s) {
     const uint32_t bound =
@@ -406,19 +407,19 @@ void MpfssSend_fixed_index(const std::shared_ptr<link::Context>& ctx,
   const auto last_batch_length = math::Log2Ceil(last_batch_size);
 
   // copy w
-  AlignedVector<uint64_t> dpf_sum(batch_num, 0);
+  UninitAlignedVector<uint64_t> dpf_sum(batch_num, 0);
   std::transform(dpf_sum.cbegin(), dpf_sum.cend(), w.cbegin(), dpf_sum.begin(),
                  op.sub);
   // GywzOtExt need uint128_t buffer
   auto dpf_buf = Buffer((1 << std::max(batch_length, last_batch_length)) *
                         sizeof(uint128_t));
   // auto dpf_buf =
-  //     AlignedVector<uint128_t>(1 << std::max(batch_length,
+  //     UninitAlignedVector<uint128_t>(1 << std::max(batch_length,
   //     last_batch_length));
   auto dpf_span = absl::MakeSpan(dpf_buf.data<uint128_t>(),
                                  dpf_buf.size() / sizeof(uint128_t));
   // send message buffer for GYWZ OTe
-  auto gywz_send_msgs = AlignedVector<uint128_t>(
+  auto gywz_send_msgs = UninitAlignedVector<uint128_t>(
       batch_length * (kSuperBatch - 1) + last_batch_length);
 
   const auto super_batch_num = math::DivCeil(batch_num, kSuperBatch);
@@ -497,12 +498,12 @@ void MpfssRecv_fixed_index(const std::shared_ptr<link::Context>& ctx,
 
   const auto super_batch_num = math::DivCeil(batch_num, kSuperBatch);
 
-  auto dpf_sum = AlignedVector<uint64_t>(batch_num, 0);
+  auto dpf_sum = UninitAlignedVector<uint64_t>(batch_num, 0);
   // GywzOtExt need uint128_t buffer
   auto dpf_buf = Buffer((1 << std::max(batch_length, last_batch_length)) *
                         sizeof(uint128_t));
   // auto dpf_buf =
-  //     AlignedVector<uint128_t>(1 << std::max(batch_length,
+  //     UninitAlignedVector<uint128_t>(1 << std::max(batch_length,
   //     last_batch_length));
   auto dpf_span = absl::MakeSpan(dpf_buf.data<uint128_t>(),
                                  dpf_buf.size() / sizeof(uint128_t));
