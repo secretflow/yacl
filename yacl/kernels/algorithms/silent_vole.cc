@@ -226,7 +226,7 @@ void SilentVoleSender::SendImpl(const std::shared_ptr<link::Context>& ctx,
   // w would be moved into mpvole
   mpvole.OneTimeSetup(static_cast<K>(delta_), std::move(w));
   // mp_vole output
-  // AlignedVector<K> mp_vole_output(mp_param.mp_vole_size_);
+  // UninitAlignedVector<K> mp_vole_output(mp_param.mp_vole_size_);
   auto buf = Buffer(mp_param.mp_vole_size_ * sizeof(K));
   auto mp_vole_output = absl::MakeSpan(buf.data<K>(), mp_param.mp_vole_size_);
   // mpvole with fixed index
@@ -277,8 +277,8 @@ void SilentVoleReceiver::RecvImpl(const std::shared_ptr<link::Context>& ctx,
   // u && v would be moved into mpvole
   mpvole.OneTimeSetup(std::move(u), std::move(v));
   // sparse_noise && mp_vole output
-  AlignedVector<T> sparse_noise(mp_param.mp_vole_size_);
-  // AlignedVector<K> mp_vole_output(mp_param.mp_vole_size_);
+  UninitAlignedVector<T> sparse_noise(mp_param.mp_vole_size_);
+  // UninitAlignedVector<K> mp_vole_output(mp_param.mp_vole_size_);
   auto buf = Buffer(mp_param.mp_vole_size_ * sizeof(K));
   auto mp_vole_output = absl::MakeSpan(buf.data<K>(), mp_param.mp_vole_size_);
   // mpvole with fixed index

@@ -35,7 +35,7 @@ void CggmFullEval(uint128_t delta, uint128_t seed, uint32_t n,
   // if n is power of two,
   // all_msgs would have enough space to store the leaves
   bool is_two_power = (n == (static_cast<uint32_t>(1) << height));
-  AlignedVector<uint128_t> extra_buff;
+  UninitAlignedVector<uint128_t> extra_buff;
   auto& working_seeds = all_msgs;
 
   // first level
@@ -82,7 +82,7 @@ void CggmPuncFullEval(uint32_t index, absl::Span<const uint128_t> sibling_sums,
                       uint128_t one = Uint128Max()) {
   YACL_ENFORCE(punctured_msgs.size() >= n);
   uint32_t height = sibling_sums.size();
-  AlignedVector<uint128_t> extra_buff;
+  UninitAlignedVector<uint128_t> extra_buff;
 
   // if n is power of two,
   // punctured_msgs would have enough space to store all leaves
@@ -160,7 +160,7 @@ void GywzOtExtRecv(const std::shared_ptr<link::Context>& ctx,
 
   // receive punctured seed thought cot
   auto recv_buf = ctx->Recv(ctx->NextRank(), "GYWZ_OTE: message");
-  AlignedVector<uint128_t> sibling_sums(height);
+  UninitAlignedVector<uint128_t> sibling_sums(height);
   memcpy(sibling_sums.data(), recv_buf.data(), recv_buf.size());
   for (uint32_t i = 0; i < height; ++i) {
     sibling_sums[i] ^= cot.GetBlock(i);
@@ -178,7 +178,7 @@ void GywzOtExtSend(const std::shared_ptr<link::Context>& ctx,
 
   // get delta from cot
   uint128_t delta = cot.GetDelta();
-  AlignedVector<uint128_t> left_sums(height);
+  UninitAlignedVector<uint128_t> left_sums(height);
   uint128_t seed = SecureRandSeed();
   CggmFullEval(delta, seed, n, output, absl::MakeSpan(left_sums));
 
@@ -211,7 +211,7 @@ void GywzOtExtRecv_ferret(const std::shared_ptr<link::Context>& ctx,
   uint128_t one = MakeUint128(0xffffffffffffffff, 0xfffffffffffffffe);
 
   auto recv_buf = ctx->Recv(ctx->NextRank(), "GYWZ_OTE: messages");
-  AlignedVector<uint128_t> sibling_sums(height);
+  UninitAlignedVector<uint128_t> sibling_sums(height);
   memcpy(sibling_sums.data(), recv_buf.data(), recv_buf.size());
   for (uint32_t i = 0; i < height; ++i) {
     sibling_sums[i] ^= (cot.GetBlock(i) & one);
@@ -239,7 +239,7 @@ void GywzOtExtSend_ferret(const std::shared_ptr<link::Context>& ctx,
   uint128_t delta = cot.GetDelta() & one;
   uint128_t seed = SecureRandSeed() & one;
 
-  AlignedVector<uint128_t> left_sums(height);
+  UninitAlignedVector<uint128_t> left_sums(height);
   CggmFullEval(delta, seed, n, output, absl::MakeSpan(left_sums), one);
 
   for (uint32_t i = 0; i < height; ++i) {
@@ -274,7 +274,7 @@ void GywzOtExtSend_fixed_index(const std::shared_ptr<link::Context>& ctx,
   YACL_ENFORCE(cot.Size() == height);
   YACL_ENFORCE_GT(n, (uint32_t)1);
 
-  AlignedVector<uint128_t> left_sums(height);
+  UninitAlignedVector<uint128_t> left_sums(height);
   GywzOtExtSend_fixed_index(cot, n, output, absl::MakeSpan(left_sums));
 
   ctx->SendAsync(
@@ -296,8 +296,8 @@ void GywzOtExtRecv_fixed_index(const OtRecvStore& cot, uint32_t n,
     index |= (cot.GetChoice(i)) << i;
   }
 
-  AlignedVector<uint128_t> sibling_sums(recv_msgs.data(),
-                                        recv_msgs.data() + height);
+  UninitAlignedVector<uint128_t> sibling_sums(recv_msgs.data(),
+                                              recv_msgs.data() + height);
   for (uint32_t i = 0; i < height; ++i) {
     sibling_sums[i] ^= cot.GetBlock(i);
   }

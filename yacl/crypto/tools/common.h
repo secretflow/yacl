@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+#include "yacl/crypto/rand/rand.h"
 #include "yacl/link/link.h"
 #include "yacl/utils/serialize.h"
 

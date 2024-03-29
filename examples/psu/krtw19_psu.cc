@@ -80,7 +80,7 @@ auto Interpolate(const std::vector<uint64_t>& xs,
       }
     }
     for (size_t k{}; k != size; ++k) {
-      L_coeffs[k] ^= yacl::GfMul64(Li_coeffs[k], yacl::Inv64(prod));
+      L_coeffs[k] ^= yacl::GfMul64(Li_coeffs[k], yacl::GfInv64(prod));
     }
   }
   return L_coeffs;

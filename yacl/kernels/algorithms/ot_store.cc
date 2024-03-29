@@ -93,21 +93,19 @@ OtRecvStore::OtRecvStore(uint64_t num, OtStoreType type) : type_(type) {
   if (type_ == OtStoreType::Normal) {
     bit_buf_ = std::make_shared<dynamic_bitset<uint128_t>>(num);
   }
-  blk_buf_ = std::make_shared<AlignedVector<uint128_t>>(num);
+  blk_buf_ = std::make_shared<UninitAlignedVector<uint128_t>>(num, 0);
   InitCtrs(0, num, 0, num);
   ConsistencyCheck();
 }
 
-std::unique_ptr<Buffer> OtRecvStore::GetChoiceBuf() {
+Buffer OtRecvStore::GetChoiceBuf() {
   // Constructs Buffer object by copy
-  return std::make_unique<Buffer>(bit_buf_->data(),
-                                  bit_buf_->num_blocks() * sizeof(uint128_t));
+  return Buffer(bit_buf_->data(), bit_buf_->num_blocks() * sizeof(uint128_t));
 }
 
-std::unique_ptr<Buffer> OtRecvStore::GetBlockBuf() {
+Buffer OtRecvStore::GetBlockBuf() {
   // Constructs Buffer object by copy
-  return std::make_unique<Buffer>(blk_buf_->data(),
-                                  blk_buf_->size() * sizeof(uint128_t));
+  return Buffer(blk_buf_->data(), blk_buf_->size() * sizeof(uint128_t));
 }
 
 void OtRecvStore::Reset() {
@@ -204,15 +202,23 @@ void OtRecvStore::FlipChoice(uint64_t idx) {
 }
 
 dynamic_bitset<uint128_t> OtRecvStore::CopyChoice() const {
-  YACL_ENFORCE(type_ == OtStoreType::Normal,
-               "Copying choice is currently not allowed in compact mode");
+  // [Warning] low efficency
+  if (type_ == OtStoreType::Compact) {
+    dynamic_bitset<uint128_t> out(Size());
+    for (size_t i = 0; i < Size(); ++i) {
+      out[i] = GetBlock(i) & 0x1;
+    }
+    return out;
+  }
+  // YACL_ENFORCE(type_ == OtStoreType::Normal,
+  //              "Copying choice is currently not allowed in compact mode");
   dynamic_bitset<uint128_t> out = *bit_buf_;  // copy
   out >>= GetUseCtr();
   out.resize(GetUseSize());
   return out;
 }
 
-AlignedVector<uint128_t> OtRecvStore::CopyBlocks() const {
+UninitAlignedVector<uint128_t> OtRecvStore::CopyBlocks() const {
   return {blk_buf_->begin() + internal_use_ctr_,
           blk_buf_->begin() + internal_use_ctr_ + internal_use_size_};
 }
@@ -220,7 +226,8 @@ AlignedVector<uint128_t> OtRecvStore::CopyBlocks() const {
 OtRecvStore MakeOtRecvStore(const dynamic_bitset<uint128_t>& choices,
                             const std::vector<uint128_t>& blocks) {
   auto tmp1_ptr = std::make_shared<dynamic_bitset<uint128_t>>(choices);  // copy
-  auto tmp2_ptr = std::make_shared<AlignedVector<uint128_t>>(blocks.size());
+  auto tmp2_ptr =
+      std::make_shared<UninitAlignedVector<uint128_t>>(blocks.size());
   std::memcpy(tmp2_ptr->data(), blocks.data(),
               blocks.size() * sizeof(uint128_t));  // copy
 
@@ -229,16 +236,18 @@ OtRecvStore MakeOtRecvStore(const dynamic_bitset<uint128_t>& choices,
 }
 
 OtRecvStore MakeOtRecvStore(const dynamic_bitset<uint128_t>& choices,
-                            const AlignedVector<uint128_t>& blocks) {
+                            const UninitAlignedVector<uint128_t>& blocks) {
   auto tmp1_ptr = std::make_shared<dynamic_bitset<uint128_t>>(choices);  // copy
-  auto tmp2_ptr = std::make_shared<AlignedVector<uint128_t>>(blocks);    // copy
+  auto tmp2_ptr =
+      std::make_shared<UninitAlignedVector<uint128_t>>(blocks);  // copy
 
   return {tmp1_ptr,         tmp2_ptr,           0, tmp1_ptr->size(), 0,
           tmp1_ptr->size(), OtStoreType::Normal};
 }
 
 OtRecvStore MakeCompactOtRecvStore(const std::vector<uint128_t>& blocks) {
-  auto tmp_ptr = std::make_shared<AlignedVector<uint128_t>>(blocks.size());
+  auto tmp_ptr =
+      std::make_shared<UninitAlignedVector<uint128_t>>(blocks.size());
   std::memcpy(tmp_ptr->data(), blocks.data(),
               blocks.size() * sizeof(uint128_t));  // copy
 
@@ -251,8 +260,10 @@ OtRecvStore MakeCompactOtRecvStore(const std::vector<uint128_t>& blocks) {
           OtStoreType::Compact};
 }
 
-OtRecvStore MakeCompactOtRecvStore(const AlignedVector<uint128_t>& blocks) {
-  auto tmp_ptr = std::make_shared<AlignedVector<uint128_t>>(blocks);  // copy
+OtRecvStore MakeCompactOtRecvStore(
+    const UninitAlignedVector<uint128_t>& blocks) {
+  auto tmp_ptr =
+      std::make_shared<UninitAlignedVector<uint128_t>>(blocks);  // copy
 
   return {nullptr,
           tmp_ptr,
@@ -264,7 +275,8 @@ OtRecvStore MakeCompactOtRecvStore(const AlignedVector<uint128_t>& blocks) {
 }
 
 OtRecvStore MakeCompactOtRecvStore(std::vector<uint128_t>&& blocks) {
-  auto tmp_ptr = std::make_shared<AlignedVector<uint128_t>>(blocks.size());
+  auto tmp_ptr =
+      std::make_shared<UninitAlignedVector<uint128_t>>(blocks.size());
 
   std::memcpy(tmp_ptr->data(), blocks.data(),
               blocks.size() * sizeof(uint128_t));  // copy
@@ -278,9 +290,9 @@ OtRecvStore MakeCompactOtRecvStore(std::vector<uint128_t>&& blocks) {
           OtStoreType::Compact};
 }
 
-OtRecvStore MakeCompactOtRecvStore(AlignedVector<uint128_t>&& blocks) {
-  auto tmp_ptr =
-      std::make_shared<AlignedVector<uint128_t>>(std::move(blocks));  // move
+OtRecvStore MakeCompactOtRecvStore(UninitAlignedVector<uint128_t>&& blocks) {
+  auto tmp_ptr = std::make_shared<UninitAlignedVector<uint128_t>>(
+      std::move(blocks));  // move
 
   return {nullptr,
           tmp_ptr,
@@ -309,15 +321,14 @@ OtSendStore::OtSendStore(uint64_t num, OtStoreType type) : type_(type) {
     buf_size = num * 2;
   }
 
-  blk_buf_ = std::make_shared<AlignedVector<uint128_t>>(buf_size);
+  blk_buf_ = std::make_shared<UninitAlignedVector<uint128_t>>(buf_size, 0);
   InitCtrs(0, buf_size, 0, buf_size);
   ConsistencyCheck();
 }
 
-std::unique_ptr<Buffer> OtSendStore::GetBlockBuf() {
+Buffer OtSendStore::GetBlockBuf() {
   // Constructs Buffer object by copy
-  return std::make_unique<Buffer>(blk_buf_->data(),
-                                  blk_buf_->size() * sizeof(uint128_t));
+  return Buffer(blk_buf_->data(), blk_buf_->size() * sizeof(uint128_t));
 }
 
 void OtSendStore::Reset() {
@@ -432,7 +443,7 @@ void OtSendStore::SetCompactBlock(uint64_t ot_idx, uint128_t val) {
   blk_buf_->operator[](GetBufIdx(ot_idx)) = val;
 }
 
-AlignedVector<uint128_t> OtSendStore::CopyCotBlocks() const {
+UninitAlignedVector<uint128_t> OtSendStore::CopyCotBlocks() const {
   YACL_ENFORCE(type_ == OtStoreType::Compact,
                "CopyCotBlocks() is only allowed in compact mode");
   return {blk_buf_->begin() + internal_buf_ctr_,
@@ -442,7 +453,8 @@ AlignedVector<uint128_t> OtSendStore::CopyCotBlocks() const {
 OtSendStore MakeOtSendStore(
     const std::vector<std::array<uint128_t, 2>>& blocks) {
   // warning: copy
-  auto buf_ptr = std::make_shared<AlignedVector<uint128_t>>(blocks.size() * 2);
+  auto buf_ptr =
+      std::make_shared<UninitAlignedVector<uint128_t>>(blocks.size() * 2);
   memcpy(buf_ptr->data(), blocks.data(), buf_ptr->size() * sizeof(uint128_t));
 
   return {buf_ptr,
@@ -455,9 +467,10 @@ OtSendStore MakeOtSendStore(
 }
 
 OtSendStore MakeOtSendStore(
-    const AlignedVector<std::array<uint128_t, 2>>& blocks) {
+    const UninitAlignedVector<std::array<uint128_t, 2>>& blocks) {
   // warning: copy
-  auto buf_ptr = std::make_shared<AlignedVector<uint128_t>>(blocks.size() * 2);
+  auto buf_ptr =
+      std::make_shared<UninitAlignedVector<uint128_t>>(blocks.size() * 2);
   memcpy(buf_ptr->data(), blocks.data(), buf_ptr->size() * sizeof(uint128_t));
 
   return {buf_ptr,
@@ -472,7 +485,8 @@ OtSendStore MakeOtSendStore(
 OtSendStore MakeCompactOtSendStore(const std::vector<uint128_t>& blocks,
                                    uint128_t delta) {
   // warning: copy
-  auto buf_ptr = std::make_shared<AlignedVector<uint128_t>>(blocks.size());
+  auto buf_ptr =
+      std::make_shared<UninitAlignedVector<uint128_t>>(blocks.size());
   std::memcpy(buf_ptr->data(), blocks.data(),
               blocks.size() * sizeof(uint128_t));  // copy
 
@@ -485,10 +499,10 @@ OtSendStore MakeCompactOtSendStore(const std::vector<uint128_t>& blocks,
           OtStoreType::Compact};
 }
 
-OtSendStore MakeCompactOtSendStore(const AlignedVector<uint128_t>& blocks,
+OtSendStore MakeCompactOtSendStore(const UninitAlignedVector<uint128_t>& blocks,
                                    uint128_t delta) {
   // warning: copy
-  auto buf_ptr = std::make_shared<AlignedVector<uint128_t>>(blocks);
+  auto buf_ptr = std::make_shared<UninitAlignedVector<uint128_t>>(blocks);
 
   return {buf_ptr,
           delta,
@@ -501,7 +515,8 @@ OtSendStore MakeCompactOtSendStore(const AlignedVector<uint128_t>& blocks,
 
 OtSendStore MakeCompactOtSendStore(std::vector<uint128_t>&& blocks,
                                    uint128_t delta) {
-  auto buf_ptr = std::make_shared<AlignedVector<uint128_t>>(blocks.size());
+  auto buf_ptr =
+      std::make_shared<UninitAlignedVector<uint128_t>>(blocks.size());
   std::memcpy(buf_ptr->data(), blocks.data(),
               blocks.size() * sizeof(uint128_t));  // copy
 
@@ -514,10 +529,10 @@ OtSendStore MakeCompactOtSendStore(std::vector<uint128_t>&& blocks,
           OtStoreType::Compact};
 }
 
-OtSendStore MakeCompactOtSendStore(AlignedVector<uint128_t>&& blocks,
+OtSendStore MakeCompactOtSendStore(UninitAlignedVector<uint128_t>&& blocks,
                                    uint128_t delta) {
-  auto buf_ptr =
-      std::make_shared<AlignedVector<uint128_t>>(std::move(blocks));  // move
+  auto buf_ptr = std::make_shared<UninitAlignedVector<uint128_t>>(
+      std::move(blocks));  // move
 
   return {buf_ptr,
           delta,
@@ -535,8 +550,8 @@ MockOtStore MockRots(uint64_t num) {
 
 MockOtStore MockRots(uint64_t num, dynamic_bitset<uint128_t> choices) {
   YACL_ENFORCE(choices.size() == num);
-  AlignedVector<uint128_t> recv_blocks;
-  AlignedVector<std::array<uint128_t, 2>> send_blocks;
+  UninitAlignedVector<uint128_t> recv_blocks;
+  UninitAlignedVector<std::array<uint128_t, 2>> send_blocks;
 
   Prg<uint128_t> gen(FastRandSeed());
   for (uint64_t i = 0; i < num; ++i) {
@@ -556,8 +571,8 @@ MockOtStore MockCots(uint64_t num, uint128_t delta) {
 MockOtStore MockCots(uint64_t num, uint128_t delta,
                      dynamic_bitset<uint128_t> choices) {
   YACL_ENFORCE(choices.size() == num);
-  AlignedVector<uint128_t> recv_blocks;
-  AlignedVector<uint128_t> send_blocks;
+  UninitAlignedVector<uint128_t> recv_blocks;
+  UninitAlignedVector<uint128_t> send_blocks;
 
   Prg<uint128_t> gen(FastRandSeed());
   for (uint64_t i = 0; i < num; ++i) {
@@ -577,8 +592,8 @@ MockOtStore MockCots(uint64_t num, uint128_t delta,
 MockOtStore MockCompactOts(uint64_t num) {
   uint128_t delta = FastRandU128();
   delta |= 0x1;  // make sure its last bits = 1;
-  AlignedVector<uint128_t> recv_blocks;
-  AlignedVector<uint128_t> send_blocks;
+  UninitAlignedVector<uint128_t> recv_blocks;
+  UninitAlignedVector<uint128_t> send_blocks;
 
   Prg<uint128_t> gen(FastRandSeed());
   for (uint64_t i = 0; i < num; ++i) {

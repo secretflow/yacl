@@ -57,7 +57,7 @@ uint64_t inline GfMul(absl::Span<const uint64_t> a,
 
 uint128_t inline GfMul(absl::Span<const uint128_t> a,
                        absl::Span<const uint64_t> b) {
-  AlignedVector<uint128_t> tmp(b.size());
+  UninitAlignedVector<uint128_t> tmp(b.size());
   std::transform(b.cbegin(), b.cend(), tmp.begin(), [](const uint64_t& val) {
     return static_cast<uint128_t>(val);
   });

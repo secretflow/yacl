@@ -88,8 +88,8 @@ void SVoleKernel::eval_multithread(const std::shared_ptr<link::Context>& lctx,
   }
   tl_c[threads - 1] = out_c.subspan(iter_size * (threads - 1), last_size);
 
-  *out_delta = std::get<SilentVoleSender>(core_).GetDelta();
   uint128_t shared_seed = SyncSeedSend(lctx);
+  *out_delta = std::get<SilentVoleSender>(core_).GetDelta();
 
   auto lctx_tl = SetupLink(lctx, threads); /* thread-local link */
   ThreadPool pool(threads);                // the destructor joins all threads

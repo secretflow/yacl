@@ -30,6 +30,9 @@ namespace yacl::crypto {
 // Convert OT to f2k-VOLE (non-interactive)
 // the type of ot_store must be COT
 // w = u * delta + v, where delta = send_ot.delta
+// notice:
+//  - non-interactive method, which means that Ot2Vole could achieve malicious
+//  secure if send_ot/recv_ot are malicious secure.
 // usage:
 //  - Vole:  u in GF(2^64); w, v, delta in GF(2^64)
 // Ot2VoleSend<uint64_t,uint64_t> / Ot2VoleRecv<uint64_t,uint64_t>
@@ -44,9 +47,8 @@ void inline Ot2VoleSend(OtSendStore& send_ot, absl::Span<K> w) {
 
   YACL_ENFORCE(send_ot.Size() >= size * T_bits);
 
-  std::array<K, T_bits> basis;
   std::array<K, T_bits> w_buff;
-
+  std::array<K, T_bits> basis;
   if (std::is_same<K, uint128_t>::value) {
     memcpy(basis.data(), gf128_basis.data(), T_bits * sizeof(K));
   } else if (std::is_same<K, uint64_t>::value) {

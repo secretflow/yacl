@@ -31,6 +31,7 @@ namespace yacl::crypto {
 struct OtTestParams {
   unsigned num_ot;
   bool mal = false;
+  bool compact = false;
 };
 
 struct KTestParams {
@@ -183,6 +184,7 @@ TEST_P(SoftspokenOtExtTest, RotExtWorks) {
   const int kWorldSize = 2;
   const size_t num_ot = GetParam().num_ot;
   const bool mal = GetParam().mal;
+  const bool compact = GetParam().compact;
   auto lctxs = link::test::SetupWorld(kWorldSize);             // setup network
   auto base_ot = MockRots(128);                                // mock option
   auto choices = RandBits<dynamic_bitset<uint128_t>>(num_ot);  // get input
@@ -192,11 +194,11 @@ TEST_P(SoftspokenOtExtTest, RotExtWorks) {
   std::vector<uint128_t> recv_out(num_ot);
   std::future<void> sender = std::async([&] {
     SoftspokenOtExtSend(lctxs[0], base_ot.recv, absl::MakeSpan(send_out), 2,
-                        false, mal);
+                        false, mal, compact);
   });
   std::future<void> receiver = std::async([&] {
     SoftspokenOtExtRecv(lctxs[1], base_ot.send, choices,
-                        absl::MakeSpan(recv_out), 2, false, mal);
+                        absl::MakeSpan(recv_out), 2, false, mal, compact);
   });
   receiver.get();
   sender.get();
@@ -215,6 +217,7 @@ TEST_P(SoftspokenOtExtTest, CotExtWorks) {
   const int kWorldSize = 2;
   const size_t num_ot = GetParam().num_ot;
   const bool mal = GetParam().mal;
+  const bool compact = GetParam().compact;
   auto lctxs = link::test::SetupWorld(kWorldSize);             // setup network
   auto base_ot = MockRots(128);                                // mock option
   auto choices = RandBits<dynamic_bitset<uint128_t>>(num_ot);  // get input
@@ -225,24 +228,30 @@ TEST_P(SoftspokenOtExtTest, CotExtWorks) {
 
   std::future<void> sender = std::async([&] {
     SoftspokenOtExtSend(lctxs[0], base_ot.recv, absl::MakeSpan(send_out), 3,
-                        true, mal);
+                        true, mal, compact);
   });
   std::future<void> receiver = std::async([&] {
     SoftspokenOtExtRecv(lctxs[1], base_ot.send, choices,
-                        absl::MakeSpan(recv_out), 3, true, mal);
+                        absl::MakeSpan(recv_out), 3, true, mal, compact);
   });
   receiver.get();
   sender.get();
 
   // THEN
   // cot correlation = base ot choice
-  uint128_t check = base_ot.recv.CopyChoice().data()[0];  // get delta
+  uint128_t check = send_out[0][0] ^ send_out[0][1];
   for (size_t i = 0; i < num_ot; ++i) {
     EXPECT_NE(recv_out[i], 0);
     EXPECT_NE(send_out[i][0], 0);
     EXPECT_NE(send_out[i][1], 0);
     EXPECT_EQ(send_out[i][choices[i]], recv_out[i]);
     EXPECT_EQ(check, send_out[i][0] ^ send_out[i][1]);
+    // Compact Mode
+    if (compact) {
+      EXPECT_EQ(send_out[i][0] & 0x1, 0);
+      EXPECT_EQ(send_out[i][1] & 0x1, 1);
+      EXPECT_EQ(recv_out[i] & 0x1, choices[i]);
+    }
   }
 }
 
@@ -251,20 +260,21 @@ TEST_P(SoftspokenOtExtTest, RotStoreWorks) {
   const int kWorldSize = 2;
   const size_t num_ot = GetParam().num_ot;
   const bool mal = GetParam().mal;
+  const bool compact = GetParam().compact;
   auto lctxs = link::test::SetupWorld(kWorldSize);  // setup network
   auto base_ot = MockRots(128);                     // mock option
 
   // WHEN
   // One time setup for Softspoken
   auto ssReceiverTask =
-      std::async([&] { return SoftspokenOtExtReceiver(2, 0, mal); });
+      std::async([&] { return SoftspokenOtExtReceiver(2, 0, mal, compact); });
   auto ssSenderTask =
-      std::async([&] { return SoftspokenOtExtSender(2, 0, mal); });
+      std::async([&] { return SoftspokenOtExtSender(2, 0, mal, compact); });
 
   auto ssReceiver = ssReceiverTask.get();
   auto ssSender = ssSenderTask.get();
 
-  // Generate COT
+  // Generate ROT
   std::vector<std::array<uint128_t, 2>> send_out1(num_ot);
   std::vector<uint128_t> recv_out1(num_ot);
   auto sendTask1 = std::async([&] {
@@ -297,15 +307,16 @@ TEST_P(SoftspokenOtExtTest, CotStoreWorks) {
   const int kWorldSize = 2;
   const size_t num_ot = GetParam().num_ot;
   const bool mal = GetParam().mal;
+  const bool compact = GetParam().compact;
   auto lctxs = link::test::SetupWorld(kWorldSize);  // setup network
   auto base_ot = MockRots(128);                     // mock option
 
   // WHEN
   // One time setup for Softspoken
   auto ssReceiverTask =
-      std::async([&] { return SoftspokenOtExtReceiver(2, 0, mal); });
+      std::async([&] { return SoftspokenOtExtReceiver(2, 0, mal, compact); });
   auto ssSenderTask =
-      std::async([&] { return SoftspokenOtExtSender(2, 0, mal); });
+      std::async([&] { return SoftspokenOtExtSender(2, 0, mal, compact); });
 
   auto ssReceiver = ssReceiverTask.get();
   auto ssSender = ssSenderTask.get();
@@ -325,7 +336,12 @@ TEST_P(SoftspokenOtExtTest, CotStoreWorks) {
   auto sendStore = sendTask1.get();
   auto recvStore = recvTask1.get();
 
-  EXPECT_EQ(recvStore.Type(), OtStoreType::Normal);
+  if (compact) {
+    EXPECT_EQ(recvStore.Type(), OtStoreType::Compact);
+  } else {
+    EXPECT_EQ(recvStore.Type(), OtStoreType::Normal);
+  }
+
   EXPECT_EQ(sendStore.Type(), OtStoreType::Compact);
   // THEN
   auto delta = ssSender.GetDelta();
@@ -336,6 +352,12 @@ TEST_P(SoftspokenOtExtTest, CotStoreWorks) {
     EXPECT_EQ(sendStore.GetBlock(i, 0) ^ sendStore.GetBlock(i, 1), delta);
     EXPECT_EQ(sendStore.GetBlock(i, recvStore.GetChoice(i)),
               recvStore.GetBlock(i));
+    // Compact Mode
+    if (compact) {
+      EXPECT_EQ(sendStore.GetBlock(i, 0) & 0x1, 0);
+      EXPECT_EQ(sendStore.GetBlock(i, 1) & 0x1, 1);
+      EXPECT_EQ(recvStore.GetBlock(i) & 0x1, recvStore.GetChoice(i));
+    }
   }
 }
 
@@ -380,19 +402,28 @@ INSTANTIATE_TEST_SUITE_P(Works_Instances, SoftspokenKTest,
                                          KTestParams{10, true}));
 
 INSTANTIATE_TEST_SUITE_P(Works_Instances, SoftspokenOtExtTest,
-                         testing::Values(OtTestParams{8},            //
-                                         OtTestParams{128},          //
-                                         OtTestParams{129},          //
-                                         OtTestParams{4095},         //
-                                         OtTestParams{4096},         //
-                                         OtTestParams{65536},        //
-                                         OtTestParams{100000},       //
-                                         OtTestParams{8, true},      //
-                                         OtTestParams{128, true},    //
-                                         OtTestParams{129, true},    //
-                                         OtTestParams{4095, true},   //
-                                         OtTestParams{4096, true},   //
-                                         OtTestParams{65536, true},  //
-                                         OtTestParams{100000, true}));
+                         testing::Values(OtTestParams{8},       //
+                                         OtTestParams{128},     //
+                                         OtTestParams{129},     //
+                                         OtTestParams{4095},    //
+                                         OtTestParams{4096},    //
+                                         OtTestParams{65536},   //
+                                         OtTestParams{100000},  //
+                                         //  malicious OT
+                                         OtTestParams{8, true},       //
+                                         OtTestParams{128, true},     //
+                                         OtTestParams{129, true},     //
+                                         OtTestParams{4095, true},    //
+                                         OtTestParams{4096, true},    //
+                                         OtTestParams{65536, true},   //
+                                         OtTestParams{100000, true},  //
+                                         // malicious && compact OT
+                                         OtTestParams{8, true, true},      //
+                                         OtTestParams{128, true, true},    //
+                                         OtTestParams{129, true, true},    //
+                                         OtTestParams{4095, true, true},   //
+                                         OtTestParams{4096, true, true},   //
+                                         OtTestParams{65536, true, true},  //
+                                         OtTestParams{100000, true, true}));
 
 }  // namespace yacl::crypto

@@ -20,6 +20,7 @@ yacl_cc_library(
     name = "common",
     hdrs = ["common.h"],
     deps = [
+        "//yacl/crypto/rand",
         "//yacl/link",
         "//yacl/utils:serialize",
     ],

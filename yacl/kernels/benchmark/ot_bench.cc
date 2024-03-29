@@ -49,6 +49,7 @@ BM_REGISTER_ALL_OT(BM_DefaultArguments);
 // BM_REGISTER_SGRR_OTE(BM_DefaultArguments);
 // BM_REGISTER_GYWZ_OTE(BM_PerfArguments);
 // BM_REGISTER_FERRET_OTE(BM_PerfArguments);
+// BM_REGISTER_MAL_FERRET_OTE(BM_PerfArguments);
 // BM_REGISTER_SOFTSPOKEN_OTE(BM_PerfArguments);
 // BM_REGISTER_MAL_SOFTSPOKEN_OTE(BM_PerfArguments);
 
