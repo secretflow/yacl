@@ -314,15 +314,15 @@ def _com_github_libtom_libtommath():
     maybe(
         http_archive,
         name = "com_github_libtom_libtommath",
-        sha256 = "7cfbdb64431129de4257e7d3349200fdbd4f229b470ff3417b30d0f39beed41f",
+        sha256 = "fe9aee00df5799b5ba13646f1ef778350b1fed9fa05bdfb6bade964c11d9db24",
         type = "tar.gz",
-        strip_prefix = "libtommath-42b3fb07e7d504f61a04c7fca12e996d76a25251",
+        strip_prefix = "libtommath-5809141a3a6ec1bf3443c927c02b955e19224016",
         patch_args = ["-p1"],
         patches = [
             "@yacl//bazel:patches/libtommath.patch",
         ],
         urls = [
-            "https://github.com/libtom/libtommath/archive/42b3fb07e7d504f61a04c7fca12e996d76a25251.tar.gz",
+            "https://github.com/libtom/libtommath/archive/5809141a3a6ec1bf3443c927c02b955e19224016.tar.gz",
         ],
         build_file = "@yacl//bazel:libtommath.BUILD",
     )
