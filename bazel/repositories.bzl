@@ -146,6 +146,8 @@ def _com_google_protobuf():
         sha256 = "2c6a36c7b5a55accae063667ef3c55f2642e67476d96d355ff0acb13dbb47f09",
         strip_prefix = "protobuf-21.12",
         type = "tar.gz",
+        patch_args = ["-p1"],
+        patches = ["@yacl//bazel:patches/protobuf.patch"],
         urls = [
             "https://github.com/protocolbuffers/protobuf/releases/download/v21.12/protobuf-all-21.12.tar.gz",
         ],
