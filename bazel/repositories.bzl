@@ -194,12 +194,12 @@ def _com_github_gabime_spdlog():
     maybe(
         http_archive,
         name = "com_github_gabime_spdlog",
-        strip_prefix = "spdlog-1.13.0",
+        strip_prefix = "spdlog-1.14.1",
         type = "tar.gz",
-        sha256 = "534f2ee1a4dcbeb22249856edfb2be76a1cf4f708a20b0ac2ed090ee24cfdbc9",
+        sha256 = "1586508029a7d0670dfcb2d97575dcdc242d3868a259742b69f100801ab4e16b",
         build_file = "@yacl//bazel:spdlog.BUILD",
         urls = [
-            "https://github.com/gabime/spdlog/archive/refs/tags/v1.13.0.tar.gz",
+            "https://github.com/gabime/spdlog/archive/refs/tags/v1.14.1.tar.gz",
         ],
     )
 
