@@ -21,6 +21,7 @@
 #include "yacl/base/dynamic_bitset.h"
 #include "yacl/crypto/ossl-provider/helper.h"
 #include "yacl/crypto/rand/entropy_source/entropy_source.h"
+#include "yacl/math/gadget.h"
 
 namespace yacl::crypto {
 
@@ -79,24 +80,26 @@ std::vector<bool> RandBits<std::vector<bool>>(uint64_t len,
   return out;
 }
 
-#define IMPL_RANDBIT_DYNAMIC_BIT_TYPE(T)                                \
-  template <>                                                           \
-  dynamic_bitset<T> RandBits<dynamic_bitset<T>>(uint64_t len,           \
-                                                bool use_fast_mode) {   \
-    dynamic_bitset<T> out(len);                                         \
-    const unsigned stride = sizeof(unsigned) * 8;                       \
-                                                                        \
-    /* generate randomness */                                           \
-    auto rand_buf = RandBytes(len, use_fast_mode);                      \
-                                                                        \
-    /* for each byte */                                                 \
-    for (uint64_t i = 0; i < len; i += stride) {                        \
-      unsigned size = std::min(stride, static_cast<unsigned>(len - i)); \
-      for (unsigned j = 0; j < size; ++j) {                             \
-        out[i + j] = (rand_buf[i] & (1 << j)) != 0;                     \
-      }                                                                 \
-    }                                                                   \
-    return out;                                                         \
+#define IMPL_RANDBIT_DYNAMIC_BIT_TYPE(T)                                      \
+  template <>                                                                 \
+  dynamic_bitset<T> RandBits<dynamic_bitset<T>>(uint64_t len,                 \
+                                                bool use_fast_mode) {         \
+    dynamic_bitset<T> out(len);                                               \
+    size_t byte_len = math::DivCeil(len, 8);                                  \
+                                                                              \
+    /* generate randomness */                                                 \
+    auto rand_buf = RandBytes(byte_len, use_fast_mode);                       \
+                                                                              \
+    /* for each byte */                                                       \
+    for (uint64_t i = 0; i < len; i += 8) {                                   \
+      uint64_t size =                                                         \
+          std::min(static_cast<uint64_t>(8), static_cast<uint64_t>(len - i)); \
+      uint64_t offset = i >> 3;                                               \
+      for (unsigned j = 0; j < size; ++j) {                                   \
+        out[i + j] = (rand_buf[offset] & (1 << j)) != 0;                      \
+      }                                                                       \
+    }                                                                         \
+    return out;                                                               \
   }
 
 IMPL_RANDBIT_DYNAMIC_BIT_TYPE(uint128_t);

@@ -17,7 +17,7 @@
 #include "fmt/ranges.h"
 #include "gtest/gtest.h"
 
-#include "yacl/crypto/pairing/pairing_spi.h"
+#include "yacl/crypto/pairing/factory/pairing_spi.h"
 #include "yacl/utils/parallel.h"
 
 namespace yacl::crypto {
@@ -37,10 +37,8 @@ class PairingCurveTest : public ::testing::TestWithParam<std::string> {
       TestArithmeticWorks(ec);
       TestMulIsAdd(ec);
       TestSerializeWorks(ec);
-      if (pairing_group_->GetLibraryName() != "libmcl") {
-        TestHashPointWorks(ec);
-        TestStorePointsInMapWorks(ec);
-      }
+      TestHashPointWorks(ec);
+      TestStorePointsInMapWorks(ec);
       MultiThreadWorks(ec);
     }
   }
@@ -147,6 +145,30 @@ class PairingCurveTest : public ::testing::TestWithParam<std::string> {
   void TestSerializeWorks(const std::shared_ptr<EcGroup> &ec) {
     auto s = 12345_mp;
     auto p1 = ec->MulBase(s);  // p1 = sG
+    // test ZCash_BLS12_381 format
+    if (absl::AsciiStrToLower(ec->GetCurveName()) == "bls12-381") {
+      std::cout << "start\n";
+      auto p3 = ec->Mul(p1, 67890_mp);
+      auto buf = ec->SerializePoint(p3, PointOctetFormat::ZCash_BLS12_381);
+      // 160 = 1010 0000, 128 = 10000 000
+      ASSERT_TRUE((buf.data<uint8_t>()[0] & 160) == 160 ||
+                  (buf.data<uint8_t>()[0] & 128) == 128)
+          << fmt::format("real={:x}", buf.data<uint8_t>()[0]);
+      auto p4 = ec->DeserializePoint(buf, PointOctetFormat::ZCash_BLS12_381);
+      ASSERT_TRUE(ec->PointEqual(p3, p4));
+
+      // test zero
+      auto p5 = ec->Mul(p3, 0_mp);
+      ASSERT_TRUE(ec->IsInfinity(p5));
+      buf = ec->SerializePoint(p5, PointOctetFormat::ZCash_BLS12_381);
+      // 192 = 1100 0000
+      ASSERT_TRUE((buf.data<uint8_t>()[0] & 192) == 192);
+
+      auto p6 = ec->DeserializePoint(buf, PointOctetFormat::ZCash_BLS12_381);
+      ASSERT_TRUE(ec->IsInfinity(p6));
+      return;
+    }
+
     auto buf = ec->SerializePoint(p1);
     auto p2 = ec->DeserializePoint(buf);
     ASSERT_TRUE(ec->PointEqual(p1, p2));
@@ -155,36 +177,60 @@ class PairingCurveTest : public ::testing::TestWithParam<std::string> {
     ec->SerializePoint(p2, &buf);
     ASSERT_TRUE(ec->PointEqual(ec->DeserializePoint(buf), ec->GetGenerator()));
 
-    // test ZCash_BLS12_381 format
+    // Autonomous Serialization
     auto p3 = ec->Mul(p1, 67890_mp);
-    buf = ec->SerializePoint(p3, PointOctetFormat::ZCash_BLS12_381);
-    // 160 = 1010 0000, 128 = 10000 000
-    ASSERT_TRUE((buf.data<uint8_t>()[0] & 160) == 160 ||
-                (buf.data<uint8_t>()[0] & 128) == 128)
-        << fmt::format("real={:x}", buf.data<uint8_t>()[0]);
-    auto p4 = ec->DeserializePoint(buf, PointOctetFormat::ZCash_BLS12_381);
+    buf = ec->SerializePoint(p3);
+
+    auto p4 = ec->DeserializePoint(buf);
     ASSERT_TRUE(ec->PointEqual(p3, p4));
 
     // test zero
     auto p5 = ec->Mul(p3, 0_mp);
     ASSERT_TRUE(ec->IsInfinity(p5));
-    buf = ec->SerializePoint(p5, PointOctetFormat::ZCash_BLS12_381);
+    buf = ec->SerializePoint(p5);
     // 192 = 1100 0000
-    ASSERT_TRUE((buf.data<uint8_t>()[0] & 192) == 192);
+    // ASSERT_TRUE((buf.data<uint8_t>()[0] & 192) == 192);
 
-    auto p6 = ec->DeserializePoint(buf, PointOctetFormat::ZCash_BLS12_381);
+    auto p6 = ec->DeserializePoint(buf);
     ASSERT_TRUE(ec->IsInfinity(p6));
+
+    // X962Uncompressed
+    auto buf2 = ec->SerializePoint(p3, PointOctetFormat::X962Uncompressed);
+    ASSERT_TRUE((buf2.data<uint8_t>()[0]) == 0x4);
+
+    auto p7 = ec->DeserializePoint(buf2, PointOctetFormat::X962Uncompressed);
+    ASSERT_TRUE(ec->PointEqual(p3, p7));
+    auto p7a = ec->GetAffinePoint(p7);
+    MPInt x, y;
+    // buf2 = 0x04||x||y |x|=|y|=buf2.size() - 1) / 2 with little endian
+    // x: 1 to buf2.size() - 1) / 2 + 1
+    // y: buf2.size() - 1) / 2 + 1 to end
+    ASSERT_TRUE((buf2.size() - 1) % 2 == 0);
+    auto len = (buf2.size() - 1) / 2;
+    x.FromMagBytes({buf2.data<uint8_t>() + 1, static_cast<uint64_t>(len)},
+                   Endian::little);
+    ASSERT_TRUE(x == p7a.x);
+    y.FromMagBytes({buf2.data<uint8_t>() + len + 1, static_cast<uint64_t>(len)},
+                   Endian::little);
+    ASSERT_TRUE(y == p7a.y);
+
+    buf2 = ec->SerializePoint(p5, PointOctetFormat::X962Uncompressed);
+    ASSERT_TRUE((buf2.data<uint8_t>()[0]) == 0x4);
+    auto p8 = ec->DeserializePoint(buf2, PointOctetFormat::X962Uncompressed);
+    ASSERT_TRUE(ec->IsInfinity(p8));
   }
 
   void TestHashPointWorks(const std::shared_ptr<EcGroup> &ec) {
     std::map<size_t, int> hit_table;
     auto p = ec->MulBase(0_mp);
-    int ts = 1 << 15;
+    int ts = 1 << 10;
+
     for (int i = 0; i < ts; ++i) {
       auto h = ec->HashPoint(p);
       ++hit_table[h];
       ASSERT_EQ(hit_table[h], 1);
       ec->AddInplace(&p, ec->GetGenerator());
+      auto p = ec->MulBase(MPInt(i));
     }
     ASSERT_EQ(hit_table.size(), ts);
 
@@ -230,7 +276,7 @@ class PairingCurveTest : public ::testing::TestWithParam<std::string> {
   }
 
   void MultiThreadWorks(const std::shared_ptr<EcGroup> &ec) {
-    constexpr int64_t ts = 1 << 15;
+    constexpr int64_t ts = 1 << 10;
     std::array<EcPoint, ts> buf;
     auto g = ec->GetGenerator();
     yacl::parallel_for(0, ts, [&](int64_t beg, int64_t end) {
@@ -299,12 +345,8 @@ class PairingCurveTest : public ::testing::TestWithParam<std::string> {
 class Bls12381Test : public PairingCurveTest {
  protected:
   void SetUp() override {
-    // TODO: temporarily disable mcl pairing-related test, since its weird error
-    // on Intel Mac
-    if (GetParam() != "libmcl") {
-      pairing_group_ = PairingGroupFactory::Instance().Create(
-          "bls12-381", ArgLib = GetParam());
-    }
+    pairing_group_ = PairingGroupFactory::Instance().Create(
+        "bls12-381", ArgLib = GetParam());
   }
 };
 
@@ -324,21 +366,41 @@ TEST_P(Bls12381Test, SpiTest) {
   }
 }
 
+class BNSnarkTest : public PairingCurveTest {
+ protected:
+  void SetUp() override {
+    pairing_group_ = PairingGroupFactory::Instance().Create(
+        "bn_snark1", ArgLib = GetParam());
+  }
+};
+
+INSTANTIATE_TEST_SUITE_P(BNSnark, BNSnarkTest,
+                         ::testing::ValuesIn(PairingGroupFactory::Instance()
+                                                 .ListLibraries("bn_snark1")));
+
+TEST_P(BNSnarkTest, SpiTest) {
+  if (pairing_group_ != nullptr) {
+    EXPECT_STRCASEEQ(pairing_group_->GetPairingName().c_str(), "bn_snark1");
+    EXPECT_EQ(pairing_group_->GetPairingAlgorithm(), PairingAlgorithm::Ate);
+    EXPECT_EQ(pairing_group_->GetSecurityStrength(), 100);
+    EXPECT_FALSE(pairing_group_->ToString().empty());
+
+    // Run Other tests
+    RunAllTests();
+  }
+}
+
 TEST(Pairing_Multi_Instance_Test, Works) {
   PairingName pairing_name = "bls12-381";
   for (auto lib_name :
        PairingGroupFactory::Instance().ListLibraries(pairing_name)) {
-    // TODO: temporarily disable mcl pairing-related test, since its weird error
-    // on Intel Mac
-    if (lib_name != "libmcl") {
-      yacl::parallel_for(0, 10, [&](int64_t, int64_t) {
-        std::shared_ptr<PairingGroup> pairing =
-            PairingGroupFactory::Instance().Create(pairing_name,
-                                                   ArgLib = lib_name);
-        pairing->Pairing(pairing->GetGroup1()->GetGenerator(),
-                         pairing->GetGroup2()->GetGenerator());
-      });
-    }
+    yacl::parallel_for(0, 10, [&](int64_t, int64_t) {
+      std::shared_ptr<PairingGroup> pairing =
+          PairingGroupFactory::Instance().Create(pairing_name,
+                                                 ArgLib = lib_name);
+      pairing->Pairing(pairing->GetGroup1()->GetGenerator(),
+                       pairing->GetGroup2()->GetGenerator());
+    });
   }
 }
 

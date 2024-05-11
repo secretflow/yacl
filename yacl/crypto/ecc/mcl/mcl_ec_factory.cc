@@ -14,7 +14,7 @@
 
 #include "yacl/crypto/ecc/mcl/mcl_ec_group.h"
 
-namespace yacl::crypto::hmcl {
+namespace yacl::crypto {
 
 std::map<CurveName, int> Name2MclCurveEnum = {
     {"secp192k1", MCL_SECP192K1},
@@ -66,4 +66,4 @@ bool MclEGFactory::IsSupported(const CurveMeta& meta) {
 REGISTER_EC_LIBRARY(kLibName, 400, MclEGFactory::IsSupported,
                     MclEGFactory::Create);
 
-}  // namespace yacl::crypto::hmcl
+}  // namespace yacl::crypto

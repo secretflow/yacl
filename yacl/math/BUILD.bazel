@@ -20,8 +20,6 @@ yacl_cc_library(
     name = "gadget",
     hdrs = ["gadget.h"],
     deps = [
-        "//yacl/base:aligned_vector",
-        "//yacl/math/f2k",
         "@com_google_absl//absl/strings",
     ],
 )

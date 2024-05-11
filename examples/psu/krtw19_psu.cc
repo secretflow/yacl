@@ -15,10 +15,9 @@
 #include "examples/psu/krtw19_psu.h"
 
 #include <algorithm>
-#include <array>
+#include <cstdint>
 #include <iterator>
-#include <unordered_set>
-#include <utility>
+#include <vector>
 
 #include "yacl/utils/serialize.h"
 
@@ -29,23 +28,22 @@ namespace {
 // reference: https://eprint.iacr.org/2019/1234.pdf (Figure 2)
 constexpr float kZeta{0.06f};
 constexpr size_t kBinSize{64ul};  // m+1
-constexpr uint128_t kBot{};
+constexpr uint128_t kBot{0};
 constexpr size_t kNumBinsPerBatch{16ul};
 constexpr size_t kBatchSize{kNumBinsPerBatch * kBinSize};
-constexpr size_t kNumBaseOT{128ul};
 constexpr size_t kNumInkpOT{512ul};
 
 static auto HashToSizeT = [](const uint128_t& x) {
-  auto hash = yacl::crypto::Blake3_128({&x, sizeof x});
+  auto hash = yacl::crypto::Blake3_128({&x, sizeof(x)});
   size_t ret;
-  std::memcpy(&ret, &hash, sizeof ret);
+  std::memcpy(&ret, &hash, sizeof(ret));
   return ret;
 };
 
 auto HashInputs(const std::vector<uint128_t>& elem_hashes, size_t count) {
   size_t num_bins = std::ceil(count * kZeta);
   std::vector<std::vector<uint128_t>> hashing(num_bins);
-  for (auto elem : elem_hashes) {
+  for (const auto& elem : elem_hashes) {
     auto hash = HashToSizeT(elem);
     hashing[hash % num_bins].emplace_back(elem);
   }
@@ -53,33 +51,33 @@ auto HashInputs(const std::vector<uint128_t>& elem_hashes, size_t count) {
 }
 
 uint64_t Evaluate(const std::vector<uint64_t>& coeffs, uint64_t x) {
-  uint64_t y{coeffs.back()};
+  uint64_t y = coeffs.back();
   for (auto it = std::next(coeffs.rbegin()); it != coeffs.rend(); ++it) {
     y = yacl::GfMul64(y, x) ^ *it;
   }
   return y;
 }
 
-auto Interpolate(const std::vector<uint64_t>& xs,
-                 const std::vector<uint64_t>& ys) {
+std::vector<uint64_t> Interpolate(const std::vector<uint64_t>& xs,
+                                  const std::vector<uint64_t>& ys) {
   YACL_ENFORCE_EQ(xs.size(), ys.size(), "Sizes mismatch.");
   size_t size{xs.size()};
   std::vector<uint64_t> L_coeffs(size);
-  for (size_t i{}; i != size; ++i) {
+  for (size_t i = 0; i != size; ++i) {
     std::vector<uint64_t> Li_coeffs(size);
     Li_coeffs[0] = ys[i];
-    uint64_t prod{1};
-    for (size_t j{}; j != size; ++j) {
+    uint64_t prod = 1;
+    for (size_t j = 0; j != size; ++j) {
       if (xs[i] != xs[j]) {
         prod = yacl::GfMul64(prod, xs[i] ^ xs[j]);
-        uint64_t sum{};
-        for (size_t k{}; k != size; ++k) {
+        uint64_t sum = 0;
+        for (size_t k = 0; k != size; ++k) {
           sum = std::exchange(Li_coeffs[k],
                               yacl::GfMul64(Li_coeffs[k], xs[j]) ^ sum);
         }
       }
     }
-    for (size_t k{}; k != size; ++k) {
+    for (size_t k = 0; k != size; ++k) {
       L_coeffs[k] ^= yacl::GfMul64(Li_coeffs[k], yacl::GfInv64(prod));
     }
   }
@@ -103,50 +101,61 @@ void KrtwPsuSend(const std::shared_ptr<yacl::link::Context>& ctx,
 
   // Step 2. Prepares OPRF
   yacl::crypto::KkrtOtExtReceiver receiver;
-  size_t num_ot{hashing.size() * kBinSize};
-  auto choice = yacl::crypto::RandBits(kNumBaseOT);
-  auto base_ot = yacl::crypto::BaseOtRecv(ctx, choice, kNumBaseOT);
-  auto store = yacl::crypto::IknpOtExtSend(ctx, base_ot, kNumInkpOT);
+  const size_t num_ot = hashing.size() * kBinSize;
+  auto ss_sender = yacl::crypto::SoftspokenOtExtSender();
+  auto store = ss_sender.GenRot(ctx, kNumInkpOT);
+
   receiver.Init(ctx, store, num_ot);
   receiver.SetBatchSize(kBatchSize);
 
   std::vector<uint128_t> elems;
   elems.reserve(num_ot);
-  size_t oprf_idx{};
-  for (size_t bin_idx{}; bin_idx != hashing.size(); ++bin_idx) {
-    if (bin_idx % kNumBinsPerBatch == 0) {
-      receiver.SendCorrection(
-          ctx, std::min(kBatchSize, (hashing.size() - bin_idx) * kBinSize));
-    }
+  size_t oprf_idx = 0;
+  for (size_t bin_idx = 0; bin_idx != hashing.size(); ++bin_idx) {
     hashing[bin_idx].resize(kBinSize);
     std::sort(hashing[bin_idx].begin(), hashing[bin_idx].end());
+    std::vector<uint64_t> evals(kBinSize);
+
+    // Encode inputs before SendCorrection
+    // More details could be found in `yacl/kernel/algorithms/kkrt_ote_test.cc`
+    std::transform(hashing[bin_idx].cbegin(), hashing[bin_idx].cend(),
+                   evals.begin(), [&](uint128_t input) {
+                     uint64_t result;
+                     receiver.Encode(
+                         oprf_idx, HashToSizeT(input),
+                         {reinterpret_cast<uint8_t*>(&result), sizeof(result)});
+                     oprf_idx++;
+                     return result;
+                   });
+    receiver.SendCorrection(ctx, kBinSize);
+
     // Step 3. For each bin element, invokes PSU(1, m+1)
-    for (auto elem : hashing[bin_idx]) {
+    for (size_t i = 0; i < hashing[bin_idx].size(); ++i) {
+      auto elem = hashing[bin_idx][i];
       elems.emplace_back(elem);
-      uint64_t eval;
-      receiver.Encode(oprf_idx++, elem,
-                      {reinterpret_cast<uint8_t*>(&eval), sizeof eval});
+      uint64_t eval = evals[i];
       std::vector<uint64_t> coeffs(kBinSize);
       auto buf = ctx->Recv(ctx->PrevRank(), "Receive coefficients");
+
+      YACL_ENFORCE(buf.size() == kBinSize * sizeof(uint64_t));
       std::memcpy(coeffs.data(), buf.data(), buf.size());
+
       auto y = Evaluate(coeffs, HashToSizeT(elem)) ^ eval;
-      ctx->SendAsync(ctx->NextRank(), yacl::SerializeUint128(y),
+      ctx->SendAsync(ctx->NextRank(),
+                     yacl::SerializeUint128(yacl::MakeUint128(0, y)),
                      "Send evaluation");
     }
   }
 
   // Step 4. Sends new elements through OT
-  std::vector<std::array<uint128_t, 2>> keys(num_ot);
-  choice = yacl::crypto::SecureRandBits(kNumBaseOT);
-  base_ot = yacl::crypto::BaseOtRecv(ctx, choice, kNumBaseOT);
-  yacl::crypto::IknpOtExtSend(ctx, base_ot, absl::MakeSpan(keys));
+  auto keys = ss_sender.GenRot(ctx, num_ot);
   std::vector<uint128_t> ciphers(num_ot);
-  for (size_t i{}; i != num_ot; ++i) {
-    ciphers[i] = elems[i] ^ keys[i][0];
+  for (size_t i = 0; i != num_ot; ++i) {
+    ciphers[i] = elems[i] ^ keys.GetBlock(i, 0);
   }
   ctx->SendAsync(ctx->NextRank(),
-                 yacl::Buffer{reinterpret_cast<uint8_t*>(ciphers.data()),
-                              ciphers.size() * sizeof(uint128_t)},
+                 yacl::ByteContainerView(ciphers.data(),
+                                         ciphers.size() * sizeof(uint128_t)),
                  "Send ciphertexts");
 }
 
@@ -165,55 +174,58 @@ std::vector<uint128_t> KrtwPsuRecv(
   auto hashing = HashInputs(elem_hashes, count);
 
   // Step 2. Prepares OPRF
+  const size_t num_ot = hashing.size() * kBinSize;
+  auto ss_receiver = yacl::crypto::SoftspokenOtExtReceiver();
+  auto store = ss_receiver.GenRot(ctx, kNumInkpOT);
+
   yacl::crypto::KkrtOtExtSender sender;
-  size_t num_ot{hashing.size() * kBinSize};
-  auto base_ot = yacl::crypto::BaseOtSend(ctx, kNumBaseOT);
-  auto choice = yacl::crypto::RandBits(kNumInkpOT);
-  auto store = yacl::crypto::IknpOtExtRecv(ctx, base_ot, choice, kNumInkpOT);
   sender.Init(ctx, store, num_ot);
   sender.SetBatchSize(kBatchSize);
   auto oprf = sender.GetOprf();
 
-  yacl::dynamic_bitset<> ot_choice(num_ot);
-  size_t oprf_idx{};
+  yacl::dynamic_bitset<uint128_t> ot_choice(num_ot);
+  size_t oprf_idx = 0;
   // Step 3. For each bin, invokes PSU(1, m+1)
-  for (size_t bin_idx{}; bin_idx != hashing.size(); ++bin_idx) {
-    if (bin_idx % kNumBinsPerBatch == 0) {
-      sender.RecvCorrection(
-          ctx, std::min(kBatchSize, (hashing.size() - bin_idx) * kBinSize));
-    }
+  for (size_t bin_idx = 0; bin_idx != hashing.size(); ++bin_idx) {
+    sender.RecvCorrection(ctx, kBinSize);
+
     auto bin_size = hashing[bin_idx].size();
-    for (size_t elem_idx{}; elem_idx != kBinSize; ++elem_idx, ++oprf_idx) {
+    for (size_t elem_idx = 0; elem_idx != kBinSize; ++elem_idx, ++oprf_idx) {
       auto seed = yacl::crypto::FastRandU64();
       std::vector<uint64_t> xs(kBinSize), ys(kBinSize);
-      for (size_t i{}; i != kBinSize; ++i) {
+      for (size_t i = 0; i != kBinSize; ++i) {
         xs[i] = (i < bin_size   ? HashToSizeT(hashing[bin_idx][i])
                  : i > bin_size ? yacl::crypto::FastRandU64()
                                 : kBot);
-        ys[i] = oprf->Eval(oprf_idx, xs[i]) ^ seed;
+        oprf->Eval(oprf_idx, xs[i], reinterpret_cast<uint8_t*>(&ys[i]),
+                   sizeof(ys[i]));
+        ys[i] ^= seed;
       }
-      auto coeffs = Interpolate(xs, ys);
-      yacl::Buffer buf(coeffs.data(), coeffs.size() * sizeof(uint64_t));
-      ctx->SendAsync(ctx->NextRank(), buf, "Send coefficients");
+      std::vector<uint64_t> coeffs = Interpolate(xs, ys);
+      ctx->SendAsync(ctx->NextRank(),
+                     yacl::ByteContainerView(coeffs.data(),
+                                             coeffs.size() * sizeof(uint64_t)),
+                     "Send coefficients");
       auto eval = yacl::DeserializeUint128(
           ctx->Recv(ctx->PrevRank(), "Receive evaluation"));
-      ot_choice[oprf_idx] = eval == seed;
+      ot_choice[oprf_idx] = (eval == yacl::MakeUint128(0, seed));
     }
   }
 
   // Step 4. Receives new elements through OT
-  std::vector<uint128_t> keys(num_ot);
-  base_ot = yacl::crypto::BaseOtSend(ctx, kNumBaseOT);
-  yacl::crypto::IknpOtExtRecv(ctx, base_ot, ot_choice, absl::MakeSpan(keys));
+  auto keys = ss_receiver.GenRot(ctx, ot_choice);
   std::vector<uint128_t> ciphers(num_ot);
   auto buf = ctx->Recv(ctx->PrevRank(), "Receive ciphertexts");
+  YACL_ENFORCE(buf.size() == int64_t(num_ot * sizeof(uint128_t)));
   std::memcpy(ciphers.data(), buf.data(), buf.size());
-  std::unordered_set<uint128_t, decltype(HashToSizeT)> set_union(
-      elem_hashes.begin(), elem_hashes.end(), count, HashToSizeT);
-  for (size_t i{}; i != num_ot; ++i) {
+
+  std::set<uint128_t> set_union(elem_hashes.begin(), elem_hashes.end());
+
+  for (size_t i = 0; i != num_ot; ++i) {
     if (!ot_choice[i]) {
-      if (auto new_elem = ciphers[i] ^ keys[i]; new_elem != kBot) {
-        set_union.emplace(ciphers[i] ^ keys[i]);
+      auto new_elem = ciphers[i] ^ keys.GetBlock(i);
+      if (new_elem != kBot) {
+        set_union.emplace(new_elem);
       }
     }
   }

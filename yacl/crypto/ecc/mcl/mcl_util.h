@@ -18,11 +18,11 @@
 
 #include "yacl/math/mpint/mp_int.h"
 
-namespace yacl::crypto::hmcl {
+namespace yacl::crypto {
 
 using yacl::math::MPInt;
 
 MPInt Mpz2Mp(const mpz_class& m);
 
 mpz_class Mp2Mpz(const MPInt& mpi);
-}  // namespace yacl::crypto::hmcl
+}  // namespace yacl::crypto

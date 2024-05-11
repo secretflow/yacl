@@ -16,7 +16,7 @@
 
 #include "mcl/gmp_util.hpp"
 
-namespace yacl::crypto::hmcl {
+namespace yacl::crypto {
 
 MPInt Mpz2Mp(const mpz_class& m) {
   const auto* ptr =
@@ -43,4 +43,4 @@ mpz_class Mp2Mpz(const MPInt& mpi) {
   return ret;
 }
 
-}  // namespace yacl::crypto::hmcl
+}  // namespace yacl::crypto

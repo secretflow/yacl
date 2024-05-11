@@ -16,12 +16,12 @@
 
 #include "yacl/crypto/ecc/mcl/mcl_ec_group.h"
 
-namespace yacl::crypto::hmcl {
+namespace yacl::crypto {
 // for test
 extern std::map<CurveName, int> Name2MclCurveEnum;
-}  // namespace yacl::crypto::hmcl
+}  // namespace yacl::crypto
 
-namespace yacl::crypto::hmcl::test {
+namespace yacl::crypto::test {
 
 TEST(MclTest, MclWorks) {
   // Curve Instances ok
@@ -108,4 +108,4 @@ TEST(MclTest, HashToCurveWorks) {
   }
 }
 
-}  // namespace yacl::crypto::hmcl::test
+}  // namespace yacl::crypto::test

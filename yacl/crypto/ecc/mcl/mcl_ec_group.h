@@ -20,7 +20,7 @@
 #include "yacl/crypto/hash/ssl_hash.h"
 
 // hmcl = herumi_mcl
-namespace yacl::crypto::hmcl {
+namespace yacl::crypto {
 
 const std::string kLibName = "libmcl";
 
@@ -92,7 +92,7 @@ class MclGroupT : public EcGroupSketch {
 
  private:
   explicit MclGroupT(const CurveMeta& meta, int mcl_curve_type,
-                     const EcPoint& generator);
+                     const EcPoint& generator, bool const_time_mul = false);
 
   // For standard hash to curve
   EcPoint HashToStdCurve(HashToCurveStrategy strategy,
@@ -146,4 +146,4 @@ MCL_CURVE_NIST_ALIAS(192)
 MCL_CURVE_NIST_ALIAS(224)
 MCL_CURVE_NIST_ALIAS(256)
 
-}  // namespace yacl::crypto::hmcl
+}  // namespace yacl::crypto

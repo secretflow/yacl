@@ -1,0 +1,55 @@
+# Copyright 2022 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:yacl.bzl", "AES_COPT_FLAGS", "yacl_cc_binary")
+
+package(default_visibility = ["//visibility:public"])
+
+yacl_cc_binary(
+    name = "ot_bench",
+    srcs = [
+        "ot_bench.cc",
+        "ot_bench.h",
+    ],
+    deps = [
+        "//yacl/crypto/rand",
+        "//yacl/kernel/algorithms:base_ot",
+        "//yacl/kernel/algorithms:ferret_ote",
+        "//yacl/kernel/algorithms:gywz_ote",
+        "//yacl/kernel/algorithms:iknp_ote",
+        "//yacl/kernel/algorithms:kkrt_ote",
+        "//yacl/kernel/algorithms:kos_ote",
+        "//yacl/kernel/algorithms:sgrr_ote",
+        "//yacl/kernel/algorithms:softspoken_ote",
+        "//yacl/link:test_util",
+        "@com_github_google_benchmark//:benchmark_main",
+        "@com_google_absl//absl/numeric:bits",
+    ],
+)
+
+yacl_cc_binary(
+    name = "vole_bench",
+    srcs = [
+        "vole_bench.cc",
+    ],
+    copts = AES_COPT_FLAGS,
+    deps = [
+        "//yacl/crypto/rand",
+        "//yacl/kernel/algorithms:base_vole",
+        "//yacl/kernel/algorithms:silent_vole",
+        "//yacl/link:test_util",
+        "@com_github_google_benchmark//:benchmark_main",
+        "@com_google_absl//absl/numeric:bits",
+    ],
+)

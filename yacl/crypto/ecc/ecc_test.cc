@@ -182,9 +182,11 @@ class EcCurveTest : public ::testing::TestWithParam<std::string> {
     ASSERT_TRUE(
         ec_->PointEqual(ec_->DeserializePoint(buf), ec_->GetGenerator()));
 
-    // todo: X962 support in libsodium
+    // todo: X962 support in libsodium and lib25519
     if (ec_->GetLibraryName() == "Toy" ||
-        ec_->GetLibraryName() == "libsodium") {
+        ec_->GetLibraryName() == "libsodium" ||
+        ec_->GetLibraryName() == "lib25519" ||
+        ec_->GetLibraryName() == "FourQlib") {
       return;  // The toy lib does not support X9.62 format
     }
 
@@ -359,6 +361,28 @@ TEST_P(Ed25519CurveTest, SpiTest) {
   EXPECT_EQ(ec_->GetCurveForm(), CurveForm::TwistedEdwards);
   EXPECT_EQ(ec_->GetFieldType(), FieldType::Prime);
   EXPECT_EQ(ec_->GetSecurityStrength(), 127);
+  EXPECT_FALSE(ec_->ToString().empty());
+
+  // Run Other tests
+  RunAllTests();
+}
+
+class FourQCurveTest : public EcCurveTest {
+ protected:
+  void SetUp() override {
+    ec_ = EcGroupFactory::Instance().Create("FourQ", ArgLib = GetParam());
+  }
+};
+
+INSTANTIATE_TEST_SUITE_P(
+    FourQTest, FourQCurveTest,
+    ::testing::ValuesIn(EcGroupFactory::Instance().ListLibraries("FourQ")));
+
+TEST_P(FourQCurveTest, DISABLED_SpiTest) {
+  EXPECT_STRCASEEQ(ec_->GetCurveName().c_str(), "FourQ");
+  EXPECT_EQ(ec_->GetCurveForm(), CurveForm::TwistedEdwards);
+  EXPECT_EQ(ec_->GetFieldType(), FieldType::Extension);
+  EXPECT_EQ(ec_->GetSecurityStrength(), 128);
   EXPECT_FALSE(ec_->ToString().empty());
 
   // Run Other tests

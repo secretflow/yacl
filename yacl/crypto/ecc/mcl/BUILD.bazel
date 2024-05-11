@@ -28,7 +28,7 @@ yacl_cc_library(
         "//yacl/crypto/ecc:spi",
         "//yacl/crypto/hash:blake3",
         "//yacl/crypto/hash:ssl_hash",
-        "//yacl/crypto/pairing/mcl:pairing_header",
+        "//yacl/crypto/pairing/factory:mcl_pairing_header",
     ],
     alwayslink = 1,
 )

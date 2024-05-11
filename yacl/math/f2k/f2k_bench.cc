@@ -12,9 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <future>
-#include <iostream>
-
 #include "benchmark/benchmark.h"
 
 #include "yacl/crypto/rand/rand.h"
