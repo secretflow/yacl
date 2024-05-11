@@ -16,14 +16,16 @@
 
 #include "yacl/crypto/ecc/mcl/mcl_util.h"
 #include "yacl/crypto/hash/blake3.h"
-#include "yacl/crypto/pairing/mcl/pairing_header.h"
+#include "yacl/crypto/pairing/factory/mcl_pairing_header.h"
 
-namespace yacl::crypto::hmcl {
+namespace yacl::crypto {
 
 template <typename Fp_, typename Zn_>
 MclGroupT<Fp_, Zn_>::MclGroupT(const CurveMeta& meta, int mcl_curve_type,
-                               const EcPoint& generator)
-    : EcGroupSketch(meta), mcl_curve_type_(mcl_curve_type) {
+                               const EcPoint& generator, bool const_time_mul)
+    : EcGroupSketch(meta),
+      mcl_curve_type_(mcl_curve_type),
+      const_time_(const_time_mul) {
   order_ = Mpz2Mp(Zn_::BaseFp::getOp().mp);
   // Note that order of extension field != field's Modulus, so it's
   // meaningless for high-level computation.
@@ -90,9 +92,11 @@ template <typename Fp_, typename Zn_>
 EcPoint MclGroupT<Fp_, Zn_>::MulBase(const MPInt& scalar) const {
   auto ret = MakeShared<Ec>();
   if (!const_time_) {
-    Ec::mul(*CastAny<Ec>(ret), *CastAny<Ec>(GetGenerator()), Mp2Mpz(scalar));
+    Ec::mul(*CastAny<Ec>(ret), *CastAny<Ec>(GetGenerator()),
+            Mp2Mpz(scalar % order_));
   } else {
-    Ec::mulCT(*CastAny<Ec>(ret), *CastAny<Ec>(GetGenerator()), Mp2Mpz(scalar));
+    Ec::mulCT(*CastAny<Ec>(ret), *CastAny<Ec>(GetGenerator()),
+              Mp2Mpz(scalar % order_));
   }
   return ret;
 }
@@ -102,9 +106,9 @@ EcPoint MclGroupT<Fp_, Zn_>::Mul(const EcPoint& point,
                                  const MPInt& scalar) const {
   auto ret = MakeShared<Ec>();
   if (!const_time_) {
-    Ec::mul(*CastAny<Ec>(ret), *CastAny<Ec>(point), Mp2Mpz(scalar));
+    Ec::mul(*CastAny<Ec>(ret), *CastAny<Ec>(point), Mp2Mpz(scalar % order_));
   } else {
-    Ec::mulCT(*CastAny<Ec>(ret), *CastAny<Ec>(point), Mp2Mpz(scalar));
+    Ec::mulCT(*CastAny<Ec>(ret), *CastAny<Ec>(point), Mp2Mpz(scalar % order_));
   }
   return ret;
 }
@@ -113,9 +117,10 @@ template <typename Fp_, typename Zn_>
 void MclGroupT<Fp_, Zn_>::MulInplace(EcPoint* point,
                                      const MPInt& scalar) const {
   if (!const_time_) {
-    Ec::mul(*CastAny<Ec>(point), *CastAny<Ec>(point), Mp2Mpz(scalar));
+    Ec::mul(*CastAny<Ec>(point), *CastAny<Ec>(point), Mp2Mpz(scalar % order_));
   } else {
-    Ec::mulCT(*CastAny<Ec>(point), *CastAny<Ec>(point), Mp2Mpz(scalar));
+    Ec::mulCT(*CastAny<Ec>(point), *CastAny<Ec>(point),
+              Mp2Mpz(scalar % order_));
   }
 }
 
@@ -123,22 +128,12 @@ template <typename Fp_, typename Zn_>
 EcPoint MclGroupT<Fp_, Zn_>::MulDoubleBase(const MPInt& s1, const MPInt& s2,
                                            const EcPoint& p2) const {
   auto ret = MakeShared<Ec>();
-  auto mp = Zn_::BaseFp::getOp().mp;
-
-  auto scalar1 = Mp2Mpz(s1);
+  auto scalar1 = Mp2Mpz(s1 % order_);
   Fr ps1;
-  scalar1 %= mp;
-  if (scalar1.isNegative()) {
-    scalar1 += mp;
-  }
   ps1.setMpz(scalar1);
 
-  auto scalar2 = Mp2Mpz(s2);
+  auto scalar2 = Mp2Mpz(s2 % order_);
   Fr ps2;
-  scalar2 %= mp;
-  if (scalar2.isNegative()) {
-    scalar2 += mp;
-  }
   ps2.setMpz(scalar2);
 
   Ec ecs[] = {*CastAny<Ec>(GetGenerator()), *CastAny<Ec>(p2)};
@@ -161,9 +156,18 @@ void MclGroupT<Fp_, Zn_>::NegateInplace(EcPoint* point) const {
 
 template <typename Fp_, typename Zn_>
 EcPoint MclGroupT<Fp_, Zn_>::CopyPoint(const EcPoint& point) const {
-  auto ret = MakeShared<Ec>();
-  *CastAny<Ec>(ret) = *CastAny<Ec>(point);
-  return ret;
+  if (std::holds_alternative<AnyPtr>(point)) {
+    auto ret = MakeShared<Ec>();
+    *CastAny<Ec>(ret) = *CastAny<Ec>(point);
+    return ret;
+  }
+
+  if (std::holds_alternative<AffinePoint>(point)) {
+    auto p = std::get<AffinePoint>(point);
+    return GetMclPoint(p);
+  }
+
+  YACL_THROW("Unsupported EcPoint type {}", point.index());
 }
 
 template <typename Fp_, typename Zn_>
@@ -184,15 +188,21 @@ AnyPtr MclGroupT<Fp_, Zn_>::GetMclPoint(const AffinePoint& p) const {
 template <typename Fp_, typename Zn_>
 uint64_t MclGroupT<Fp_, Zn_>::GetSerializeLength(
     PointOctetFormat format) const {
+  if (mcl_curve_type_ == MCL_BLS12_381 &&
+      (format == PointOctetFormat::ZCash_BLS12_381 ||
+       format == PointOctetFormat::Autonomous)) {
+    return Ec::getSerializedByteSize();
+  }
+
   switch (format) {
     case PointOctetFormat::X962Uncompressed:
     case PointOctetFormat::X962Hybrid: {
+      // 1 more byte for being compatible with x962 format
       return Fp_::getByteSize() * 2 + 1;
     }
     case PointOctetFormat::Autonomous:
-    case PointOctetFormat::X962Compressed:
-    case PointOctetFormat::ZCash_BLS12_381: {
-      return Ec::getSerializedByteSize();
+    case PointOctetFormat::X962Compressed: {
+      return Fp_::getByteSize() + 1;
     }
     default:
       YACL_THROW("Not supported serialize format for standard curve in {}",
@@ -217,6 +227,23 @@ void MclGroupT<Fp_, Zn_>::SerializePoint(const EcPoint& point,
   SerializePoint(point, format, buf->data<uint8_t>(), buf->size());
 }
 
+// Compressed Serialization Process:
+// IoEcCompY Mode
+// 	1-bit y prepresentation of elliptic curve
+// 	"2 <x>" ; compressed for even y
+// 	"3 <x>" ; compressed for odd y
+// IoSerialize Mode
+//   if isMSBserialize(): // p is not full bit
+//      size = Fp::getByteSize()
+//      use MSB of array of x for 1-bit y for prime p where (p % 8 != 0)
+//      [0] ; infinity
+//      <x> ; for even y
+//      <x>|1 ; for odd y ; |1 means set MSB of x
+//   else:// x962 compressed format
+//      size = Fp::getByteSize() + 1
+//      [0] ; infinity
+//      2 <x> ; for even y
+//      3 <x> ; for odd y
 template <typename Fp_, typename Zn_>
 void MclGroupT<Fp_, Zn_>::SerializePoint(const EcPoint& point,
                                          PointOctetFormat format, uint8_t* buf,
@@ -227,8 +254,9 @@ void MclGroupT<Fp_, Zn_>::SerializePoint(const EcPoint& point,
   const Ec& p = *CastAny<Ec>(point);
   int write_bits = 0;
 
-  // For pairing curve
-  if (mcl_curve_type_ < MCL_BN_P256) {
+  if (mcl_curve_type_ == MCL_BLS12_381) {
+    // pairing curve MCL_BLS12_381, use ZCash_BLS12_381 serialization mode,
+    // which is Big Endian.
     switch (format) {
       case PointOctetFormat::Autonomous:
       case PointOctetFormat::ZCash_BLS12_381: {
@@ -241,86 +269,114 @@ void MclGroupT<Fp_, Zn_>::SerializePoint(const EcPoint& point,
         YACL_THROW("Not supported serialize format for pairing curve in {}",
                    kLibName);
     }
-  } else {
-    // For Std curves
-    switch (format) {
-      case PointOctetFormat::X962Uncompressed: {
-        // for ANSI X9.62 uncompressed format
-        buf[0] = 0x04;
-        // but only x||y, not z=0x04||x||y
-        write_bits =
-            p.serialize(buf + 1, len - 1, mcl::IoMode::IoEcAffineSerialize);
-        YACL_ENFORCE(len == static_cast<uint64_t>(write_bits + 1),
-                     "Serialize error!");
-        break;
-      }
-      case PointOctetFormat::X962Hybrid: {
-        // for ANSI X9.62 hybrid format
-        buf[0] = (p.y.isOdd() ? 0x06 : 0x07);
-        // but only x||y, not z=0x04||x||y
-        write_bits =
-            p.serialize(buf + 1, len - 1, mcl::IoMode::IoEcAffineSerialize);
-        YACL_ENFORCE(len == static_cast<uint64_t>(write_bits + 1),
-                     "Serialize error!");
-        break;
-      }
-      case PointOctetFormat::Autonomous:
-      case PointOctetFormat::X962Compressed: {
-        write_bits = p.serialize(buf, len, mcl::IoMode::IoSerialize);
-        YACL_ENFORCE(len == static_cast<uint64_t>(write_bits),
-                     "Serialize error!");
-        break;
-      }
-      default:
-        YACL_THROW("Not supported serialize format for standard curve in {}",
-                   kLibName);
+    return;
+  }
+
+  switch (format) {
+    case PointOctetFormat::X962Uncompressed: {
+      // for ANSI X9.62 uncompressed format
+      buf[0] = 0x04;
+      // mcl uncompressed serialization is only x||y, not z=0x04||x||y
+      write_bits =
+          p.serialize(buf + 1, len - 1, mcl::IoMode::IoEcAffineSerialize);
+      YACL_ENFORCE(len == static_cast<uint64_t>(write_bits + 1),
+                   "Serialize error!");
+      break;
     }
+    case PointOctetFormat::X962Hybrid: {
+      // for ANSI X9.62 hybrid format
+      Ec ecp = Ec(p);
+      // Check is normalized for affine coordinates
+      if (!ecp.isNormalized()) {
+        ecp.normalize();
+      }
+      buf[0] = (ecp.y.isOdd() ? 7 : 6);
+      write_bits =
+          ecp.serialize(buf + 1, len - 1, mcl::IoMode::IoEcAffineSerialize);
+      YACL_ENFORCE(len == static_cast<uint64_t>(write_bits + 1),
+                   "Serialize error!");
+      break;
+    }
+    case PointOctetFormat::Autonomous:
+    case PointOctetFormat::X962Compressed: {
+      if (p.isZero()) {
+        std::memset(buf + write_bits, 0, len);
+        write_bits = len;
+      } else {
+        Ec ecp = Ec(p);
+        // Check is normalized for affine coordinates
+        if (!ecp.isNormalized()) {
+          ecp.normalize();
+        }
+        buf[0] = ecp.y.isOdd() ? 3 : 2;
+        write_bits =
+            ecp.x.serialize(buf + 1, buf_size - 1, mcl::IoMode::IoSerialize);
+        YACL_ENFORCE(len == static_cast<uint64_t>(write_bits + 1),
+                     "Serialize error!");
+      }
+      break;
+    }
+    default:
+      YACL_THROW("Not supported serialize format for curve in {}", kLibName);
   }
   if (buf_size > len) {
-    std::memset(buf + write_bits, 0, buf_size - len);
+    std::memset(buf + write_bits, 0, buf_size - write_bits);
   }
 }
 
 template <typename Fp_, typename Zn_>
 EcPoint MclGroupT<Fp_, Zn_>::DeserializePoint(ByteContainerView buf,
                                               PointOctetFormat format) const {
+  const auto len = GetSerializeLength(format);
+  YACL_ENFORCE(buf.size() >= len);
   auto ret = MakeShared<Ec>();
-  // For pairing curve
-  if (mcl_curve_type_ < MCL_BN_P256) {
+
+  if (mcl_curve_type_ == MCL_BLS12_381) {
+    // pairing curve MCL_BLS12_381, use ZCash_BLS12_381 serialization mode,
+    // which is Big Endian.
     switch (format) {
       case PointOctetFormat::Autonomous:
       case PointOctetFormat::ZCash_BLS12_381: {
-        // BaseFp::setETHserialization(true);  // big endian
-        CastAny<Ec>(ret)->deserialize(buf.begin(), buf.size(),
+        CastAny<Ec>(ret)->deserialize(buf.cbegin(), len,
                                       mcl::IoMode::IoSerialize);
-        // BaseFp::setETHserialization(false);
         break;
       }
       default:
-        YACL_THROW("Not supported serialize format for pairing curve in {}",
+        YACL_THROW("Not supported deserialize format for pairing curve in {}",
                    kLibName);
     }
-  } else {
-    // For Std curves
-    switch (format) {
-      case PointOctetFormat::X962Uncompressed:
-        CastAny<Ec>(ret)->deserialize(buf.begin() + 1, buf.size() - 1,
-                                      mcl::IoMode::IoEcAffineSerialize);
-        break;
-      case PointOctetFormat::X962Hybrid:
-        CastAny<Ec>(ret)->deserialize(buf.begin() + 1, buf.size() - 1,
-                                      mcl::IoMode::IoEcAffineSerialize);
-        break;
-      case PointOctetFormat::Autonomous:
-      case PointOctetFormat::X962Compressed:
-        CastAny<Ec>(ret)->deserialize(buf.begin(), buf.size(),
-                                      mcl::IoMode::IoSerialize);
-        break;
-      default:
-        YACL_THROW("Not supported serialize format for standard curve in {}",
-                   kLibName);
-    }
+    return ret;
   }
+
+  switch (format) {
+    case PointOctetFormat::X962Uncompressed:
+      YACL_ENFORCE(buf[0] == 0x04);
+      CastAny<Ec>(ret)->deserialize(buf.cbegin() + 1, len - 1,
+                                    mcl::IoMode::IoEcAffineSerialize);
+      break;
+    case PointOctetFormat::X962Hybrid:
+      YACL_ENFORCE(buf[0] == 0x06 || buf[0] == 0x07);
+      CastAny<Ec>(ret)->deserialize(buf.cbegin() + 1, len - 1,
+                                    mcl::IoMode::IoEcAffineSerialize);
+      break;
+    case PointOctetFormat::Autonomous:
+    case PointOctetFormat::X962Compressed: {
+      auto* p = CastAny<Ec>(ret);
+      p->z = 1;
+      if (mcl::bint::isZeroN(buf.cbegin(), len)) {
+        p->clear();
+      } else {
+        bool isYodd = buf[0] == 3;
+        p->x.deserialize(buf.cbegin() + 1, len - 1, mcl::IoMode::IoSerialize);
+        YACL_ENFORCE(Ec::getYfromX(p->y, p->x, isYodd));
+      }
+      break;
+    }
+    default:
+      YACL_THROW("Not supported deserialize format for standard curve in {}",
+                 kLibName);
+  }
+
   return ret;
 }
 
@@ -390,10 +446,17 @@ EcPoint MclGroupT<Fp_, Zn_>::HashToCurve(HashToCurveStrategy strategy,
   }
 }
 
+// PointEqual 1013ns
+// this 3027 ns
+// TODO: slow!
 template <typename Fp_, typename Zn_>
-size_t MclGroupT<Fp_, Zn_>::HashPoint(
-    [[maybe_unused]] const EcPoint& point) const {
-  YACL_THROW("Not impl!");
+size_t MclGroupT<Fp_, Zn_>::HashPoint(const EcPoint& point) const {
+  Ec ecp = Ec(*CastAny<Ec>(point));
+  // Check is normalized for affine coordinates
+  if (!ecp.isNormalized()) {
+    ecp.normalize();
+  }
+  return size_t(*(ecp.x.getUnit())) + ecp.y.isOdd();
 }
 
 template <typename Fp_, typename Zn_>
@@ -423,7 +486,7 @@ AffinePoint MclGroupT<Fp_, Zn_>::GetAffinePoint(const EcPoint& point) const {
   if (IsInfinity(point)) {
     return {};
   }
-  Ec ecp = *CastAny<Ec>(point);
+  Ec ecp = Ec(*CastAny<Ec>(point));
   // Check is normalized for affine coordinates
   if (!ecp.isNormalized()) {
     ecp.normalize();
@@ -470,17 +533,17 @@ TEMPLATE_NIST_INSTANCE(256)
 
 // Pairing Classes
 TEMPLATE_CURVE_INSTANCE(bls12);
+TEMPLATE_CURVE_INSTANCE(bnsnark);
 
 #ifdef MCL_ALL_PAIRING_FOR_YACL
 TEMPLATE_CURVE_INSTANCE(bn254);
 TEMPLATE_CURVE_INSTANCE(bn382m);
 TEMPLATE_CURVE_INSTANCE(bn382r);
 TEMPLATE_CURVE_INSTANCE(bn462);
-TEMPLATE_CURVE_INSTANCE(bnsnark);
 TEMPLATE_CURVE_INSTANCE(bn160);
 TEMPLATE_CURVE_INSTANCE(bls123);
 TEMPLATE_CURVE_INSTANCE(bls124);
 TEMPLATE_CURVE_INSTANCE(bn256);
 #endif
 
-}  // namespace yacl::crypto::hmcl
+}  // namespace yacl::crypto

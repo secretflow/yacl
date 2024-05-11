@@ -40,6 +40,8 @@ def yacl_deps():
     _com_github_libsodium()
     _com_github_libtom_libtommath()
     _com_github_herumi_mcl()
+    _com_github_microsoft_FourQlib()
+    _lib25519()
 
     _simplest_ot()
     _org_interconnection()
@@ -286,6 +288,23 @@ def _com_github_libsodium():
         ],
     )
 
+def _com_github_microsoft_FourQlib():
+    maybe(
+        http_archive,
+        name = "com_github_microsoft_FourQlib",
+        type = "tar.gz",
+        strip_prefix = "FourQlib-1031567f23278e1135b35cc04e5d74c2ac88c029",
+        sha256 = "7417c829d7933facda568c7a08924dfefb0c83dd1dab411e597af4c0cc0417f0",
+        patch_args = ["-p1"],
+        patches = [
+            "@yacl//bazel:patches/FourQlib.patch",
+        ],
+        build_file = "@yacl//bazel:FourQlib.BUILD",
+        urls = [
+            "https://github.com/microsoft/FourQlib/archive/1031567f23278e1135b35cc04e5d74c2ac88c029.tar.gz",
+        ],
+    )
+
 def _com_github_google_cpu_features():
     maybe(
         http_archive,
@@ -372,4 +391,17 @@ def _com_github_herumi_mcl():
             "@yacl//bazel:patches/mcl.patch",
         ],
         urls = ["https://github.com/herumi/mcl/archive/refs/tags/v1.88.tar.gz"],
+    )
+
+def _lib25519():
+    maybe(
+        http_archive,
+        name = "lib25519",
+        strip_prefix = "lib25519-20240321",
+        sha256 = "d010baea719153fe3f012789b5a1de27d91fbbcfc65559e7eee5d802bf91eadd",
+        type = "tar.gz",
+        build_file = "@yacl//bazel:lib25519.BUILD",
+        urls = [
+            "https://lib25519.cr.yp.to/lib25519-20240321.tar.gz",
+        ],
     )

@@ -1,0 +1,465 @@
+# Copyright 2022 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:yacl.bzl", "AES_COPT_FLAGS", "yacl_cc_library", "yacl_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+yacl_cc_library(
+    name = "ot_store",
+    srcs = ["ot_store.cc"],
+    hdrs = ["ot_store.h"],
+    deps = [
+        "//yacl/base:aligned_vector",
+        "//yacl/base:dynamic_bitset",
+        "//yacl/base:int128",
+        "//yacl/crypto/rand",
+        "//yacl/crypto/tools:prg",
+        "//yacl/link:context",
+    ],
+)
+
+yacl_cc_test(
+    name = "ot_store_test",
+    srcs = ["ot_store_test.cc"],
+    deps = [
+        ":ot_store",
+        "//yacl/link:test_util",
+    ],
+)
+
+yacl_cc_library(
+    name = "base_ot_interface",
+    hdrs = ["base_ot_interface.h"],
+    deps = ["//yacl/base:dynamic_bitset"],
+)
+
+yacl_cc_library(
+    name = "portable_ot_interface",
+    srcs = ["portable_ot_interface.cc"],
+    hdrs = ["portable_ot_interface.h"],
+    deps = [
+        ":base_ot_interface",
+        "//yacl:secparam",
+        "//yacl/base:exception",
+        "//yacl/crypto/tools:ro",
+        "//yacl/link",
+        "@simplest_ot//:simplest_ot_portable",
+    ],
+)
+
+yacl_cc_library(
+    name = "x86_asm_ot_interface",
+    srcs = ["x86_asm_ot_interface.cc"],
+    hdrs = ["x86_asm_ot_interface.h"],
+    target_compatible_with = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:linux",
+    ],
+    deps = [
+        ":base_ot_interface",
+        "//yacl:secparam",
+        "//yacl/base:exception",
+        "//yacl/crypto/tools:ro",
+        "//yacl/link",
+        "//yacl/math:gadget",
+        "//yacl/math/f2k",
+        "@simplest_ot//:simplest_ot_x86_asm",
+    ],
+)
+
+yacl_cc_library(
+    name = "base_ot",
+    srcs = ["base_ot.cc"],
+    hdrs = ["base_ot.h"],
+    deps = [
+        "//yacl:secparam",
+        "//yacl/base:exception",
+        "//yacl/kernel/algorithms:ot_store",
+        "//yacl/link",
+        "@com_google_absl//absl/types:span",
+    ] + select({
+        "@bazel_tools//src/conditions:linux_x86_64": [
+            ":x86_asm_ot_interface",
+        ],
+        "//conditions:default": [
+            ":portable_ot_interface",
+        ],
+    }),
+)
+
+yacl_cc_test(
+    name = "base_ot_test",
+    srcs = ["base_ot_test.cc"],
+    deps = [
+        ":base_ot",
+        "//yacl/crypto/rand",
+        "//yacl/link:test_util",
+    ],
+)
+
+yacl_cc_library(
+    name = "iknp_ote",
+    srcs = ["iknp_ote.cc"],
+    hdrs = ["iknp_ote.h"],
+    deps = [
+        ":ot_store",
+        "//yacl:secparam",
+        "//yacl/crypto/tools:crhash",
+        "//yacl/crypto/tools:prg",
+        "//yacl/crypto/tools:rp",
+        "//yacl/link",
+        "//yacl/utils:matrix_utils",
+    ],
+)
+
+yacl_cc_test(
+    name = "iknp_ote_test",
+    srcs = ["iknp_ote_test.cc"],
+    deps = [
+        ":iknp_ote",
+        "//yacl/crypto/rand",
+        "//yacl/link:test_util",
+    ],
+)
+
+yacl_cc_library(
+    name = "kkrt_ote",
+    srcs = ["kkrt_ote.cc"],
+    hdrs = ["kkrt_ote.h"],
+    copts = AES_COPT_FLAGS,
+    deps = [
+        ":ot_store",
+        "//yacl:secparam",
+        "//yacl/base:exception",
+        "//yacl/base:int128",
+        "//yacl/crypto/aes:aes_opt",
+        "//yacl/crypto/hash:hash_utils",
+        "//yacl/crypto/rand",
+        "//yacl/crypto/tools:prg",
+        "//yacl/crypto/tools:ro",
+        "//yacl/crypto/tools:rp",
+        "//yacl/link",
+        "//yacl/utils:matrix_utils",
+    ],
+)
+
+yacl_cc_test(
+    name = "kkrt_ote_test",
+    srcs = ["kkrt_ote_test.cc"],
+    deps = [
+        ":kkrt_ote",
+        "//yacl/crypto/rand",
+        "//yacl/link:test_util",
+    ],
+)
+
+yacl_cc_library(
+    name = "sgrr_ote",
+    srcs = ["sgrr_ote.cc"],
+    hdrs = ["sgrr_ote.h"],
+    copts = AES_COPT_FLAGS,
+    deps = [
+        ":ot_store",
+        "//yacl:secparam",
+        "//yacl/crypto/aes:aes_opt",
+        "//yacl/crypto/rand",
+        "//yacl/crypto/tools:crhash",
+        "//yacl/crypto/tools:prg",
+        "//yacl/crypto/tools:ro",
+        "//yacl/crypto/tools:rp",
+        "//yacl/link",
+        "//yacl/math:gadget",
+        "@com_google_absl//absl/numeric:bits",
+    ],
+)
+
+yacl_cc_test(
+    name = "sgrr_ote_test",
+    srcs = ["sgrr_ote_test.cc"],
+    deps = [
+        ":sgrr_ote",
+        "//yacl/crypto/rand",
+        "//yacl/link:test_util",
+    ],
+)
+
+yacl_cc_library(
+    name = "gywz_ote",
+    srcs = ["gywz_ote.cc"],
+    hdrs = ["gywz_ote.h"],
+    copts = AES_COPT_FLAGS,
+    deps = [
+        ":ot_store",
+        "//yacl:secparam",
+        "//yacl/base:aligned_vector",
+        "//yacl/crypto/aes:aes_opt",
+        "//yacl/crypto/rand",
+        "//yacl/crypto/tools:crhash",
+        "//yacl/crypto/tools:prg",
+        "//yacl/crypto/tools:rp",
+        "//yacl/link",
+        "//yacl/math:gadget",
+        "@com_google_absl//absl/numeric:bits",
+    ],
+)
+
+yacl_cc_test(
+    name = "gywz_ote_test",
+    srcs = ["gywz_ote_test.cc"],
+    deps = [
+        ":gywz_ote",
+        "//yacl/crypto/rand",
+        "//yacl/link:test_util",
+    ],
+)
+
+yacl_cc_library(
+    name = "ferret_ote",
+    srcs = [
+        "ferret_ote.cc",
+        "ferret_ote_rn.h",
+        "ferret_ote_un.h",
+    ],
+    hdrs = [
+        "ferret_ote.h",
+    ],
+    copts = AES_COPT_FLAGS,
+    deps = [
+        ":ot_store",
+        "//yacl:secparam",
+        "//yacl/base:exception",
+        "//yacl/crypto/hash:hash_utils",
+        "//yacl/crypto/rand",
+        "//yacl/crypto/tools:common",
+        "//yacl/crypto/tools:prg",
+        "//yacl/crypto/tools:rp",
+        "//yacl/kernel/algorithms:gywz_ote",
+        "//yacl/kernel/algorithms:sgrr_ote",
+        "//yacl/kernel/code:linear_code",
+        "//yacl/link",
+        "//yacl/math:gadget",
+        "//yacl/math/f2k",
+        "//yacl/utils:cuckoo_index",
+    ],
+)
+
+yacl_cc_test(
+    name = "ferret_ote_test",
+    srcs = ["ferret_ote_test.cc"],
+    deps = [
+        ":ferret_ote",
+        "//yacl/crypto/rand",
+        "//yacl/link:test_util",
+    ],
+)
+
+yacl_cc_library(
+    name = "kos_ote",
+    srcs = ["kos_ote.cc"],
+    hdrs = ["kos_ote.h"],
+    copts = AES_COPT_FLAGS,
+    deps = [
+        ":ot_store",
+        "//yacl:secparam",
+        "//yacl/base:dynamic_bitset",
+        "//yacl/base:exception",
+        "//yacl/base:int128",
+        "//yacl/crypto/rand",
+        "//yacl/crypto/tools:common",
+        "//yacl/crypto/tools:crhash",
+        "//yacl/crypto/tools:prg",
+        "//yacl/crypto/tools:rp",
+        "//yacl/link",
+        "//yacl/math/f2k",
+        "//yacl/utils:matrix_utils",
+    ],
+)
+
+yacl_cc_test(
+    name = "kos_ote_test",
+    srcs = ["kos_ote_test.cc"],
+    deps = [
+        ":kos_ote",
+        "//yacl/crypto/rand",
+        "//yacl/link:test_util",
+    ],
+)
+
+yacl_cc_library(
+    name = "softspoken_ote",
+    srcs = ["softspoken_ote.cc"],
+    hdrs = ["softspoken_ote.h"],
+    copts = AES_COPT_FLAGS,
+    deps = [
+        ":base_ot",
+        ":ot_store",
+        ":sgrr_ote",
+        "//yacl/base:exception",
+        "//yacl/base:int128",
+        "//yacl/crypto/tools:common",
+        "//yacl/crypto/tools:crhash",
+        "//yacl/crypto/tools:prg",
+        "//yacl/crypto/tools:rp",
+        "//yacl/link",
+        "//yacl/math/f2k",
+        "//yacl/utils:matrix_utils",
+    ] + select({
+        "@platforms//cpu:aarch64": [
+            "@com_github_dltcollab_sse2neon//:sse2neon",
+        ],
+        "//conditions:default": [],
+    }),
+)
+
+yacl_cc_test(
+    name = "softspoken_ote_test",
+    srcs = ["softspoken_ote_test.cc"],
+    deps = [
+        ":softspoken_ote",
+        "//yacl/crypto/rand",
+        "//yacl/link:test_util",
+    ],
+)
+
+yacl_cc_library(
+    name = "mpfss",
+    srcs = ["mpfss.cc"],
+    hdrs = ["mpfss.h"],
+    copts = AES_COPT_FLAGS,
+    deps = [
+        "//yacl:secparam",
+        "//yacl/base:aligned_vector",
+        "//yacl/base:dynamic_bitset",
+        "//yacl/base:int128",
+        "//yacl/crypto/rand",
+        "//yacl/crypto/tools:crhash",
+        "//yacl/kernel/algorithms:gywz_ote",
+        "//yacl/kernel/algorithms:ot_store",
+        "//yacl/kernel/algorithms:sgrr_ote",
+        "//yacl/math:gadget",
+        "//yacl/math/f2k",
+    ],
+)
+
+yacl_cc_test(
+    name = "mpfss_test",
+    srcs = ["mpfss_test.cc"],
+    copts = AES_COPT_FLAGS,
+    deps = [
+        ":mpfss",
+        "//yacl/crypto/rand",
+        "//yacl/link:test_util",
+        "//yacl/math:gadget",
+        "//yacl/math/f2k",
+    ],
+)
+
+yacl_cc_library(
+    name = "base_vole",
+    hdrs = ["base_vole.h"],
+    copts = AES_COPT_FLAGS,
+    deps = [
+        "//yacl:secparam",
+        "//yacl/base:aligned_vector",
+        "//yacl/base:dynamic_bitset",
+        "//yacl/base:int128",
+        "//yacl/crypto/rand",
+        "//yacl/kernel/algorithms:ot_store",
+        "//yacl/kernel/algorithms:softspoken_ote",
+        "//yacl/math:gadget",
+        "//yacl/math/f2k",
+        "//yacl/utils:serialize",
+    ],
+)
+
+yacl_cc_test(
+    name = "base_vole_test",
+    srcs = ["base_vole_test.cc"],
+    copts = AES_COPT_FLAGS,
+    deps = [
+        ":base_vole",
+        "//yacl/crypto/rand",
+        "//yacl/link:test_util",
+        "//yacl/math:gadget",
+        "//yacl/math/f2k",
+    ],
+)
+
+yacl_cc_library(
+    name = "mp_vole",
+    hdrs = ["mp_vole.h"],
+    copts = AES_COPT_FLAGS,
+    deps = [
+        "//yacl:secparam",
+        "//yacl/base:aligned_vector",
+        "//yacl/base:dynamic_bitset",
+        "//yacl/base:int128",
+        "//yacl/crypto/hash:hash_utils",
+        "//yacl/crypto/rand",
+        "//yacl/crypto/tools:common",
+        "//yacl/kernel/algorithms:mpfss",
+        "//yacl/kernel/algorithms:ot_store",
+        "//yacl/math:gadget",
+        "//yacl/math/f2k",
+        "//yacl/utils:serialize",
+    ],
+)
+
+yacl_cc_test(
+    name = "mp_vole_test",
+    srcs = ["mp_vole_test.cc"],
+    copts = AES_COPT_FLAGS,
+    deps = [
+        ":mp_vole",
+        "//yacl/crypto/rand",
+        "//yacl/link:test_util",
+        "//yacl/math:gadget",
+        "//yacl/math/f2k",
+    ],
+)
+
+yacl_cc_library(
+    name = "silent_vole",
+    srcs = ["silent_vole.cc"],
+    hdrs = ["silent_vole.h"],
+    copts = AES_COPT_FLAGS,
+    deps = [
+        ":base_vole",
+        ":mp_vole",
+        "//yacl:secparam",
+        "//yacl/base:aligned_vector",
+        "//yacl/base:dynamic_bitset",
+        "//yacl/base:int128",
+        "//yacl/kernel/algorithms:ot_store",
+        "//yacl/kernel/algorithms:softspoken_ote",
+        "//yacl/kernel/code:code_interface",
+        "//yacl/kernel/code:ea_code",
+        "//yacl/kernel/code:silver_code",
+        "//yacl/link:context",
+    ],
+)
+
+yacl_cc_test(
+    name = "silent_vole_test",
+    srcs = ["silent_vole_test.cc"],
+    copts = AES_COPT_FLAGS,
+    deps = [
+        ":silent_vole",
+        "//yacl/crypto/rand",
+        "//yacl/link:test_util",
+        "//yacl/math:gadget",
+        "//yacl/math/f2k",
+    ],
+)

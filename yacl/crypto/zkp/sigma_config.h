@@ -99,6 +99,8 @@ struct SigmaConfig {
       false;  // true for any meta has dynamic attrs, default set to false
   HashAlgorithm ro_type =
       HashAlgorithm::BLAKE3;  // hash type for non-interactive proof
+  PointOctetFormat point_format =
+      PointOctetFormat::Autonomous;  // Ec point serialization mod
 
   SigmaConfig SetDynNum(uint32_t n);
 

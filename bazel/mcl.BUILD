@@ -13,6 +13,8 @@
 # limitations under the License.
 
 load("@yacl//bazel:yacl.bzl", "yacl_cmake_external")
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "make")
+load("@bazel_skylib//lib:selects.bzl", "selects")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -26,6 +28,14 @@ config_setting(
     name = "cpu_arm64_v8a",
     values = {"cpu": "arm64-v8a"},
     visibility = ["//visibility:private"],
+)
+
+selects.config_setting_group(
+    name = "mac_x86",
+    match_all = [
+        "@platforms//os:macos",
+        "@platforms//cpu:x86_64",
+    ],
 )
 
 default_config = {
@@ -46,8 +56,10 @@ android_config = {
     "CMAKE_ANDROID_ARCH_ABI": "arm64-v8a",
 }
 
+# bad for mac intel
+# https://github.com/herumi/mcl/issues/174
 yacl_cmake_external(
-    name = "mcl",
+    name = "mcl-cmake",
     build_args = ["-j"],
     cache_entries = select({
         ":cpu_arm64_v8a": android_config,
@@ -59,4 +71,35 @@ yacl_cmake_external(
         "libmcl.a",
     ],
     alwayslink = True,
+)
+
+make(
+    name = "mcl-make",
+    args = [
+        "-j",
+        "MCL_USE_GMP=0",
+        "DEBUG=0",
+    ],
+    env = select({
+        "@platforms//os:macos": {
+            "AR": "ar",
+        },
+        "//conditions:default": {
+        },
+    }),
+    lib_source = ":source",
+    out_static_libs = [
+        "libmcl.a",
+    ],
+    targets = [
+        "install",
+    ],
+)
+
+cc_library(
+    name = "mcl",
+    deps = select({
+        ":mac_x86": [":mcl-make"],
+        "//conditions:default": [":mcl-cmake"],
+    }),
 )

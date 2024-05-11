@@ -95,9 +95,10 @@ SigmaConfig SigmaConfig::SetDynNum(uint32_t n) {
 
 bool SigmaConfig::Equals(SigmaConfig rhs) const {
   return std::tie(type, num_witness, num_rnd_witness, num_generator,
-                  num_statement, dyn_size_flag) ==
+                  num_statement, dyn_size_flag, ro_type, point_format) ==
          std::tie(rhs.type, rhs.num_witness, rhs.num_rnd_witness,
-                  rhs.num_generator, rhs.num_statement, rhs.dyn_size_flag);
+                  rhs.num_generator, rhs.num_statement, rhs.dyn_size_flag,
+                  rhs.ro_type, rhs.point_format);
 }
 
 std::map<SigmaType, SigmaConfig> BuildSigmaMap() {

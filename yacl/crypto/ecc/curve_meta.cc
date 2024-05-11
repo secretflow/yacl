@@ -647,6 +647,14 @@ std::vector<CurveMeta> kPredefinedCurves = {
     {"bn190", {}, CurveForm::Weierstrass, FieldType::Prime, 80},
     {"bn222", {}, CurveForm::Weierstrass, FieldType::Prime, 80},
     {"bn254", {"Fp254BNb"}, CurveForm::Weierstrass, FieldType::Prime, 100},
+    // BN_SNARK, used by Ethereum as the built-in curve on Solidity for Smart
+    // Contract, Zcash and etc.
+    // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-196.md
+    // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-197.md
+    // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1108.md
+    // Curve named listed by
+    // https://docs.google.com/spreadsheets/d/1t6ibmx_BqCxyovP18RfGEUUtKrl2d5MD
+    {"bn_snark1", {}, CurveForm::Weierstrass, FieldType::Prime, 100},
     {"bn286", {}, CurveForm::Weierstrass, FieldType::Prime, 100},
     {"bn318", {}, CurveForm::Weierstrass, FieldType::Prime, 100},
     {"bn350", {}, CurveForm::Weierstrass, FieldType::Prime, 100},
@@ -822,6 +830,7 @@ std::vector<CurveMeta> kPredefinedCurves = {
     {"brainpoolP384t1", {}, CurveForm::Weierstrass, FieldType::Prime, 192},
     {"brainpoolP512r1", {}, CurveForm::Weierstrass, FieldType::Prime, 256},
     {"brainpoolP512t1", {}, CurveForm::Weierstrass, FieldType::Prime, 256},
+    {"FourQ", {}, CurveForm::TwistedEdwards, FieldType::Extension, 128},
 };
 
 CurveName CurveMeta::LowerName() const { return absl::AsciiStrToLower(name); }

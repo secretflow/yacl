@@ -16,7 +16,7 @@ Supported platforms:
 
 - [base](yacl/base/): some basic types and utils in yacl.
 - [crypto](yacl/crypto/): **crypto algorithms** without [link](yacl/link/).
-- [kernels](yacl/kernels/): **crypto kernels** that includes [link](yacl/link/) with multi-thread support, i.e. OT, DPF.
+- [kernel](yacl/kernel/): **crypto kernel** that includes [link](yacl/link/) with multi-thread support, i.e. OT, DPF.
 - [io](yacl/io/): a simple streaming-based io library.
 - [link](yacl/link/): a simple rpc-based MPI framework, providing the [SPMD](https://en.wikipedia.org/wiki/SPMD) parallel programming capability.
 
