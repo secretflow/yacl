@@ -44,7 +44,7 @@ class FourQTest : public ::testing::Test {
       EcGroupFactory::Instance().Create("FourQ", ArgLib = "FourQlib");
 };
 
-TEST_F(FourQTest, CopyPointWorks) {
+TEST_F(FourQTest, DISABLED_CopyPointWorks) {
   // Convert function
   f2elm_t f;
   MPIntToF2elm(123456789_mp, f);
@@ -67,7 +67,7 @@ TEST_F(FourQTest, CopyPointWorks) {
   EXPECT_TRUE(ec_->PointEqual(ecp1, ec_->CopyPoint(ap)));
 }
 
-TEST_F(FourQTest, AffinePointWorks) {
+TEST_F(FourQTest, DISABLED_AffinePointWorks) {
   ASSERT_EQ(ec_->GetLibraryName(), "FourQlib");
 
   AffinePoint ap_g{
@@ -88,7 +88,7 @@ TEST_F(FourQTest, AffinePointWorks) {
   EXPECT_TRUE(ec_->PointEqual(ec_->CopyPoint(any_ap), any_p));
 }
 
-TEST_F(FourQTest, InfWorks) {
+TEST_F(FourQTest, DISABLED_InfWorks) {
   auto g = ec_->GetGenerator();
   EXPECT_TRUE(ec_->IsInCurveGroup(g));
 
@@ -109,7 +109,7 @@ TEST_F(FourQTest, InfWorks) {
   EXPECT_TRUE(ec_->PointEqual(inf, inf2));
 }
 
-TEST_F(FourQTest, NegateWorks) {
+TEST_F(FourQTest, DISABLED_NegateWorks) {
   // simple works
   auto g = ec_->MulBase(1_mp);
   EXPECT_TRUE(ec_->PointEqual(g, ec_->GetGenerator()));

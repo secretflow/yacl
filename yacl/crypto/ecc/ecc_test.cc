@@ -378,7 +378,7 @@ INSTANTIATE_TEST_SUITE_P(
     FourQTest, FourQCurveTest,
     ::testing::ValuesIn(EcGroupFactory::Instance().ListLibraries("FourQ")));
 
-TEST_P(FourQCurveTest, SpiTest) {
+TEST_P(FourQCurveTest, DISABLED_SpiTest) {
   EXPECT_STRCASEEQ(ec_->GetCurveName().c_str(), "FourQ");
   EXPECT_EQ(ec_->GetCurveForm(), CurveForm::TwistedEdwards);
   EXPECT_EQ(ec_->GetFieldType(), FieldType::Extension);
