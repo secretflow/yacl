@@ -31,6 +31,10 @@ yacl_cc_library(
     srcs = [
         "lib25519_factory.cc",
     ],
+    target_compatible_with = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:linux",
+    ],
     deps = [
         ":ed25519_group",
     ],
@@ -42,6 +46,10 @@ yacl_cc_library(
     srcs = ["ed25519_group.cc"],
     hdrs = ["ed25519_group.h"],
     linkstatic = True,
+    target_compatible_with = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:linux",
+    ],
     deps = [
         ":lib25519_group",
     ],
@@ -55,6 +63,10 @@ yacl_cc_library(
         "lib25519_private.h",
     ],
     linkstatic = True,
+    \ = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:linux",
+    ],
     deps = [
         "//yacl/crypto/ecc:spi",
         "@lib25519//:25519",
@@ -64,6 +76,10 @@ yacl_cc_library(
 yacl_cc_test(
     name = "ed25519_test",
     srcs = ["ed25519_test.cc"],
+    target_compatible_with = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:linux",
+    ],
     deps = [
         ":lib25519",
     ],

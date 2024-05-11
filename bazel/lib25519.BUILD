@@ -45,7 +45,7 @@ extern int crypto_verify(const unsigned char *,const unsigned char *);
 
 #endif
 
-EOF"""
+EOF""",
 )
 
 genrule(
@@ -71,7 +71,7 @@ extern void ge25519_sub(ge25519 *r, const ge25519 *p, const ge25519 *q);
 
 #endif
 
-EOF"""
+EOF""",
 )
 
 genrule(
@@ -91,7 +91,7 @@ void ge25519_sub(ge25519 *r, const ge25519 *p, const ge25519 *q)
   ge25519_add(r,p,&qneg);
 }
 
-EOF"""
+EOF""",
 )
 
 genrule(
@@ -110,7 +110,7 @@ extern void ge25519_scalarmult(ge25519 *r, const ge25519 *p, const sc25519 *s);
 
 #endif
 
-EOF"""
+EOF""",
 )
 
 genrule(
@@ -164,7 +164,7 @@ void ge25519_scalarmult(ge25519 *r, const ge25519 *p, const sc25519 *s) {
   ge25519_multi_scalarmult_process(r,nslide,cP);
 }
 
-EOF"""
+EOF""",
 )
 
 genrule(
@@ -183,7 +183,7 @@ extern int ge25519_is_on_curve(const ge25519 *p);
 
 #endif
 
-EOF"""
+EOF""",
 )
 
 genrule(
@@ -222,12 +222,13 @@ int ge25519_is_on_curve(const ge25519_p3 *p)
   return fe25519_iseq_vartime(&t0, &zero) != 0;
 }
 
-EOF"""
+EOF""",
 )
 
 cc_library(
     name = "25519",
     srcs = [
+        "crypto_mGnP/ed25519/amd64-maax/ge25519_pack.c",
         "crypto_multiscalar/ed25519/amd64-maax-p3/fe25519_add.S",
         "crypto_multiscalar/ed25519/amd64-maax-p3/fe25519_freeze.S",
         "crypto_multiscalar/ed25519/amd64-maax-p3/fe25519_getparity.c",
@@ -235,56 +236,59 @@ cc_library(
         "crypto_multiscalar/ed25519/amd64-maax-p3/fe25519_mul.S",
         "crypto_multiscalar/ed25519/amd64-maax-p3/fe25519_neg.c",
         "crypto_multiscalar/ed25519/amd64-maax-p3/fe25519_pack.c",
-        "crypto_multiscalar/ed25519/amd64-maax-p3/fe25519_unpack.c",
+        "crypto_multiscalar/ed25519/amd64-maax-p3/fe25519_pow2523.c",  # referenced by ge25519_unpack
         "crypto_multiscalar/ed25519/amd64-maax-p3/fe25519_setint.c",
         "crypto_multiscalar/ed25519/amd64-maax-p3/fe25519_sub.S",
-        "crypto_multiscalar/ed25519/amd64-maax-p3/fe25519_pow2523.c",  # referenced by ge25519_unpack
+        "crypto_multiscalar/ed25519/amd64-maax-p3/fe25519_unpack.c",
         "crypto_multiscalar/ed25519/amd64-maax-p3/ge25519_add.S",
         "crypto_multiscalar/ed25519/amd64-maax-p3/ge25519_double.S",
         "crypto_multiscalar/ed25519/amd64-maax-p3/sc25519_from32bytes.c",
-        "crypto_multiscalar/ed25519/amd64-maax-p3/sc25519_to32bytes.c",
         "crypto_multiscalar/ed25519/amd64-maax-p3/sc25519_slide.c",
+        "crypto_multiscalar/ed25519/amd64-maax-p3/sc25519_to32bytes.c",
         "crypto_multiscalar/ed25519/amd64-maax-p3/shared-consts.c",
-        "crypto_pow/inv25519/amd64-maax/fe25519_invert.c",
-        "crypto_pow/inv25519/amd64-maax/fe25519_nsquare.S",
-        "crypto_pow/inv25519/amd64-maax/fe25519_square.S",
         "crypto_nG/merged25519/amd64-maax/fe25519_cmov.c",
         "crypto_nG/merged25519/amd64-maax/ge25519_base.S",
         "crypto_nG/merged25519/amd64-maax/ge25519_scalarmult_base.c",
         "crypto_nG/merged25519/amd64-maax/sc25519_window4.c",
         "crypto_nG/merged25519/amd64-maax/shared-base-data.c",
-        "crypto_mGnP/ed25519/amd64-maax/ge25519_pack.c",
+        "crypto_pow/inv25519/amd64-maax/fe25519_invert.c",
+        "crypto_pow/inv25519/amd64-maax/fe25519_nsquare.S",
+        "crypto_pow/inv25519/amd64-maax/fe25519_square.S",
         "crypto_verify.c",
+        "ge25519_is_on_curve.c",
+        "ge25519_scalarmult.c",
         "ge25519_sub.c",
         "ge25519_unpack.c",
-        "ge25519_scalarmult.c",
-        "ge25519_is_on_curve.c",
         "include-build/crypto_asm_hidden.h",
         "include-build/crypto_uint64.h",
         "include-build/crypto_verify.h",
     ],
     hdrs = [
-        "crypto_multiscalar/ed25519/amd64-maax-p3/sc25519.h",
         "crypto_multiscalar/ed25519/amd64-maax-p3/ge25519_unpack.h",
+        "crypto_multiscalar/ed25519/amd64-maax-p3/sc25519.h",
         "crypto_nG/merged25519/amd64-maax/fe25519.h",
         "crypto_nG/merged25519/amd64-maax/ge25519.h",
         "crypto_nG/merged25519/amd64-maax/ge25519_base_niels.data",
-        "include-build/ge25519_sub.h",
-        "include-build/ge25519_scalarmult.h",
         "include-build/ge25519_is_on_curve.h",
+        "include-build/ge25519_scalarmult.h",
+        "include-build/ge25519_sub.h",
     ],
-    includes = [
-        "crypto_multiscalar/ed25519/amd64-maax-p3",
-        "crypto_nG/merged25519/amd64-maax",
-        "include-build",
-    ],
+    copts = ["-fvisibility=hidden"],
     defines = [
         "CRYPTO_NAMESPACE(name)=crypto_##name",
         "_CRYPTO_NAMESPACE(name)=_crypto_##name",
         "CRYPTO_SHARED_NAMESPACE(name)=crypto_shared_##name",
         "_CRYPTO_SHARED_NAMESPACE(name)=_crypto_shared_##name",
     ],
-    copts = ["-fvisibility=hidden"],
-    visibility = ["//visibility:public"],
+    includes = [
+        "crypto_multiscalar/ed25519/amd64-maax-p3",
+        "crypto_nG/merged25519/amd64-maax",
+        "include-build",
+    ],
     linkstatic = True,
+    target_compatible_with = [
+        "@platforms//cpu:x86_64",
+        "@platforms//os:linux",
+    ],
+    visibility = ["//visibility:public"],
 )
