@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## 2024-05-15
+- [Tag] release/0.4.5b0
+- [Feature] Re-organize repo layout, add kernel folder for crypto protocols with links
+- [Feature] Add ECC lib25519 implementation
+- [Feature] Add ECC FourQ implementation
+- [Feature] Unify f2k implementaion
+- [Bugifx] Fix RandBits implementation
+
 ## 2024-02-01
 - [Tag] release/0.4.3
 - [Feature] Add Silent Vole (malicious version)
