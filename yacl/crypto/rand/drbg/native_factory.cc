@@ -41,6 +41,7 @@ namespace yacl::crypto {
 NativeDrbg::NativeDrbg(std::string type, bool use_yacl_es, SecParam::C secparam)
     : type_(std::move(type)), secparam_(secparam) {
   YACL_ENFORCE(use_yacl_es == true);
+  YACL_ENFORCE(secparam_ == SecParam::C::k128);
   drbg_impl_ = std::make_unique<internal::Sm4Drbg>();
   auto es = EntropySourceFactory::Instance().Create("auto");
   auto nonce = es->GetEntropy(32);
