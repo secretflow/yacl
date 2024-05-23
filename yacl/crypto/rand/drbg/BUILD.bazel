@@ -20,7 +20,8 @@ yacl_cc_library(
     visibility = ["//visibility:public"],
     deps = [
         ":ic_factory",
-        ":openssl_factory",  # since we have only one impl
+        ":native_factory",
+        ":openssl_factory",
     ],
 )
 
@@ -81,6 +82,30 @@ yacl_cc_library(
         "//yacl/crypto/ossl-provider:helper",  # helper
         "//yacl/crypto/rand/entropy_source",
         "@com_github_greendow_hash_drbg//:hash_drbg",
+    ],
+    alwayslink = 1,
+)
+
+# native factory
+yacl_cc_library(
+    name = "native_factory",
+    srcs = [
+        "native_factory.cc",
+    ],
+    hdrs = [
+        "native_factory.h",
+    ],
+    data = [
+        "//yacl/crypto/ossl-provider:prov_shared",  # openssl provider shared lib
+    ],
+    visibility = ["//visibility:private"],
+    deps = [
+        ":spi",
+        "//yacl/crypto:openssl_wrappers",
+        "//yacl/crypto/block_cipher:symmetric_crypto",
+        "//yacl/crypto/hash:hash_utils",
+        "//yacl/crypto/ossl-provider:helper",  # helper
+        "//yacl/crypto/rand/entropy_source",
     ],
     alwayslink = 1,
 )

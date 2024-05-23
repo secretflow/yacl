@@ -134,8 +134,6 @@ def _com_github_madler_zlib():
         strip_prefix = "zlib-1.3.1",
         sha256 = "17e88863f3600672ab49182f217281b6fc4d3c762bde361935e436a95214d05c",
         type = ".tar.gz",
-        patch_args = ["-p1"],
-        patches = ["@yacl//bazel:patches/zlib.patch"],
         urls = [
             "https://github.com/madler/zlib/archive/refs/tags/v1.3.1.tar.gz",
         ],

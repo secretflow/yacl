@@ -55,6 +55,18 @@ TEST(OpensslTest, HmacDrbgWorks) {
   EXPECT_NE(std::memcmp(out1.data(), out2.data(), 8), 0);
 }
 
+TEST(NativeTest, GmDrbgWorks) {
+  auto drbg = DrbgFactory::Instance().Create("gm-drbg");
+
+  std::vector<char> out1(8);
+  std::vector<char> out2(8);
+  drbg->Fill(out1.data(), 8);
+  drbg->Fill(out2.data(), 8);
+
+  // should be different
+  EXPECT_NE(std::memcmp(out1.data(), out2.data(), 8), 0);
+}
+
 // TEST(OpensslTest, IcDrbgSameSeedSameResults) {
 //   auto drbg1 = DrbgFactory::Instance().Create("IC-HASH-DRBG");
 //   auto drbg2 = DrbgFactory::Instance().Create("IC-HASH-DRBG");

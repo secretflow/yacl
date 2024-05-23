@@ -34,15 +34,14 @@ namespace yacl::crypto {
 // see:
 // https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-90A.pdf
 //
-// Note that we only consider the *block-cipher based DRBG*, all DRBG in yacl
-// refers to this sepcific type of DRBG (see Section NIST SP800-90Ar1 10.2.1)
-//
 // ---------------
 // Usage:
 //   auto drbg = DrbgFactory::Instance().Create("ctr-drbg");
 // ----------------
 // Currently, the supported drbg types are (case insensitive):
-// 1. ctr-drbg
+// * "CTR-DRBG"
+// * "HASH-DRBG"
+// * "HMAC-DRBG"
 
 DEFINE_ARG_bool(UseYaclEs);          // spi args, default should be true
 DEFINE_ARG(SecParam::C, SecParamC);  // spi args, default should >= 128

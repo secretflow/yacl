@@ -12,20 +12,43 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@yacl//bazel:yacl.bzl", "yacl_cmake_external")
-
 package(default_visibility = ["//visibility:public"])
 
-filegroup(
-    name = "all_srcs",
-    srcs = glob(["**"]),
-)
+licenses(["notice"])  # BSD/MIT-like license (for zlib)
 
-yacl_cmake_external(
+cc_library(
     name = "zlib",
-    cache_entries = {
-        "CMAKE_POSITION_INDEPENDENT_CODE": "ON",
-    },
-    lib_source = ":all_srcs",
-    out_static_libs = ["libz.a"],
+    srcs = [
+        "adler32.c",
+        "compress.c",
+        "crc32.c",
+        "crc32.h",
+        "deflate.c",
+        "deflate.h",
+        "gzclose.c",
+        "gzguts.h",
+        "gzlib.c",
+        "gzread.c",
+        "gzwrite.c",
+        "infback.c",
+        "inffast.c",
+        "inffast.h",
+        "inffixed.h",
+        "inflate.c",
+        "inflate.h",
+        "inftrees.c",
+        "inftrees.h",
+        "trees.c",
+        "trees.h",
+        "uncompr.c",
+        "zconf.h",
+        "zutil.c",
+        "zutil.h",
+    ],
+    hdrs = ["zlib.h"],
+    copts = [
+        "-Wno-shift-negative-value",
+        "-DZ_HAVE_UNISTD_H",
+    ],
+    includes = ["."],
 )

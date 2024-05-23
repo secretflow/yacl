@@ -35,18 +35,24 @@ namespace yacl::crypto {
 // For openssl docs, see: https://www.openssl.org/docs/man3.1/man3/EVP_RAND.html
 class OpensslDrbg : public Drbg {
  public:
+  // This is all the supported types of OpensslDrbg.
   static constexpr std::array<std::string_view, 3> TypeList = {
       "CTR-DRBG",
       "HASH-DRBG",
       "HMAC-DRBG",
   };
 
+  // Constructor. "type" should one of the string in OpensslDrbg::TypeList; if
+  // "use_yacl_es = true", this function will try to load yacl's entropy source,
+  // and fallback to use openssl's default entropy source if failed to find
+  // yacl's.
   explicit OpensslDrbg(std::string type, bool use_yacl_es = true,
                        SecParam::C secparam = SecParam::C::k128);
 
+  // Destructor
   ~OpensslDrbg() override;
 
-  // create drbg instance
+  // Create drbg instance
   static std::unique_ptr<Drbg> Create(const std::string &type,
                                       const SpiArgs &config) {
     YACL_ENFORCE(Check(type, config));  // make sure check passes
@@ -55,17 +61,17 @@ class OpensslDrbg : public Drbg {
         config.GetOrDefault(ArgSecParamC, SecParam::C::k128));
   }
 
-  // this checker would return ture only for ctr-drbg type
+  // This checker would return ture only for ctr-drbg type
   static bool Check(const std::string &type,
                     [[maybe_unused]] const SpiArgs &config) {
     return find(begin(TypeList), end(TypeList), absl::AsciiStrToUpper(type)) !=
            end(TypeList);
   }
 
-  // fill buffer with randomness
+  // Fill "buf" with random bytes with size "len".
   void Fill(char *buf, size_t len) final;
 
-  // get the lib name
+  // Get the lib name
   std::string Name() override { return "OpenSSL"; }
 
  private:
