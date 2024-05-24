@@ -38,14 +38,30 @@ config_setting(
 make(
     name = "FourQlib",
     args = ["-C FourQ_64bit_and_portable"],
+    defines = [
+        "__LINUX__",
+        "_ARM64_",
+    ],  # still work on macos and x64
     env = select({
-        ":linux_x64": {"ARCH": "x64", "AVX": "TRUE", "AVX2": "FALSE"},
-        ":linux_arm64": {"ARCH": "ARM64"},
-        "@platforms//os:macos": {"ARCH": "x64", "GENERIC": "TRUE"}, # still work on macos M1
+        ":linux_x64": {
+            "ARCH": "x64",
+            "AVX": "TRUE",
+            "AVX2": "FALSE",
+        },
+        ":linux_arm64": {
+            "ARCH": "ARM64",
+            "GENERIC": "TRUE",
+        },
+        "@platforms//os:macos": {
+            "ARCH": "x64",
+            "GENERIC": "TRUE",
+        },  # still work on macos M1
     }),
-    defines = ["__LINUX__", "_ARM64_"],  # still work on macos and x64
     lib_source = ":all_srcs",
     out_static_libs = ["libFourQ.a"],
-    targets = ["libFourQ", "install"],
+    targets = [
+        "libFourQ",
+        "install",
+    ],
     visibility = ["//visibility:public"],
 )
