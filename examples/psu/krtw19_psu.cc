@@ -60,28 +60,38 @@ uint64_t Evaluate(const std::vector<uint64_t>& coeffs, uint64_t x) {
 
 std::vector<uint64_t> Interpolate(const std::vector<uint64_t>& xs,
                                   const std::vector<uint64_t>& ys) {
-  YACL_ENFORCE_EQ(xs.size(), ys.size(), "Sizes mismatch.");
-  size_t size{xs.size()};
-  std::vector<uint64_t> L_coeffs(size);
-  for (size_t i = 0; i != size; ++i) {
-    std::vector<uint64_t> Li_coeffs(size);
-    Li_coeffs[0] = ys[i];
-    uint64_t prod = 1;
-    for (size_t j = 0; j != size; ++j) {
-      if (xs[i] != xs[j]) {
-        prod = yacl::GfMul64(prod, xs[i] ^ xs[j]);
-        uint64_t sum = 0;
-        for (size_t k = 0; k != size; ++k) {
-          sum = std::exchange(Li_coeffs[k],
-                              yacl::GfMul64(Li_coeffs[k], xs[j]) ^ sum);
-        }
-      }
-    }
-    for (size_t k = 0; k != size; ++k) {
-      L_coeffs[k] ^= yacl::GfMul64(Li_coeffs[k], yacl::GfInv64(prod));
+  YACL_ENFORCE(xs.size() == ys.size());
+  auto size = xs.size();
+  auto poly = std::vector<uint64_t>(size + 1, 0);
+
+  // Compute poly = (x - x0)(x - x1) ... (x - xn)
+  poly[0] = 1;
+  for (size_t j = 0; j < size; ++j) {
+    uint64_t sum = 0;
+    for (size_t k = 0; k <= j + 1; ++k) {
+      sum = std::exchange(poly[k], yacl::GfMul64(poly[k], xs[j]) ^ sum);
     }
   }
-  return L_coeffs;
+
+  auto coeffs = std::vector<uint64_t>(size, 0);  // result
+
+  for (size_t i = 0; i < size; ++i) {
+    // subpoly = poly / (x - xi)
+    auto subpoly = std::vector<uint64_t>(size, 0);
+    uint64_t xi = xs[i];
+    subpoly[size - 1] = 1;
+    for (int32_t k = size - 2; k >= 0; --k) {
+      subpoly[k] = poly[k + 1] ^ yacl::GfMul64(subpoly[k + 1], xi);
+    }
+
+    auto prod = yacl::GfMul64(ys[i], yacl::GfInv64(Evaluate(subpoly, xi)));
+    // update coeff
+    for (size_t k = 0; k < size; ++k) {
+      coeffs[k] = coeffs[k] ^ yacl::GfMul64(subpoly[k], prod);
+    }
+  }
+
+  return coeffs;
 }
 
 }  // namespace
