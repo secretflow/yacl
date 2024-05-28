@@ -287,8 +287,8 @@ Buffer Sm4Drbg::Generate(size_t len, ByteContainerView additional_input) {
   Buffer df_add_input(kSeedlen);
   if (!additional_input.empty()) {
     df_add_input = derive(additional_input, kSeedlen);
-    rng_update(df_add_input, internal_state_.key, internal_state_.v, &internal_state_.key,
-               &internal_state_.v);
+    rng_update(df_add_input, internal_state_.key, internal_state_.v,
+               &internal_state_.key, &internal_state_.v);
   }
 
   internal_state_.reseed_ctr++;
