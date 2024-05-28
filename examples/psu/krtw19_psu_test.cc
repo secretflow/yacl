@@ -32,36 +32,24 @@ struct TestParams {
   std::vector<uint128_t> items_b;
 };
 
-namespace {
-[[maybe_unused]] std::vector<uint64_t> InterpolateSlow(
-    const std::vector<uint64_t>& xs, const std::vector<uint64_t>& ys) {
-  YACL_ENFORCE_EQ(xs.size(), ys.size(), "Sizes mismatch.");
-  size_t size{xs.size()};
-  std::vector<uint64_t> L_coeffs(size);
-  for (size_t i = 0; i != size; ++i) {
-    std::vector<uint64_t> Li_coeffs(size);
-    Li_coeffs[0] = ys[i];
-    uint64_t prod = 1;
-    for (size_t j = 0; j != size; ++j) {
-      if (xs[i] != xs[j]) {
-        prod = yacl::GfMul64(prod, xs[i] ^ xs[j]);
-        uint64_t sum = 0;
-        for (size_t k = 0; k != size; ++k) {
-          sum = std::exchange(Li_coeffs[k],
-                              yacl::GfMul64(Li_coeffs[k], xs[j]) ^ sum);
-        }
-      }
-    }
-    auto inv = yacl::GfInv64(prod);
-    for (size_t k = 0; k != size; ++k) {
-      L_coeffs[k] ^= yacl::GfMul64(Li_coeffs[k], inv);
-    }
-  }
-  return L_coeffs;
-}
-}  // namespace
-
 namespace examples::psu {
+
+class PolyTest : public testing ::TestWithParam<size_t> {};
+
+TEST_P(PolyTest, Works) {
+  auto size = GetParam();
+  auto xs = yacl::crypto::RandVec<uint64_t>(size);
+  auto ys = yacl::crypto::RandVec<uint64_t>(size);
+
+  auto ceof = Interpolate(xs, ys);
+  EXPECT_EQ(ceof.size(), size);
+  for (size_t i = 0; i < size; ++i) {
+    EXPECT_EQ(ys[i], Evaluate(ceof, xs[i]));
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(Works_Instances, PolyTest,
+                         testing::Values(10, 100, 1000, 10000));
 
 class KrtwPsuTest : public testing::TestWithParam<TestParams> {};
 

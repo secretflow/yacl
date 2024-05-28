@@ -50,6 +50,8 @@ auto HashInputs(const std::vector<uint128_t>& elem_hashes, size_t count) {
   return hashing;
 }
 
+}  // namespace
+
 uint64_t Evaluate(const std::vector<uint64_t>& coeffs, uint64_t x) {
   uint64_t y = coeffs.back();
   for (auto it = std::next(coeffs.rbegin()); it != coeffs.rend(); ++it) {
@@ -93,8 +95,6 @@ std::vector<uint64_t> Interpolate(const std::vector<uint64_t>& xs,
 
   return coeffs;
 }
-
-}  // namespace
 
 void KrtwPsuSend(const std::shared_ptr<yacl::link::Context>& ctx,
                  const std::vector<uint128_t>& elem_hashes) {
