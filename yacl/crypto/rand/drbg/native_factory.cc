@@ -269,10 +269,6 @@ void Sm4Drbg::reseed(ByteContainerView additional_input) {
               additional_input.size());
   auto derived_buf = derive(buf, kSeedlen);
 
-  // reset internal state
-  internal_state_.key = 0;
-  internal_state_.v = 0;
-
   YACL_ENFORCE_EQ(buf.size(), kSeedlen);
   rng_update(derived_buf, internal_state_.key, internal_state_.v,
              &internal_state_.key, &internal_state_.v);
@@ -291,6 +287,8 @@ Buffer Sm4Drbg::Generate(size_t len, ByteContainerView additional_input) {
   Buffer df_add_input(kSeedlen);
   if (!additional_input.empty()) {
     df_add_input = derive(additional_input, kSeedlen);
+    rng_update(df_add_input, internal_state_.key, internal_state_.v,
+             &internal_state_.key, &internal_state_.v);
   }
 
   internal_state_.reseed_ctr++;
@@ -302,8 +300,8 @@ Buffer Sm4Drbg::Generate(size_t len, ByteContainerView additional_input) {
 
   int out_len = 0;
   YACL_ENFORCE(EVP_CipherUpdate(cipher_ctx_.get(), enc_out.data(), &out_len,
-                                (const unsigned char*)df_add_input.data(),
-                                df_add_input.size()));
+                                (const unsigned char*)&internal_state_.v,
+                                sizeof(internal_state_.v)));
   std::memcpy(ret.data(), enc_out.data(), len);
 
   if (!additional_input.empty()) {
