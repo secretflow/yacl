@@ -52,7 +52,7 @@ class MockTransportTest : public ::testing::Test {
 
  public:
   std::string peer_{"peer"};
-  std::string server_url_{"127.0.0.1:36988"};
+  std::string server_url_{"127.0.0.1:61234"};
   std::shared_ptr<brpc::Channel> channel_;
   MockTransport transport_;
 };
@@ -95,7 +95,7 @@ TEST_F(MockTransportTest, base_test) {
 }
 
 TEST(UtilTest, get_local_url) {
-  std::string url = "127.0.0.1:9999";
+  std::string url = "127.0.0.1:61234";
   setenv("system.transport", url.c_str(), 1);
 
   auto res = MockTransport::GetLocalUrlFromEnv();
