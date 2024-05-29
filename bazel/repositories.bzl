@@ -379,15 +379,15 @@ def _com_github_herumi_mcl():
     maybe(
         http_archive,
         name = "com_github_herumi_mcl",
-        strip_prefix = "mcl-1.88",
-        sha256 = "7fcc630c008e973dda88dd1d1cd2bb14face95ee3ed3b2f717fbb25d340d6ba5",
+        strip_prefix = "mcl-1.92",
+        sha256 = "17617397a61ce12246dadae2ab07d807ea3cf79c299a4e4a5506feb594ec2cf4",
         type = "tar.gz",
         build_file = "@yacl//bazel:mcl.BUILD",
         patch_args = ["-p1"],
         patches = [
             "@yacl//bazel:patches/mcl.patch",
         ],
-        urls = ["https://github.com/herumi/mcl/archive/refs/tags/v1.88.tar.gz"],
+        urls = ["https://github.com/herumi/mcl/archive/refs/tags/v1.92.tar.gz"],
     )
 
 def _lib25519():
