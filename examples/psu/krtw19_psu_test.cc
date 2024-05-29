@@ -34,6 +34,23 @@ struct TestParams {
 
 namespace examples::psu {
 
+class PolyTest : public testing ::TestWithParam<size_t> {};
+
+TEST_P(PolyTest, Works) {
+  auto size = GetParam();
+  auto xs = yacl::crypto::RandVec<uint64_t>(size);
+  auto ys = yacl::crypto::RandVec<uint64_t>(size);
+
+  auto ceof = Interpolate(xs, ys);
+  EXPECT_EQ(ceof.size(), size);
+  for (size_t i = 0; i < size; ++i) {
+    EXPECT_EQ(ys[i], Evaluate(ceof, xs[i]));
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(Works_Instances, PolyTest,
+                         testing::Values(10, 100, 1000, 10000));
+
 class KrtwPsuTest : public testing::TestWithParam<TestParams> {};
 
 TEST_P(KrtwPsuTest, Works) {
