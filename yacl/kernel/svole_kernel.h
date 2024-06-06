@@ -32,7 +32,7 @@ namespace yacl::crypto {
 // - where a is in GF(2^64), delta, b, c are in GF(2^128)
 // Sender receives: c, delta
 // Receiver receives: a, b
-class SVoleKernel : StreamKernel {
+class SVoleKernel : StreamingKernel {
  public:
   enum class Role { Sender, Receiver };
 

@@ -85,7 +85,7 @@ void IknpOtExtSend(const std::shared_ptr<link::Context>& ctx,
     // Transpose.
     MatrixTranspose128(&batch0);
 
-    auto tmp_choice = base_ot.CopyChoice();
+    auto tmp_choice = base_ot.CopyBitBuf();
     batch1 = XorBatchedBlock(absl::MakeSpan(batch0),
                              static_cast<uint128_t>(*tmp_choice.data()));
 

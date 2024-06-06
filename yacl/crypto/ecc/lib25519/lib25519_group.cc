@@ -118,15 +118,12 @@ size_t Lib25519Group::HashPoint(const EcPoint& point) const {
   const auto* p3 = CastP3(point);
   fe25519 recip;
   fe25519 x;
-
   fe25519_invert(&recip, &p3->z);
   fe25519_mul(&x, &p3->x, &recip);
-
-  uint64_t buf[4];  // x is always 255 bits
-  fe25519_pack(reinterpret_cast<unsigned char*>(buf), &x);
+  fe25519_freeze(&x);
 
   std::hash<uint64_t> h;
-  return h(buf[0]) ^ h(buf[1]) ^ h(buf[2]) ^ h(buf[3]);
+  return h(x.v[0]) ^ h(x.v[1]) ^ h(x.v[2]) ^ h(x.v[3]);
 }
 
 bool Lib25519Group::PointEqual(const EcPoint& p1, const EcPoint& p2) const {
@@ -143,19 +140,13 @@ bool Lib25519Group::PointEqual(const EcPoint& p1, const EcPoint& p2) const {
   fe25519 b;
   fe25519_mul(&a, &p1p->x, &p2p->z);
   fe25519_mul(&b, &p1p->z, &p2p->x);
-  for (size_t i = 0; i < sizeof(fe25519) / sizeof(a.v[0]); ++i) {
-    if (a.v[i] != b.v[i]) {
-      return false;
-    }
+  if (!fe25519_iseq_vartime(&a, &b)) {
+    return false;
   }
 
   fe25519_mul(&a, &p1p->y, &p2p->z);
   fe25519_mul(&b, &p1p->z, &p2p->y);
-  uint128_t buf_a[2];
-  uint128_t buf_b[2];
-  fe25519_pack(reinterpret_cast<unsigned char*>(buf_a), &a);
-  fe25519_pack(reinterpret_cast<unsigned char*>(buf_b), &b);
-  return buf_a[0] == buf_b[0] && buf_a[1] == buf_b[1];
+  return fe25519_iseq_vartime(&a, &b);
 }
 
 const ge25519_p3* Lib25519Group::CastP3(const yacl::crypto::EcPoint& p) {

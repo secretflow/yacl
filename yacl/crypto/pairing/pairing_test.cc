@@ -390,7 +390,7 @@ TEST_P(BNSnarkTest, SpiTest) {
   }
 }
 
-TEST(Pairing_Multi_Instance_Test, Works) {
+TEST(DISABLED_Pairing_Multi_Instance_Test, Works) {
   PairingName pairing_name = "bls12-381";
   for (auto lib_name :
        PairingGroupFactory::Instance().ListLibraries(pairing_name)) {

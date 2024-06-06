@@ -112,7 +112,7 @@ TEST_P(IknpCotExtTest, Works) {
 
   // THEN
   // cot correlation = base ot choice
-  uint128_t check = base_ot.recv.CopyChoice().data()[0];
+  uint128_t check = base_ot.recv.CopyBitBuf().data()[0];
   for (size_t i = 0; i < num_ot; ++i) {
     EXPECT_NE(recv_out[i], 0);
     EXPECT_NE(send_out[i][0], 0);
@@ -141,7 +141,7 @@ TEST_P(IknpCotExtTest, OtStoreWorks) {
 
   // THEN
   // cot correlation = base ot choice
-  uint128_t check = base_ot.recv.CopyChoice().data()[0];  // base ot choices
+  uint128_t check = base_ot.recv.CopyBitBuf().data()[0];  // base ot choices
   uint128_t delta = send_out.GetDelta();                  // cot's delta
   EXPECT_EQ(check, delta);
   for (size_t i = 0; i < num_ot; ++i) {

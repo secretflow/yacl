@@ -75,7 +75,7 @@ inline OtSendStore IknpOtExtSend(const std::shared_ptr<link::Context> &ctx,
   IknpOtExtSend(ctx, base_ot, absl::MakeSpan(blocks), cot);
   auto ret = MakeOtSendStore(blocks);
   if (cot) {
-    auto tmp_choice = base_ot.CopyChoice();
+    auto tmp_choice = base_ot.CopyBitBuf();
     ret.SetDelta(static_cast<uint128_t>(*tmp_choice.data()));
   }
   return ret;  // FIXME: Drop explicit copy
