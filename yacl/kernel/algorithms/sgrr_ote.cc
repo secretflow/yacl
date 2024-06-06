@@ -307,7 +307,7 @@ void SgrrOtExtRecv_fixed_index(const OtRecvStore& base_ot, uint32_t n,
 
   // we need log(n) 1-2 OTs from log(n) ROTs
   // most significant bit first
-  dynamic_bitset<uint128_t> choice = base_ot.CopyChoice();
+  dynamic_bitset<uint128_t> choice = base_ot.CopyBitBuf();
   const uint64_t index = GetPuncturedIndex(choice, ot_num - 1);
   YACL_ENFORCE_LT(index, n);  // index < n
 

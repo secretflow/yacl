@@ -361,6 +361,42 @@ TEST_P(SoftspokenOtExtTest, CotStoreWorks) {
   }
 }
 
+TEST_P(SoftspokenOtExtTest, APIWorks) {
+  // GIVEN
+  const int kWorldSize = 2;
+  const size_t num_ot = GetParam().num_ot;
+  const bool mal = GetParam().mal;
+  auto lctxs = link::test::SetupWorld(kWorldSize);             // setup network
+  auto base_ot = MockRots(128);                                // mock option
+  auto choices = RandBits<dynamic_bitset<uint128_t>>(num_ot);  // get input
+
+  // WHEN
+  // std::vector<std::array<uint128_t, 2>> send_out(num_ot);
+  // std::vector<uint128_t> recv_out(num_ot);
+  OtSendStore ot_send(num_ot, OtStoreType::Compact);
+  OtRecvStore ot_recv(num_ot, OtStoreType::Compact);
+
+  std::future<void> sender = std::async([&] {
+    SoftspokenOtExtSend(lctxs[0], base_ot.recv, &ot_send, 2, false, mal);
+  });
+  std::future<void> receiver = std::async([&] {
+    SoftspokenOtExtRecv(lctxs[1], base_ot.send, choices, &ot_recv, 2, false,
+                        mal);
+  });
+  receiver.get();
+  sender.get();
+
+  // THEN
+  for (size_t i = 0; i < num_ot; ++i) {
+    // correctness of ot
+    EXPECT_EQ(ot_send.GetBlock(i, ot_recv.GetChoice(i)), ot_recv.GetBlock(i));
+
+    // generated ot messages should not equal
+    EXPECT_NE(ot_send.GetBlock(i, 1 - ot_recv.GetChoice(i)),
+              ot_recv.GetBlock(i));
+  }
+}
+
 INSTANTIATE_TEST_SUITE_P(Works_Instances, SoftspokenStepTest,
                          testing::Values(StepTestParams{1},         //
                                          StepTestParams{2},         //

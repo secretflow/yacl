@@ -75,6 +75,10 @@ RandCompactOtSendStore(uint64_t num) {
 }
 }  // namespace
 
+// ----------------------------------------------------
+//  TESTs
+// ----------------------------------------------------
+
 TEST(OtRecvStoreTest, ConstructorTest) {
   // GIVEN
   const size_t ot_num = 100;
@@ -132,6 +136,46 @@ TEST(OtRecvStoreTest, GetElementsTest) {
 
   EXPECT_THROW(ot_store.GetChoice(-1), yacl::Exception);
   EXPECT_THROW(ot_store.GetBlock(-1), yacl::Exception);
+}
+
+TEST(OtRecvStoreTest, BlkBufTest) {
+  // GIVEN
+  const size_t ot_num = 100;
+  auto recv_choices = RandBits<dynamic_bitset<uint128_t>>(ot_num);
+  auto recv_blocks = RandVec<uint128_t>(ot_num);
+  auto ot_store = MakeOtRecvStore(recv_choices, recv_blocks);
+
+  // get element tests
+  auto idx = RandInRange(ot_num);
+
+  auto span = ot_store.GetBlkBufSpan();
+  EXPECT_EQ(span.size(), ot_num);
+
+  EXPECT_EQ(ot_store.GetChoice(idx), recv_choices[idx]);
+  EXPECT_EQ(span[idx], recv_blocks[idx]);
+
+  EXPECT_EQ(ot_store.GetChoice(0), recv_choices[0]);
+  EXPECT_EQ(span[0], recv_blocks[0]);
+}
+
+TEST(OtSendStoreTest, BlkBufTest) {
+  // GIVEN
+  const size_t ot_num = 100;
+  std::vector<std::array<uint128_t, 2>> blocks(ot_num);
+  Prg<uint128_t> prg;
+  for (size_t i = 0; i < ot_num; ++i) {
+    blocks[i][0] = prg();
+    blocks[i][1] = prg();
+  }
+  auto ot_store = MakeOtSendStore(blocks);
+
+  // get element tests
+  auto idx = RandInRange(ot_num);
+
+  auto span = ot_store.GetBlkBufSpan();
+  EXPECT_EQ(span.size(), 2 * ot_num);
+  EXPECT_EQ(span[2 * idx], blocks[idx][0]);
+  EXPECT_EQ(span[2 * idx + 1], blocks[idx][1]);
 }
 
 TEST(OtSendStoreTest, ConstructorTest) {

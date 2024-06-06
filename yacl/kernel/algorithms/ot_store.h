@@ -113,38 +113,56 @@ class OtRecvStore : public SliceBase {
   // get ot store type
   OtStoreType Type() const { return type_; }
 
-  // get a buffer copy of choice buf
-  Buffer GetChoiceBuf();
-
-  // get a buffer copy of block buf
-  Buffer GetBlockBuf();
-
   // reset ot store
   void Reset();
 
-  // get the avaliable ot number for this slice1
+  // get the avaliable ot number for this slice
   uint64_t Size() const { return GetUseSize(); }
 
-  // access a choice bit with a given slice index
-  uint8_t GetChoice(uint64_t idx) const;
+  // -----------------
+  // Manipulate blocks
+  // -----------------
 
   // access a block element with the given index
   uint128_t GetBlock(uint64_t idx) const;
 
-  // modify a choice bit(val) with a given slice index
-  void SetChoice(uint64_t idx, bool val);
-
   // modify a block with a given slice index
   void SetBlock(uint64_t idx, uint128_t val);
+
+  // get a span of the block
+  absl::Span<uint128_t> GetBlkBufSpan();
+
+  // get a buffer copy of block buf (in bytes)
+  Buffer GetBlkBuf();
+
+  // allow steal (in bytes)
+  BlkBufPtr StealBlkBuf();
+
+  // copy out the blocks (in bytes)
+  UninitAlignedVector<uint128_t> CopyBlkBuf() const;
+
+  // ------------------
+  // Manipulate choices
+  // ------------------
+
+  // access a choice bit with a given slice index
+  uint8_t GetChoice(uint64_t idx) const;
+  // modify a choice bit(val) with a given slice index
+
+  void SetChoice(uint64_t idx, bool val);
+  // modify a choice bit(val) with a given slice index
 
   // flip a choice bit with a given slice index
   void FlipChoice(uint64_t idx);
 
-  // copy out the sliced choice buffer [wanring: low efficiency]
-  dynamic_bitset<uint128_t> CopyChoice() const;
+  // get a buffer copy of bit buf (choice buf)
+  Buffer GetBitBuf();
+
+  // set bit buf
+  void SetBitBuf(const dynamic_bitset<uint128_t>& in);
 
   // copy out the sliced choice buffer [wanring: low efficiency]
-  UninitAlignedVector<uint128_t> CopyBlocks() const;
+  dynamic_bitset<uint128_t> CopyBitBuf() const;
 
  private:
   // check the consistency of ot receiver store
@@ -209,9 +227,6 @@ class OtSendStore : public SliceBase {
   // get ot store type
   OtStoreType Type() const { return type_; }
 
-  // get a buffer copy of block buf
-  Buffer GetBlockBuf();
-
   // reset ot store
   void Reset();
 
@@ -221,11 +236,11 @@ class OtSendStore : public SliceBase {
   // access the delta of the cot
   uint128_t GetDelta() const;
 
-  // access a block with the given index
-  uint128_t GetBlock(uint64_t ot_idx, uint64_t msg_idx) const;
-
   // set the delta of the cot
   void SetDelta(uint128_t delta);
+
+  // access a block with the given index
+  uint128_t GetBlock(uint64_t ot_idx, uint64_t msg_idx) const;
 
   // modify a block with the given index
   void SetNormalBlock(uint64_t ot_idx, uint64_t msg_idx, uint128_t val);
@@ -233,8 +248,17 @@ class OtSendStore : public SliceBase {
   // set a cot block
   void SetCompactBlock(uint64_t ot_idx, uint128_t val);
 
+  // get a buffer copy of block buf
+  Buffer GetBlkBuf();
+
+  // get a span of block buf
+  absl::Span<uint128_t> GetBlkBufSpan();
+
+  // allow steal
+  BlkBufPtr StealBlkBuf();
+
   // copy out cot blocks
-  UninitAlignedVector<uint128_t> CopyCotBlocks() const;
+  UninitAlignedVector<uint128_t> CopyCotBlkBuf() const;
 
  private:
   // check the consistency of ot receiver store

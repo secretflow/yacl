@@ -15,6 +15,7 @@
 #include <map>
 
 #include "yacl/crypto/ecc/libsodium/ed25519_group.h"
+#include "yacl/crypto/ecc/libsodium/x25519_group.h"
 
 namespace yacl::crypto::sodium {
 
@@ -23,6 +24,12 @@ const std::string kLibName = "libsodium";
 
 std::map<CurveName, CurveParam> kPredefinedCurves = {
     {"ed25519",
+     {
+         (2_mp).Pow(255) - 19_mp,  // p = 2^255 - 19
+         (2_mp).Pow(252) + "0x14def9dea2f79cd65812631a5cf5d3ed"_mp,  // n
+         "8"_mp                                                      // h
+     }},
+    {"curve25519",
      {
          (2_mp).Pow(255) - 19_mp,  // p = 2^255 - 19
          (2_mp).Pow(252) + "0x14def9dea2f79cd65812631a5cf5d3ed"_mp,  // n
@@ -36,6 +43,8 @@ std::unique_ptr<EcGroup> Create(const CurveMeta &meta) {
 
   if (meta.LowerName() == "ed25519") {
     return std::make_unique<Ed25519Group>(meta, conf);
+  } else if (meta.LowerName() == "curve25519") {
+    return std::make_unique<X25519Group>(meta, conf);
   } else {
     YACL_THROW("unexpected curve {}", meta.name);
   }

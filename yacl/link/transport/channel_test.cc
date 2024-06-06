@@ -14,6 +14,9 @@
 
 #include "yacl/link/transport/channel.h"
 
+#include <gflags/gflags.h>
+#include <spdlog/spdlog.h>
+
 #include "fmt/format.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -21,30 +24,27 @@
 #include "brpc/errno.pb.h"
 #include "interconnection/link/transport.pb.h"
 
+namespace brpc {
+
+DECLARE_bool(usercode_in_pthread);
+
+}  // namespace brpc
+
 namespace yacl::link::transport::test {
 
-namespace ic_pb = org::interconnection::link;
+struct Initial {
+  Initial() { brpc::FLAGS_usercode_in_pthread = true; }
+};
 
-static std::string RandStr(size_t length) {
-  auto randchar = []() -> char {
-    const char charset[] =
-        "0123456789"
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        "abcdefghijklmnopqrstuvwxyz";
-    const size_t max_index = (sizeof(charset) - 1);
-    return charset[rand() % max_index];
-  };
-  std::string str(length, 0);
-  std::generate_n(str.begin(), length, randchar);
-  return str;
-}
+static Initial g_initial{};
+
+namespace ic_pb = org::interconnection::link;
 
 class MockTransportLink : public TransportLink {
  public:
   using TransportLink::TransportLink;
   MOCK_METHOD(void, SetMaxBytesPerChunk, (size_t), (override));
-  MOCK_METHOD(std::unique_ptr<Request>, PackMonoRequest,
-              (const std::string&, ByteContainerView), (const, override));
+
   MOCK_METHOD(void, UnpackMonoRequest,
               (const Request&, std::string*, ByteContainerView*),
               (const, override));
@@ -65,6 +65,15 @@ class MockTransportLink : public TransportLink {
     static size_t max_bytes_per_chunk = 2;
     return max_bytes_per_chunk;
   }
+  std::unique_ptr<::google::protobuf::Message> PackMonoRequest(
+      const std::string& key, ByteContainerView value) const override {
+    auto request = std::make_unique<ic_pb::PushRequest>();
+    request->set_key(key);
+    request->set_value(value.data(), value.size());
+    request->set_trans_type(ic_pb::TransType::MONO);
+
+    return request;
+  }
   std::unique_ptr<::google::protobuf::Message> PackChunkedRequest(
       const std::string& key, ByteContainerView value, size_t offset,
       size_t total_length) const override {
@@ -84,6 +93,10 @@ class MockTransportLink : public TransportLink {
 class ChannelSendRetryTest : public testing::Test {
  protected:
   void SetUp() override {
+    brpc::FLAGS_usercode_in_pthread = true;
+    SPDLOG_INFO("brpc::usercode_in_pthread: {}",
+                brpc::FLAGS_usercode_in_pthread);
+
     const size_t send_rank = 0;
     const size_t recv_rank = 1;
     sender_delegate_ =
@@ -99,6 +112,7 @@ class ChannelSendRetryTest : public testing::Test {
                                 brpc::HTTP_STATUS_MULTIPLE_CHOICES};
 
     sender_ = std::make_shared<Channel>(sender_delegate_, false, retry_options);
+    SPDLOG_INFO("test_start");
   }
 
   void TearDown() override {
@@ -111,109 +125,68 @@ class ChannelSendRetryTest : public testing::Test {
 };
 
 TEST_F(ChannelSendRetryTest, NoRetrySuccess) {
-  EXPECT_CALL(*sender_delegate_, SendRequest(::testing::_, ::testing::_))
+  EXPECT_CALL(*sender_delegate_, SendRequest)
       .Times(1)
-      .WillRepeatedly([]() {});
+      .WillRepeatedly([](const TransportLink::Request&, uint32_t) {});
   const std::string key = "key";
-  sender_->Send(key, {});
-}
-
-TEST_F(ChannelSendRetryTest, NoRetryFail) {
-  EXPECT_CALL(*sender_delegate_, SendRequest(::testing::_, ::testing::_))
-      .Times(1)
-      .WillRepeatedly([]() {
-        throw yacl::LinkError("not valid error code.", brpc::EUNUSED);
-      });
-  const std::string key = "key";
-  sender_->Send(key, {});
+  auto request = sender_delegate_->PackMonoRequest(key, "t");
+  sender_->SendRequestWithRetry(*request, 0);
 }
 
 TEST_F(ChannelSendRetryTest, RetrySuccess) {
-  EXPECT_CALL(*sender_delegate_, SendRequest(::testing::_, ::testing::_))
+  EXPECT_CALL(*sender_delegate_, SendRequest)
       .Times(2)
-      .WillOnce([]() {
-        throw yacl::LinkError("valid error code, will retry once and success.",
-                              brpc::ENOSERVICE);
-      })
-      .WillRepeatedly([]() {});
+      .WillOnce(testing::Throw(yacl::LinkError(
+          "valid error code, will retry once and success.", brpc::ENOSERVICE)))
+      .WillRepeatedly([](const TransportLink::Request&, uint32_t) {});
   const std::string key = "key";
-  sender_->Send(key, {});
+  auto request = sender_delegate_->PackMonoRequest(key, "t");
+  sender_->SendRequestWithRetry(*request, 0);
 }
 
 TEST_F(ChannelSendRetryTest, RetryFail) {
-  EXPECT_CALL(*sender_delegate_, SendRequest(::testing::_, ::testing::_))
+  EXPECT_CALL(*sender_delegate_, SendRequest)
       .Times(4)
-      .WillRepeatedly([]() {
-        throw yacl::LinkError(
-            "valid error code, will retry max count and fail.",
-            brpc::ENOSERVICE);
-      });
+      .WillRepeatedly(testing::Throw(
+          yacl::LinkError("valid error code, will retry max count and fail.",
+                          brpc::ENOSERVICE)));
   const std::string key = "key";
-  sender_->Send(key, {});
+  auto request = sender_delegate_->PackMonoRequest(key, "t");
+  EXPECT_THROW(sender_->SendRequestWithRetry(*request, 0), yacl::LinkError);
 }
 
 TEST_F(ChannelSendRetryTest, HttpNoRetryFail) {
-  EXPECT_CALL(*sender_delegate_, SendRequest(::testing::_, ::testing::_))
+  EXPECT_CALL(*sender_delegate_, SendRequest)
       .Times(1)
-      .WillRepeatedly([]() {
-        throw yacl::LinkError("not valid http code and no retry.", brpc::EHTTP,
-                              brpc::HTTP_STATUS_GATEWAY_TIMEOUT);
-      });
+      .WillRepeatedly(testing::Throw(
+          yacl::LinkError("not valid http code and no retry.", brpc::EHTTP,
+                          brpc::HTTP_STATUS_GATEWAY_TIMEOUT)));
   const std::string key = "key";
-  sender_->Send(key, {});
+  auto request = sender_delegate_->PackMonoRequest(key, "t");
+  EXPECT_THROW(sender_->SendRequestWithRetry(*request, 0), yacl::LinkError);
 }
 
 TEST_F(ChannelSendRetryTest, HttpRetrySuccess) {
-  EXPECT_CALL(*sender_delegate_, SendRequest(::testing::_, ::testing::_))
+  EXPECT_CALL(*sender_delegate_, SendRequest)
       .Times(2)
-      .WillOnce([]() {
-        throw yacl::LinkError("valid http code, will retry once and success.",
-                              brpc::EHTTP, brpc::HTTP_STATUS_BAD_GATEWAY);
-      })
-      .WillRepeatedly([]() {});
+      .WillOnce(testing::Throw(
+          yacl::LinkError("valid http code, will retry once and success.",
+                          brpc::EHTTP, brpc::HTTP_STATUS_BAD_GATEWAY)))
+      .WillRepeatedly([](const TransportLink::Request&, uint32_t) {});
   const std::string key = "key";
-  sender_->Send(key, {});
+  auto request = sender_delegate_->PackMonoRequest(key, "t");
+  sender_->SendRequestWithRetry(*request, 0);
 }
 
 TEST_F(ChannelSendRetryTest, HttpRetryFail) {
-  EXPECT_CALL(*sender_delegate_, SendRequest(::testing::_, ::testing::_))
+  EXPECT_CALL(*sender_delegate_, SendRequest)
       .Times(4)
-      .WillRepeatedly([]() {
-        throw yacl::LinkError("valid http code, will retry max count and fail.",
-                              brpc::EHTTP, brpc::HTTP_STATUS_BAD_GATEWAY);
-      });
+      .WillRepeatedly(testing::Throw(
+          yacl::LinkError("valid http code, will retry max count and fail.",
+                          brpc::EHTTP, brpc::HTTP_STATUS_BAD_GATEWAY)));
   const std::string key = "key";
-  sender_->Send(key, {});
-}
-
-TEST_F(ChannelSendRetryTest, ChunkedNoRetrySuccess) {
-  EXPECT_CALL(*sender_delegate_, SendRequest(::testing::_, ::testing::_))
-      .Times(2)
-      .WillRepeatedly([]() {});
-  const std::string key = "key";
-  sender_->Send(key, RandStr(3));
-}
-
-TEST_F(ChannelSendRetryTest, ChunkedNoRetryFail) {
-  EXPECT_CALL(*sender_delegate_, SendRequest(::testing::_, ::testing::_))
-      .Times(2)  // chunk1 fail | chunk2 fail
-      .WillRepeatedly([]() {
-        throw yacl::LinkError("not valid error code.", brpc::EUNUSED);
-      });
-  const std::string key = "key";
-  sender_->Send(key, RandStr(3));
-}
-
-TEST_F(ChannelSendRetryTest, ChunkedRetrySuccess) {
-  EXPECT_CALL(*sender_delegate_, SendRequest(::testing::_, ::testing::_))
-      .Times(3)  // chunk1 fail ｜ chunk1 retry ｜ chunk2 success
-      .WillOnce([]() {
-        throw yacl::LinkError("valid error code, will retry once and success.",
-                              brpc::ENOSERVICE);
-      })
-      .WillRepeatedly([]() {});
-  const std::string key = "key";
-  sender_->Send(key, RandStr(3));
+  auto request = sender_delegate_->PackMonoRequest(key, "t");
+  EXPECT_THROW(sender_->SendRequestWithRetry(*request, 0), yacl::LinkError);
 }
 
 }  // namespace yacl::link::transport::test

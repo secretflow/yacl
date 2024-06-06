@@ -422,7 +422,7 @@ EcPoint MclGroupT<Fp_, Zn_>::HashToStdCurve(HashToCurveStrategy strategy,
     buf = Blake3Hash((bits + 7) / 8).Update(str).CumulativeHash();
   }
 
-  Fp p;
+  Fp p{0};
   p.deserialize(buf.data(), buf.size());
   mcl::ec::tryAndIncMapTo(*CastAny<Ec>(ret), p);
   return ret;

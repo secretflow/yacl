@@ -57,7 +57,7 @@ TEST_P(KosOtExtTest, RotTestWorks) {
   sender.get();
 
   // THEN
-  uint128_t delta = ot_store.recv.CopyChoice().data()[0];
+  uint128_t delta = ot_store.recv.CopyBitBuf().data()[0];
   uint128_t zero = MakeUint128(0, 0);
   for (size_t i = 0; i < num_ot; ++i) {
     bool choice = choices[i];
@@ -95,7 +95,7 @@ TEST_P(KosOtExtTest, CotTestWorks) {
   sender.get();
 
   // THEN
-  uint128_t check = ot_store.recv.CopyChoice().data()[0];
+  uint128_t check = ot_store.recv.CopyBitBuf().data()[0];
   uint128_t zero = MakeUint128(0, 0);
   for (size_t i = 0; i < num_ot; ++i) {
     bool choice = choices[i];
@@ -154,7 +154,7 @@ TEST_P(KosOtExtTest, CotStoreTestWorks) {
   auto send_out = sender.get();
 
   // THEN
-  uint128_t check = ot_store.recv.CopyChoice().data()[0];  // base ot choices
+  uint128_t check = ot_store.recv.CopyBitBuf().data()[0];  // base ot choices
   uint128_t delta = send_out.GetDelta();                   // cot's delta
   EXPECT_EQ(check, delta);
   for (size_t i = 0; i < num_ot; ++i) {

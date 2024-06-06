@@ -14,13 +14,21 @@
 
 #include "yacl/crypto/ecc/FourQlib/FourQ_group.h"
 
+#include "absl/types/span.h"
+
+#include "yacl/crypto/hash/ssl_hash.h"
+
 namespace yacl::crypto::FourQ {
 
 // Elements (a+b*i) over GF(p^2), where a and b are defined over GF(p), are
 // encoded as a||b, with a in the least significant position.
 MPInt F2elm2MPInt(const f2elm_t f2elm) {
+  f2elm_t c;
+  fp2copy1271(const_cast<felm_t*>(f2elm), c);
+  mod1271(c[0]);
+  mod1271(c[1]);
   MPInt r(0, 256);
-  r.FromMagBytes(yacl::ByteContainerView(f2elm, 32), Endian::little);
+  r.FromMagBytes(yacl::ByteContainerView(c, 32), Endian::little);
   return r;
 }
 
@@ -28,6 +36,8 @@ MPInt F2elm2MPInt(const f2elm_t f2elm) {
 void MPIntToF2elm(const MPInt& x, f2elm_t f2elm) {
   memset(f2elm, 0, 32);
   x.ToMagBytes(reinterpret_cast<unsigned char*>(f2elm), 32, Endian::little);
+  mod1271(f2elm[0]);
+  mod1271(f2elm[1]);
 }
 
 FourQGroup::FourQGroup(const CurveMeta& meta) : EcGroupSketch(meta) {
@@ -257,8 +267,28 @@ EcPoint FourQGroup::DeserializePoint(ByteContainerView buf,
   return r;
 }
 
-EcPoint FourQGroup::HashToCurve(HashToCurveStrategy, std::string_view) const {
-  YACL_THROW("not impl");
+EcPoint FourQGroup::HashToCurve(HashToCurveStrategy strategy,
+                                std::string_view input) const {
+  YACL_ENFORCE(strategy == HashToCurveStrategy::Autonomous,
+               "FourQlib only supports Autonomous strategy now. select={}",
+               static_cast<int>(strategy));
+
+  std::vector<uint8_t> sha_bytes =
+      SslHash(HashAlgorithm::SHA512)
+          .Update(absl::Span(input.data(), input.size()))
+          .CumulativeHash();
+  auto* f2elmt = reinterpret_cast<f2elm_t*>(sha_bytes.data());
+  mod1271(reinterpret_cast<felm_t*>(f2elmt)[0]);
+  mod1271(reinterpret_cast<felm_t*>(f2elmt)[1]);
+
+  point_t p;
+  ECCRYPTO_STATUS status = ::HashToCurve(reinterpret_cast<felm_t*>(f2elmt), p);
+  YACL_ENFORCE(status == ECCRYPTO_SUCCESS, FourQ_get_error_message(status));
+
+  EcPoint r(std::in_place_type<Array160>);
+  point_setup(p, CastR1(r));
+
+  return r;
 }
 
 size_t FourQGroup::HashPoint(const EcPoint& point) const {
@@ -295,6 +325,10 @@ bool FourQGroup::PointEqual(const EcPoint& p1, const EcPoint& p2) const {
   f2elm_t b;
   fp2mul1271(p1p->x, p2p->z, a);
   fp2mul1271(p1p->z, p2p->x, b);
+  mod1271(a[0]);
+  mod1271(a[1]);
+  mod1271(b[0]);
+  mod1271(b[1]);
   auto* pa = reinterpret_cast<digit_t*>(a);
   auto* pb = reinterpret_cast<digit_t*>(b);
   for (size_t i = 0; i < 2 * NWORDS_FIELD; ++i) {
@@ -305,6 +339,10 @@ bool FourQGroup::PointEqual(const EcPoint& p1, const EcPoint& p2) const {
 
   fp2mul1271(p1p->y, p2p->z, a);
   fp2mul1271(p1p->z, p2p->y, b);
+  mod1271(a[0]);
+  mod1271(a[1]);
+  mod1271(b[0]);
+  mod1271(b[1]);
   pa = reinterpret_cast<digit_t*>(a);
   pb = reinterpret_cast<digit_t*>(b);
   for (size_t i = 0; i < 2 * NWORDS_FIELD; ++i) {
@@ -331,7 +369,10 @@ bool FourQGroup::IsInfinity(const EcPoint& point) const {
       const_cast<digit_t*>(reinterpret_cast<const digit_t*>(CastR1(point)->x));
   auto* z =
       const_cast<digit_t*>(reinterpret_cast<const digit_t*>(CastR1(point)->z));
-
+  mod1271(x);
+  mod1271(x + 2);
+  mod1271(z);
+  mod1271(z + 2);
   return is_zero_ct(x, 2 * NWORDS_FIELD) || is_zero_ct(z, 2 * NWORDS_FIELD);
 }
 
