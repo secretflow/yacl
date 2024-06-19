@@ -201,7 +201,7 @@ void KosOtExtSend(const std::shared_ptr<link::Context>& ctx,
     }
   }
 
-  uint128_t delta = static_cast<uint128_t>(*base_ot.CopyChoice().data());
+  uint128_t delta = static_cast<uint128_t>(*base_ot.CopyBitBuf().data());
   q_ext.resize(ot_num_valid);
   auto& batch0 = q_ext;
   auto batch1 = VecXorMonochrome(absl::MakeSpan(q_ext), delta);

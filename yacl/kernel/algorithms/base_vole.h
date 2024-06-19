@@ -75,7 +75,7 @@ void inline Ot2VoleRecv(OtRecvStore& recv_ot, absl::Span<T> u,
   YACL_ENFORCE(recv_ot.Size() >= size * T_bits);
 
   // [Warning] Copying, low efficiency
-  auto choices = recv_ot.CopyChoice();
+  auto choices = recv_ot.CopyBitBuf();
   memcpy(u.data(), choices.data(), size * sizeof(T));
 
   std::array<K, T_bits> v_buff;

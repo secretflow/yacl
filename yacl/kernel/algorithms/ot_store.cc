@@ -24,9 +24,9 @@
 
 namespace yacl::crypto {
 
-//================================//
-//           Slice Base           //
-//================================//
+//----------------------------------
+//           Slice Base
+//----------------------------------
 
 void SliceBase::ConsistencyCheck() const {
   YACL_ENFORCE(
@@ -76,9 +76,9 @@ void SliceBase::Reset() {
   ConsistencyCheck();
 }
 
-//================================//
-//           OtRecvStore          //
-//================================//
+//----------------------------------
+//           OtRecvStore
+//----------------------------------
 
 OtRecvStore::OtRecvStore(BitBufPtr bit_ptr, BlkBufPtr blk_ptr, uint64_t use_ctr,
                          uint64_t use_size, uint64_t buf_ctr, uint64_t buf_size,
@@ -98,56 +98,6 @@ OtRecvStore::OtRecvStore(uint64_t num, OtStoreType type) : type_(type) {
   ConsistencyCheck();
 }
 
-Buffer OtRecvStore::GetChoiceBuf() {
-  // Constructs Buffer object by copy
-  return Buffer(bit_buf_->data(), bit_buf_->num_blocks() * sizeof(uint128_t));
-}
-
-Buffer OtRecvStore::GetBlockBuf() {
-  // Constructs Buffer object by copy
-  return Buffer(blk_buf_->data(), blk_buf_->size() * sizeof(uint128_t));
-}
-
-void OtRecvStore::Reset() {
-  SliceBase::Reset();
-  bit_buf_.reset();
-  blk_buf_.reset();
-  type_ = OtStoreType::Compact;
-  ConsistencyCheck();
-}
-
-void OtRecvStore::ConsistencyCheck() const {
-  SliceBase::ConsistencyCheck();
-  YACL_ENFORCE(blk_buf_->size() >= internal_buf_size_,
-               "Actual buffer size: {}, but recorded "
-               "internal buffer size is: {}",
-               blk_buf_->size(), internal_buf_size_);
-  if (type_ == OtStoreType::Normal) {
-    YACL_ENFORCE_EQ(bit_buf_->size(), blk_buf_->size());
-  }
-}
-
-// FIX ME: a const OtRecvStore could execute "Slice" to get a non-const
-// OtRecvStore, which could change Block Value by "SetBlock"
-OtRecvStore OtRecvStore::Slice(uint64_t begin, uint64_t end) const {
-  // Recall: A new slice looks like the follwoing:
-  //
-  // |---------------|-----slice-----|----------------| internal buffer
-  // a               b               c                d
-  //
-  // internal_use_ctr_ = b
-  // internal_use_size_ = c - b
-  // internal_buf_ctr_ = b
-  // internal_buf_size_ = c
-
-  uint64_t slice_use_ctr = begin;         // in blocks
-  uint64_t slice_use_size = end - begin;  // in blocks
-  uint64_t slice_buf_ctr = begin;         // in blocks
-  uint64_t slice_buf_size = end;          // in blocks
-
-  return {bit_buf_,      blk_buf_,       slice_use_ctr, slice_use_size,
-          slice_buf_ctr, slice_buf_size, type_};
-}
 OtRecvStore OtRecvStore::NextSlice(uint64_t num) {
   // Recall: A new slice looks like the follwoing:
   //
@@ -173,16 +123,76 @@ OtRecvStore OtRecvStore::NextSlice(uint64_t num) {
   return out;
 }
 
+// FIX ME: a const OtRecvStore could execute "Slice" to get a non-const
+// OtRecvStore, which could change Block Value by "SetBlock"
+OtRecvStore OtRecvStore::Slice(uint64_t begin, uint64_t end) const {
+  // Recall: A new slice looks like the follwoing:
+  //
+  // |---------------|-----slice-----|----------------| internal buffer
+  // a               b               c                d
+  //
+  // internal_use_ctr_ = b
+  // internal_use_size_ = c - b
+  // internal_buf_ctr_ = b
+  // internal_buf_size_ = c
+
+  uint64_t slice_use_ctr = begin;         // in blocks
+  uint64_t slice_use_size = end - begin;  // in blocks
+  uint64_t slice_buf_ctr = begin;         // in blocks
+  uint64_t slice_buf_size = end;          // in blocks
+
+  return {bit_buf_,      blk_buf_,       slice_use_ctr, slice_use_size,
+          slice_buf_ctr, slice_buf_size, type_};
+}
+
+void OtRecvStore::Reset() {
+  SliceBase::Reset();
+  bit_buf_.reset();
+  blk_buf_.reset();
+  type_ = OtStoreType::Compact;
+  ConsistencyCheck();
+}
+
+uint128_t OtRecvStore::GetBlock(uint64_t idx) const {
+  YACL_ENFORCE(idx < GetUseSize());
+  return blk_buf_->operator[](GetBufIdx(idx));
+}
+
+void OtRecvStore::SetBlock(uint64_t idx, uint128_t val) {
+  blk_buf_->operator[](GetBufIdx(idx)) = val;
+}
+
+absl::Span<uint128_t> OtRecvStore::GetBlkBufSpan() {
+  YACL_ENFORCE(!IsSliced());
+  return {reinterpret_cast<uint128_t*>(blk_buf_->data()), GetBufSize()};
+}
+
+Buffer OtRecvStore::GetBlkBuf() {
+  // Constructs Buffer object by copy
+  return {blk_buf_->data(), blk_buf_->size() * sizeof(uint128_t)};
+}
+
+OtRecvStore::BlkBufPtr OtRecvStore::StealBlkBuf() {
+  YACL_ENFORCE(blk_buf_.use_count() == 1);
+  auto ret = std::move(blk_buf_);
+  Reset();
+  return ret;
+}
+
+UninitAlignedVector<uint128_t> OtRecvStore::CopyBlkBuf() const {
+  return {blk_buf_->begin() + internal_use_ctr_,
+          blk_buf_->begin() + internal_use_ctr_ + internal_use_size_};
+}
+
 uint8_t OtRecvStore::GetChoice(uint64_t idx) const {
+  YACL_ENFORCE(idx < GetUseSize(),
+               "required idx={} is larger than the allowed use size={}", idx,
+               GetUseSize());
   if (type_ == OtStoreType::Compact) {
     return blk_buf_->operator[](GetBufIdx(idx)) & 0x1;
   } else {
     return bit_buf_->operator[](GetBufIdx(idx));
   }
-}
-
-uint128_t OtRecvStore::GetBlock(uint64_t idx) const {
-  return blk_buf_->operator[](GetBufIdx(idx));
 }
 
 void OtRecvStore::SetChoice(uint64_t idx, bool val) {
@@ -191,17 +201,22 @@ void OtRecvStore::SetChoice(uint64_t idx, bool val) {
   bit_buf_->operator[](GetBufIdx(idx)) = val;
 }
 
-void OtRecvStore::SetBlock(uint64_t idx, uint128_t val) {
-  blk_buf_->operator[](GetBufIdx(idx)) = val;
-}
-
 void OtRecvStore::FlipChoice(uint64_t idx) {
   YACL_ENFORCE(type_ == OtStoreType::Normal,
                "Manipulating choice is currently not allowed in compact mode");
   bit_buf_->operator[](GetBufIdx(idx)).flip();
 }
 
-dynamic_bitset<uint128_t> OtRecvStore::CopyChoice() const {
+Buffer OtRecvStore::GetBitBuf() {
+  // Constructs Buffer object by copy
+  return {bit_buf_->data(), bit_buf_->num_blocks() * sizeof(uint128_t)};
+}
+
+void OtRecvStore::SetBitBuf(const dynamic_bitset<uint128_t>& in) {
+  bit_buf_ = std::make_shared<dynamic_bitset<uint128_t>>(in);
+}
+
+dynamic_bitset<uint128_t> OtRecvStore::CopyBitBuf() const {
   // [Warning] low efficency
   if (type_ == OtStoreType::Compact) {
     dynamic_bitset<uint128_t> out(Size());
@@ -218,9 +233,15 @@ dynamic_bitset<uint128_t> OtRecvStore::CopyChoice() const {
   return out;
 }
 
-UninitAlignedVector<uint128_t> OtRecvStore::CopyBlocks() const {
-  return {blk_buf_->begin() + internal_use_ctr_,
-          blk_buf_->begin() + internal_use_ctr_ + internal_use_size_};
+void OtRecvStore::ConsistencyCheck() const {
+  SliceBase::ConsistencyCheck();
+  YACL_ENFORCE(blk_buf_->size() >= internal_buf_size_,
+               "Actual buffer size: {}, but recorded "
+               "internal buffer size is: {}",
+               blk_buf_->size(), internal_buf_size_);
+  if (type_ == OtStoreType::Normal) {
+    YACL_ENFORCE_EQ(bit_buf_->size(), blk_buf_->size());
+  }
 }
 
 OtRecvStore MakeOtRecvStore(const dynamic_bitset<uint128_t>& choices,
@@ -303,9 +324,9 @@ OtRecvStore MakeCompactOtRecvStore(UninitAlignedVector<uint128_t>&& blocks) {
           OtStoreType::Compact};
 }
 
-//================================//
-//           OtSendStore          //
-//================================//
+//----------------------------------
+//           OtSendStore
+//----------------------------------
 
 OtSendStore::OtSendStore(BlkBufPtr blk_ptr, uint128_t delta, uint64_t use_ctr,
                          uint64_t use_size, uint64_t buf_ctr, uint64_t buf_size,
@@ -324,11 +345,6 @@ OtSendStore::OtSendStore(uint64_t num, OtStoreType type) : type_(type) {
   blk_buf_ = std::make_shared<UninitAlignedVector<uint128_t>>(buf_size, 0);
   InitCtrs(0, buf_size, 0, buf_size);
   ConsistencyCheck();
-}
-
-Buffer OtSendStore::GetBlockBuf() {
-  // Constructs Buffer object by copy
-  return Buffer(blk_buf_->data(), blk_buf_->size() * sizeof(uint128_t));
 }
 
 void OtSendStore::Reset() {
@@ -413,6 +429,11 @@ uint128_t OtSendStore::GetDelta() const {
   return delta_;
 }
 
+void OtSendStore::SetDelta(uint128_t delta) {
+  YACL_ENFORCE(delta != 0, "Error, you can not set delta to zero.");
+  delta_ = delta;
+}
+
 uint128_t OtSendStore::GetBlock(uint64_t ot_idx, uint64_t msg_idx) const {
   YACL_ENFORCE(msg_idx == 0 || msg_idx == 1);
   const uint64_t ot_blk_num = (type_ == OtStoreType::Compact) ? 1 : 2;
@@ -422,11 +443,6 @@ uint128_t OtSendStore::GetBlock(uint64_t ot_idx, uint64_t msg_idx) const {
     return blk_buf_->operator[](GetBufIdx(ot_blk_num * ot_idx)) ^
            (delta_ * msg_idx);
   }
-}
-
-void OtSendStore::SetDelta(uint128_t delta) {
-  YACL_ENFORCE(delta != 0, "Error, you can not set delta to zero.");
-  delta_ = delta;
 }
 
 void OtSendStore::SetNormalBlock(uint64_t ot_idx, uint64_t msg_idx,
@@ -443,9 +459,26 @@ void OtSendStore::SetCompactBlock(uint64_t ot_idx, uint128_t val) {
   blk_buf_->operator[](GetBufIdx(ot_idx)) = val;
 }
 
-UninitAlignedVector<uint128_t> OtSendStore::CopyCotBlocks() const {
+Buffer OtSendStore::GetBlkBuf() {
+  // Constructs Buffer object by copy
+  return {blk_buf_->data(), blk_buf_->size() * sizeof(uint128_t)};
+}
+
+absl::Span<uint128_t> OtSendStore::GetBlkBufSpan() {
+  YACL_ENFORCE(!IsSliced());
+  return {reinterpret_cast<uint128_t*>(blk_buf_->data()), GetBufSize()};
+}
+
+OtSendStore::BlkBufPtr OtSendStore::StealBlkBuf() {
+  YACL_ENFORCE(blk_buf_.use_count() == 1);
+  auto ret = std::move(blk_buf_);
+  Reset();
+  return ret;
+}
+
+UninitAlignedVector<uint128_t> OtSendStore::CopyCotBlkBuf() const {
   YACL_ENFORCE(type_ == OtStoreType::Compact,
-               "CopyCotBlocks() is only allowed in compact mode");
+               "CopyCotBlkBuf() is only allowed in compact mode");
   return {blk_buf_->begin() + internal_buf_ctr_,
           blk_buf_->begin() + internal_buf_ctr_ + internal_use_size_};
 }

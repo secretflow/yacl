@@ -75,7 +75,7 @@ DECLARE_OT2VOLE_TEST(GF128, GF128);  // Vole: GF(2^128) x GF(2^128)
     auto lctxs = link::test::SetupWorld(2);                               \
     const uint64_t vole_num = GetParam().num;                             \
     auto rot = MockRots(128);                                             \
-    auto delta128 = rot.recv.CopyChoice().data()[0];                      \
+    auto delta128 = rot.recv.CopyBitBuf().data()[0];                      \
     std::vector<type0> u(vole_num);                                       \
     std::vector<type1> v(vole_num);                                       \
     std::vector<type1> w(vole_num);                                       \

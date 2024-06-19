@@ -85,17 +85,16 @@ def _com_github_brpc_brpc():
     maybe(
         http_archive,
         name = "com_github_brpc_brpc",
-        sha256 = "13ffb2f1f57c679379a20367c744b3e597614a793ec036cd7580aae90798019d",
-        strip_prefix = "brpc-1.8.0",
+        sha256 = "85856da0216773e1296834116f69f9e80007b7ff421db3be5c9d1890ecfaea74",
+        strip_prefix = "brpc-1.9.0",
         type = "tar.gz",
         patch_args = ["-p1"],
         patches = [
             "@yacl//bazel:patches/brpc.patch",
             "@yacl//bazel:patches/brpc_m1.patch",
-            "@yacl//bazel:patches/brpc_pb.patch",
         ],
         urls = [
-            "https://github.com/apache/brpc/archive/refs/tags/1.8.0.tar.gz",
+            "https://github.com/apache/brpc/archive/refs/tags/1.9.0.tar.gz",
         ],
     )
 
@@ -134,8 +133,6 @@ def _com_github_madler_zlib():
         strip_prefix = "zlib-1.3.1",
         sha256 = "17e88863f3600672ab49182f217281b6fc4d3c762bde361935e436a95214d05c",
         type = ".tar.gz",
-        patch_args = ["-p1"],
-        patches = ["@yacl//bazel:patches/zlib.patch"],
         urls = [
             "https://github.com/madler/zlib/archive/refs/tags/v1.3.1.tar.gz",
         ],
@@ -196,12 +193,12 @@ def _com_github_gabime_spdlog():
     maybe(
         http_archive,
         name = "com_github_gabime_spdlog",
-        strip_prefix = "spdlog-1.13.0",
+        strip_prefix = "spdlog-1.14.1",
         type = "tar.gz",
-        sha256 = "534f2ee1a4dcbeb22249856edfb2be76a1cf4f708a20b0ac2ed090ee24cfdbc9",
+        sha256 = "1586508029a7d0670dfcb2d97575dcdc242d3868a259742b69f100801ab4e16b",
         build_file = "@yacl//bazel:spdlog.BUILD",
         urls = [
-            "https://github.com/gabime/spdlog/archive/refs/tags/v1.13.0.tar.gz",
+            "https://github.com/gabime/spdlog/archive/refs/tags/v1.14.1.tar.gz",
         ],
     )
 
@@ -222,10 +219,10 @@ def _com_github_google_benchmark():
         http_archive,
         name = "com_github_google_benchmark",
         type = "tar.gz",
-        strip_prefix = "benchmark-1.8.3",
-        sha256 = "6bc180a57d23d4d9515519f92b0c83d61b05b5bab188961f36ac7b06b0d9e9ce",
+        strip_prefix = "benchmark-1.8.4",
+        sha256 = "3e7059b6b11fb1bbe28e33e02519398ca94c1818874ebed18e504dc6f709be45",
         urls = [
-            "https://github.com/google/benchmark/archive/refs/tags/v1.8.3.tar.gz",
+            "https://github.com/google/benchmark/archive/refs/tags/v1.8.4.tar.gz",
         ],
     )
 
@@ -257,10 +254,10 @@ def _rule_python():
     maybe(
         http_archive,
         name = "rules_python",
-        sha256 = "c68bdc4fbec25de5b5493b8819cfc877c4ea299c0dcb15c244c5a00208cde311",
-        strip_prefix = "rules_python-0.31.0",
+        sha256 = "4912ced70dc1a2a8e4b86cec233b192ca053e82bc72d877b98e126156e8f228d",
+        strip_prefix = "rules_python-0.32.2",
         urls = [
-            "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.31.0.tar.gz",
+            "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.32.2.tar.gz",
         ],
     )
 

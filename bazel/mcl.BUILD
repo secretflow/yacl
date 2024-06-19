@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@bazel_skylib//lib:selects.bzl", "selects")
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "make")
 load("@yacl//bazel:yacl.bzl", "yacl_cmake_external")
 load("@rules_foreign_cc//foreign_cc:defs.bzl", "make")
 load("@bazel_skylib//lib:selects.bzl", "selects")

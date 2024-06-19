@@ -76,7 +76,7 @@ TEST_P(GywzParamTest, FerretSpCotWork) {
   auto base_ot = MockCompactOts(math::Log2Ceil(n));  // mock many base OTs
   auto delta = base_ot.send.GetDelta();
 
-  // [Warning] Compact Cot doest not support CopyChoice.
+  // [Warning] Compact Cot doest not support CopyBitBuf.
   // TODO: fix it
   uint32_t index = 0;
   for (uint32_t i = 0; i < math::Log2Ceil(n); ++i) {
@@ -117,7 +117,7 @@ TEST_P(GywzParamTest, FixIndexSpCotWork) {
   uint128_t delta = SecureRandSeed();
   auto base_ot = MockCots(math::Log2Ceil(n), delta);  // mock many base OTs
 
-  uint32_t index = base_ot.recv.CopyChoice().data()[0];
+  uint32_t index = base_ot.recv.CopyBitBuf().data()[0];
 
   std::vector<uint128_t> send_out(n);
   std::vector<uint128_t> recv_out(n);

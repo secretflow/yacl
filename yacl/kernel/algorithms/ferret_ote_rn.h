@@ -139,9 +139,9 @@ inline void MpCotRNRecv(const std::shared_ptr<link::Context>& ctx,
     auto uhash = math::UniversalHash<uint128_t>(seed, out);
 
     // [Warning] low efficency
-    uint128_t choices = check_cot.CopyChoice().data()[0];
+    uint128_t choices = check_cot.CopyBitBuf().data()[0];
 
-    auto check_cot_data = check_cot.CopyBlocks();
+    auto check_cot_data = check_cot.CopyBlkBuf();
     auto diff = PackGf128(absl::MakeSpan(check_cot_data));
     uhash = uhash ^ diff;
 
