@@ -17,28 +17,35 @@
 #include <algorithm>
 #include <cstdint>
 
+#include "yacl/crypto/block_cipher/symmetric_crypto.h"
+
 namespace yacl::crypto {
 
-using Ctype = SymmetricCrypto::CryptoType;
-
-void RP::Gen(absl::Span<const uint128_t> x, absl::Span<uint128_t> out) const {
-  YACL_ENFORCE(x.size() == out.size());
-  sym_alg_.Encrypt(x, out);
+void RP::Gen(uint128_t in, uint128_t* out) const {
+  *out = SymmetricCrypto(ctype_, key_, iv_).Encrypt(in);
 }
 
-std::vector<uint128_t> RP::Gen(absl::Span<const uint128_t> x) const {
-  std::vector<uint128_t> res(x.size());
-  Gen(x, absl::MakeSpan(res));
-  return res;
+uint128_t RP::Gen(uint128_t in) const {
+  uint128_t out = 0;
+  Gen(in, &out);
+  return out;
 }
 
-void RP::GenInplace(absl::Span<uint128_t> inout) const {
-  sym_alg_.Encrypt(inout, inout);
+void RP::GenForMultiInputs(absl::Span<const uint128_t> in,
+                           absl::Span<uint128_t> out) const {
+  YACL_ENFORCE(in.size() == out.size());
+  SymmetricCrypto(ctype_, key_, iv_).Encrypt(in, out);
 }
 
-uint128_t RP::Gen(uint128_t x) const {
-  YACL_ENFORCE(sym_alg_.GetType() != Ctype::AES128_CTR);
-  return sym_alg_.Encrypt(x);
+std::vector<uint128_t> RP::GenForMultiInputs(
+    absl::Span<const uint128_t> in) const {
+  std::vector<uint128_t> out(in.size());
+  GenForMultiInputs(in, absl::MakeSpan(out));
+  return out;
+}
+
+void RP::GenForMultiInputsInplace(absl::Span<uint128_t> inout) const {
+  SymmetricCrypto(ctype_, key_, iv_).Encrypt(inout, inout);
 }
 
 }  // namespace yacl::crypto

@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "yacl/crypto/zkp/sigma_config.h"
-#include "yacl/crypto/zkp/sigma_owh.h"
+#include "examples/zkp/sigma_config.h"
+#include "examples/zkp/sigma_owh.h"
 
 namespace examples::zkp {
 

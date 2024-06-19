@@ -247,8 +247,9 @@ class LocalLinearCode : public LinearCodeInterface {
                       _mm_set_epi32(i, 0, j, 0));
     }
     // Generate random indexes by Random Permutation
-    rp_.GenInplace(absl::MakeSpan(reinterpret_cast<uint128_t *>(tmp.data()),
-                                  block_num));  // kBatchSize * 10 / 4
+    rp_.GenForMultiInputsInplace(
+        absl::MakeSpan(reinterpret_cast<uint128_t *>(tmp.data()),
+                       block_num));  // kBatchSize * 10 / 4
 
     auto mask_tmp =
         _mm_loadu_si128((reinterpret_cast<const __m128i *>(&extend_mask_)));
