@@ -19,8 +19,10 @@
 #include <memory>
 #include <random>
 
+#include "absl/strings/escaping.h"
 #include "gtest/gtest.h"
 
+#include "yacl/base/byte_container_view.h"
 #include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
 
@@ -317,11 +319,6 @@ TEST(SymmetricCrypto, AesCbcExampleKey) {
     ASSERT_NO_THROW(crypto2.Decrypt(absl::MakeConstSpan(encrypted),
                                     absl::MakeSpan(decrypted)));
     EXPECT_EQ(decrypted, kPlaintextExample);
-
-    // check
-    ASSERT_NO_THROW(crypto.Encrypt(absl::MakeConstSpan(kPlaintextExample),
-                                   absl::MakeSpan(encrypted)));
-    EXPECT_EQ(encrypted, kCbcCiphertextExample);
   }
 }
 
@@ -344,11 +341,28 @@ TEST(SymmetricCrypto, AesCtrExampleKey) {
     ASSERT_NO_THROW(crypto2.Decrypt(absl::MakeConstSpan(encrypted),
                                     absl::MakeSpan(decrypted)));
     EXPECT_EQ(decrypted, kPlaintextExample);
+  }
+}
 
-    // check
+TEST(SymmetricCrypto, CbcSameKeyAndIVDifferentResult) {
+  auto type = SymmetricCrypto::CryptoType::AES128_CBC;
+  {
+    uint128_t aes_key;
+    uint128_t aes_iv;
+    memcpy(&aes_key, kKeyExample, sizeof(aes_key));
+    memcpy(&aes_iv, kIvExample, sizeof(aes_iv));
+    SymmetricCrypto crypto(type, aes_key, aes_iv);
+
+    std::vector<uint8_t> encrypted(kPlaintextExample.size());
     ASSERT_NO_THROW(crypto.Encrypt(absl::MakeConstSpan(kPlaintextExample),
                                    absl::MakeSpan(encrypted)));
-    EXPECT_EQ(encrypted, kCtrCipherExample);
+    EXPECT_EQ(encrypted, kCbcCiphertextExample);
+
+    std::vector<uint8_t> encrypted2(kPlaintextExample.size());
+    ASSERT_NO_THROW(crypto.Encrypt(absl::MakeConstSpan(kPlaintextExample),
+                                   absl::MakeSpan(encrypted2)));
+
+    EXPECT_NE(encrypted, encrypted2);
   }
 }
 

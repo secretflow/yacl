@@ -22,31 +22,15 @@ Supported platforms:
 
 ## Prerequisites
 
-- **bazel**: the recommended verion is described in [.bazelversion](.bazelversion) file. We recommend to use the official [bazelisk](https://github.com/bazelbuild/bazelisk?tab=readme-ov-file#installation) to manage bazel version.
+- **bazel**: [.bazelversion](.bazelversion) file describes the recommended version of bazel. We recommend to use the official [bazelisk](https://github.com/bazelbuild/bazelisk?tab=readme-ov-file#installation) to manage bazel version.
 - **gcc >= 10.3**
 - **[cmake](https://cmake.org/getting-started/)**
 - **[ninja/ninja-build](https://ninja-build.org/)**
 - **Perl 5 with core modules** (Required by [OpenSSL](https://github.com/openssl/openssl/blob/master/INSTALL.md#prerequisites))
 
-## Build & UnitTest
-``` sh
-# build as debug
-bazel build //... -c dbg
+## Getting Started
 
-# build as release
-bazel build //... -c opt
-
-# test
-bazel test //...
-
-# [optional] build & test with ASAN if you're not on MacOS
-bazel build //... -c dbg --config=asan
-bazel test //... --config=asan -c dbg
-
-# [optional] build & test with ASAN on MacOS
-bazel build //... -c dbg --config=macos-asan
-bazel test //... --config=macos-asan -c dbg
-```
+Yacl uses the [bazel](https://bazel.build/) build system, you may use the following codes to build and test yacl modules. For more guidelines about how to **do crypto research on Yacl**, **use Yacl's shipped crypto tools**, or **integrate Yacl into your system**, please check the [Getting Started Guide](GETTING_STARTED.md).
 
 ## License
 

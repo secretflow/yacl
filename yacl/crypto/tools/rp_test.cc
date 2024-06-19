@@ -48,7 +48,8 @@ TEST(RPTest, BlocksWorks) {
 
   auto input = RandomBlocks(20);
 
-  EXPECT_EQ(RP.Gen(absl::MakeSpan(input)), RP.Gen(absl::MakeSpan(input)));
+  EXPECT_EQ(RP.GenForMultiInputs(absl::MakeSpan(input)),
+            RP.GenForMultiInputs(absl::MakeSpan(input)));
 }
 
 }  // namespace yacl::crypto

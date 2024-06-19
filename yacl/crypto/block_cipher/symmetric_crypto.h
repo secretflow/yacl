@@ -32,31 +32,30 @@
 YACL_MODULE_DECLARE("aes_all_modes", SecParam::C::k128, SecParam::S::INF);
 
 namespace yacl::crypto {
-namespace internal {
-
-inline void EcbMakeContentBlocks(uint128_t count, absl::Span<uint128_t> buf) {
-  std::iota(buf.begin(), buf.end(), count);
-}
-
-}  // namespace internal
 
 // This class implements Symmetric- crypto.
 class SymmetricCrypto {
  public:
+  // supported AES modes
   enum class CryptoType : int {
-    AES128_ECB,
-    AES128_CBC,
-    AES128_CTR,
-    SM4_ECB,
-    SM4_CBC,
-    SM4_CTR,
+    AES128_ECB,  // ECB = Electronic Code Book
+    AES128_CBC,  // CBC = Cipher Block Chaining
+    AES128_CTR,  // CTR = Counter
+    SM4_ECB,     // ECB = Electronic Code Book
+    SM4_CBC,     // CBC = Cipher Block Chaining
+    SM4_CTR,     // CTR = Counter
   };
 
+  // constructor
   SymmetricCrypto(CryptoType type, uint128_t key, uint128_t iv = 0);
   SymmetricCrypto(CryptoType type, ByteContainerView key, ByteContainerView iv);
 
   // CBC Block Size.
   static constexpr int BlockSize() { return 128 / 8; }
+
+  // Reset the internal contexts of SymmetricCrypto (enc_ctx_, dec_ctx)
+  // NOTE: key_, type_, and initial_vector_ stay unchanged
+  void Reset();
 
   // Encrypts `plaintext` into `ciphertext`.
   // Note the ciphertext/plaintext size must be `N * kBlockSize`.
@@ -81,15 +80,17 @@ class SymmetricCrypto {
   // Getter
   CryptoType GetType() const { return type_; }
 
+  //
+  static void EcbMakeContentBlocks(uint128_t count, absl::Span<uint128_t> buf) {
+    std::iota(buf.begin(), buf.end(), count);
+  }
+
  private:
-  // Crypto type
-  const CryptoType type_;
-  // Symmetric key, 128 bits
-  const uint128_t key_;
+  const CryptoType type_;  //  Crypto type
+  const uint128_t key_;    // Symmetric key, 128 bits
+  const uint128_t iv_;     // Initialize vector
 
-  // Initial vector cbc mode need
-  const uint128_t initial_vector_;
-
+  // openssl cipher contexts
   openssl::UniqueCipherCtx enc_ctx_;
   openssl::UniqueCipherCtx dec_ctx_;
 };

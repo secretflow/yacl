@@ -65,7 +65,7 @@ BENCHMARK_DEFINE_F(ToolBench, RP)(benchmark::State& state) {
     state.ResumeTiming();
     using Ctype = SymmetricCrypto::CryptoType;
     const auto& rp = RP(Ctype::AES128_CTR, 0x12345678);
-    rp.Gen(absl::MakeSpan(input));
+    rp.GenForMultiInputs(absl::MakeSpan(input));
   }
 }
 
