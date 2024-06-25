@@ -21,71 +21,12 @@
 #include "yacl/base/dynamic_bitset.h"
 #include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
+#include "yacl/kernel/type/slice_base.h"
 #include "yacl/link/context.h"
 
 namespace yacl::crypto {
 
 enum class OtStoreType { Normal, Compact };
-
-class SliceBase {
- public:
-  // setters and getters
-  bool IsSliced() const { return internal_buf_ctr_ != 0; }
-  virtual ~SliceBase() = default;
-
-  void ResetSlice() {
-    internal_use_ctr_ = 0;
-    internal_use_size_ = internal_buf_size_;
-    internal_buf_ctr_ = 0;
-  }
-
- protected:
-  uint64_t GetUseCtr() const { return internal_use_ctr_; }
-  uint64_t GetUseSize() const { return internal_use_size_; }
-  uint64_t GetBufCtr() const { return internal_buf_ctr_; }
-  uint64_t GetBufSize() const { return internal_buf_size_; }
-  virtual void ConsistencyCheck() const;
-
-  // init all interal values
-  void InitCtrs(uint64_t use_ctr, uint64_t use_size, uint64_t buf_ctr,
-                uint64_t buf_size);
-
-  // get the internal buffer index from a slice index
-  uint64_t GetBufIdx(uint64_t slice_idx) const;
-
-  // manually increase the buffer counter by "size"
-  void IncreaseBufCtr(uint64_t size);
-
-  // reset all pointers
-  void Reset();
-
-  // An unused slice looks like the follwoing:
-  //
-  // |---------------|-----slice-----|----------------| internal buffer
-  // a               b               c                d
-  //
-  // internal_use_ctr_ = b
-  // internal_use_size_ = c - b
-  // internal_buf_ctr_ = b
-  // internal_buf_size_ = c
-  //
-  // where who slice this buffer looks like the following:
-  //
-  //
-  // |---------------|-----slice-----|----------------| internal buffer
-  // a               b               c                d
-  //
-  // internal_use_ctr_ = a
-  // internal_use_size_ = d - a
-  // internal_buf_ctr_ = c (since the underlying buffer is already sliced to c)
-  // internal_buf_size_ = d - a
-
-  uint64_t internal_use_ctr_ = 0;   // slice begin position in buffer
-  uint64_t internal_use_size_ = 0;  // allowed slice size (read & wrtie)
-  uint64_t internal_buf_ctr_ = 0;   // buffer use counter (next slice position)
-  uint64_t internal_buf_size_ = 0;  // underlying buf max size
-                                    // (will not be affected by slice op)
-};
 
 // OT Receiver (for 1-out-of-2 OT)
 //
@@ -184,25 +125,6 @@ class OtRecvStore : public SliceBase {
                        // in compact mode
 };
 
-// Easier way of generate a ot_store pointer from a given choice buffer and
-// a block buffer
-OtRecvStore MakeOtRecvStore(const dynamic_bitset<uint128_t>& choices,
-                            const UninitAlignedVector<uint128_t>& blocks);
-
-OtRecvStore MakeOtRecvStore(const dynamic_bitset<uint128_t>& choices,
-                            const std::vector<uint128_t>& blocks);
-
-// Easier way of generate a compact cot_store pointer from a given block buffer
-// Note: Compact ot is correlated-ot (or called delta-ot)
-OtRecvStore MakeCompactOtRecvStore(
-    const UninitAlignedVector<uint128_t>& blocks);
-
-OtRecvStore MakeCompactOtRecvStore(const std::vector<uint128_t>& blocks);
-
-OtRecvStore MakeCompactOtRecvStore(UninitAlignedVector<uint128_t>&& blocks);
-
-OtRecvStore MakeCompactOtRecvStore(std::vector<uint128_t>&& blocks);
-
 // OT Sender (for 1-out-of-2 OT)
 //
 // Data structure that stores multiple ot sender's data (a.k.a. the ot messages)
@@ -271,44 +193,5 @@ class OtSendStore : public SliceBase {
   uint128_t delta_ = 0;  // store cot's delta
   BlkBufPtr blk_buf_;    // store blocks
 };
-
-// Easier way of generate a ot_store pointer from a given blocks buffer
-OtSendStore MakeOtSendStore(
-    const UninitAlignedVector<std::array<uint128_t, 2>>& blocks);
-
-OtSendStore MakeOtSendStore(
-    const std::vector<std::array<uint128_t, 2>>& blocks);
-
-// Easier way of generate a compact cot_store pointer from a given blocks
-// buffer and cot delta
-// Note: Compact ot is correlated-ot (or called delta-ot)
-OtSendStore MakeCompactOtSendStore(const std::vector<uint128_t>& blocks,
-                                   uint128_t delta);
-
-OtSendStore MakeCompactOtSendStore(const UninitAlignedVector<uint128_t>& blocks,
-                                   uint128_t delta);
-
-OtSendStore MakeCompactOtSendStore(std::vector<uint128_t>&& blocks,
-                                   uint128_t delta);
-
-OtSendStore MakeCompactOtSendStore(UninitAlignedVector<uint128_t>&& blocks,
-                                   uint128_t delta);
-
-// OT Store (for mocking only)
-class MockOtStore {
- public:
-  OtSendStore send;
-  OtRecvStore recv;
-};
-
-// Locally mock ots
-MockOtStore MockRots(uint64_t num);
-MockOtStore MockRots(uint64_t num, dynamic_bitset<uint128_t> choices);
-MockOtStore MockCots(uint64_t num, uint128_t delta);
-MockOtStore MockCots(uint64_t num, uint128_t delta,
-                     dynamic_bitset<uint128_t> choices);
-
-// Note: Compact ot is correlated-ot (or called delta-ot)
-MockOtStore MockCompactOts(uint64_t num);
 
 }  // namespace yacl::crypto

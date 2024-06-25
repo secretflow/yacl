@@ -18,8 +18,8 @@
 #include <variant>
 
 #include "yacl/base/dynamic_bitset.h"
-#include "yacl/kernel/algorithms/ot_store.h"
 #include "yacl/kernel/kernel.h"
+#include "yacl/kernel/type/ot_store_utils.h"
 
 /* submodules */
 #include "yacl/kernel/algorithms/base_ot.h"
@@ -77,7 +77,7 @@ class OtKernel : SingleThreadKernel {
   // delta-correlated, which means m0 xor m1 = delta
   //
   // Note: all correlated ot instances are stored in *compact mode*
-  // see: yacl/kernel/algorithms/ot_store.h
+  // see: yacl/kernel/type/ot_store_utils.h
   void eval_cot_random_choice(const std::shared_ptr<link::Context>& lctx,
                               uint64_t ot_num,
                               /* compact mode */ OtSendStore* out);

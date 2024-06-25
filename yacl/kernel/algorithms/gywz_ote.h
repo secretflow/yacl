@@ -27,7 +27,7 @@
 #include "yacl/crypto/rand/rand.h"
 #include "yacl/crypto/tools/crhash.h"
 #include "yacl/crypto/tools/prg.h"
-#include "yacl/kernel/algorithms/ot_store.h"
+#include "yacl/kernel/type/ot_store_utils.h"
 
 /* security parameter declaration */
 YACL_MODULE_DECLARE("gywz_ote", SecParam::C::INF, SecParam::S::INF);

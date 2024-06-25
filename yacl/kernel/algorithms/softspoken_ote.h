@@ -32,8 +32,8 @@
 #include "yacl/crypto/tools/prg.h"
 #include "yacl/crypto/tools/rp.h"
 #include "yacl/kernel/algorithms/base_ot.h"
-#include "yacl/kernel/algorithms/ot_store.h"
 #include "yacl/kernel/algorithms/sgrr_ote.h"
+#include "yacl/kernel/type/ot_store_utils.h"
 
 /* security parameter declaration */
 YACL_MODULE_DECLARE("softspoken_ote", SecParam::C::k128, SecParam::S::INF);

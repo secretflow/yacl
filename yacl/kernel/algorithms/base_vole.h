@@ -20,8 +20,8 @@
 #include "yacl/math/gadget.h"
 
 /* submodules */
-#include "yacl/kernel/algorithms/ot_store.h"
 #include "yacl/kernel/algorithms/softspoken_ote.h"
+#include "yacl/kernel/type/ot_store_utils.h"
 #include "yacl/secparam.h"
 
 YACL_MODULE_DECLARE("base_vole", SecParam::C::INF, SecParam::S::INF);
