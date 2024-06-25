@@ -28,11 +28,6 @@ bazel-bin/examples/HESM2/sm2_example
 #include "ahesm2.h"
 #include "config.h"
 
-// 初始化配置并读取预计算表
-void InitializeConfig() {
-    // 初始化配置代码
-}
-
 int main() {
     // 参数配置并读取预计算表
     InitializeConfig();
