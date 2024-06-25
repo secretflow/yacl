@@ -31,9 +31,9 @@
 #include "yacl/kernel/algorithms/iknp_ote.h"
 #include "yacl/kernel/algorithms/kkrt_ote.h"
 #include "yacl/kernel/algorithms/kos_ote.h"
-#include "yacl/kernel/algorithms/ot_store.h"
 #include "yacl/kernel/algorithms/sgrr_ote.h"
 #include "yacl/kernel/algorithms/softspoken_ote.h"
+#include "yacl/kernel/type/ot_store_utils.h"
 #include "yacl/link/test_util.h"
 #include "yacl/utils/matrix_utils.h"
 

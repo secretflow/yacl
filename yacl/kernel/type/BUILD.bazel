@@ -1,0 +1,65 @@
+# Copyright 2022 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+yacl_cc_library(
+    name = "slice_base",
+    srcs = ["slice_base.cc"],
+    hdrs = [
+        "slice_base.h",
+    ],
+    deps = [
+        "//yacl/base:exception",
+    ],
+)
+
+yacl_cc_library(
+    name = "ot_store",
+    srcs = ["ot_store.cc"],
+    hdrs = [
+        "ot_store.h",
+    ],
+    deps = [
+        ":slice_base",
+        "//yacl/base:aligned_vector",
+        "//yacl/base:dynamic_bitset",
+        "//yacl/base:int128",
+        "//yacl/crypto/rand",
+        "//yacl/crypto/tools:prg",
+        "//yacl/link:context",
+    ],
+)
+
+yacl_cc_library(
+    name = "ot_store_utils",
+    srcs = ["ot_store_utils.cc"],
+    hdrs = [
+        "ot_store_utils.h",
+    ],
+    deps = [
+        ":ot_store",
+    ],
+)
+
+yacl_cc_test(
+    name = "ot_store_test",
+    srcs = ["ot_store_test.cc"],
+    deps = [
+        ":ot_store_utils",
+        "//yacl/link:test_util",
+    ],
+)

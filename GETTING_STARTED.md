@@ -4,7 +4,7 @@ This document includes guidelines.
 
 ## Table of Contents
 
-- [Prerequisites]((#prerequisites))
+- [Prerequisites](#prerequisites)
 - [Download and Build](#download-and-build)
   - [Ubuntu](#ubuntu)
   - [MacOS](#macos)
@@ -15,7 +15,7 @@ This document includes guidelines.
 
 To build Yacl from source, you will need the following tools:
 
-- **bazel**: [.bazelversion](.bazelversion) file describes the recommended version of bazel. We recommend to use the official [bazelisk](https://github.com/bazelbuild/bazelisk?tab=readme-ov-file#installation) to manage bazel version.
+- **bazel**: We recommend to use the official [bazelisk](https://github.com/bazelbuild/bazelisk?tab=readme-ov-file#installation) to manage bazel version.
 - **gcc >= 10.3**
 - **[cmake](https://cmake.org/getting-started/)**
 - **[ninja/ninja-build](https://ninja-build.org/)**

@@ -19,7 +19,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "yacl/kernel/algorithms/ot_store.h"
+#include "yacl/kernel/type/ot_store_utils.h"
 #include "yacl/math/gadget.h"
 #include "yacl/secparam.h"
 #include "yacl/utils/cuckoo_index.h"

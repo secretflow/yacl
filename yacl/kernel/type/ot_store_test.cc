@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/kernel/algorithms/ot_store.h"
-
 #include <future>
 #include <memory>
 #include <thread>
@@ -27,6 +25,7 @@
 #include "yacl/base/exception.h"
 #include "yacl/crypto/rand/rand.h"
 #include "yacl/crypto/tools/prg.h"
+#include "yacl/kernel/type/ot_store_utils.h"
 #include "yacl/link/test_util.h"
 
 namespace yacl::crypto {

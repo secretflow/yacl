@@ -24,7 +24,7 @@
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/exception.h"
 #include "yacl/crypto/tools/common.h"
-#include "yacl/kernel/algorithms/ot_store.h"
+#include "yacl/kernel/type/ot_store_utils.h"
 #include "yacl/math/f2k/f2k.h"
 #include "yacl/utils/matrix_utils.h"
 #include "yacl/utils/serialize.h"

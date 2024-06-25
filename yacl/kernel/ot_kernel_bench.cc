@@ -24,9 +24,10 @@ static void BM_Ferret_OT_single_thread(benchmark::State& state) {
   for (auto _ : state) {
     state.PauseTiming();
     {
-      const size_t num_ot = 1 << 24;
+      const size_t num_ot = state.range(0);
       OtSendStore ot_send(num_ot, OtStoreType::Compact);  // placeholder
       OtRecvStore ot_recv(num_ot, OtStoreType::Compact);  // placeholder
+
       OtKernel kernel0(OtKernel::Role::Sender, OtKernel::ExtAlgorithm::Ferret);
       OtKernel kernel1(OtKernel::Role::Receiver,
                        OtKernel::ExtAlgorithm::Ferret);
@@ -54,7 +55,7 @@ static void BM_SoftSpoken_OT_single_thread(benchmark::State& state) {
   for (auto _ : state) {
     state.PauseTiming();
     {
-      const size_t num_ot = 1 << 24;
+      const size_t num_ot = state.range(0);
       OtSendStore ot_send(num_ot, OtStoreType::Compact);  // placeholder
       OtRecvStore ot_recv(num_ot, OtStoreType::Compact);  // placeholder
       OtKernel kernel0(OtKernel::Role::Sender,
@@ -83,9 +84,18 @@ static void BM_SoftSpoken_OT_single_thread(benchmark::State& state) {
 
 BENCHMARK(yacl::crypto::BM_Ferret_OT_single_thread)
     ->Iterations(1)
+    ->Arg(1 << 20)
+    ->Arg(1 << 22)
+    ->Arg(1 << 24)
+    ->Arg(1 << 26)
     ->Unit(benchmark::kMillisecond);
 
 BENCHMARK(yacl::crypto::BM_SoftSpoken_OT_single_thread)
     ->Iterations(1)
+    ->Arg(1 << 20)
+    ->Arg(1 << 22)
+    ->Arg(1 << 24)
+    ->Arg(1 << 26)
     ->Unit(benchmark::kMillisecond);
+
 BENCHMARK_MAIN();
