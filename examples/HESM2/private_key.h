@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PRIVATE_KEY_H_
-#define PRIVATE_KEY_H_
+#pragma once
 
 #include "examples/HESM2/public_key.h"
 #include "yacl/crypto/ecc/ecc_spi.h"
@@ -48,4 +47,4 @@ class PrivateKey {
   PublicKey public_key_;
 };
 
-#endif  // PRIVATE_KEY_H_
+

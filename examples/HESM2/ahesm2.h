@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
 #include "examples/HESM2/ciphertext.h"
 #include "examples/HESM2/private_key.h"
 

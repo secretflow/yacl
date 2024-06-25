@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef CONFIG_H_
-#define CONFIG_H_
+#pragma once
 
 #include <cstdint>
 
@@ -35,4 +34,4 @@ extern int Treelen;
 extern int TestNum;
 extern uint64_t Mmax;
 
-#endif  // CONFIG_H_
+

@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PUBLIC_KEY_H_
-#define PUBLIC_KEY_H_
+#pragma once
 
 #include <utility>
 
@@ -33,4 +32,4 @@ class PublicKey {
   std::shared_ptr<yacl::crypto::EcGroup> ec_group_;
 };
 
-#endif  // PUBLIC_KEY_H_
+
