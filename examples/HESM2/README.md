@@ -9,7 +9,7 @@
 ```bash
 cd yacl
 
-bazel build --linkopt=-ldl //... -c opt
+bazel build --linkopt=-ldl //...
 
 bazel build --linkopt=-ldl //examples/HESM2:sm2_example
 
