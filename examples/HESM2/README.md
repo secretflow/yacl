@@ -9,6 +9,8 @@
 ```bash
 cd yacl
 
+bazel //... -c opt
+
 bazel build --linkopt=-ldl //examples/HESM2:sm2_example
 
 bazel-bin/examples/HESM2/sm2_example
