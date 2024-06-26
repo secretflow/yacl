@@ -22,6 +22,7 @@
 #include <unordered_map>
 
 #include "examples/HESM2/config.h"
+
 #include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/math/mpint/mp_int.h"
 #include "yacl/utils/parallel.h"
@@ -274,4 +275,3 @@ class CuckooT1 {
 };
 
 extern CuckooT1 t1_loaded;
-

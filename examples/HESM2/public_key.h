@@ -31,5 +31,3 @@ class PublicKey {
   yacl::crypto::EcPoint point_;
   std::shared_ptr<yacl::crypto::EcGroup> ec_group_;
 };
-
-

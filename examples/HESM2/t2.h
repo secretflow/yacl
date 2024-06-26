@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "examples/HESM2/config.h"
+
 #include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/math/mpint/mp_int.h"
 
@@ -111,4 +112,3 @@ class T2 {
 };
 
 extern T2 t2_loaded;
-

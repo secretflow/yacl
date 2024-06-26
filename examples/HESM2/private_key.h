@@ -15,6 +15,7 @@
 #pragma once
 
 #include "examples/HESM2/public_key.h"
+
 #include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/math/mpint/mp_int.h"
 
@@ -46,5 +47,3 @@ class PrivateKey {
   yacl::math::MPInt k_;
   PublicKey public_key_;
 };
-
-

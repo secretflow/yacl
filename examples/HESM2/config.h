@@ -33,5 +33,3 @@ extern int L2;  // 1<< Ilen
 extern int Treelen;
 extern int TestNum;
 extern uint64_t Mmax;
-
-

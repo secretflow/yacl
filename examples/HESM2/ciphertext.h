@@ -30,4 +30,3 @@ class Ciphertext {
   yacl::crypto::EcPoint c1_;
   yacl::crypto::EcPoint c2_;
 };
-
