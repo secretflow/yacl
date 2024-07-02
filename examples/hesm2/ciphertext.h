@@ -18,6 +18,8 @@
 
 #include "yacl/crypto/ecc/ec_point.h"
 
+namespace examples::hesm2 {
+
 class Ciphertext {
  public:
   Ciphertext(yacl::crypto::EcPoint c1, yacl::crypto::EcPoint c2)
@@ -30,3 +32,4 @@ class Ciphertext {
   yacl::crypto::EcPoint c1_;
   yacl::crypto::EcPoint c2_;
 };
+}  // namespace examples::hesm2
