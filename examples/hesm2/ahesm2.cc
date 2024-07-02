@@ -29,38 +29,38 @@ namespace examples::hesm2 {
 
 Ciphertext Encrypt(const yacl::math::MPInt& message, const PublicKey& pk) {
   const auto& ec_group = pk.GetEcGroup();
-  auto generator = (*ec_group).GetGenerator();
+  auto generator = ec_group->GetGenerator();
   yacl::math::MPInt r;
-  yacl::math::MPInt::RandomLtN((*ec_group).GetOrder(), &r);
-  auto c1 = (*ec_group).MulBase(r);
+  yacl::math::MPInt::RandomLtN(ec_group->GetOrder(), &r);
+  auto c1 = ec_group->MulBase(r);
   const auto& pk_point = pk.GetPoint();
-  auto mG = (*ec_group).MulBase(message);
-  auto rpk = (*ec_group).Mul(pk_point, r);
-  auto c2 = (*ec_group).Add(mG, rpk);
+  auto mG = ec_group->MulBase(message);
+  auto rpk = ec_group->Mul(pk_point, r);
+  auto c2 = ec_group->Add(mG, rpk);
   return Ciphertext{c1, c2};
 }
 
-bool CheckDec(const yacl::crypto::EcGroup& ecgroup,
+bool CheckDec(const std::shared_ptr<yacl::crypto::EcGroup>& ecgroup,
               const yacl::crypto::EcPoint& m_g, const yacl::math::MPInt& m) {
-  yacl::crypto::EcPoint checkmG = ecgroup.MulBase(m);
-  return static_cast<bool>(ecgroup.PointEqual(m_g, checkmG));
+  yacl::crypto::EcPoint checkmG = ecgroup->MulBase(m);
+  return static_cast<bool>(ecgroup->PointEqual(m_g, checkmG));
 }
 
 DecryptResult Decrypt(const Ciphertext& ciphertext, const PrivateKey& sk) {
   const auto& ec_group = sk.GetEcGroup();
-  auto c1_sk = (*ec_group).Mul(ciphertext.GetC1(), sk.GetK());
+  auto c1_sk = ec_group->Mul(ciphertext.GetC1(), sk.GetK());
   const auto& c2 = ciphertext.GetC2();
-  if ((*ec_group).PointEqual(c1_sk, c2)) {
+  if (ec_group->PointEqual(c1_sk, c2)) {
     return {yacl::math::MPInt(0), true};
   }
-  auto mG = (*ec_group).Sub(c2, c1_sk);
-  auto affmG = (*ec_group).GetAffinePoint(mG);
+  auto mG = ec_group->Sub(c2, c1_sk);
+  auto affmG = ec_group->GetAffinePoint(mG);
   auto affmGx = affmG.x;
   const auto value =
       t1_loaded.Op_search(affmGx.ToMagBytes(yacl::Endian::native));
   if (value.second) {
     yacl::math::MPInt m(value.first);
-    if (CheckDec((*ec_group), mG, m)) {
+    if (CheckDec(ec_group, mG, m)) {
       return {m, true};
     } else {
       return {-(m), true};
@@ -75,7 +75,7 @@ DecryptResult Decrypt(const Ciphertext& ciphertext, const PrivateKey& sk) {
     Z[i - 1] = difference;
     if (difference.IsZero()) {
       m = yacl::math::MPInt(static_cast<int64_t>(L1) * static_cast<int64_t>(i));
-      if (CheckDec((*ec_group), mG, m)) {
+      if (CheckDec(ec_group, mG, m)) {
         return {m, true};
       } else {
         return {-m, true};
@@ -89,7 +89,7 @@ DecryptResult Decrypt(const Ciphertext& ciphertext, const PrivateKey& sk) {
   }
   int offset = Imax;
   int treelen = Imax * 2 - 3;
-  yacl::math::MPInt P = (*ec_group).GetField();
+  yacl::math::MPInt P = ec_group->GetField();
   for (int i = 0; i < treelen; i += 2) {
     yacl::math::MPInt product;
     yacl::math::MPInt::Mul(ZTree[i], ZTree[i + 1], &product);
@@ -143,7 +143,7 @@ DecryptResult Decrypt(const Ciphertext& ciphertext, const PrivateKey& sk) {
       auto jint = yacl::math::MPInt(value.first);
       yacl::math::MPInt::Add(m, jint, &m1);
       yacl::math::MPInt::Sub(m, jint, &m2);
-      if (CheckDec((*ec_group), mG, m1)) {
+      if (CheckDec(ec_group, mG, m1)) {
         return {m1, true};
       } else {
         return {m2, true};
@@ -163,7 +163,7 @@ DecryptResult Decrypt(const Ciphertext& ciphertext, const PrivateKey& sk) {
       auto jint = yacl::math::MPInt(invvalue.first);
       yacl::math::MPInt::Add(m, jint, &m1);
       yacl::math::MPInt::Sub(m, jint, &m2);
-      if (CheckDec((*ec_group), mG, m1)) {
+      if (CheckDec(ec_group, mG, m1)) {
         return {m1, true};
       } else {
         return {m2, true};
@@ -179,7 +179,7 @@ DecryptResult search(int start, int end, const yacl::math::MPInt& affm_gx,
                      const std::vector<yacl::math::MPInt>& zinv_tree,
                      const yacl::math::MPInt& p,
                      const yacl::crypto::EcPoint& m_g,
-                     const yacl::crypto::EcGroup& ec_group,
+                     const std::shared_ptr<yacl::crypto::EcGroup>& ec_group,
                      std::atomic<bool>& found, std::mutex& mtx) {
   const auto& t2 = t2_loaded.GetVector();
   for (int j = start; j < end && !found.load(); j++) {
@@ -241,20 +241,20 @@ DecryptResult search(int start, int end, const yacl::math::MPInt& affm_gx,
 
 DecryptResult ParDecrypt(const Ciphertext& ciphertext, const PrivateKey& sk) {
   const auto& ec_group = sk.GetEcGroup();
-  auto c1_sk = (*ec_group).Mul(ciphertext.GetC1(), sk.GetK());
+  auto c1_sk = ec_group->Mul(ciphertext.GetC1(), sk.GetK());
   const auto& c2 = ciphertext.GetC2();
-  if ((*ec_group).PointEqual(c1_sk, c2)) {
+  if (ec_group->PointEqual(c1_sk, c2)) {
     return {yacl::math::MPInt(0), true};
   }
-  auto mG = (*ec_group).Sub(c2, c1_sk);
-  auto affmG = (*ec_group).GetAffinePoint(mG);
+  auto mG = ec_group->Sub(c2, c1_sk);
+  auto affmG = ec_group->GetAffinePoint(mG);
   auto affmGx = affmG.x;
   yacl::math::MPInt m;
   const auto value =
       t1_loaded.Op_search(affmGx.ToMagBytes(yacl::Endian::native));
   if (value.second) {
     m = yacl::math::MPInt(value.first);
-    if (CheckDec((*ec_group), mG, m)) {
+    if (CheckDec(ec_group, mG, m)) {
       return {m, true};
     } else {
       return {-(m), true};
@@ -270,7 +270,7 @@ DecryptResult ParDecrypt(const Ciphertext& ciphertext, const PrivateKey& sk) {
     Z[j - 1] = difference;
     if (difference.IsZero()) {
       m = yacl::math::MPInt(static_cast<int64_t>(L1) * static_cast<int64_t>(j));
-      if (CheckDec((*ec_group), mG, m)) {
+      if (CheckDec(ec_group, mG, m)) {
         return {m, true};
       } else {
         return {-m, true};
@@ -284,7 +284,7 @@ DecryptResult ParDecrypt(const Ciphertext& ciphertext, const PrivateKey& sk) {
   }
   int offset = Imax;
   int treelen = Imax * 2 - 3;
-  yacl::math::MPInt P = (*ec_group).GetField();
+  yacl::math::MPInt P = ec_group->GetField();
   for (int i = 0; i < treelen; i += 2) {
     yacl::math::MPInt product;
     yacl::math::MPInt::Mul(ZTree[i], ZTree[i + 1], &product);
@@ -334,7 +334,7 @@ DecryptResult ParDecrypt(const Ciphertext& ciphertext, const PrivateKey& sk) {
     int end = (i == num_threads - 1) ? (Imax + 1) : start + chunk_size;
     threads.emplace_back([&, start, end]() {
       DecryptResult result = search(start, end, affmGx, affmGy, ZinvTree, P, mG,
-                                    (*ec_group), found, mtx);
+                                    ec_group, found, mtx);
       if (result.success && !result_found.exchange(true)) {
         final_result = result;
         found.store(true);
@@ -356,24 +356,24 @@ DecryptResult ParDecrypt(const Ciphertext& ciphertext, const PrivateKey& sk) {
 Ciphertext HAdd(const Ciphertext& ciphertext1, const Ciphertext& ciphertext2,
                 const PublicKey& pk) {
   const auto& ec_group = pk.GetEcGroup();
-  auto c1 = (*ec_group).Add(ciphertext1.GetC1(), ciphertext2.GetC1());
-  auto c2 = (*ec_group).Add(ciphertext1.GetC2(), ciphertext2.GetC2());
+  auto c1 = ec_group->Add(ciphertext1.GetC1(), ciphertext2.GetC1());
+  auto c2 = ec_group->Add(ciphertext1.GetC2(), ciphertext2.GetC2());
   return Ciphertext{c1, c2};
 }
 
 Ciphertext HSub(const Ciphertext& ciphertext1, const Ciphertext& ciphertext2,
                 const PublicKey& pk) {
   const auto& ec_group = pk.GetEcGroup();
-  auto c1 = (*ec_group).Sub(ciphertext1.GetC1(), ciphertext2.GetC1());
-  auto c2 = (*ec_group).Sub(ciphertext1.GetC2(), ciphertext2.GetC2());
+  auto c1 = ec_group->Sub(ciphertext1.GetC1(), ciphertext2.GetC1());
+  auto c2 = ec_group->Sub(ciphertext1.GetC2(), ciphertext2.GetC2());
   return Ciphertext{c1, c2};
 }
 
 Ciphertext HMul(const Ciphertext& ciphertext1, const yacl::math::MPInt& scalar,
                 const PublicKey& pk) {
   const auto& ec_group = pk.GetEcGroup();
-  auto c1 = (*ec_group).Mul(ciphertext1.GetC1(), scalar);
-  auto c2 = (*ec_group).Mul(ciphertext1.GetC2(), scalar);
+  auto c1 = ec_group->Mul(ciphertext1.GetC1(), scalar);
+  auto c2 = ec_group->Mul(ciphertext1.GetC2(), scalar);
   return Ciphertext{c1, c2};
 }
 }  // namespace examples::hesm2

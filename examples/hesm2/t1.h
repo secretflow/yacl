@@ -27,6 +27,8 @@
 #include "yacl/math/mpint/mp_int.h"
 #include "yacl/utils/parallel.h"
 
+namespace examples::hesm2 {
+
 class HashMapT1 {
  public:
   explicit HashMapT1(std::shared_ptr<yacl::crypto::EcGroup> ec_group,
@@ -275,3 +277,5 @@ class CuckooT1 {
 };
 
 extern CuckooT1 t1_loaded;
+
+}  // namespace examples::hesm2

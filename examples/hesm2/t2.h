@@ -25,6 +25,8 @@
 #include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/math/mpint/mp_int.h"
 
+namespace examples::hesm2 {
+
 class T2 {
  public:
   explicit T2(std::shared_ptr<yacl::crypto::EcGroup> ec_group,
@@ -112,3 +114,5 @@ class T2 {
 };
 
 extern T2 t2_loaded;
+
+}  // namespace examples::hesm2

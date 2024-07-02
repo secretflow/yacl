@@ -17,6 +17,8 @@
 #include "examples/hesm2/t1.h"
 #include "examples/hesm2/t2.h"
 
+namespace examples::hesm2 {
+
 uint32_t GetSubBytesAsUint32(const yacl::Buffer& bytes, size_t start,
                              size_t end) {
   uint32_t result = 0;
@@ -68,3 +70,5 @@ void InitializeConfig() {
     t2_loaded.Deserialize(filet2);
   }
 }
+
+}  // namespace examples::hesm2

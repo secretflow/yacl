@@ -18,6 +18,8 @@
 
 #include "yacl/base/buffer.h"
 
+namespace examples::hesm2 {
+
 void InitializeConfig();
 
 uint32_t GetSubBytesAsUint32(const yacl::Buffer& bytes, size_t start,
@@ -33,3 +35,5 @@ constexpr int Treelen = Imax * 2;  // imax*2
 constexpr uint32_t Cuckoolen = static_cast<uint32_t>(Jmax * 1.3);
 constexpr uint64_t Mmax =
     static_cast<uint64_t>(Imax) * static_cast<uint64_t>(L1) + Jmax;
+
+}  // namespace examples::hesm2
