@@ -28,7 +28,7 @@ uint32_t GetSubBytesAsUint32(const yacl::Buffer& bytes, size_t start,
   return result;
 }
 
-CuckooT1 t1_loaded(Jmax, nullptr);
+CuckooT1 t1_loaded(Jmax);
 T2 t2_loaded(nullptr, false);
 
 void InitializeConfig() {

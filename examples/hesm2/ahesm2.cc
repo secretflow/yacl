@@ -44,7 +44,7 @@ Ciphertext Encrypt(const yacl::math::MPInt& message, const PublicKey& pk) {
 bool CheckDec(const std::shared_ptr<yacl::crypto::EcGroup>& ecgroup,
               const yacl::crypto::EcPoint& m_g, const yacl::math::MPInt& m) {
   yacl::crypto::EcPoint checkmG = ecgroup->MulBase(m);
-  return static_cast<bool>(ecgroup->PointEqual(m_g, checkmG));
+  return ecgroup->PointEqual(m_g, checkmG);
 }
 
 DecryptResult Decrypt(const Ciphertext& ciphertext, const PrivateKey& sk) {
@@ -69,8 +69,7 @@ DecryptResult Decrypt(const Ciphertext& ciphertext, const PrivateKey& sk) {
   }
   yacl::math::MPInt m;  // Declare the variable 'm'
   const auto& t2 = t2_loaded.GetVector();
-  std::vector<yacl::math::MPInt> Z;
-  Z.resize(Imax);  // 预先分配内存
+  std::vector<yacl::math::MPInt> Z(Imax);
   for (int i = 1; i <= Imax; ++i) {
     yacl::math::MPInt difference = t2[i].x - affmGx;
     Z[i - 1] = difference;
@@ -83,8 +82,7 @@ DecryptResult Decrypt(const Ciphertext& ciphertext, const PrivateKey& sk) {
       }
     }
   }
-  std::vector<yacl::math::MPInt> ZTree;
-  ZTree.resize(Treelen);  // 预先分配内存
+  std::vector<yacl::math::MPInt> ZTree(Treelen);
   for (int i = 0; i < Imax; i++) {
     ZTree[i] = Z[i];
   }
@@ -101,8 +99,7 @@ DecryptResult Decrypt(const Ciphertext& ciphertext, const PrivateKey& sk) {
   yacl::math::MPInt treeroot_inv;
   treeroot_inv.Set(ZTree[Treelen - 2]);
   treeroot_inv = treeroot_inv.InvertMod(P);
-  std::vector<yacl::math::MPInt> ZinvTree;
-  ZinvTree.resize(Treelen);  // 预先分配内存
+  std::vector<yacl::math::MPInt> ZinvTree(Treelen);
   treelen = Imax * 2 - 2;
   int prevfloorflag = treelen;
   int prevfloornum = 1;
@@ -264,8 +261,7 @@ DecryptResult ParDecrypt(const Ciphertext& ciphertext, const PrivateKey& sk) {
 
   const auto& t2 = t2_loaded.GetVector();
 
-  std::vector<yacl::math::MPInt> Z;
-  Z.resize(Imax);  // 预先分配内存
+  std::vector<yacl::math::MPInt> Z(Imax);
   for (int j = 1; j <= Imax; ++j) {
     yacl::math::MPInt difference = t2[j].x - affmGx;
     Z[j - 1] = difference;
@@ -278,8 +274,7 @@ DecryptResult ParDecrypt(const Ciphertext& ciphertext, const PrivateKey& sk) {
       }
     }
   }
-  std::vector<yacl::math::MPInt> ZTree;
-  ZTree.resize(Treelen);  // 预先分配内存
+  std::vector<yacl::math::MPInt> ZTree(Treelen);
   for (int i = 0; i < Imax; i++) {
     ZTree[i] = Z[i];
   }
@@ -295,8 +290,7 @@ DecryptResult ParDecrypt(const Ciphertext& ciphertext, const PrivateKey& sk) {
   yacl::math::MPInt treeroot_inv;
   treeroot_inv.Set(ZTree[Treelen - 2]);
   treeroot_inv = treeroot_inv.InvertMod(P);
-  std::vector<yacl::math::MPInt> ZinvTree;
-  ZinvTree.resize(Treelen);  // 预先分配内存
+  std::vector<yacl::math::MPInt> ZinvTree(Treelen);
   treelen = Imax * 2 - 2;
   int prevfloorflag = treelen;
   int prevfloornum = 1;

@@ -29,129 +29,8 @@
 
 namespace examples::hesm2 {
 
-class HashMapT1 {
- public:
-  explicit HashMapT1(std::shared_ptr<yacl::crypto::EcGroup> ec_group,
-                     const std::string& filename = "hashmap_t1.dat")
-      : ec_group_(std::move(ec_group)) {
-    if (std::filesystem::exists(filename)) {
-      Deserialize(filename);
-    } else {
-      InitializeDefaultEntries();
-      Serialize(filename);
-    }
-  }
-
-  HashMapT1(std::shared_ptr<yacl::crypto::EcGroup> ec_group, bool initialize,
-            const std::string& filename = "hashmap_t1.dat")
-      : ec_group_(std::move(ec_group)) {
-    if (initialize) {
-      if (std::filesystem::exists(filename)) {
-        Deserialize(filename);
-      } else {
-        InitializeDefaultEntries();
-        Serialize(filename);
-      }
-    }
-  }
-
-  void AddEntry(const yacl::math::MPInt& i) {
-    auto point = ec_group_->MulBase(i);
-    auto affine_point = ec_group_->GetAffinePoint(point);
-    auto key = affine_point.x.ToString();
-    std::unique_lock<std::shared_mutex> lock(mutex_);
-    map_[key] = i;
-  }
-
-  const yacl::math::MPInt* GetValue(const std::string& key) const {
-    auto it = map_.find(key);
-    if (it != map_.end()) {
-      return &it->second;
-    }
-    return nullptr;
-  }
-
-  void Serialize(const std::string& filename) const {
-    std::shared_lock<std::shared_mutex> lock(mutex_);
-    std::ofstream ofs(filename, std::ios::binary);
-    if (!ofs) {
-      throw std::runtime_error("Failed to open file for writing: " + filename);
-    }
-    size_t map_size = map_.size();
-    ofs.write(reinterpret_cast<const char*>(&map_size), sizeof(map_size));
-    for (const auto& [key, value] : map_) {
-      size_t key_size = key.size();
-      ofs.write(reinterpret_cast<const char*>(&key_size), sizeof(key_size));
-      ofs.write(key.data(), key_size);
-      auto value_bytes = value.ToMagBytes(yacl::Endian::native);
-      size_t value_size = value_bytes.size();
-      ofs.write(reinterpret_cast<const char*>(&value_size), sizeof(value_size));
-      ofs.write(reinterpret_cast<const char*>(value_bytes.data<uint8_t>()),
-                value_size);
-    }
-  }
-
-  void Deserialize(const std::string& filename) {
-    std::unique_lock<std::shared_mutex> lock(mutex_);
-    std::ifstream ifs(filename, std::ios::binary);
-    if (!ifs) {
-      throw std::runtime_error("Failed to open file for reading: " + filename);
-    }
-    size_t map_size;
-    ifs.read(reinterpret_cast<char*>(&map_size), sizeof(map_size));
-    map_.clear();
-    for (size_t i = 0; i < map_size; ++i) {
-      size_t key_size;
-      ifs.read(reinterpret_cast<char*>(&key_size), sizeof(key_size));
-      std::string key(key_size, '\0');
-      ifs.read(key.data(), key_size);
-      size_t value_size;
-      ifs.read(reinterpret_cast<char*>(&value_size), sizeof(value_size));
-      yacl::Buffer value_bytes(value_size);
-      ifs.read(reinterpret_cast<char*>(value_bytes.data<uint8_t>()),
-               value_size);
-      yacl::math::MPInt value;
-      value.FromMagBytes(value_bytes, yacl::Endian::native);
-      map_[key] = std::move(value);
-    }
-  }
-
-  void InitializeDefaultEntries() {
-    constexpr int64_t batch_size = 1 << 10;  // 可以根据需要调整批处理大小
-    yacl::parallel_for(1, Jmax + 1, batch_size, [&](int64_t beg, int64_t end) {
-      for (int64_t i = beg; i < end; ++i) {
-        yacl::math::MPInt value(i);
-        AddEntry(value);
-      }
-    });
-  }
-
-  void InitializeEcGroup(std::shared_ptr<yacl::crypto::EcGroup> ec_group) {
-    ec_group_ = std::move(ec_group);
-  }
-
- private:
-  std::shared_ptr<yacl::crypto::EcGroup> ec_group_;
-  std::unordered_map<std::string, yacl::math::MPInt> map_;
-  mutable std::shared_mutex mutex_;
-};
-
-// extern HashMapT1 t1_loaded;
-
 class CuckooT1 {
  public:
-  explicit CuckooT1(int jmax,
-                    std::shared_ptr<yacl::crypto::EcGroup> ec_group = nullptr)
-      : jmax_(jmax),
-        cuckoolen_(static_cast<uint32_t>(jmax * 1.3)),
-        ec_group_(std::move(ec_group)) {
-    if (jmax_ <= 0) {
-      throw std::invalid_argument("jmax must be positive");
-    }
-    table_v_.resize(cuckoolen_, 0);  // 初始化值为0
-    table_k_.resize(cuckoolen_, 0);  // 初始化值为0
-  }
-
   explicit CuckooT1(int jmax)
       : jmax_(jmax), cuckoolen_(static_cast<uint32_t>(jmax * 1.3)) {
     if (jmax_ <= 0) {
@@ -162,8 +41,7 @@ class CuckooT1 {
   }
 
   void Initialize() {
-    std::vector<yacl::Buffer> XS;
-    XS.resize(jmax_);
+    std::vector<yacl::Buffer> XS(jmax_);
     constexpr int64_t batch_size = 1 << 10;  // 可以根据需要调整批处理大小
     if (!ec_group_) {
       throw std::runtime_error("EcGroup not initialized");
@@ -211,8 +89,9 @@ class CuckooT1 {
           old_hash_id = old_hash_id % 3 + 1;
         }
       }
-      if (j == maxiter_ - 1) {
-        std::cerr << "insert failed, " << i << std::endl;
+      if (j == maxiter_) {
+        SPDLOG_INFO("insert failed, ", i);
+        throw std::runtime_error("insert failed, " + std::to_string(i));
       }
     }
   }
