@@ -90,7 +90,7 @@ class T2 {
   }
 
   void InitializeVector() {
-    vec_.resize(Imax + 1);  // 预先分配内存
+    vec_.resize(Imax + 1);
     auto G = ec_group_->GetGenerator();
     yacl::math::MPInt Jmax_val(Jmax);
     yacl::math::MPInt two(2);
@@ -99,7 +99,7 @@ class T2 {
     for (int i = 0; i <= Imax; ++i) {
       yacl::math::MPInt value(-i);
       auto point = ec_group_->Mul(T2basepoint, value);
-      vec_[i] = ec_group_->GetAffinePoint(point);  // 直接赋值到指定位置
+      vec_[i] = ec_group_->GetAffinePoint(point);
     }
   }
 
