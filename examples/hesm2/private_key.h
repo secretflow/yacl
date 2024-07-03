@@ -19,11 +19,12 @@
 #include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/math/mpint/mp_int.h"
 
+namespace examples::hesm2 {
+
 class PrivateKey {
  public:
   explicit PrivateKey(std::shared_ptr<yacl::crypto::EcGroup> ec_group)
-      : ec_group_(std::move(ec_group)),
-        public_key_(ec_group_->GetGenerator(), ec_group_) {
+      : ec_group_(ec_group), public_key_(ec_group_->GetGenerator(), ec_group_) {
     Initialize();
   }
 
@@ -50,3 +51,4 @@ class PrivateKey {
   yacl::math::MPInt k_;
   PublicKey public_key_;
 };
+}  // namespace examples::hesm2
