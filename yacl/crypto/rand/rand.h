@@ -28,85 +28,59 @@
 #include "yacl/crypto/rand/drbg/drbg.h"
 #include "yacl/secparam.h"
 
-YACL_MODULE_DECLARE("rand", SecParam::C::k256, SecParam::S::INF);
-
 namespace yacl::crypto {
 
 // -------------------------
-// Yacl's Randomness Context
+// Generic Randomness Func
 // -------------------------
 
-// A thread-safe random context class
-class RandCtx {
- public:
-  explicit RandCtx(SecParam::C c,  // we do not recommend to set c <= 256
-                   bool use_yacl_es);
-
-  // get a static default context
-  static RandCtx &GetDefault() {
-    static auto ctx = RandCtx(SecParam::C::k256, false);
-    return ctx;
-  }
-
-  // fill random to buf with len (warning: does not check boundaries)
-  void Fill(char *buf, size_t len, bool use_fast_mode = false) const;
-
- private:
-  const SecParam::C c_; /* comp. security param */
-  std::unique_ptr<Drbg> ctr_drbg_;
-
-  // https://crypto.stackexchange.com/a/1395/61581
-  std::unique_ptr<Drbg> hash_drbg_;  // faster
-};
-
-// fil randomness to buf with len within RandCtx
-inline void FillRand(const RandCtx &ctx, char *buf, size_t len,
-                     bool use_fast_mode = false) {
-  ctx.Fill(buf, len, use_fast_mode);
-}
-
-// fil randomness to buf with len within the default RandCtx
-inline void FillRand(char *buf, size_t len, bool use_fast_mode = false) {
-  RandCtx::GetDefault().Fill(buf, len, use_fast_mode);
-}
+// Fill randomness to buf with len within the default random engine.
+//
+// NOTE: this function is the core of yacl's random generator, all other
+// functions below use this function to generate associate randomness for each
+// own purporse.
+void FillRand(char *buf, size_t len, bool fast_mode = false);
 
 // --------------------------------
 // Random Support for Generic Types
 // --------------------------------
 
 // Generate uint64_t random value
-uint64_t RandU64(const RandCtx &ctxctx, bool use_fast_mode = false);
+uint64_t RandU64(bool fast_mode = false);
 
 // Generate uint64_t random value, in a faster but less secure way
-inline uint64_t FastRandU64() { return RandU64(RandCtx::GetDefault(), true); }
+inline uint64_t FastRandU64() { return RandU64(true); }
 
 // Generate uint64_t random value, in a slower but more secure way
 // (randomness comes directly from an random entropy source)
-inline uint64_t SecureRandU64() {
-  return RandU64(RandCtx::GetDefault(), false);
-}
+inline uint64_t SecureRandU64() { return RandU64(false); }
 
 // Generate uint128_t random value
-uint128_t RandU128(const RandCtx &ctxctx, bool use_fast_mode = false);
+uint128_t RandU128(bool fast_mode = false);
 
 // Generate uint128_t random value, in a faster but less secure way
-inline uint128_t FastRandU128() {
-  return RandU128(RandCtx::GetDefault(), true);
-}
+inline uint128_t FastRandU128() { return RandU128(true); }
 
 // Generate uint128_t random value, in a slower but more secure way
 // (randomness comes directly from an random entropy source)
-inline uint128_t SecureRandU128() {
-  return RandU128(RandCtx::GetDefault(), false);
-}
+inline uint128_t SecureRandU128() { return RandU128(false); }
 
 // Function alias
-inline uint128_t RandSeed(const RandCtx &ctx, bool use_fast_mode = false) {
-  return RandU128(ctx, use_fast_mode);
-}
+inline uint128_t RandSeed(bool fast_mode = false) { return RandU64(fast_mode); }
 inline uint128_t FastRandSeed() { return FastRandU128(); }
 inline uint128_t SecureRandSeed() { return SecureRandU128(); }
 
+// Generate random number of bytes
+std::vector<uint8_t> RandBytes(uint64_t len, bool fast_mode = false);
+std::vector<uint8_t> FastRandBytes(uint64_t len);
+std::vector<uint8_t> SecureRandBytes(uint64_t len);
+
+// wanring: the output may not be strictly uniformly random
+// FIXME(@shanzhu.cjm) Improve performance
+inline uint32_t RandInRange(uint32_t n) {
+  uint32_t tmp = FastRandU64();
+  return tmp % n;
+}
 // -----------------------------
 // Random Support for Yacl Types
 // -----------------------------
@@ -119,7 +93,7 @@ struct IsSupportedBitVectorType
 
 template <typename T = dynamic_bitset<uint128_t>,
           std::enable_if_t<IsSupportedBitVectorType<T>::value, bool> = true>
-T RandBits(uint64_t len, bool use_fast_mode = false);
+T RandBits(uint64_t len, bool fast_mode = false);
 
 template <typename T = dynamic_bitset<uint128_t>,
           std::enable_if_t<IsSupportedBitVectorType<T>::value, bool> = true>
@@ -136,33 +110,10 @@ inline T SecureRandBits(uint64_t len) {
 
 // Generate random T-type vectors
 template <typename T, std::enable_if_t<std::is_standard_layout_v<T>, int> = 0>
-inline std::vector<T> RandVec(uint64_t len, bool use_fast_mode = false) {
+inline std::vector<T> RandVec(uint64_t len, bool fast_mode = false) {
   std::vector<T> out(len);
-  FillRand((char *)out.data(), sizeof(T) * len, use_fast_mode);
+  FillRand((char *)out.data(), sizeof(T) * len, fast_mode);
   return out;
-}
-
-// Generate random number of bytes
-inline std::vector<uint8_t> RandBytes(uint64_t len,
-                                      bool use_fast_mode = false) {
-  std::vector<uint8_t> out(len);
-  FillRand(reinterpret_cast<char *>(out.data()), len, use_fast_mode);
-  return out;
-}
-
-inline std::vector<uint8_t> FastRandBytes(uint64_t len) {
-  return RandBytes(len, true);
-}
-
-inline std::vector<uint8_t> SecureRandBytes(uint64_t len) {
-  return RandBytes(len, false);
-}
-
-// wanring: the output may not be strictly uniformly random
-// FIXME(@shanzhu.cjm) Improve performance
-inline uint32_t RandInRange(uint32_t n) {
-  uint32_t tmp = FastRandU64();
-  return tmp % n;
 }
 
 }  // namespace yacl::crypto
