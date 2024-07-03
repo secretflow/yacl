@@ -47,14 +47,17 @@ make(
             "ARCH": "x64",
             "AVX": "TRUE",
             "AVX2": "FALSE",
+            "EXTENDED_SET": "FALSE",
         },
         ":linux_arm64": {
             "ARCH": "ARM64",
             "GENERIC": "TRUE",
+            "EXTENDED_SET": "FALSE",
         },
         "@platforms//os:macos": {
             "ARCH": "x64",
             "GENERIC": "TRUE",
+            "EXTENDED_SET": "FALSE",
         },  # still work on macos M1
     }),
     lib_source = ":all_srcs",
