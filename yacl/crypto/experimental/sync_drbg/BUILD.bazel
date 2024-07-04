@@ -23,7 +23,7 @@ yacl_cc_library(
     deps = [
         "//yacl:secparam",
         "//yacl/crypto:openssl_wrappers",
-        "//yacl/crypto/block_cipher:block_cipher",
+        "//yacl/crypto/block_cipher",
         "//yacl/crypto/rand/entropy_source",
         "//yacl/link:context",
         "//yacl/link:test_util",

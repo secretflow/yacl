@@ -33,7 +33,7 @@ yacl_cc_test(
     data = ["//yacl/io/circuit:circuit_data"],
     deps = [
         "circuit_executor",
-        "//yacl/crypto/block_cipher:block_cipher",
+        "//yacl/crypto/block_cipher",
         "//yacl/crypto/rand",
     ],
 )

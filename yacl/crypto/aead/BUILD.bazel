@@ -41,7 +41,7 @@ yacl_cc_library(
     hdrs = ["sm4_mac.h"],
     deps = [
         "//yacl:secparam",
-        "//yacl/crypto/block_cipher:block_cipher",
+        "//yacl/crypto/block_cipher",
         "//yacl/crypto/hash:ssl_hash",
         "//yacl/crypto/hmac:hmac_sm3",
     ],
