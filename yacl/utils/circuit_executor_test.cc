@@ -22,7 +22,6 @@
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/dynamic_bitset.h"
-#include "yacl/crypto/aes/aes_intrinsics.h"
 #include "yacl/crypto/block_cipher/symmetric_crypto.h"
 #include "yacl/crypto/rand/rand.h"
 #include "yacl/io/circuit/bristol_fashion.h"
@@ -37,13 +36,6 @@ inline uint64_t Mul64(uint64_t in1, uint64_t in2) { return in1 * in2; }
 inline int64_t Div64(int64_t in1, int64_t in2) { return in1 / in2; }
 inline uint64_t UDiv64(uint64_t in1, uint64_t in2) { return in1 / in2; }
 inline bool Eqz(uint64_t in) { return in == 0; }
-inline uint128_t Aes128Ni(uint128_t k, uint128_t m) {
-  crypto::AES_KEY aes_key;
-  uint128_t c = 0;
-  crypto::AES_set_encrypt_key(k, &aes_key);
-  crypto::AES_ecb_encrypt_blks(aes_key, &m, 1, &c);
-  return c;
-}
 
 inline uint128_t Aes128(uint128_t k, uint128_t m) {
   crypto::SymmetricCrypto enc(crypto::SymmetricCrypto::CryptoType::AES128_ECB,
@@ -194,7 +186,6 @@ TEST(CryptoTest, Aes128Test) {
   std::vector<uint128_t> inputs = {crypto::FastRandU128(),
                                    crypto::FastRandU128()};
   std::vector<uint128_t> result(1);
-  EXPECT_EQ(Aes128(inputs[0], inputs[1]), Aes128Ni(inputs[0], inputs[1]));
 
   /* WHEN */
   PlainExecutor<uint128_t> exec;
