@@ -17,6 +17,28 @@ load("//bazel:yacl.bzl", "OMP_CFLAGS", "OMP_DEPS", "OMP_LINKFLAGS", "yacl_cc_bin
 package(default_visibility = ["//visibility:public"])
 
 yacl_cc_library(
+    name = "circuit_executor",
+    srcs = ["circuit_executor.cc"],
+    hdrs = ["circuit_executor.h"],
+    deps = [
+        "//yacl/base:dynamic_bitset",
+        "//yacl/base:int128",
+        "//yacl/io/circuit:bristol_fashion",
+    ],
+)
+
+yacl_cc_test(
+    name = "circuit_executor_test",
+    srcs = ["circuit_executor_test.cc"],
+    data = ["//yacl/io/circuit:circuit_data"],
+    deps = [
+        "circuit_executor",
+        "//yacl/crypto/block_cipher:symmetric_crypto",
+        "//yacl/crypto/rand",
+    ],
+)
+
+yacl_cc_library(
     name = "hamming",
     hdrs = ["hamming.h"],
     deps = [
