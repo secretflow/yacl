@@ -26,9 +26,8 @@
 namespace yacl::crypto {
 namespace {
 
-void SetupEVPCipherCtx(openssl::UniqueCipherCtx* ctx,
-                       BlockCipher::Mode type, uint128_t key,
-                       uint128_t iv, int enc) {
+void SetupEVPCipherCtx(openssl::UniqueCipherCtx* ctx, BlockCipher::Mode type,
+                       uint128_t key, uint128_t iv, int enc) {
   // This uses AES-128, so the key must be 128 bits.
   const auto cipher = openssl::FetchEvpCipher(ToString(type));
   YACL_ENFORCE(sizeof(key) == EVP_CIPHER_key_length(cipher.get()));
@@ -79,8 +78,7 @@ BlockCipher::BlockCipher(Mode type, uint128_t key, uint128_t iv)
   SetupEVPCipherCtx(&dec_ctx_, type_, key_, iv_, 0);
 }
 
-BlockCipher::BlockCipher(Mode type, ByteContainerView key,
-                                 ByteContainerView iv)
+BlockCipher::BlockCipher(Mode type, ByteContainerView key, ByteContainerView iv)
     : type_(type),
       key_(CopyDataAsUint128(key.data())),
       iv_(CopyDataAsUint128(iv.data())) {
@@ -93,7 +91,7 @@ BlockCipher::BlockCipher(Mode type, ByteContainerView key,
 }
 
 void BlockCipher::Decrypt(absl::Span<const uint8_t> ciphertext,
-                              absl::Span<uint8_t> plaintext) const {
+                          absl::Span<uint8_t> plaintext) const {
   if ((type_ != BlockCipher::Mode::AES128_CTR) &&
       (type_ != BlockCipher::Mode::SM4_CTR)) {
     if (ciphertext.size() % BlockSize() != 0) {
@@ -134,7 +132,7 @@ void BlockCipher::Decrypt(absl::Span<const uint8_t> ciphertext,
 }
 
 void BlockCipher::Encrypt(absl::Span<const uint8_t> plaintext,
-                              absl::Span<uint8_t> ciphertext) const {
+                          absl::Span<uint8_t> ciphertext) const {
   if ((type_ != BlockCipher::Mode::AES128_CTR) &&
       (type_ != BlockCipher::Mode::SM4_CTR)) {
     if (ciphertext.size() % BlockSize() != 0) {
@@ -190,7 +188,7 @@ uint128_t BlockCipher::Decrypt(uint128_t input) const {
 }
 
 void BlockCipher::Encrypt(absl::Span<const uint128_t> plaintext,
-                              absl::Span<uint128_t> ciphertext) const {
+                          absl::Span<uint128_t> ciphertext) const {
   auto in = absl::Span<const uint8_t>(
       reinterpret_cast<const uint8_t*>(plaintext.data()),
       plaintext.size() * sizeof(uint128_t));
@@ -200,7 +198,7 @@ void BlockCipher::Encrypt(absl::Span<const uint128_t> plaintext,
 }
 
 void BlockCipher::Decrypt(absl::Span<const uint128_t> ciphertext,
-                              absl::Span<uint128_t> plaintext) const {
+                          absl::Span<uint128_t> plaintext) const {
   auto in = absl::Span<const uint8_t>(
       reinterpret_cast<const uint8_t*>(ciphertext.data()),
       ciphertext.size() * sizeof(uint128_t));

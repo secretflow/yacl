@@ -136,12 +136,9 @@ std::vector<uint128_t> MakeBlocks(size_t len) {
 }
 
 const std::vector<BlockCipher::Mode> kTestTypes{
-    BlockCipher::Mode::AES128_ECB,
-    BlockCipher::Mode::AES128_CBC,
-    BlockCipher::Mode::AES128_CTR,
-    BlockCipher::Mode::SM4_ECB,
-    BlockCipher::Mode::SM4_CBC,
-    BlockCipher::Mode::SM4_CTR,
+    BlockCipher::Mode::AES128_ECB, BlockCipher::Mode::AES128_CBC,
+    BlockCipher::Mode::AES128_CTR, BlockCipher::Mode::SM4_ECB,
+    BlockCipher::Mode::SM4_CBC,    BlockCipher::Mode::SM4_CTR,
 };
 
 }  // namespace

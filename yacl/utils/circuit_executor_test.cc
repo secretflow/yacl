@@ -38,8 +38,7 @@ inline uint64_t UDiv64(uint64_t in1, uint64_t in2) { return in1 / in2; }
 inline bool Eqz(uint64_t in) { return in == 0; }
 
 inline uint128_t Aes128(uint128_t k, uint128_t m) {
-  crypto::BlockCipher enc(crypto::BlockCipher::Mode::AES128_ECB,
-                              k);
+  crypto::BlockCipher enc(crypto::BlockCipher::Mode::AES128_ECB, k);
   return enc.Encrypt(m);
 }
 

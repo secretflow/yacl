@@ -18,8 +18,8 @@
 
 namespace yacl::crypto {
 
-uint64_t FillPRand(BlockCipher::Mode type, uint128_t seed,
-                   uint64_t iv, uint64_t count, char* buf, size_t len) {
+uint64_t FillPRand(BlockCipher::Mode type, uint128_t seed, uint64_t iv,
+                   uint64_t count, char* buf, size_t len) {
   constexpr size_t block_size = BlockCipher::BlockSize();
   const size_t nbytes = len;
   const size_t nblock = (nbytes + block_size - 1) / block_size;
