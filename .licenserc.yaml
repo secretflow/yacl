@@ -42,6 +42,7 @@ header: # <1>
     - 'yacl/base/dynamic_bitset.h' # MIT
     - 'yacl/crypto/aes/aes_intrinsics.h'
     - 'yacl/crypto/aes/aes_opt.h'
+    - 'yacl/io/circuit/data/**.txt'
 
   comment: never # <9>
 
