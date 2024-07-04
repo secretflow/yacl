@@ -14,7 +14,6 @@
 
 #include "gtest/gtest.h"
 
-#include "yacl/base/byte_container_view.h"
 #include "yacl/crypto/rand/drbg/drbg.h"
 
 namespace yacl::crypto {

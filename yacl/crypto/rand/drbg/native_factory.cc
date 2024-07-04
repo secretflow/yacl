@@ -21,10 +21,6 @@
 #include <string>
 #include <vector>
 
-#include "absl/strings/escaping.h"
-#include "openssl/aes.h"
-#include "openssl/crypto.h"
-#include "openssl/err.h"
 #include "openssl/evp.h"
 
 #include "yacl/base/byte_container_view.h"
@@ -38,13 +34,12 @@
 
 namespace yacl::crypto {
 
-NativeDrbg::NativeDrbg(std::string type, bool use_yacl_es, SecParam::C secparam)
-    : type_(std::move(type)), secparam_(secparam) {
-  YACL_ENFORCE(use_yacl_es == true);
-  YACL_ENFORCE(secparam_ == SecParam::C::k128);
+NativeDrbg::NativeDrbg(std::string type,
+                       const std::shared_ptr<EntropySource>& es)
+    : Drbg(es), type_(std::move(type)) {
   drbg_impl_ = std::make_unique<internal::Sm4Drbg>();
-  auto es = EntropySourceFactory::Instance().Create("auto");
-  auto nonce = es->GetEntropy(32);
+  auto es_ = EntropySourceFactory::Instance().Create("auto");
+  auto nonce = es_->GetEntropy(32);
   drbg_impl_->Instantiate(nonce);
 }
 
@@ -54,28 +49,24 @@ void NativeDrbg::Fill(char* buf, size_t len) {
   std::memcpy(buf, rand_buf.data(), len);
 }
 
+void NativeDrbg::ReSeed() { drbg_impl_->ReSeed({}); }
+
 namespace internal {
 
 inline uint64_t GetCurrentTime() { return time(nullptr); }
 
-Sm4Drbg::Sm4Drbg(SecParam::C secparam) {
+Sm4Drbg::Sm4Drbg(SecParam::C secparam, const std::shared_ptr<EntropySource>& es)
+    : es_(es) {
   YACL_ENFORCE(secparam == SecParam::C::k128);
-}
-
-Sm4Drbg::Sm4Drbg(const SecParam::C& secparam) {
-  YACL_ENFORCE(secparam == SecParam::C::k128);
+  YACL_ENFORCE(es != nullptr);
 }
 
 void Sm4Drbg::Instantiate(ByteContainerView nonce,
                           ByteContainerView personal_string) {
-  // by default, yacl can ensure that the exact number of bits are filled by
-  // its entropy source
-  auto es = EntropySourceFactory::Instance().Create("auto");
-
   // since GetEntrpoy always success in yacl, there is no need for step (c) in
   // the standard
-  auto entropy_buf = es->GetEntropy(kMinEntropySize); /* 32 bytes */
-  YACL_ENFORCE(entropy_buf.size() == kSeedlen);
+  auto entropy_buf = es_->GetEntropy(kMinEntropyBits); /* 256 bits */
+  YACL_ENFORCE(entropy_buf.size() <= kMaxEntropySize);
 
   // initialize SM4 entryption context
   cipher_ = openssl::FetchEvpCipher(ToString(kCodeType));
@@ -254,18 +245,19 @@ std::array<uint8_t, Sm4Drbg::kBlockSize> Sm4Drbg::cbc_mac(
   return chaining_value;
 }
 
-void Sm4Drbg::reseed(ByteContainerView additional_input) {
+void Sm4Drbg::ReSeed(ByteContainerView additional_input) {
   // by default, yacl can ensure that the exact number of bits are filled by
   // its entropy source
   auto es = EntropySourceFactory::Instance().Create("auto");
 
   // GetEntrpoy always succeed in yacl
-  auto buf = es->GetEntropy(kMinEntropySize); /* 32 bytes */
+  auto buf = es->GetEntropy(kMinEntropyBits); /* 256 bits */
+  YACL_ENFORCE(buf.size() <= kMaxEntropySize);
 
   // get the derived buf, shoud be at least 32 + 32 + 0 = 64 bytes
   // Derive(entropy_buf || nonce || personal_string)
   buf.resize(buf.size() + additional_input.size());
-  std::memcpy((char*)buf.data() + kMinEntropySize, additional_input.data(),
+  std::memcpy((char*)buf.data() + buf.size(), additional_input.data(),
               additional_input.size());
   auto derived_buf = derive(buf, kSeedlen);
 
@@ -281,7 +273,7 @@ Buffer Sm4Drbg::Generate(size_t len, ByteContainerView additional_input) {
   YACL_ENFORCE(len <= kBlockSize);
 
   if (internal_state_.reseed_ctr > internal_state_.reseed_interval_ctr) {
-    reseed(additional_input);
+    ReSeed(additional_input);
   }
 
   Buffer df_add_input(kSeedlen);

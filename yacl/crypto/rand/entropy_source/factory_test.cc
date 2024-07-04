@@ -19,41 +19,47 @@
 namespace yacl::crypto {
 
 namespace {
-constexpr size_t kTestSize = 10;
+constexpr size_t kBitOfEntropy = 100;
 }
 
 #ifdef __x86_64
 
 TEST(OpensslTest, HardwareESWorks) {
   auto es = EntropySourceFactory::Instance().Create("hardware");
-  auto x = es->GetEntropy(kTestSize);
-  auto y = es->GetEntropy(kTestSize);
+  auto x = es->GetEntropy(kBitOfEntropy);
+  auto y = es->GetEntropy(kBitOfEntropy);
 
   // SPDLOG_INFO(es->Name());
 
-  EXPECT_NE(std::memcmp(x.data(), y.data(), kTestSize), 0);
+  EXPECT_GE(x.size() * 8, kBitOfEntropy);
+  EXPECT_GE(y.size() * 8, kBitOfEntropy);
+  EXPECT_NE(std::memcmp(x.data(), y.data(), kBitOfEntropy), 0);
 }
 
 #endif
 
 TEST(OpensslTest, SoftwareESWorks) {
   auto es = EntropySourceFactory::Instance().Create("software");
-  auto x = es->GetEntropy(kTestSize);
-  auto y = es->GetEntropy(kTestSize);
+  auto x = es->GetEntropy(kBitOfEntropy);
+  auto y = es->GetEntropy(kBitOfEntropy);
 
   // SPDLOG_INFO(es->Name());
 
-  EXPECT_NE(std::memcmp(x.data(), y.data(), kTestSize), 0);
+  EXPECT_GE(x.size() * 8, kBitOfEntropy);
+  EXPECT_GE(y.size() * 8, kBitOfEntropy);
+  EXPECT_NE(std::memcmp(x.data(), y.data(), kBitOfEntropy), 0);
 }
 
 TEST(OpensslTest, AutoESWorks) {
   auto es = EntropySourceFactory::Instance().Create("auto");
-  auto x = es->GetEntropy(kTestSize);
-  auto y = es->GetEntropy(kTestSize);
+  auto x = es->GetEntropy(kBitOfEntropy);
+  auto y = es->GetEntropy(kBitOfEntropy);
 
   SPDLOG_INFO(es->Name());
 
-  EXPECT_NE(std::memcmp(x.data(), y.data(), kTestSize), 0);
+  EXPECT_GE(x.size() * 8, kBitOfEntropy);
+  EXPECT_GE(y.size() * 8, kBitOfEntropy);
+  EXPECT_NE(std::memcmp(x.data(), y.data(), kBitOfEntropy), 0);
 }
 
 }  // namespace yacl::crypto

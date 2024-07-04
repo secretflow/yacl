@@ -19,7 +19,6 @@ yacl_cc_library(
     name = "drbg",
     visibility = ["//visibility:public"],
     deps = [
-        ":ic_factory",
         ":native_factory",
         ":openssl_factory",
     ],
@@ -59,29 +58,6 @@ yacl_cc_library(
         "//yacl/crypto:openssl_wrappers",
         "//yacl/crypto/ossl-provider:helper",  # helper
         "//yacl/crypto/rand/entropy_source",
-    ],
-    alwayslink = 1,
-)
-
-# ic factory
-yacl_cc_library(
-    name = "ic_factory",
-    srcs = [
-        "ic_factory.cc",
-    ],
-    hdrs = [
-        "ic_factory.h",
-    ],
-    data = [
-        "//yacl/crypto/ossl-provider:prov_shared",  # openssl provider shared lib
-    ],
-    visibility = ["//visibility:private"],
-    deps = [
-        ":spi",
-        "//yacl/crypto:openssl_wrappers",
-        "//yacl/crypto/ossl-provider:helper",  # helper
-        "//yacl/crypto/rand/entropy_source",
-        "@com_github_greendow_hash_drbg//:hash_drbg",
     ],
     alwayslink = 1,
 )

@@ -139,7 +139,8 @@ void SyncDrbg::Reseed(ByteContainerView additional_data) const {
   YACL_ENFORCE(additional_data.size() <= 32);  // 2^35 bits = 2^32 bytes;
   // default seeded using yacl's entropy source
   auto es = EntropySourceFactory::Instance().Create("auto");
-  Buffer seed = es->GetEntropy(kSeedByteLen);
+  uint32_t num_bytes = ((kSeedByteLen * 8 * 10 + 2) / 3 + 7) / 8;
+  Buffer seed = es->GetEntropy(num_bytes);
 
   YACL_ENFORCE(reseed_hash_drbg(ctx_.get(), (unsigned char*)seed.data(),
                                 seed.size(),

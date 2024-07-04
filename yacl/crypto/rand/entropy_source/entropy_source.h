@@ -25,9 +25,20 @@ namespace yacl::crypto {
 
 // Base class of Entropy Source (NIST SP800-90B)
 //
-// Each subclass should implement a different random entropy source, all
-// implementations of entropy source should comply NIST SP800-90B, see:
+// Entropy is defined relative to one’s knowledge of an experiment’s output
+// prior to observation, and reflects the uncertainty associated with predicting
+// its value – the larger the amount of entropy, the greater the uncertainty in
+// predicting the value of an observation.
+//
+// NOTE: Each derived class should implement a different random entropy source,
+// all implementations of entropy source should comply NIST SP800-90B, see:
 // https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-90B.pdf
+//
+// NOTE: In the recommmend entropy source model, there's noise source,
+// conditioning component and health tests. This base class is designed to only
+// include the functionalities that allow external calls (e.g. generating the
+// entropy output). In particular, we do not include the health tests API
+// because it is not mandatory.
 //
 class EntropySource {
  public:
@@ -37,22 +48,27 @@ class EntropySource {
 
   virtual std::string Name() = 0;
 
-  // Get entropy with given amount of bytes
-  virtual Buffer GetEntropy(uint32_t num_bytes) = 0;
+  // Get entropy with the request amount of entropy. By design, this function
+  // should return the output of the conditioning component. For more details,
+  // see NIST SP800-90B, section 2.2.
+  //
+  // NOTE: bits_of_entropy refers to the minimum required entropy estimate
+  // results of the conditioning component, it does not necessarily means the
+  // byte length of the output buffer.
+  virtual Buffer GetEntropy(uint32_t bits_of_entropy) = 0;
 
-  // You may also provide this api (not mandatory):
+  // This interface is meant to provide test data to credit a noise source with
+  // an entropy estimate during validation or for external health testing
+  //
   // virtual Buffer GetNoise() = 0;
 
-  // You may also provide this api (note mandatory):
+  // You may also provide this api (not mandatory):
   // virtual bool HealthTest(Buffer buf);
 };
 
-// by defalt we want the entropy source random has at least 128 bit security
-// strength
-// SpiArgKey<SecStrength> SecLevel("sec_level");
 class EntropySourceFactory final : public SpiFactoryBase<EntropySource> {
  public:
-  static EntropySourceFactory &Instance() {
+  static EntropySourceFactory& Instance() {
     static EntropySourceFactory factory;
     return factory;
   }
