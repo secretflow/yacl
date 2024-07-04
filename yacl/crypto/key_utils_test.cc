@@ -16,8 +16,8 @@
 
 #include "gtest/gtest.h"
 
-#include "yacl/crypto/pke/asymmetric_rsa_crypto.h"
-#include "yacl/crypto/sign/rsa_signing.h"
+#include "yacl/crypto/pke/rsa.h"
+#include "yacl/crypto/sign/rsa_sign.h"
 
 namespace yacl::crypto {
 

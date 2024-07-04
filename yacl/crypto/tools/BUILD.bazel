@@ -33,7 +33,7 @@ yacl_cc_library(
     deps = [
         "//yacl:secparam",
         "//yacl/base:dynamic_bitset",
-        "//yacl/crypto/block_cipher:symmetric_crypto",
+        "//yacl/crypto/block_cipher:block_cipher",
     ],
 )
 
@@ -67,7 +67,7 @@ yacl_cc_library(
     srcs = ["rp.cc"],
     hdrs = ["rp.h"],
     deps = [
-        "//yacl/crypto/block_cipher:symmetric_crypto",
+        "//yacl/crypto/block_cipher:block_cipher",
     ],
 )
 

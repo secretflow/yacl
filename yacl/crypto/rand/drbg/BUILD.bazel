@@ -78,7 +78,7 @@ yacl_cc_library(
     deps = [
         ":spi",
         "//yacl/crypto:openssl_wrappers",
-        "//yacl/crypto/block_cipher:symmetric_crypto",
+        "//yacl/crypto/block_cipher:block_cipher",
         "//yacl/crypto/hash:hash_utils",
         "//yacl/crypto/ossl-provider:helper",  # helper
         "//yacl/crypto/rand/entropy_source",

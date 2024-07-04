@@ -20,7 +20,7 @@
 #include "yacl/secparam.h"
 
 /* submodules */
-#include "yacl/crypto/block_cipher/symmetric_crypto.h"
+#include "yacl/crypto/block_cipher/block_cipher.h"
 #include "yacl/crypto/hash/ssl_hash.h"
 #include "yacl/crypto/hmac/hmac_sm3.h"
 

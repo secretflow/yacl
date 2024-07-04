@@ -26,7 +26,7 @@
 /* submodules */
 #include "yacl/crypto/aes/aes_intrinsics.h"
 #include "yacl/crypto/aes/aes_opt.h"
-#include "yacl/crypto/block_cipher/symmetric_crypto.h"
+#include "yacl/crypto/block_cipher/block_cipher.h"
 #include "yacl/crypto/hash/hash_utils.h"
 #include "yacl/crypto/rand/rand.h"
 #include "yacl/crypto/tools/prg.h"

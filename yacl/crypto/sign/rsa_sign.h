@@ -18,7 +18,7 @@
 #include <vector>
 
 #include "yacl/crypto/key_utils.h"
-#include "yacl/crypto/sign/signing.h"
+#include "yacl/crypto/sign/sign_interface.h"
 #include "yacl/secparam.h"
 
 /* submodules */
@@ -30,34 +30,34 @@ YACL_MODULE_DECLARE("rsa_sign", SecParam::C::k128, SecParam::S::INF);
 namespace yacl::crypto {
 
 // RSA sign with sha256 (wrapper for OpenSSL)
-class RsaSigner final : public AsymmetricSigner {
+class RsaSigner final : public Signer {
  public:
   // constructors and destrucors
   explicit RsaSigner(openssl::UniquePkey&& sk) : sk_(std::move(sk)) {}
   explicit RsaSigner(/* pem key */ ByteContainerView sk_buf)
       : sk_(LoadKeyFromBuf(sk_buf)) {}
 
-  // return the scheme name
-  SignatureScheme GetSignatureSchema() const override { return scheme_; }
+  // return the mode name
+  SignMode GetSignMode() const override { return mode_; }
 
   // sign a message with stored private key
   std::vector<uint8_t> Sign(ByteContainerView message) const override;
 
  private:
   const openssl::UniquePkey sk_;
-  const SignatureScheme scheme_ = SignatureScheme::RSA_SIGNING_SHA256_HASH;
+  const SignMode mode_ = SignMode::RSA_SIGN_SHA256_HASH;
 };
 
 // RSA verify with sha256 (wrapper for OpenSSL)
-class RsaVerifier final : public AsymmetricVerifier {
+class RsaVerifier final : public Verifier {
  public:
   // constructors and destrucors
   explicit RsaVerifier(openssl::UniquePkey&& pk) : pk_(std::move(pk)) {}
   explicit RsaVerifier(/* pem key */ ByteContainerView pk_buf)
       : pk_(LoadKeyFromBuf(pk_buf)) {}
 
-  // return the scheme name
-  SignatureScheme GetSignatureSchema() const override { return scheme_; }
+  // return the mode name
+  SignMode GetSignMode() const override { return mode_; }
 
   // verify a message and its signature with stored public key
   bool Verify(ByteContainerView message,
@@ -65,7 +65,7 @@ class RsaVerifier final : public AsymmetricVerifier {
 
  private:
   const openssl::UniquePkey pk_;
-  const SignatureScheme scheme_ = SignatureScheme::RSA_SIGNING_SHA256_HASH;
+  const SignMode mode_ = SignMode::RSA_SIGN_SHA256_HASH;
 };
 
 }  // namespace yacl::crypto

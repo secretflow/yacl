@@ -26,7 +26,7 @@
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
-#include "yacl/crypto/block_cipher/symmetric_crypto.h"
+#include "yacl/crypto/block_cipher/block_cipher.h"
 #include "yacl/crypto/hash/hash_utils.h"
 #include "yacl/crypto/openssl_wrappers.h"
 #include "yacl/crypto/rand/entropy_source/entropy_source.h"

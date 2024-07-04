@@ -137,9 +137,9 @@ namespace yacl::crypto {
 //   constexpr int kSize = 11;
 //   std::vector<uint8_t> output1(kSize);
 //   std::vector<uint8_t> output2(kSize);
-//   auto c1 = FillPRand(SymmetricCrypto::CryptoType::AES128_ECB, 0, 0, 0,
+//   auto c1 = FillPRand(BlockCipher::Mode::AES128_ECB, 0, 0, 0,
 //                       absl::MakeSpan(output1));
-//   auto c2 = FillPRand(SymmetricCrypto::CryptoType::AES128_ECB, 0, 0, c1,
+//   auto c2 = FillPRand(BlockCipher::Mode::AES128_ECB, 0, 0, c1,
 //                       absl::MakeSpan(output2));
 //   const uint128_t expected =
 //       (kSize + sizeof(uint128_t) - 1) / sizeof(uint128_t);
@@ -154,9 +154,9 @@ TEST(Prg, FillAesRandom) {
   constexpr int kSize = 11;
   std::vector<uint64_t> output1(kSize);
   std::vector<uint64_t> output2(kSize);
-  auto c1 = FillPRand(SymmetricCrypto::CryptoType::AES128_ECB, 0, 0, 0,
+  auto c1 = FillPRand(BlockCipher::Mode::AES128_ECB, 0, 0, 0,
                       absl::MakeSpan(output1));
-  auto c2 = FillPRand(SymmetricCrypto::CryptoType::AES128_ECB, 0, 0, c1,
+  auto c2 = FillPRand(BlockCipher::Mode::AES128_ECB, 0, 0, c1,
                       absl::MakeSpan(output2));
   const uint128_t expected =
       (sizeof(uint64_t) * kSize + sizeof(uint128_t) - 1) / sizeof(uint128_t);

@@ -34,7 +34,7 @@ namespace yacl::crypto {
 
 using FerretSimpleMap = std::vector<std::unordered_map<uint64_t, uint64_t>>;
 
-constexpr auto kFerretRpType = SymmetricCrypto::CryptoType::AES128_ECB;
+constexpr auto kFerretRpType = BlockCipher::Mode::AES128_ECB;
 constexpr auto kFerretRpSeed = 0x12345678;  // FIXME: use different seeds
 constexpr auto kFerretCuckooHashNum = 3;
 constexpr auto kFerretCuckooStashNum = 0;

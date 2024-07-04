@@ -28,7 +28,7 @@
 #include "yacl/utils/spi/argument/arg_set.h"
 
 /* submodules */
-#include "yacl/crypto/block_cipher/symmetric_crypto.h"
+#include "yacl/crypto/block_cipher/block_cipher.h"
 
 namespace yacl::crypto {
 
@@ -44,7 +44,7 @@ namespace internal {
 class Sm4Drbg {
  public:
   // default values
-  constexpr static auto kCodeType = SymmetricCrypto::CryptoType::SM4_ECB;
+  constexpr static auto kCodeType = BlockCipher::Mode::SM4_ECB;
   constexpr static uint32_t kBlockSize = 16; /* 128 bits = 16 bytes */
   constexpr static uint32_t kKeySize = 16;   /* 128 bits = 16 bytes */
   constexpr static uint32_t kMinEntropyBits = 256;
@@ -91,8 +91,8 @@ class Sm4Drbg {
   std::array<uint8_t, kBlockSize> cbc_mac(uint128_t key,
                                           ByteContainerView data);
 
-  // Q: why not use SymmetricCrypto in crypto/base/block_cipher?
-  // A: SymmetricCrypto is originally designed to be use to entrypt large amount
+  // Q: why not use BlockCipher in crypto/base/block_cipher?
+  // A: BlockCipher is originally designed to be use to entrypt large amount
   // of plaintexts with the same key, and in DRBG we need to change the key
   // oftenly. It's more efficient to use openssl's native APIs.
   openssl::UniqueCipher cipher_;

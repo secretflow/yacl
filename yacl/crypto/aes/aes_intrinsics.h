@@ -70,6 +70,7 @@
 
 /* security parameter declaration */
 YACL_MODULE_DECLARE("aes_intrinsics", SecParam::C::k128, SecParam::S::INF);
+
 namespace yacl::crypto {
 
 namespace internal {

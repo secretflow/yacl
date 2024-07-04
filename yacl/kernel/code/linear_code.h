@@ -56,7 +56,7 @@ class LocalLinearCode : public LinearCodeInterface {
  public:
   // constructor
   LocalLinearCode(uint128_t seed, size_t n, size_t k)
-      : n_(n), k_(k), rp_(SymmetricCrypto::CryptoType::AES128_ECB, seed) {
+      : n_(n), k_(k), rp_(BlockCipher::Mode::AES128_ECB, seed) {
     // YACL_ENFORCE(n % kLcBatchSize == 0);
     mask_ = 1;
     while (mask_ < k) {

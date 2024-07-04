@@ -22,7 +22,7 @@
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/dynamic_bitset.h"
-#include "yacl/crypto/block_cipher/symmetric_crypto.h"
+#include "yacl/crypto/block_cipher/block_cipher.h"
 #include "yacl/crypto/rand/rand.h"
 #include "yacl/io/circuit/bristol_fashion.h"
 
@@ -38,7 +38,7 @@ inline uint64_t UDiv64(uint64_t in1, uint64_t in2) { return in1 / in2; }
 inline bool Eqz(uint64_t in) { return in == 0; }
 
 inline uint128_t Aes128(uint128_t k, uint128_t m) {
-  crypto::SymmetricCrypto enc(crypto::SymmetricCrypto::CryptoType::AES128_ECB,
+  crypto::BlockCipher enc(crypto::BlockCipher::Mode::AES128_ECB,
                               k);
   return enc.Encrypt(m);
 }

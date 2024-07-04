@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/sign/rsa_signing.h"
+#include "yacl/crypto/sign/rsa_sign.h"
 
 #include <string>
 
@@ -22,7 +22,7 @@
 
 namespace yacl::crypto {
 
-TEST(RsaSigning, SignVerify_shouldOk) {
+TEST(RsaSign, SignVerify_shouldOk) {
   // GIVEN
   auto [pk, sk] = GenRsaKeyPairToPemBuf();
   std::string plaintext = "I am a plaintext.";

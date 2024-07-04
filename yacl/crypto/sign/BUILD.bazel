@@ -17,19 +17,19 @@ load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
 package(default_visibility = ["//visibility:public"])
 
 yacl_cc_library(
-    name = "signing",
-    hdrs = ["signing.h"],
+    name = "sign_interface",
+    hdrs = ["sign_interface.h"],
     deps = [
         "//yacl/base:byte_container_view",
     ],
 )
 
 yacl_cc_library(
-    name = "sm2_signing",
-    srcs = ["sm2_signing.cc"],
-    hdrs = ["sm2_signing.h"],
+    name = "sm2_sign",
+    srcs = ["sm2_sign.cc"],
+    hdrs = ["sm2_sign.h"],
     deps = [
-        ":signing",
+        ":sign_interface",
         "//yacl:secparam",
         "//yacl/crypto:key_utils",
         "//yacl/crypto/hash:hash_utils",
@@ -37,19 +37,19 @@ yacl_cc_library(
 )
 
 yacl_cc_test(
-    name = "sm2_signing_test",
-    srcs = ["sm2_signing_test.cc"],
+    name = "sm2_sign_test",
+    srcs = ["sm2_sign_test.cc"],
     deps = [
-        ":sm2_signing",
+        ":sm2_sign",
     ],
 )
 
 yacl_cc_library(
-    name = "rsa_signing",
-    srcs = ["rsa_signing.cc"],
-    hdrs = ["rsa_signing.h"],
+    name = "rsa_sign",
+    srcs = ["rsa_sign.cc"],
+    hdrs = ["rsa_sign.h"],
     deps = [
-        ":signing",
+        ":sign_interface",
         "//yacl:secparam",
         "//yacl/crypto:key_utils",
         "//yacl/crypto/hash:hash_utils",
@@ -57,9 +57,9 @@ yacl_cc_library(
 )
 
 yacl_cc_test(
-    name = "rsa_signing_test",
-    srcs = ["rsa_signing_test.cc"],
+    name = "rsa_sign_test",
+    srcs = ["rsa_sign_test.cc"],
     deps = [
-        ":rsa_signing",
+        ":rsa_sign",
     ],
 )

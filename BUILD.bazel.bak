@@ -11,31 +11,3 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-load("//bazel:yacl.bzl", "AES_COPT_FLAGS", "yacl_cc_library", "yacl_cc_test")
-
-package(default_visibility = ["//visibility:public"])
-
-yacl_cc_library(
-    name = "block_cipher",
-    srcs = [
-        "block_cipher.cc",
-    ],
-    hdrs = [
-        "block_cipher.h",
-    ],
-    copts = AES_COPT_FLAGS,
-    deps = [
-        "//yacl:secparam",
-        "//yacl/base:int128",
-        "//yacl/crypto:openssl_wrappers",
-    ],
-)
-
-yacl_cc_test(
-    name = "block_cipher_test",
-    srcs = ["block_cipher_test.cc"],
-    deps = [
-        ":block_cipher",
-    ],
-)

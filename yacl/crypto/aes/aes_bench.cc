@@ -41,8 +41,8 @@ static void BM_OpensslAesEcb(benchmark::State& state) {
     }
 
     // setup context
-    auto type = SymmetricCrypto::CryptoType::AES128_ECB;
-    SymmetricCrypto crypto(type, key_u128, kIv1);
+    auto type = BlockCipher::Mode::AES128_ECB;
+    BlockCipher crypto(type, key_u128, kIv1);
 
     state.ResumeTiming();
 

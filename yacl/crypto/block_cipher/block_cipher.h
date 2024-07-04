@@ -34,10 +34,10 @@ YACL_MODULE_DECLARE("aes_all_modes", SecParam::C::k128, SecParam::S::INF);
 namespace yacl::crypto {
 
 // This class implements Symmetric- crypto.
-class SymmetricCrypto {
+class BlockCipher {
  public:
   // supported AES modes
-  enum class CryptoType : int {
+  enum class Mode : int {
     AES128_ECB,  // ECB = Electronic Code Book
     AES128_CBC,  // CBC = Cipher Block Chaining
     AES128_CTR,  // CTR = Counter
@@ -47,13 +47,13 @@ class SymmetricCrypto {
   };
 
   // constructor
-  SymmetricCrypto(CryptoType type, uint128_t key, uint128_t iv = 0);
-  SymmetricCrypto(CryptoType type, ByteContainerView key, ByteContainerView iv);
+  BlockCipher(Mode type, uint128_t key, uint128_t iv = 0);
+  BlockCipher(Mode type, ByteContainerView key, ByteContainerView iv);
 
   // CBC Block Size.
   static constexpr int BlockSize() { return 128 / 8; }
 
-  // Reset the internal contexts of SymmetricCrypto (enc_ctx_, dec_ctx)
+  // Reset the internal contexts of BlockCipher (enc_ctx_, dec_ctx)
   // NOTE: key_, type_, and initial_vector_ stay unchanged
   void Reset();
 
@@ -78,7 +78,7 @@ class SymmetricCrypto {
                absl::Span<uint128_t> plaintext) const;
 
   // Getter
-  CryptoType GetType() const { return type_; }
+  Mode GetType() const { return type_; }
 
   //
   static void EcbMakeContentBlocks(uint128_t count, absl::Span<uint128_t> buf) {
@@ -86,51 +86,51 @@ class SymmetricCrypto {
   }
 
  private:
-  const CryptoType type_;  //  Crypto type
-  const uint128_t key_;    // Symmetric key, 128 bits
-  const uint128_t iv_;     // Initialize vector
+  const Mode type_;      //  Crypto type
+  const uint128_t key_;  // Symmetric key, 128 bits
+  const uint128_t iv_;   // Initialize vector
 
   // openssl cipher contexts
   openssl::UniqueCipherCtx enc_ctx_;
   openssl::UniqueCipherCtx dec_ctx_;
 };
 
-class AesCbcCrypto : public SymmetricCrypto {
+class AesCbcCrypto : public BlockCipher {
  public:
   AesCbcCrypto(uint128_t key, uint128_t iv)
-      : SymmetricCrypto(SymmetricCrypto::CryptoType::AES128_CBC, key, iv) {}
+      : BlockCipher(BlockCipher::Mode::AES128_CBC, key, iv) {}
 };
 
-class Sm4CbcCrypto : public SymmetricCrypto {
+class Sm4CbcCrypto : public BlockCipher {
  public:
   Sm4CbcCrypto(uint128_t key, uint128_t iv)
-      : SymmetricCrypto(SymmetricCrypto::CryptoType::SM4_CBC, key, iv) {}
+      : BlockCipher(BlockCipher::Mode::SM4_CBC, key, iv) {}
 };
 
 // in some asymmetric scene
 // may exist parties only need update count by buffer size.
 inline uint64_t DummyUpdateRandomCount(uint64_t count, size_t buffer_size) {
-  constexpr size_t block_size = SymmetricCrypto::BlockSize();
+  constexpr size_t block_size = BlockCipher::BlockSize();
   const size_t nblock = (buffer_size + block_size - 1) / block_size;
   return count + nblock;
 }
 
 /* to a string which openssl recognizes */
-inline const char* ToString(SymmetricCrypto::CryptoType type) {
+inline const char* ToString(BlockCipher::Mode type) {
   switch (type) {
       // see: https://www.openssl.org/docs/manmaster/man7/EVP_CIPHER-AES.html
       // see: https://www.openssl.org/docs/man3.0/man7/EVP_CIPHER-SM4.html
-    case SymmetricCrypto::CryptoType::AES128_ECB:
+    case BlockCipher::Mode::AES128_ECB:
       return "aes-128-ecb";
-    case SymmetricCrypto::CryptoType::AES128_CBC:
+    case BlockCipher::Mode::AES128_CBC:
       return "aes-128-cbc";
-    case SymmetricCrypto::CryptoType::AES128_CTR:
+    case BlockCipher::Mode::AES128_CTR:
       return "aes-128-ctr";
-    case SymmetricCrypto::CryptoType::SM4_ECB:
+    case BlockCipher::Mode::SM4_ECB:
       return "sm4-ecb";
-    case SymmetricCrypto::CryptoType::SM4_CBC:
+    case BlockCipher::Mode::SM4_CBC:
       return "sm4-cbc";
-    case SymmetricCrypto::CryptoType::SM4_CTR:
+    case BlockCipher::Mode::SM4_CTR:
       return "sm4-ctr";
     default:
       YACL_THROW("Unsupported symmetric encryption algo: {}",

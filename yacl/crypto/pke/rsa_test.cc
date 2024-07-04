@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/pke/asymmetric_rsa_crypto.h"
+#include "yacl/crypto/pke/rsa.h"
 
 #include <string>
 
@@ -22,7 +22,7 @@
 
 namespace yacl::crypto {
 
-TEST(AsymmetricRsa, EncryptDecrypt_shouldOk) {
+TEST(Rsa, EncryptDecrypt_shouldOk) {
   // GIVEN
   auto [pk, sk] = GenRsaKeyPairToPemBuf();
   std::string m = "I am a plaintext.";

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/block_cipher/symmetric_crypto.h"
+#include "yacl/crypto/block_cipher/block_cipher.h"
 
 #include <algorithm>
 #include <climits>
@@ -27,7 +27,7 @@ namespace yacl::crypto {
 namespace {
 
 void SetupEVPCipherCtx(openssl::UniqueCipherCtx* ctx,
-                       SymmetricCrypto::CryptoType type, uint128_t key,
+                       BlockCipher::Mode type, uint128_t key,
                        uint128_t iv, int enc) {
   // This uses AES-128, so the key must be 128 bits.
   const auto cipher = openssl::FetchEvpCipher(ToString(type));
@@ -44,8 +44,8 @@ void SetupEVPCipherCtx(openssl::UniqueCipherCtx* ctx,
   OSSL_RET_1(EVP_CipherInit_ex2(ctx->get(), cipher.get(), nullptr, nullptr, enc,
                                 nullptr));
   YACL_ENFORCE_EQ(EVP_CIPHER_CTX_get_key_length(ctx->get()), 16);
-  if (type != SymmetricCrypto::CryptoType::AES128_ECB &&
-      type != SymmetricCrypto::CryptoType::SM4_ECB) {
+  if (type != BlockCipher::Mode::AES128_ECB &&
+      type != BlockCipher::Mode::SM4_ECB) {
     YACL_ENFORCE_EQ(EVP_CIPHER_CTX_get_iv_length(ctx->get()), 16);
   }
 
@@ -69,7 +69,7 @@ uint128_t CopyDataAsUint128(const uint8_t* data) {
 
 }  // namespace
 
-SymmetricCrypto::SymmetricCrypto(CryptoType type, uint128_t key, uint128_t iv)
+BlockCipher::BlockCipher(Mode type, uint128_t key, uint128_t iv)
     : type_(type), key_(key), iv_(iv) {
   // Init openssl encryption/decryption context
   enc_ctx_ = openssl::UniqueCipherCtx(EVP_CIPHER_CTX_new());
@@ -79,7 +79,7 @@ SymmetricCrypto::SymmetricCrypto(CryptoType type, uint128_t key, uint128_t iv)
   SetupEVPCipherCtx(&dec_ctx_, type_, key_, iv_, 0);
 }
 
-SymmetricCrypto::SymmetricCrypto(CryptoType type, ByteContainerView key,
+BlockCipher::BlockCipher(Mode type, ByteContainerView key,
                                  ByteContainerView iv)
     : type_(type),
       key_(CopyDataAsUint128(key.data())),
@@ -92,10 +92,10 @@ SymmetricCrypto::SymmetricCrypto(CryptoType type, ByteContainerView key,
   SetupEVPCipherCtx(&dec_ctx_, type_, key_, iv_, 0);
 }
 
-void SymmetricCrypto::Decrypt(absl::Span<const uint8_t> ciphertext,
+void BlockCipher::Decrypt(absl::Span<const uint8_t> ciphertext,
                               absl::Span<uint8_t> plaintext) const {
-  if ((type_ != SymmetricCrypto::CryptoType::AES128_CTR) &&
-      (type_ != SymmetricCrypto::CryptoType::SM4_CTR)) {
+  if ((type_ != BlockCipher::Mode::AES128_CTR) &&
+      (type_ != BlockCipher::Mode::SM4_CTR)) {
     if (ciphertext.size() % BlockSize() != 0) {
       YACL_THROW("Requires size can be divided by block_size={}.", BlockSize());
     }
@@ -133,10 +133,10 @@ void SymmetricCrypto::Decrypt(absl::Span<const uint8_t> ciphertext,
   }
 }
 
-void SymmetricCrypto::Encrypt(absl::Span<const uint8_t> plaintext,
+void BlockCipher::Encrypt(absl::Span<const uint8_t> plaintext,
                               absl::Span<uint8_t> ciphertext) const {
-  if ((type_ != SymmetricCrypto::CryptoType::AES128_CTR) &&
-      (type_ != SymmetricCrypto::CryptoType::SM4_CTR)) {
+  if ((type_ != BlockCipher::Mode::AES128_CTR) &&
+      (type_ != BlockCipher::Mode::SM4_CTR)) {
     if (ciphertext.size() % BlockSize() != 0) {
       YACL_THROW("Requires size can be divided by block_size={}.", BlockSize());
     }
@@ -173,7 +173,7 @@ void SymmetricCrypto::Encrypt(absl::Span<const uint8_t> plaintext,
   }
 }
 
-uint128_t SymmetricCrypto::Encrypt(uint128_t input) const {
+uint128_t BlockCipher::Encrypt(uint128_t input) const {
   uint128_t ret;
   Encrypt(absl::Span<const uint8_t>(reinterpret_cast<const uint8_t*>(&input),
                                     sizeof(input)),
@@ -181,7 +181,7 @@ uint128_t SymmetricCrypto::Encrypt(uint128_t input) const {
   return ret;
 }
 
-uint128_t SymmetricCrypto::Decrypt(uint128_t input) const {
+uint128_t BlockCipher::Decrypt(uint128_t input) const {
   uint128_t ret;
   Decrypt(absl::Span<const uint8_t>(reinterpret_cast<const uint8_t*>(&input),
                                     sizeof(input)),
@@ -189,7 +189,7 @@ uint128_t SymmetricCrypto::Decrypt(uint128_t input) const {
   return ret;
 }
 
-void SymmetricCrypto::Encrypt(absl::Span<const uint128_t> plaintext,
+void BlockCipher::Encrypt(absl::Span<const uint128_t> plaintext,
                               absl::Span<uint128_t> ciphertext) const {
   auto in = absl::Span<const uint8_t>(
       reinterpret_cast<const uint8_t*>(plaintext.data()),
@@ -199,7 +199,7 @@ void SymmetricCrypto::Encrypt(absl::Span<const uint128_t> plaintext,
   Encrypt(in, out);
 }
 
-void SymmetricCrypto::Decrypt(absl::Span<const uint128_t> ciphertext,
+void BlockCipher::Decrypt(absl::Span<const uint128_t> ciphertext,
                               absl::Span<uint128_t> plaintext) const {
   auto in = absl::Span<const uint8_t>(
       reinterpret_cast<const uint8_t*>(ciphertext.data()),
@@ -209,7 +209,7 @@ void SymmetricCrypto::Decrypt(absl::Span<const uint128_t> ciphertext,
   Decrypt(in, out);
 }
 
-void SymmetricCrypto::Reset() {
+void BlockCipher::Reset() {
   if (enc_ctx_ != nullptr) {
     // Clears all information from a cipher context and free up any allocated
     // memory associated with it, except the ctx itself. This function should be

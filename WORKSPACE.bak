@@ -36,15 +36,3 @@ rules_foreign_cc_dependencies(
 load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 
 protobuf_deps()
-
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
-
-git_repository(
-        name = "hedron_compile_commands",
-        commit = "388cc00156cbf53570c416d39875b15f03c0b47f",
-        remote = "https://github.com/hedronvision/bazel-compile-commands-extractor.git",
-)
-
-load("@hedron_compile_commands//:workspace_setup.bzl", "hedron_compile_commands_setup")
-
-hedron_compile_commands_setup()

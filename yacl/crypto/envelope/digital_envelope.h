@@ -21,11 +21,11 @@
 /* submodules */
 #include "yacl/crypto/aead/gcm_crypto.h"
 #include "yacl/crypto/aead/sm4_mac.h"
-#include "yacl/crypto/block_cipher/symmetric_crypto.h"
+#include "yacl/crypto/block_cipher/block_cipher.h"
 #include "yacl/crypto/hash/ssl_hash.h"
 #include "yacl/crypto/hmac/hmac_sm3.h"
-#include "yacl/crypto/pke/asymmetric_rsa_crypto.h"
-#include "yacl/crypto/pke/asymmetric_sm2_crypto.h"
+#include "yacl/crypto/pke/rsa.h"
+#include "yacl/crypto/pke/sm2.h"
 #include "yacl/crypto/rand/rand.h"
 
 namespace yacl::crypto {

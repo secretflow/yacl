@@ -20,19 +20,19 @@
 
 namespace yacl::crypto {
 
-enum class AsymCryptoSchema { UNKNOWN, RSA2048_OAEP, RSA3072_OAEP, SM2 };
+enum class PkMode { UNKNOWN, RSA2048_OAEP, RSA3072_OAEP, SM2 };
 
-class AsymmetricEncryptor {
+class PkEncryptor {
  public:
-  virtual ~AsymmetricEncryptor() = default;
-  virtual AsymCryptoSchema GetSchema() const = 0;
+  virtual ~PkEncryptor() = default;
+  virtual PkMode GetMode() const = 0;
   virtual std::vector<uint8_t> Encrypt(ByteContainerView plaintext) = 0;
 };
 
-class AsymmetricDecryptor {
+class PkDecryptor {
  public:
-  virtual ~AsymmetricDecryptor() = default;
-  virtual AsymCryptoSchema GetSchema() const = 0;
+  virtual ~PkDecryptor() = default;
+  virtual PkMode GetMode() const = 0;
   virtual std::vector<uint8_t> Decrypt(ByteContainerView ciphertext) = 0;
 };
 

@@ -42,7 +42,7 @@ std::vector<uint8_t> Sm4MteEncrypt(ByteContainerView key, ByteContainerView iv,
 
   // Step3: do encryption
   std::vector<uint8_t> ciphertext(hmac_plaintext.size());
-  SymmetricCrypto(SymmetricCrypto::CryptoType::SM4_CTR, key, iv)
+  BlockCipher(BlockCipher::Mode::SM4_CTR, key, iv)
       .Encrypt(hmac_plaintext, absl::MakeSpan(ciphertext));
 
   return ciphertext;
@@ -52,7 +52,7 @@ std::vector<uint8_t> Sm4MteDecrypt(ByteContainerView key, ByteContainerView iv,
                                    ByteContainerView ciphertext) {
   // Step 1. do decryption
   std::vector<uint8_t> hmac_plaintext(ciphertext.size());
-  SymmetricCrypto(SymmetricCrypto::CryptoType::SM4_CTR, key, iv)
+  BlockCipher(BlockCipher::Mode::SM4_CTR, key, iv)
       .Decrypt(ciphertext, absl::MakeSpan(hmac_plaintext));
   YACL_ENFORCE_GT(hmac_plaintext.size(), HMAC_SIZE);
   ByteContainerView hmac_from_cipher(hmac_plaintext.data(), HMAC_SIZE);

@@ -63,7 +63,7 @@ BENCHMARK_DEFINE_F(ToolBench, RP)(benchmark::State& state) {
     std::vector<uint128_t> input(n);
     std::fill(input.begin(), input.end(), 0);
     state.ResumeTiming();
-    using Ctype = SymmetricCrypto::CryptoType;
+    using Ctype = BlockCipher::Mode;
     const auto& rp = RP(Ctype::AES128_CTR, 0x12345678);
     rp.GenForMultiInputs(absl::MakeSpan(input));
   }

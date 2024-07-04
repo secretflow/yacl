@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/sign/sm2_signing.h"
+#include "yacl/crypto/sign/sm2_sign.h"
 
 #include <string>
 
@@ -22,7 +22,7 @@
 
 namespace yacl::crypto {
 
-TEST(Sm2Signing, SignVerify_shouldOk) {
+TEST(Sm2Sign, SignVerify_shouldOk) {
   // GIVEN
   auto [pk, sk] = GenSm2KeyPairToPemBuf();
   std::string plaintext = "I am a plaintext.";

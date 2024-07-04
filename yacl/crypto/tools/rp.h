@@ -23,7 +23,7 @@
 
 /* submodules */
 // #include "yacl/crypto/aes/aes_intrinsics.h"
-#include "yacl/crypto/block_cipher/symmetric_crypto.h"
+#include "yacl/crypto/block_cipher/block_cipher.h"
 
 namespace yacl::crypto {
 
@@ -44,7 +44,7 @@ namespace yacl::crypto {
 //
 class RP {
  public:
-  using Ctype = SymmetricCrypto::CryptoType;
+  using Ctype = BlockCipher::Mode;
 
   constexpr static Ctype kDefaultRpCtype = Ctype::AES128_CBC;
   constexpr static uint128_t kDefaultRpIV = 0x12345678;

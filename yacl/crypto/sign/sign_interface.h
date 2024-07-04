@@ -20,23 +20,23 @@
 
 namespace yacl::crypto {
 
-enum class SignatureScheme : int {
+enum class SignMode : int {
   UNKNOWN,
-  SM2_SIGNING_SM3_HASH,
-  RSA_SIGNING_SHA256_HASH,
+  SM2_SIGN_SM3_HASH,
+  RSA_SIGN_SHA256_HASH,
 };
 
-class AsymmetricSigner {
+class Signer {
  public:
-  virtual ~AsymmetricSigner() = default;
-  virtual SignatureScheme GetSignatureSchema() const = 0;
+  virtual ~Signer() = default;
+  virtual SignMode GetSignMode() const = 0;
   virtual std::vector<uint8_t> Sign(ByteContainerView message) const = 0;
 };
 
-class AsymmetricVerifier {
+class Verifier {
  public:
-  virtual ~AsymmetricVerifier() = default;
-  virtual SignatureScheme GetSignatureSchema() const = 0;
+  virtual ~Verifier() = default;
+  virtual SignMode GetSignMode() const = 0;
   virtual bool Verify(ByteContainerView message,
                       ByteContainerView signature) const = 0;
 };

@@ -18,7 +18,7 @@
 #include <vector>
 
 #include "yacl/crypto/key_utils.h"
-#include "yacl/crypto/sign/signing.h"
+#include "yacl/crypto/sign/sign_interface.h"
 #include "yacl/secparam.h"
 
 /* submodules */
@@ -29,33 +29,33 @@ YACL_MODULE_DECLARE("sm2_sign", SecParam::C::k128, SecParam::S::INF);
 
 namespace yacl::crypto {
 
-class Sm2Signer final : public AsymmetricSigner {
+class Sm2Signer final : public Signer {
  public:
   // constructors and destrucors
   explicit Sm2Signer(openssl::UniquePkey&& sk) : sk_(std::move(sk)) {}
   explicit Sm2Signer(/* pem key */ ByteContainerView sk_buf)
       : sk_(LoadKeyFromBuf(sk_buf)) {}
 
-  SignatureScheme GetSignatureSchema() const override { return scheme_; }
+  SignMode GetSignMode() const override { return mode_; }
 
   // Sign message with the default id.
   std::vector<uint8_t> Sign(ByteContainerView message) const override;
 
  private:
   const openssl::UniquePkey sk_;
-  const SignatureScheme scheme_ = SignatureScheme::SM2_SIGNING_SM3_HASH;
+  const SignMode mode_ = SignMode::SM2_SIGN_SM3_HASH;
 };
 
 // SM2 verify with SM3 (wrapper for OpenSSL)
-class Sm2Verifier final : public AsymmetricVerifier {
+class Sm2Verifier final : public Verifier {
  public:
   // constructors and destrucors
   explicit Sm2Verifier(openssl::UniquePkey&& pk) : pk_(std::move(pk)) {}
   explicit Sm2Verifier(/* pem key */ ByteContainerView pk_buf)
       : pk_(LoadKeyFromBuf(pk_buf)) {}
 
-  // return the scheme name
-  SignatureScheme GetSignatureSchema() const override { return scheme_; }
+  // return the mode name
+  SignMode GetSignMode() const override { return mode_; }
 
   // verify a message and its signature with stored public key
   bool Verify(ByteContainerView message,
@@ -63,7 +63,7 @@ class Sm2Verifier final : public AsymmetricVerifier {
 
  private:
   const openssl::UniquePkey pk_;
-  const SignatureScheme scheme_ = SignatureScheme::SM2_SIGNING_SM3_HASH;
+  const SignMode mode_ = SignMode::SM2_SIGN_SM3_HASH;
 };
 
 // TODO(@raofei, @shanzhu): support sm2 certificate

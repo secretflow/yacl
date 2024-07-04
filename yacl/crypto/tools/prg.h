@@ -25,7 +25,7 @@
 #include "yacl/secparam.h"
 
 /* submodules */
-#include "yacl/crypto/block_cipher/symmetric_crypto.h"
+#include "yacl/crypto/block_cipher/block_cipher.h"
 
 /* security parameter declaration */
 YACL_MODULE_DECLARE("prg", SecParam::C::k128, SecParam::S::INF);
@@ -41,14 +41,14 @@ namespace yacl::crypto {
 // Note: FillPRand is different from drbg, NIST800-90A since FillPRand will
 // never perform healthcheck, reseed. FillPRand is only an abstract API for the
 // theoretical tool: PRG.
-uint64_t FillPRand(SymmetricCrypto::CryptoType type, uint128_t seed,
+uint64_t FillPRand(BlockCipher::Mode type, uint128_t seed,
                    uint64_t iv, uint64_t count, char* buf, size_t len);
 
 // Fill pseudo-randomness with template type T.
 // Return the increased counter (count++, presumably).
 template <typename T,
           std::enable_if_t<std::is_standard_layout<T>::value, int> = 0>
-inline uint64_t FillPRand(SymmetricCrypto::CryptoType crypto_type,
+inline uint64_t FillPRand(BlockCipher::Mode crypto_type,
                           uint128_t seed, uint64_t iv, uint64_t count,
                           absl::Span<T> out) {
   return FillPRand(crypto_type, seed, iv, count, (char*)out.data(),
@@ -63,14 +63,14 @@ inline uint64_t FillPRand(SymmetricCrypto::CryptoType crypto_type,
 template <typename T,
           std::enable_if_t<std::is_standard_layout<T>::value, int> = 0>
 inline void PrgAesCtr(const uint128_t seed, absl::Span<T> out) {
-  FillPRand<T>(SymmetricCrypto::CryptoType::AES128_CTR, seed, 0, 0, out);
+  FillPRand<T>(BlockCipher::Mode::AES128_CTR, seed, 0, 0, out);
 }
 
 template <typename T,
           std::enable_if_t<std::is_standard_layout<T>::value, int> = 0>
 inline std::vector<T> PrgAesCtr(const uint128_t seed, const size_t num) {
   std::vector<T> res(num);
-  FillPRand<T>(SymmetricCrypto::CryptoType::AES128_CTR, seed, 0, 0,
+  FillPRand<T>(BlockCipher::Mode::AES128_CTR, seed, 0, 0,
                absl::MakeSpan(res));
   return res;
 }
@@ -79,7 +79,7 @@ template <typename T,
           std::enable_if_t<std::is_standard_layout<T>::value, int> = 0>
 inline std::vector<T> PrgAesCbc(const uint128_t seed, const size_t num) {
   std::vector<T> res(num);
-  FillPRand<T>(SymmetricCrypto::CryptoType::AES128_CBC, seed, 0, 0,
+  FillPRand<T>(BlockCipher::Mode::AES128_CBC, seed, 0, 0,
                absl::MakeSpan(res));
   return res;
 }
@@ -159,13 +159,13 @@ class Prg {
     switch (mode_) {
       case PRG_MODE::kAesEcb:
         counter_ = FillPRand(
-            SymmetricCrypto::CryptoType::AES128_ECB, seed_, kInitVector,
+            BlockCipher::Mode::AES128_ECB, seed_, kInitVector,
             counter_,
             absl::Span<uint8_t>((uint8_t*)out.data(), sizeof(Y) * out.size()));
         break;
       case PRG_MODE::kSm4Ecb:
         counter_ = FillPRand(
-            SymmetricCrypto::CryptoType::SM4_ECB, seed_, kInitVector, counter_,
+            BlockCipher::Mode::SM4_ECB, seed_, kInitVector, counter_,
             absl::Span<uint8_t>((uint8_t*)out.data(), sizeof(Y) * out.size()));
         break;
     }
@@ -181,13 +181,13 @@ class Prg {
 
     switch (mode_) {
       case PRG_MODE::kAesEcb:
-        counter_ = FillPRand(SymmetricCrypto::CryptoType::AES128_ECB, seed_,
+        counter_ = FillPRand(BlockCipher::Mode::AES128_ECB, seed_,
                              kInitVector, counter_,
                              absl::MakeSpan(cipher_ptr, cipher_size));
         break;
       case PRG_MODE::kSm4Ecb:
         counter_ =
-            FillPRand(SymmetricCrypto::CryptoType::SM4_ECB, seed_, kInitVector,
+            FillPRand(BlockCipher::Mode::SM4_ECB, seed_, kInitVector,
                       counter_, absl::MakeSpan(cipher_ptr, cipher_size));
         break;
     }
