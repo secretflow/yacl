@@ -51,10 +51,10 @@ def _simplest_ot():
         http_archive,
         name = "simplest_ot",
         urls = [
-            "https://github.com/secretflow/simplest-ot/archive/4e39b7c35721c7fd968da6e047f59c0ac92e8088.tar.gz",
+            "https://github.com/secretflow/simplest-ot/archive/60197bc7dad327bb55759e8e854885411e999167.tar.gz",
         ],
-        strip_prefix = "simplest-ot-4e39b7c35721c7fd968da6e047f59c0ac92e8088",
-        sha256 = "326e411c63b1cbd6697e9561a74f9d417df9394a988bf5c5e14775f14c612063",
+        strip_prefix = "simplest-ot-60197bc7dad327bb55759e8e854885411e999167",
+        sha256 = "c8816bf147e320f51c516f4c511f2d1a732ac0d0f171d29f442cbe2b5173ddba",
     )
 
 def _org_interconnection():
