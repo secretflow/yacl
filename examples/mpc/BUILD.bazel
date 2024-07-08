@@ -1,0 +1,19 @@
+
+
+
+
+
+cc_binary(
+    name = "XOR_example",                   # target 的名称
+    srcs = ["XOR_example.cc"],              # 指定源文件，这里假设有一个 hello.cc 文件
+    deps = ["//yacl/crypto/aes:aes_opt",],      # 如果有依赖项，可以在这里添加，例如：deps = [":library_target"]
+    copts = ["-maes"]
+)
+
+cc_binary(
+    name = "AND_example",                   # target 的名称
+    srcs = ["AND_example.cc"],              # 指定源文件，这里假设有一个 hello.cc 文件
+    deps = ["//yacl/crypto/aes:aes_opt",],      # 如果有依赖项，可以在这里添加，例如：deps = [":library_target"]
+    copts = ["-maes"]
+)
+
