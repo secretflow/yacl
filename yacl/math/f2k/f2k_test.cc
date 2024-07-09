@@ -141,6 +141,7 @@ TEST(F2kTest, GfInv64_inner_product) {
   }
 }
 
+// test for the inverse of 128-bit field
 TEST(F2kTest, GfInv128_inner_product) {
   const uint64_t size = 1001;
 
