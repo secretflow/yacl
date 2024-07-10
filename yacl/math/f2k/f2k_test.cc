@@ -140,3 +140,15 @@ TEST(F2kTest, GfInv64_inner_product) {
     EXPECT_EQ(uint64_t(1), check);
   }
 }
+
+// test for the inverse of 128-bit field
+TEST(F2kTest, GfInv128_inner_product) {
+  const uint64_t size = 1001;
+
+  auto x = yacl::crypto::RandVec<uint128_t>(size);
+  for (uint128_t i = 0; i < size; ++i) {
+    auto inv = yacl::GfInv128(x[i]);
+    auto check = yacl::GfMul128(x[i], inv);
+    EXPECT_EQ(uint128_t(1), check);
+  }
+}
