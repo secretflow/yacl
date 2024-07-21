@@ -230,11 +230,11 @@ def _com_github_blake3team_blake3():
     maybe(
         http_archive,
         name = "com_github_blake3team_blake3",
-        strip_prefix = "BLAKE3-1.5.1",
-        sha256 = "822cd37f70152e5985433d2c50c8f6b2ec83aaf11aa31be9fe71486a91744f37",
+        strip_prefix = "BLAKE3-1.5.3",
+        sha256 = "ec9114480857334858e73b727199c573bfdbed6138a83be573f076d37e671fc1",
         build_file = "@yacl//bazel:blake3.BUILD",
         urls = [
-            "https://github.com/BLAKE3-team/BLAKE3/archive/refs/tags/1.5.1.tar.gz",
+            "https://github.com/BLAKE3-team/BLAKE3/archive/refs/tags/1.5.3.tar.gz",
         ],
     )
 
