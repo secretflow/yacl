@@ -293,3 +293,10 @@ yacl_cc_library(
         "compile_time_utils.h",
     ],
 )
+
+yacl_cc_library(
+    name = "utils",
+    srcs = ["utils.cc"],
+    hdrs = ["utils.h"],
+    deps = [],
+)
