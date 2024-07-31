@@ -159,3 +159,16 @@ index 0bdaa4d3..43597f63 100644
  })
 
  LINKOPTS = [
+diff --git a/src/brpc/versioned_ref_with_id.h b/src/brpc/versioned_ref_with_id.h
+index c78f019b..68dda744 100644
+--- a/src/brpc/versioned_ref_with_id.h
++++ b/src/brpc/versioned_ref_with_id.h
+@@ -617,7 +617,7 @@ template<typename T>
+ std::string VersionedRefWithId<T>::description() const {
+     std::string result;
+     result.reserve(128);
+-    butil::string_appendf(&result, "Socket{id=%" PRIu64, id());
++    butil::string_appendf(&result, "Socket{id=%d", (int)id());
+     result.append(WRAPPER_CALL(
+         OnDescription, const_cast<T*>(static_cast<const T*>(this))));
+     butil::string_appendf(&result, "} (0x%p)", this);

@@ -65,9 +65,11 @@ def _yacl_copts():
 
 def yacl_cc_binary(
         copts = [],
+        linkopts = [],
         **kargs):
     cc_binary(
         copts = copts + _yacl_copts(),
+        linkopts = linkopts + ["-ldl"],
         **kargs
     )
 
@@ -96,11 +98,13 @@ def yacl_configure_make(**attrs):
 def yacl_cc_test(
         copts = [],
         deps = [],
+        linkopts = [],
         **kwargs):
     cc_test(
         copts = _yacl_copts() + copts,
         deps = deps + [
             "@com_google_googletest//:gtest_main",
         ],
+        linkopts = linkopts + ["-ldl"],
         **kwargs
     )
