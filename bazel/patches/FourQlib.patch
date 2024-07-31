@@ -74,7 +74,7 @@ index 3083c06..e51997d 100644
  
  
 diff --git a/FourQ_64bit_and_portable/makefile b/FourQ_64bit_and_portable/makefile
-index 7b6fd07..c35c47d 100644
+index 7b6fd07..3bf1f56 100644
 --- a/FourQ_64bit_and_portable/makefile
 +++ b/FourQ_64bit_and_portable/makefile
 @@ -92,9 +92,13 @@ ifeq "$(SERIAL_PUSH)" "TRUE"
@@ -110,9 +110,9 @@ index 7b6fd07..c35c47d 100644
  
 +install:
 +	cp $(STATIC_LIB_O) $(SHARED_LIB_O) $(PREFIX)/lib
-+	cp FourQ.h FourQ_api.h FourQ_internal.h $(PREFIX)/include
++	cp FourQ.h FourQ_api.h FourQ_internal.h ../random/random.h $(PREFIX)/include
 diff --git a/FourQ_64bit_and_portable/schnorrq.c b/FourQ_64bit_and_portable/schnorrq.c
-index da89f86..099f4eb 100644
+index da89f86..040db60 100644
 --- a/FourQ_64bit_and_portable/schnorrq.c
 +++ b/FourQ_64bit_and_portable/schnorrq.c
 @@ -14,7 +14,7 @@
