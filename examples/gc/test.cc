@@ -1,4 +1,8 @@
+
 #include <algorithm>
+#include <future>
+#include <type_traits>
+#include <vector>
 
 #include "absl/strings/escaping.h"
 #include "absl/types/span.h"
@@ -12,6 +16,8 @@
 #include "yacl/io/stream/file_io.h"
 #include "yacl/kernel/algorithms/base_ot.h"
 #include "yacl/kernel/algorithms/iknp_ote.h"
+#include "yacl/kernel/ot_kernel.h"
+#include "yacl/kernel/type/ot_store_utils.h"
 #include "yacl/link/test_util.h"
 #include "yacl/utils/circuit_executor.h"
 using namespace yacl;
@@ -129,22 +135,45 @@ void finalize(absl::Span<T> outputs) {
                                                  // 对应的混淆电路计算为LSB ^ d
                                                  // 输出线路在后xx位
     }
+    // cout << "输出：" << result.data() << endl;
     outputs[circ_->nov - i - 1] = *(uint128_t*)result.data();
     index -= circ_->now[i];
   }
 }
 
 int main() {
+  auto lctxs = link::test::SetupWorld(2);
+
+  const size_t num_ot = 5000;
+  const auto ext_algorithm = yacl::crypto::OtKernel::ExtAlgorithm::Ferret;
+  OtSendStore ot_send(num_ot, OtStoreType::Compact);  // placeholder
+  OtRecvStore ot_recv(num_ot, OtStoreType::Compact);  // placeholder
+  OtKernel kernel0(OtKernel::Role::Sender, ext_algorithm);
+  OtKernel kernel1(OtKernel::Role::Receiver, ext_algorithm);
+
+  // WHEN
+  auto sender = std::async([&] {
+    kernel0.init(lctxs[0]);
+    kernel0.eval_cot_random_choice(lctxs[0], num_ot, &ot_send);
+  });
+  auto receiver = std::async([&] {
+    kernel1.init(lctxs[1]);
+    kernel1.eval_cot_random_choice(lctxs[1], num_ot, &ot_recv);
+  });
+
+  sender.get();
+  receiver.get();
+  cout << "OT delta :" << ot_send.GetDelta() << endl;
+
   // 参与方的设置，需要参照halfgate_gen/eva和sh_gen/eva   以下是一些用到的变量
   // constant[2]     0为全局delta   1为not门用到的public label
   // 秘钥相关   mitch  秘钥初始化start_point, shared_prg
   const int kWorldSize = 2;
-  int num_ot = 64;  // 用于OT
 
   uint128_t tmp[2];
   random_uint128_t(tmp, 2);
-  tmp[0] = tmp[0] | 1;  // 已确保LSB为1
-  uint128_t delta = tmp[0];
+  tmp[0] = tmp[0] | 1;                   // 已确保LSB为1
+  uint128_t delta = ot_send.GetDelta();  // 统一全局Delta
 
   uint128_t constant[3];
   random_uint128_t(constant, 2);
@@ -165,21 +194,21 @@ int main() {
   circ_ = reader.StealCirc();
 
   // aes_128随机初始化输入值
-  std::vector<uint128_t> inputs = {crypto::FastRandU128(),
-                                   crypto::FastRandU128()};
-  std::vector<uint128_t> result(1);
+  // std::vector<uint128_t> inputs = {crypto::FastRandU128(),
+  //                                  crypto::FastRandU128()};
+  // std::vector<uint128_t> result(1);
   // 其余情况
-  // std::vector<uint64_t> inputs = {crypto::FastRandU64(),
-  // crypto::FastRandU64()}; std::vector<uint64_t> result(1);
+  std::vector<uint64_t> inputs = {crypto::FastRandU64(), crypto::FastRandU64()};
+  std::vector<uint64_t> result(1);
 
   // int2bool  还是得老老实实进行GB完整过程，主要目的是存储d[]
   // 用dynamic_bitset转化为二进制后，再进行混淆得到混淆值，后面的直接按电路顺序计算
   // 生成的table 存储 vector< vector(2)> > (num_gate) 存储时把gate_ID记录下来
 
   // aes_128
-  dynamic_bitset<uint128_t> bi_val;
+  // dynamic_bitset<uint128_t> bi_val;
   // 其余情况
-  // dynamic_bitset<uint64_t> bi_val;
+  dynamic_bitset<uint64_t> bi_val;
 
   for (auto input : inputs) {
     bi_val.append(input);  // 直接转换为二进制  输入线路在前128位
@@ -197,46 +226,8 @@ int main() {
     num_of_input_wires += circ_->niw[i];
   }
 
+  // random_uint128_t(gb_value.data(), circ_->niw[0]);
   random_uint128_t(gb_value.data(), num_of_input_wires);
-
-  for (int i = 0; i < circ_->gates.size(); i++) {
-    auto gate = circ_->gates[i];
-    switch (gate.op) {
-      case io::BFCircuit::Op::XOR: {
-        const auto& iw0 = gb_value.operator[](gate.iw[0]);  // 取到具体值
-        const auto& iw1 = gb_value.operator[](gate.iw[1]);
-        gb_value[gate.ow[0]] = iw0 ^ iw1;
-        break;
-      }
-      case io::BFCircuit::Op::AND: {
-        const auto& iw0 = gb_value.operator[](gate.iw[0]);
-        const auto& iw1 = gb_value.operator[](gate.iw[1]);
-        gb_value[gate.ow[0]] = GBAND(iw0, iw0 ^ delta, iw1, iw1 ^ delta, delta,
-                                     table[i].data(), &mitccrh);
-        break;
-      }
-      case io::BFCircuit::Op::INV: {
-        const auto& iw0 = gb_value.operator[](gate.iw[0]);
-        gb_value[gate.ow[0]] = iw0 ^ constant[2];
-        break;
-      }
-      case io::BFCircuit::Op::EQ: {
-        gb_value[gate.ow[0]] = gate.iw[0];
-        break;
-      }
-      case io::BFCircuit::Op::EQW: {
-        const auto& iw0 = gb_value.operator[](gate.iw[0]);
-        gb_value[gate.ow[0]] = iw0;
-        break;
-      }
-      case io::BFCircuit::Op::MAND: { /* multiple ANDs */
-        YACL_THROW("Unimplemented MAND gate");
-        break;
-      }
-      default:
-        YACL_THROW("Unknown Gate Type: {}", (int)gate.op);
-    }
-  }
 
   /********   EN阶段    *********/
 
@@ -295,7 +286,48 @@ int main() {
 
   if (operate != "neg64" && operate != "zero_equal") {
     for (int i = circ_->niw[0]; i < circ_->niw[0] + circ_->niw[1]; i++) {
-      wires_[i] = gb_value[i] ^ (select_mask[bi_val[i]] & delta);
+      gb_value[i] = ot_send.GetBlock(i - circ_->niw[0], 0);
+      wires_[i] = ot_recv.GetBlock(i - circ_->niw[0]);
+      // wires_[i] = gb_value[i] ^ (select_mask[bi_val[i]] & delta);
+    }
+  }
+
+  for (int i = 0; i < circ_->gates.size(); i++) {
+    auto gate = circ_->gates[i];
+    switch (gate.op) {
+      case io::BFCircuit::Op::XOR: {
+        const auto& iw0 = gb_value.operator[](gate.iw[0]);  // 取到具体值
+        const auto& iw1 = gb_value.operator[](gate.iw[1]);
+        gb_value[gate.ow[0]] = iw0 ^ iw1;
+        break;
+      }
+      case io::BFCircuit::Op::AND: {
+        const auto& iw0 = gb_value.operator[](gate.iw[0]);
+        const auto& iw1 = gb_value.operator[](gate.iw[1]);
+        gb_value[gate.ow[0]] = GBAND(iw0, iw0 ^ delta, iw1, iw1 ^ delta, delta,
+                                     table[i].data(), &mitccrh);
+        break;
+      }
+      case io::BFCircuit::Op::INV: {
+        const auto& iw0 = gb_value.operator[](gate.iw[0]);
+        gb_value[gate.ow[0]] = iw0 ^ constant[2];
+        break;
+      }
+      case io::BFCircuit::Op::EQ: {
+        gb_value[gate.ow[0]] = gate.iw[0];
+        break;
+      }
+      case io::BFCircuit::Op::EQW: {
+        const auto& iw0 = gb_value.operator[](gate.iw[0]);
+        gb_value[gate.ow[0]] = iw0;
+        break;
+      }
+      case io::BFCircuit::Op::MAND: { /* multiple ANDs */
+        YACL_THROW("Unimplemented MAND gate");
+        break;
+      }
+      default:
+        YACL_THROW("Unknown Gate Type: {}", (int)gate.op);
     }
   }
 
