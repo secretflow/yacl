@@ -1,8 +1,6 @@
-# Supported Crypto Algorithms
+# Supported Advanced Crypto Algorithms
 
-## Primitives
-
-### Oblivious Transfer and Extensions
+## Oblivious Transfer and Extensions
 
 - The Simplest Protocol for Oblivious Transfer\
   *Tung Chou, Claudio Orlandi*\
@@ -36,7 +34,7 @@
   *Lawrence Roy*\
   Crypto 2022, [publisher](https://www.iacr.org/cryptodb//data/paper.php?pubkey=32258), Roy22
 
-### Vector Oblivious Linear Evaluation (over Field 2k)
+## Vector Oblivious Linear Evaluation (over Field 2k)
 
 Base VOLE:
 
@@ -58,8 +56,13 @@ Silent VOLE:
   *Elette Boyle, Geoffroy Couteau, Niv Gilboa, Yuval Ishai, Lisa Kohl, Nicolas Resch, Peter Scholl*\
   Crypto 2022, [eprint](https://eprint.iacr.org/2022/1014), BCG+22
 
+Subfield VOLE:
 
-### Codes
+- Wolverine: Fast, Scalable, and Communication-Efficient Zero-Knowledge Proofs for Boolean and Arithmetic Circuits\
+  *Chenkai Weng, Kang Yang, Jonathan Katz, Xiao Wang*
+  SP, 2021, [eprint](https://eprint.iacr.org/2020/925), WYKW21
+
+## Codes
 
 Local Linear Code
 
@@ -80,19 +83,13 @@ Expanding Accumulation Code
   Crypto 2022, [eprint](https://eprint.iacr.org/2022/1014), BCG+22
 
 
+## Distributed Point Functions
+
+- Function secret sharing: improvements and extensions\
+  *Elette Boyle, Niv Gilboa, Yuval Ishai*\
+  CCS 2016, [eprint](https://eprint.iacr.org/2018/707), BGI16
+
 ## Theoretical Tools
-
-Random Oracle (RO)
-
-- TBD
-
-Random Permutation (RP)
-
-- TBD
-
-Pseudorandom Generator (PRG)
-
-- TBD
 
 Correlation-Robust Hash (CrHash)
 
@@ -106,13 +103,3 @@ Circular Correlation-Robust Hash (CCR Hash)
   *Chun Guo, Jonathan Katz, Xiao Wang, Yu Yu*\
   Preprint 2019, [eprint](https://eprint.iacr.org/2019/074), GKWY19
 
-## Basic (Traditional) algorithms (TBD)
-
-- AEAD
-- AES
-- Block Cipher
-- ECC
-- Hash
-- HMAC
-- Public-Key Encryption: RSA, SM2
-- Digital Signature: RSA, SM2

@@ -74,6 +74,4 @@ class OpensslDrbg : public Drbg {
   openssl::UniqueRandCtx ctx_;
 };
 
-REGISTER_DRBG_LIBRARY("OpenSSL", 100, OpensslDrbg::Check, OpensslDrbg::Create);
-
 }  // namespace yacl::crypto

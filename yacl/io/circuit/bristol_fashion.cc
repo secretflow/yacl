@@ -104,8 +104,7 @@ void CircuitReader::ReadAllGates() {
     YACL_ENFORCE(absl::SimpleAtoi(splits[1], &circ_->gates[i].now));
 
     /* it's okay to have more columns, but we'll stick with the niw and now */
-    YACL_ENFORCE(splits.size() >=
-                 circ_->gates[i].niw + circ_->gates[i].now + 2);
+    YACL_ENFORCE(splits.size() > circ_->gates[i].niw + circ_->gates[i].now + 2);
     circ_->gates[i].iw.resize(circ_->gates[i].niw);
     circ_->gates[i].ow.resize(circ_->gates[i].now);
 
@@ -119,21 +118,25 @@ void CircuitReader::ReadAllGates() {
 
     /* check gate inputs num and op */
     auto op_str = splits[circ_->gates[i].niw + circ_->gates[i].now + 2];
-    YACL_ENFORCE(circ_->gates[i].now == 1);
 
     if (op_str == "XOR") {
+      YACL_ENFORCE(circ_->gates[i].now == 1);
       YACL_ENFORCE(circ_->gates[i].niw == 2);
       circ_->gates[i].op = BFCircuit::Op::XOR;
     } else if (op_str == "AND") {
+      YACL_ENFORCE(circ_->gates[i].now == 1);
       YACL_ENFORCE(circ_->gates[i].niw == 2);
       circ_->gates[i].op = BFCircuit::Op::AND;
     } else if (op_str == "INV") {
+      YACL_ENFORCE(circ_->gates[i].now == 1);
       YACL_ENFORCE(circ_->gates[i].niw == 1);
       circ_->gates[i].op = BFCircuit::Op::INV;
     } else if (op_str == "EQ") {
+      YACL_ENFORCE(circ_->gates[i].now == 1);
       YACL_ENFORCE(circ_->gates[i].niw == 1);
       circ_->gates[i].op = BFCircuit::Op::EQ;
     } else if (op_str == "EQW") {
+      YACL_ENFORCE(circ_->gates[i].now == 1);
       YACL_ENFORCE(circ_->gates[i].niw == 1);
       circ_->gates[i].op = BFCircuit::Op::EQW;
     } else if (op_str == "MAND") {
