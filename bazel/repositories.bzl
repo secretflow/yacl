@@ -254,10 +254,10 @@ def _rule_python():
     maybe(
         http_archive,
         name = "rules_python",
-        sha256 = "4912ced70dc1a2a8e4b86cec233b192ca053e82bc72d877b98e126156e8f228d",
-        strip_prefix = "rules_python-0.32.2",
+        sha256 = "be04b635c7be4604be1ef20542e9870af3c49778ce841ee2d92fcb42f9d9516a",
+        strip_prefix = "rules_python-0.35.0",
         urls = [
-            "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.32.2.tar.gz",
+            "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.35.0.tar.gz",
         ],
     )
 
