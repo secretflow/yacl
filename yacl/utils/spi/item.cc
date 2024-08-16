@@ -15,6 +15,7 @@
 #include "yacl/utils/spi/item.h"
 
 #include "yacl/math/mpint/mp_int.h"
+#include "fmt/ranges.h"
 
 namespace yacl {
 
