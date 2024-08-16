@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/experimental/dpf/dpf.h"
+#include "yacl/crypto/experimental/dpf/dcf.h"
 
 #include <future>
 #include <iostream>
@@ -25,9 +25,9 @@
 
 namespace yacl::crypto {
 
-TEST(DpfTest, Gen) {
-  DpfKey k0;
-  DpfKey k1;
+TEST(DcfTest, Gen) {
+  DcfKey k0;
+  DcfKey k1;
   uint128_t first_mk = SecureRandSeed();
   uint128_t second_mk = SecureRandSeed();
 
@@ -37,12 +37,12 @@ TEST(DpfTest, Gen) {
   auto alpha = GE2n<k_in_bitnum>(FastRandU64());
   auto beta = GE2n<k_out_bitnum>(FastRandU64());
 
-  DpfKeyGen(&k0, &k1, alpha, beta, first_mk, second_mk, false);
+  DcfKeyGen(&k0, &k1, alpha, beta, first_mk, second_mk);
 }
 
-TEST(DpfTest, Eval) {
-  DpfKey k0;
-  DpfKey k1;
+TEST(DcfTest, Eval) {
+  DcfKey k0;
+  DcfKey k1;
   uint128_t first_mk = SecureRandSeed();
   uint128_t second_mk = SecureRandSeed();
 
@@ -52,59 +52,34 @@ TEST(DpfTest, Eval) {
   auto alpha = GE2n<k_in_bitnum>(FastRandU64());
   auto beta = GE2n<k_out_bitnum>(FastRandU64());
 
-  DpfKeyGen(&k0, &k1, alpha, beta, first_mk, second_mk, false);
+  DcfKeyGen(&k0, &k1, alpha, beta, first_mk, second_mk);
 
-  /* wrong input */
+  /* smaller input */
   {
     auto in = GE2n<k_in_bitnum>(FastRandU64());
-    while (in == alpha) {
+    while (in > alpha) {
       in = GE2n<k_in_bitnum>(FastRandU64());
     }
     auto out1 = GE2n<k_out_bitnum>(0);
     auto out2 = GE2n<k_out_bitnum>(0);
-    DpfEval(k0, in, &out1);
-    DpfEval(k1, in, &out2);
-    EXPECT_EQ((out1 + out2).GetVal(), 0);
-  }
+    DcfEval(k0, in, &out1);
+    DcfEval(k1, in, &out2);
 
-  /* correct input */
-  {
-    auto out1 = GE2n<k_out_bitnum>(0);
-    auto out2 = GE2n<k_out_bitnum>(0);
-    DpfEval(k0, alpha, &out1);
-    DpfEval(k1, alpha, &out2);
     EXPECT_EQ(out1 + out2, beta);
   }
-}
 
-TEST(DpfTest, EvalAll) {
-  DpfKey k0;
-  DpfKey k1;
-  uint128_t first_mk = SecureRandSeed();
-  uint128_t second_mk = SecureRandSeed();
-
-  constexpr size_t k_in_bitnum = 16;
-  constexpr size_t k_out_bitnum = 128;
-
-  auto alpha = GE2n<k_in_bitnum>(FastRandU64());
-  auto beta = GE2n<k_out_bitnum>(FastRandU64());
-
-  DpfKeyGen(&k0, &k1, alpha, beta, first_mk, second_mk, true);
-
-  size_t range = 1 << k_in_bitnum;
-  auto out1 = std::vector<GE2n<k_out_bitnum>>(range);
-  auto out2 = std::vector<GE2n<k_out_bitnum>>(range);
-  DpfEvalAll<k_in_bitnum, k_out_bitnum>(&k0, absl::MakeSpan(out1));
-  DpfEvalAll<k_in_bitnum, k_out_bitnum>(&k1, absl::MakeSpan(out2));
-
-  for (size_t i = 0; i < range; i++) {
-    auto result = out1[i] + out2[i];
-
-    if (i == alpha.GetVal()) {
-      EXPECT_EQ(result, beta);
-    } else {
-      EXPECT_EQ(result.GetVal(), 0);
+  /* larger input */
+  {
+    auto in = GE2n<k_in_bitnum>(FastRandU64());
+    while (in < alpha) {
+      in = GE2n<k_in_bitnum>(FastRandU64());
     }
+    auto out1 = GE2n<k_out_bitnum>(0);
+    auto out2 = GE2n<k_out_bitnum>(0);
+    DcfEval(k0, in, &out1);
+    DcfEval(k1, in, &out2);
+
+    EXPECT_EQ(out1 + out2, GE2n<k_out_bitnum>(0));
   }
 }
 

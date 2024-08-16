@@ -19,7 +19,7 @@
 
 #include "yacl/base/int128.h"
 #include "yacl/link/link.h"
-#include "yacl/math/f2k/f2k.h"
+#include "yacl/math/galois_field/gf_intrinsic.h"
 #include "yacl/secparam.h"
 
 /* submodules */

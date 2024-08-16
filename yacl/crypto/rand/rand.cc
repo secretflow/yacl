@@ -111,7 +111,7 @@ std::vector<uint8_t> SecureRandBytes(uint64_t len) {
   return RandBytes(len, false);
 }
 
-#define IMPL_RANDBIT_DYNAMIC_BIT_TYPE(T)                                      \
+#define SPECIFY_RANDBIT_TEMPLATE(T)                                           \
   template <>                                                                 \
   dynamic_bitset<T> RandBits<dynamic_bitset<T>>(uint64_t len,                 \
                                                 bool fast_mode) {             \
@@ -133,9 +133,11 @@ std::vector<uint8_t> SecureRandBytes(uint64_t len) {
     return out;                                                               \
   }
 
-IMPL_RANDBIT_DYNAMIC_BIT_TYPE(uint128_t);
-IMPL_RANDBIT_DYNAMIC_BIT_TYPE(uint64_t);
-IMPL_RANDBIT_DYNAMIC_BIT_TYPE(uint32_t);
-IMPL_RANDBIT_DYNAMIC_BIT_TYPE(uint16_t);
+SPECIFY_RANDBIT_TEMPLATE(uint128_t);
+SPECIFY_RANDBIT_TEMPLATE(uint64_t);
+SPECIFY_RANDBIT_TEMPLATE(uint32_t);
+SPECIFY_RANDBIT_TEMPLATE(uint16_t);
+
+#undef SPECIFY_RANDBIT_TEMPLATE
 
 }  // namespace yacl::crypto

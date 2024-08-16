@@ -27,7 +27,10 @@ class SpiArgKey {
  public:
   using ValueType = T;
 
-  explicit SpiArgKey(const std::string &key) : key_(util::ToSnakeCase(key)) {}
+  explicit SpiArgKey(const std::string &key) : key_(util::ToSnakeCase(key)) {
+    YACL_ENFORCE(!key_.empty(), "Empty arg name is not allowed. raw_key={}",
+                 key);
+  }
 
   const std::string &Key() const & { return key_; }
 

@@ -30,7 +30,7 @@ Supported platforms:
 
 ## Getting Started
 
-Yacl uses the [bazel](https://bazel.build/) build system, you may use the following codes to build and test yacl modules. For more guidelines about how to **do crypto research on Yacl**, **use Yacl's shipped crypto tools**, or **integrate Yacl into your system**, please check the [Getting Started Guide](GETTING_STARTED.md).
+Yacl uses the [bazel](https://bazel.build/) build system, you may use the following codes to build and test yacl modules. For more guidelines about **how to develop on yacl**, please check the [Getting Started Guide](GETTING_STARTED.md).
 
 ## License
 

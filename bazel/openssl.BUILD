@@ -59,6 +59,7 @@ yacl_configure_make(
     }),
     lib_name = "openssl",
     lib_source = ":all_srcs",
+    linkopts = ["-ldl"],
     # Note that for Linux builds, libssl must come before libcrypto on the linker command-line.
     # As such, libssl must be listed before libcrypto
     out_static_libs = [

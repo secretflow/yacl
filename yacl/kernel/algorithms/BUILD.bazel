@@ -51,7 +51,7 @@ yacl_cc_library(
         "//yacl/crypto/tools:ro",
         "//yacl/link",
         "//yacl/math:gadget",
-        "//yacl/math/f2k",
+        "//yacl/math/galois_field:gf_intrinsic",
         "@simplest_ot//:simplest_ot_x86_asm",
     ],
 )
@@ -227,7 +227,7 @@ yacl_cc_library(
         "//yacl/kernel/type:ot_store_utils",
         "//yacl/link",
         "//yacl/math:gadget",
-        "//yacl/math/f2k",
+        "//yacl/math/galois_field:gf_intrinsic",
         "//yacl/utils:cuckoo_index",
     ],
 )
@@ -259,7 +259,7 @@ yacl_cc_library(
         "//yacl/crypto/tools:rp",
         "//yacl/kernel/type:ot_store_utils",
         "//yacl/link",
-        "//yacl/math/f2k",
+        "//yacl/math/galois_field:gf_intrinsic",
         "//yacl/utils:matrix_utils",
     ],
 )
@@ -290,7 +290,7 @@ yacl_cc_library(
         "//yacl/crypto/tools:rp",
         "//yacl/kernel/type:ot_store_utils",
         "//yacl/link",
-        "//yacl/math/f2k",
+        "//yacl/math/galois_field:gf_intrinsic",
         "//yacl/utils:matrix_utils",
     ] + select({
         "@platforms//cpu:aarch64": [
@@ -326,7 +326,7 @@ yacl_cc_library(
         "//yacl/kernel/algorithms:sgrr_ote",
         "//yacl/kernel/type:ot_store_utils",
         "//yacl/math:gadget",
-        "//yacl/math/f2k",
+        "//yacl/math/galois_field:gf_intrinsic",
     ],
 )
 
@@ -339,7 +339,7 @@ yacl_cc_test(
         "//yacl/crypto/rand",
         "//yacl/link:test_util",
         "//yacl/math:gadget",
-        "//yacl/math/f2k",
+        "//yacl/math/galois_field:gf_intrinsic",
     ],
 )
 
@@ -356,7 +356,7 @@ yacl_cc_library(
         "//yacl/kernel/algorithms:softspoken_ote",
         "//yacl/kernel/type:ot_store_utils",
         "//yacl/math:gadget",
-        "//yacl/math/f2k",
+        "//yacl/math/galois_field:gf_intrinsic",
         "//yacl/utils:serialize",
     ],
 )
@@ -370,7 +370,7 @@ yacl_cc_test(
         "//yacl/crypto/rand",
         "//yacl/link:test_util",
         "//yacl/math:gadget",
-        "//yacl/math/f2k",
+        "//yacl/math/galois_field:gf_intrinsic",
     ],
 )
 
@@ -389,7 +389,7 @@ yacl_cc_library(
         "//yacl/kernel/algorithms:mpfss",
         "//yacl/kernel/type:ot_store_utils",
         "//yacl/math:gadget",
-        "//yacl/math/f2k",
+        "//yacl/math/galois_field:gf_intrinsic",
         "//yacl/utils:serialize",
     ],
 )
@@ -403,7 +403,7 @@ yacl_cc_test(
         "//yacl/crypto/rand",
         "//yacl/link:test_util",
         "//yacl/math:gadget",
-        "//yacl/math/f2k",
+        "//yacl/math/galois_field:gf_intrinsic",
     ],
 )
 
@@ -437,6 +437,6 @@ yacl_cc_test(
         "//yacl/crypto/rand",
         "//yacl/link:test_util",
         "//yacl/math:gadget",
-        "//yacl/math/f2k",
+        "//yacl/math/galois_field:gf_intrinsic",
     ],
 )

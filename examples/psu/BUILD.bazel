@@ -34,7 +34,7 @@ yacl_cc_library(
         "//yacl/kernel/algorithms:kkrt_ote",
         "//yacl/kernel/algorithms:softspoken_ote",
         "//yacl/link",
-        "//yacl/math/f2k",
+        "//yacl/math/galois_field:gf_intrinsic",
         "@com_google_absl//absl/types:span",
     ],
 )

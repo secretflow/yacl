@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/math/f2k/f2k.h"
+#include "yacl/math/galois_field/gf_intrinsic.h"
 
 #include <cstdint>
 #include <iostream>
@@ -24,6 +24,8 @@
 #include "yacl/base/block.h"
 #include "yacl/base/int128.h"
 #include "yacl/crypto/rand/rand.h"
+
+namespace yacl::math {
 
 namespace {
 template <class T>
@@ -43,54 +45,47 @@ std::pair<T, T> operator^(const std::pair<T, T>& lhs,
 }
 
 // check commutative property over F2k
-#define MULTEST(type, range, x0, x1, y0, y1) \
-  auto x = x0 ^ x1;                          \
-  auto y = y0 ^ y1;                          \
-  auto xy = yacl::type##Mul##range(x, y);    \
-  auto yx = yacl::type##Mul##range(y, x);    \
-  auto zero = xy ^ xy;                       \
-  EXPECT_EQ(xy, yx);                         \
-  auto xy0 = yacl::type##Mul##range(x, y0);  \
-  auto xy1 = yacl::type##Mul##range(x, y1);  \
-  EXPECT_EQ(xy, xy0 ^ xy1);                  \
-  auto x0y = yacl::type##Mul##range(x0, y);  \
-  auto x1y = yacl::type##Mul##range(x1, y);  \
-  EXPECT_EQ(xy, x0y ^ x1y);                  \
-  EXPECT_NE(zero, xy);                       \
-  EXPECT_NE(zero, yx);
+#define GF_MUL_TEST(FUNC, T)              \
+  {                                       \
+    auto x = yacl::crypto::RandVec<T>(2); \
+    auto y = yacl::crypto::RandVec<T>(2); \
+    auto x_sum = x[0] ^ x[1];             \
+    auto y_sum = y[0] ^ y[1];             \
+    T xy;                                 \
+    T yx;                                 \
+    {                                     \
+      FUNC(x_sum, y_sum, &xy);            \
+      FUNC(y_sum, x_sum, &yx);            \
+      EXPECT_EQ(xy, yx);                  \
+    }                                     \
+    auto zero = xy ^ xy;                  \
+    {                                     \
+      T xy0;                              \
+      T xy1;                              \
+      FUNC(x_sum, y[0], &xy0);            \
+      FUNC(x_sum, y[1], &xy1);            \
+      EXPECT_EQ(xy, xy0 ^ xy1);           \
+    }                                     \
+    {                                     \
+      T x0y;                              \
+      T x1y;                              \
+      FUNC(x[0], y_sum, &x0y);            \
+      FUNC(x[1], y_sum, &x1y);            \
+      EXPECT_EQ(xy, x0y ^ x1y);           \
+      EXPECT_NE(zero, xy);                \
+      EXPECT_NE(zero, yx);                \
+    }                                     \
+  }
 }  // namespace
 
-TEST(F2kTest, ClMul128_block) {
-  auto t = yacl::crypto::RandVec<yacl::block>(4);
-  MULTEST(Cl, 128, t[0], t[1], t[2], t[3]);
+TEST(GFTest, Mul128) {
+  GF_MUL_TEST(Gf128Mul, block);
+  GF_MUL_TEST(Gf128Mul, uint128_t);
 }
 
-TEST(F2kTest, ClMul128) {
-  auto t = yacl::crypto::RandVec<uint128_t>(4);
-  MULTEST(Cl, 128, t[0], t[1], t[2], t[3]);
-}
+TEST(GFTest, Mul64) { GF_MUL_TEST(Gf64Mul, uint64_t); }
 
-TEST(F2kTest, ClMul64) {
-  auto t = yacl::crypto::RandVec<uint64_t>(4);
-  MULTEST(Cl, 64, t[0], t[1], t[2], t[3]);
-}
-
-TEST(F2kTest, GfMul128_block) {
-  auto t = yacl::crypto::RandVec<yacl::block>(4);
-  MULTEST(Gf, 128, t[0], t[1], t[2], t[3]);
-}
-
-TEST(F2kTest, GfMul128) {
-  auto t = yacl::crypto::RandVec<uint128_t>(4);
-  MULTEST(Gf, 128, t[0], t[1], t[2], t[3]);
-}
-
-TEST(F2kTest, GfMul64) {
-  auto t = yacl::crypto::RandVec<uint64_t>(4);
-  MULTEST(Gf, 64, t[0], t[1], t[2], t[3]);
-}
-
-TEST(F2kTest, GfMul128_inner_product) {
+TEST(GFTest, Gf128_inner_product) {
   const uint64_t size = 1001;
   auto zero = uint128_t(0);
 
@@ -98,19 +93,22 @@ TEST(F2kTest, GfMul128_inner_product) {
   auto y = yacl::crypto::RandVec<uint128_t>(size);
   auto x_span = absl::MakeSpan(x);
   auto y_span = absl::MakeSpan(y);
+  uint128_t ret;
 
-  auto ret = yacl::GfMul128(x_span, y_span);
+  Gf128Mul(x_span, y_span, &ret);
 
   uint128_t check = 0;
   for (uint64_t i = 0; i < size; ++i) {
-    check ^= yacl::GfMul128(x[i], y[i]);
+    uint128_t temp;
+    Gf128Mul(x[i], y[i], &temp);
+    check ^= temp;
   }
 
   EXPECT_EQ(ret, check);
   EXPECT_NE(ret, zero);
 }
 
-TEST(F2kTest, GfMul64_inner_product) {
+TEST(GFTest, Gf64_inner_product) {
   const uint64_t size = 1001;
   uint64_t zero = 0;
 
@@ -119,36 +117,31 @@ TEST(F2kTest, GfMul64_inner_product) {
   auto x_span = absl::MakeSpan(x);
   auto y_span = absl::MakeSpan(y);
 
-  auto ret = yacl::GfMul64(x_span, y_span);
+  uint64_t ret;
+  Gf64Mul(x_span, y_span, &ret);
 
   uint64_t check = 0;
   for (uint64_t i = 0; i < size; ++i) {
-    check ^= yacl::GfMul64(x[i], y[i]);
+    uint64_t temp;
+    Gf64Mul(x[i], y[i], &temp);
+    check ^= temp;
   }
 
   EXPECT_EQ(ret, check);
   EXPECT_NE(ret, zero);
 }
 
-TEST(F2kTest, GfInv64_inner_product) {
+TEST(GFTest, GfInv64_inner_product) {
   const uint64_t size = 1001;
 
   auto x = yacl::crypto::RandVec<uint64_t>(size);
   for (uint64_t i = 0; i < size; ++i) {
-    auto inv = yacl::GfInv64(x[i]);
-    auto check = yacl::GfMul64(x[i], inv);
+    uint64_t x_inv;
+    Gf64Inv(x[i], &x_inv);
+    uint64_t check;
+    Gf64Mul(x[i], x_inv, &check);
     EXPECT_EQ(uint64_t(1), check);
   }
 }
 
-// test for the inverse of 128-bit field
-TEST(F2kTest, GfInv128_inner_product) {
-  const uint64_t size = 1001;
-
-  auto x = yacl::crypto::RandVec<uint128_t>(size);
-  for (uint128_t i = 0; i < size; ++i) {
-    auto inv = yacl::GfInv128(x[i]);
-    auto check = yacl::GfMul128(x[i], inv);
-    EXPECT_EQ(uint128_t(1), check);
-  }
-}
+}  // namespace yacl::math

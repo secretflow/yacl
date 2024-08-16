@@ -81,6 +81,7 @@ inline uint32_t RandInRange(uint32_t n) {
   uint32_t tmp = FastRandU64();
   return tmp % n;
 }
+
 // -----------------------------
 // Random Support for Yacl Types
 // -----------------------------
