@@ -106,46 +106,57 @@ bool BrpcBlackBoxLink::CanReceive() { return is_recv_.load(); }
 void BrpcBlackBoxLink::StopReceive() { is_recv_.store(false); }
 
 std::optional<ic_pb::PushRequest> BrpcBlackBoxLink::TryReceive() {
-  bb_ic::TransportOutbound response;
-  std::optional<ic_pb::PushRequest> ret;
-  brpc::Controller cntl;
-  SetHttpHeader(&cntl, recv_topic_);
-  auto uri_str =
-      host_ + kUrlPrefix + "pop?timeout=" + std::to_string(pop_timeout_s_);
-  cntl.set_timeout_ms(1000LL * (pop_timeout_s_ + 1));
-  cntl.http_request().uri() = uri_str;
-  channel_->CallMethod(nullptr, &cntl, nullptr, nullptr, nullptr);
+    bb_ic::TransportOutbound response;
+    std::optional<ic_pb::PushRequest> ret;
+    brpc::Controller cntl;
+    SetHttpHeader(&cntl, recv_topic_);
 
-  if (cntl.Failed()) {
-    SPDLOG_ERROR("Rpc failed, error_code: {}, error_info: {}, uri: {}",
-                 cntl.ErrorCode(), cntl.ErrorText(), uri_str);
-  } else {
-    if (!response.ParseFromString(cntl.response_attachment().to_string())) {
-      SPDLOG_ERROR("{} failed, error_code: {}({}), error_info: {}", uri_str,
-                   response.code(), bb_ic::error_code::Desc(response.code()),
-                   response.message());
-      return ret;
-    }
+    cntl.http_request().SetHeader(kHttpHeadTargetNodeId, http_headers_[kHttpHeadSourceNodeId]);
+    cntl.http_request().SetHeader(kHttpHeadSourceNodeId, http_headers_[kHttpHeadTargetNodeId]);
+    cntl.http_request().SetHeader(kHttpHeadInstId, http_headers_[kHttpHeadSrcInstId]);
+    cntl.http_request().SetHeader(kHttpHeadSrcInstId, http_headers_[kHttpHeadInstId]);
 
-    if (response.code() == bb_ic::error_code::Code("ResourceNotFound") ||
-        response.payload().empty()) {
-      SPDLOG_INFO("We will wait for topic: {}", recv_topic_);
-    } else if (response.code() != bb_ic::error_code::Code("OK")) {
-      SPDLOG_ERROR("{} failed, error_code: {}({}), error_info: {}", uri_str,
-                   response.code(), bb_ic::error_code::Desc(response.code()),
-                   response.message());
+    auto uri_str = host_ + kUrlPrefix + "pop?timeout=" + std::to_string(pop_timeout_s_);
+    cntl.set_timeout_ms(1000LL * (pop_timeout_s_ + 1));
+    cntl.http_request().uri() = uri_str;
+
+    bb_ic::PopInbound request;
+    request.set_topic(recv_topic_);
+    request.set_timeout(pop_timeout_s_);
+    cntl.http_request().set_content_type("application/x-protobuf");
+    cntl.request_attachment().append(request.SerializeAsString());
+
+    channel_->CallMethod(nullptr, &cntl, nullptr, nullptr, nullptr);
+
+    if (cntl.Failed()) {
+        SPDLOG_ERROR("Rpc failed, error_code: {}, error_info: {}, uri: {}",
+            cntl.ErrorCode(), cntl.ErrorText(), uri_str);
     } else {
-      ic_pb::PushRequest request;
+        if (!response.ParseFromString(cntl.response_attachment().to_string())) {
+            SPDLOG_ERROR("{} failed, error_code: {}({}), error_info: {}",
+                uri_str,
+                response.code(), bb_ic::error_code::Desc(response.code()), response.message());
+            return ret;
+        }
 
-      if (!request.ParseFromString(response.payload())) {
-        SPDLOG_ERROR("response payload cannot be parsed.");
-      } else {
-        ret = std::move(request);
-      }
+        if (response.code() == bb_ic::error_code::Code("ResourceNotFound") ||
+            response.payload().empty()) {
+            SPDLOG_INFO("We will wait for topic: {}", recv_topic_);
+        } else if (response.code() != bb_ic::error_code::Code("OK")) {
+            SPDLOG_ERROR("{} failed, error_code: {}({}), error_info: {}",
+                uri_str,
+                response.code(), bb_ic::error_code::Desc(response.code()), response.message());
+        } else {
+            ic_pb::PushRequest request;
+            if (!request.ParseFromString(response.payload())) {
+                SPDLOG_ERROR("response payload cannot be parsed.");
+            } else {
+                ret = std::move(request);
+            }
+        }
     }
-  }
 
-  return ret;
+    return ret;
 }
 
 brpc::ChannelOptions BrpcBlackBoxLink::GetChannelOption(
@@ -245,47 +256,48 @@ void BrpcBlackBoxLink::SetHttpHeader(brpc::Controller* controller,
   controller->http_request().set_method(brpc::HTTP_METHOD_POST);
 }
 
-void BrpcBlackBoxLink::SendRequest(const Request& request,
-                                   uint32_t timeout_ms) const {
-  bb_ic::TransportOutbound response;
-  auto request_str = request.SerializeAsString();
-  int pushs = 0;
-  do {
-    ++pushs;
+void BrpcBlackBoxLink::SendRequest(const Request& request, uint32_t timeout_ms) const {
+    bb_ic::TransportOutbound response;
+    bb_ic::PushInbound areq;
 
-    brpc::Controller cntl;
-    cntl.ignore_eovercrowded();
-    if (timeout_ms != 0) {
-      cntl.set_timeout_ms(timeout_ms);
-    }
-    cntl.http_request().uri() = host_ + kUrlPrefix + "push";
-    SetHttpHeader(&cntl, send_topic_);
-    cntl.request_attachment().append(request_str);
+    auto request_str = request.SerializeAsString();
+    int pushs = 0;
 
-    channel_->CallMethod(nullptr, &cntl, nullptr, nullptr, nullptr);
-    if (cntl.Failed()) {
-      ThrowLinkErrorByBrpcCntl(cntl);
-    }
+    do {
+        ++pushs;
+        brpc::Controller cntl;
+        cntl.ignore_eovercrowded();
 
-    YACL_ENFORCE(
-        response.ParseFromString(cntl.response_attachment().to_string()),
-        "Parse message failed.");
+        if (timeout_ms != 0) {
+            cntl.set_timeout_ms(timeout_ms);
+        }
 
-    if (response.code() == bb_ic::error_code::Code("OK")) {
-      return;
-    }
+        cntl.http_request().uri() = host_ + kUrlPrefix + "push";
+        areq.set_topic(send_topic_);
+        areq.set_payload(request_str);
+        SetHttpHeader(&cntl, send_topic_);
+        cntl.http_request().set_content_type("application/x-protobuf");
+        cntl.request_attachment().append(areq.SerializeAsString());
 
-    if (response.code() != bb_ic::error_code::Code("QueueFull")) {
-      ThrowLinkErrorByBrpcCntl(cntl);
-    } else {
-      SPDLOG_WARN(
-          "{} push error due to transport service queue is full, try "
-          "again...",
-          pushs);
-      bthread_usleep(push_wait_ms_ * 1000);
-    }
+        channel_->CallMethod(nullptr, &cntl, nullptr, nullptr, nullptr);
 
-  } while (response.code() == bb_ic::error_code::Code("QueueFull"));
+        if (cntl.Failed()) {
+            ThrowLinkErrorByBrpcCntl(cntl);
+        }
+
+        YACL_ENFORCE(response.ParseFromString(cntl.response_attachment().to_string()), "Parse message failed.");
+
+        if (response.code() == bb_ic::error_code::Code("OK")) {
+            return;
+        }
+
+        if (response.code() != bb_ic::error_code::Code("QueueFull")) {
+            ThrowLinkErrorByBrpcCntl(cntl);
+        } else {
+            SPDLOG_WARN("{} push error due to transport service queue is full, try again...", pushs);
+            bthread_usleep(push_wait_ms_ * 1000);
+        }
+    } while (response.code() == bb_ic::error_code::Code("QueueFull"));
 }
 
 }  // namespace yacl::link::transport

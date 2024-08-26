@@ -23,9 +23,21 @@ package blackbox_interconnect;
 option cc_generic_services = true;
 
 message TransportOutbound {
-  bytes payload = 1;   // 二进制报文
-  string code = 2;     // 状态码
-  string message = 3;  // 状态说明
+  map<string, string> metadata = 1;
+  bytes payload = 2;
+  string code = 3;
+  string message = 4;
+}
+
+message PopInbound {
+  string topic = 1;
+  int32 timeout = 2;
+}
+
+message PushInbound {
+  string topic = 1;
+  bytes payload = 2;
+  map<string, string> metadata = 3;
 }
 
 // request uri:
