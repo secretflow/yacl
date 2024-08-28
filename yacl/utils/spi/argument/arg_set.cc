@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "yacl/utils/spi/argument/arg_set.h"
-#include "fmt/ranges.h"
 
 #include "fmt/ranges.h"
 
