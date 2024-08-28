@@ -96,7 +96,7 @@ index 0bdaa4d3..b23881b3 100644
          "src/butil/time/time_mac.cc",
          "src/butil/mac/scoped_mach_port.cc",
      ],
-@@ -326,17 +326,17 @@ cc_library(
+@@ -326,13 +326,13 @@ cc_library(
      visibility = ["//visibility:public"],
      deps = [
          "@com_github_gflags_gflags//:gflags",
@@ -112,10 +112,6 @@ index 0bdaa4d3..b23881b3 100644
          "//conditions:default": [],
      }) + select({
          "//bazel/config:brpc_with_boringssl": ["@boringssl//:ssl", "@boringssl//:crypto"],
--        "//conditions:default": ["@openssl//:ssl", "@openssl//:crypto"],
-+        "//conditions:default": ["@com_github_openssl_openssl//:openssl"],
-     }),
- )
 
 diff --git a/bazel/config/BUILD.bazel b/bazel/config/BUILD.bazel
 index 4471bad1..d9cc6bd6 100644

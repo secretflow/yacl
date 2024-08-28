@@ -115,7 +115,7 @@ void Channel::StartSendThread() {
   send_thread_ = std::thread([&]() {
     try {
       SendThread();
-    } catch (const yacl::Exception& e) {
+    } catch (const std::exception& e) {
       SPDLOG_ERROR("SendThread error {}", e.what());
       if (exit_if_async_error_) {
         exit(-1);
@@ -264,6 +264,9 @@ class SendChunkedTask {
       task->channel_->SendRequestWithRetry(*(task->request_), 0);
     } catch (const Exception& e) {
       except = std::make_unique<Exception>(e);
+      task->token_->SetException(std::move(except));
+    } catch (const std::exception& e) {
+      except = std::make_unique<std::exception>(e);
       task->token_->SetException(std::move(except));
     }
     return nullptr;

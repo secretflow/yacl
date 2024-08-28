@@ -49,8 +49,7 @@ namespace yacl::crypto {
 // security concerns, see: https://eprint.iacr.org/1998/011.pdf):
 //  1. SHA256 (with 32 bytes output)
 //  2. SM3 (with 32 bytes output)
-//  3. BLAKE2B (with 64 bytes output)
-//  4. BLAKE3 (with 32 bytes output)
+//  3. BLAKE3 (with 32 bytes output)
 //
 // TODO(@shanzhu): Implement RO by a function ensemble
 
@@ -78,14 +77,11 @@ class RandomOracle {
       case HashAlgorithm::SM3:  // outlen = 32 (256bits)
         YACL_ENFORCE(outlen <= 32);
         return {Sm3(x).data(), outlen};
-      case HashAlgorithm::BLAKE2B:  // outlen = 64 (512bits)
-        YACL_ENFORCE(outlen <= 64);
-        return {Blake2(x).data(), outlen};
       case HashAlgorithm::BLAKE3:
         YACL_ENFORCE(outlen <= 32);  // outlen = 32 (256bits)
         return {Blake3(x).data(), outlen};
       default:
-        YACL_THROW("Unsupported hash algorithm: {}",
+        YACL_THROW("Unsupported hash algorithm for random oracle: {}",
                    static_cast<int>(hash_alg_));
     }
   }
@@ -121,10 +117,9 @@ class RandomOracle {
     if (hash_alg_ == HashAlgorithm::SHA256 || hash_alg_ == HashAlgorithm::SM3 ||
         hash_alg_ == HashAlgorithm::BLAKE3) {
       YACL_ENFORCE(outlen_ <= 32);
-    } else if (hash_alg_ == HashAlgorithm::BLAKE2B) {
-      YACL_ENFORCE(outlen_ <= 64);
     } else {
-      YACL_THROW("Unsupported hash algorithm: {}", static_cast<int>(hash_alg_));
+      YACL_THROW("Unsupported hash algorithm for random oracle: {}",
+                 static_cast<int>(hash_alg_));
     }
   }
 

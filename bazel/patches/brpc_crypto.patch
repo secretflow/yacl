@@ -1,0 +1,30 @@
+diff --git a/BUILD.bazel b/BUILD.bazel
+index b2a453e0..10eeee74 100644
+--- a/BUILD.bazel
++++ b/BUILD.bazel
+@@ -337,7 +337,8 @@ cc_library(
+         "//conditions:default": [],
+     }) + select({
+         "//bazel/config:brpc_with_boringssl": ["@boringssl//:ssl", "@boringssl//:crypto"],
+-        "//conditions:default": ["@openssl//:ssl", "@openssl//:crypto"],
++        "//bazel/config:brpc_with_tongsuo": ["@com_github_tongsuo_tongsuo//:tongsuo"],
++        "//conditions:default": ["@com_github_openssl_openssl//:openssl"],
+     }),
+ )
+
+diff --git a/bazel/config/BUILD.bazel b/bazel/config/BUILD.bazel
+index bed04d3b..8049ec3e 100644
+--- a/bazel/config/BUILD.bazel
++++ b/bazel/config/BUILD.bazel
+@@ -108,4 +108,10 @@ config_setting(
+     name = "brpc_with_boringssl",
+     define_values = {"BRPC_WITH_BORINGSSL": "true"},
+     visibility = ["//visibility:public"],
+-)
++)
++
++config_setting(
++    name = "brpc_with_tongsuo",
++    define_values = {"BRPC_WITH_TONGSUO": "true"},
++    visibility = ["//visibility:public"],
++)

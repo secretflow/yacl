@@ -33,7 +33,8 @@ TEST(OpensslTest, HardwareESWorks) {
 
   EXPECT_GE(x.size() * 8, kBitOfEntropy);
   EXPECT_GE(y.size() * 8, kBitOfEntropy);
-  EXPECT_NE(std::memcmp(x.data(), y.data(), kBitOfEntropy), 0);
+  EXPECT_EQ(x.size(), y.size());
+  EXPECT_FALSE(x == y);
 }
 
 #endif
@@ -47,7 +48,8 @@ TEST(OpensslTest, SoftwareESWorks) {
 
   EXPECT_GE(x.size() * 8, kBitOfEntropy);
   EXPECT_GE(y.size() * 8, kBitOfEntropy);
-  EXPECT_NE(std::memcmp(x.data(), y.data(), kBitOfEntropy), 0);
+  EXPECT_EQ(x.size(), y.size());
+  EXPECT_FALSE(x == y);
 }
 
 TEST(OpensslTest, AutoESWorks) {
@@ -55,11 +57,12 @@ TEST(OpensslTest, AutoESWorks) {
   auto x = es->GetEntropy(kBitOfEntropy);
   auto y = es->GetEntropy(kBitOfEntropy);
 
-  SPDLOG_INFO(es->Name());
+  // SPDLOG_INFO(es->Name());
 
   EXPECT_GE(x.size() * 8, kBitOfEntropy);
   EXPECT_GE(y.size() * 8, kBitOfEntropy);
-  EXPECT_NE(std::memcmp(x.data(), y.data(), kBitOfEntropy), 0);
+  EXPECT_EQ(x.size(), y.size());
+  EXPECT_FALSE(x == y);
 }
 
 }  // namespace yacl::crypto

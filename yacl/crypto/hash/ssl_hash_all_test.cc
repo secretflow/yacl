@@ -71,9 +71,12 @@ class SslHashTest : public testing::Test {
       return test_data_sm3_;
     } else if (std::is_same<T, Sha256Hash>::value) {
       return test_data_sha256_;
-    } else if (std::is_same<T, Blake2Hash>::value) {
+    }
+#ifndef YACL_WITH_TONGSUO
+    else if (std::is_same<T, Blake2Hash>::value) {
       return test_data_blake2b_;
     }
+#endif
 
     YACL_THROW("Unsupported type name!");
   }
@@ -83,7 +86,12 @@ class SslHashTest : public testing::Test {
   TestData test_data_blake2b_;
 };
 
-using MyTypes = ::testing::Types<Sm3Hash, Sha256Hash, Blake2Hash>;
+using MyTypes = ::testing::Types<Sm3Hash, Sha256Hash
+#ifndef YACL_WITH_TONGSUO
+                                 ,
+                                 Blake2Hash
+#endif
+                                 >;
 TYPED_TEST_SUITE(SslHashTest, MyTypes);
 
 TYPED_TEST(SslHashTest, TestVector1) {

@@ -14,12 +14,15 @@
 
 #include "yacl/io/rw/csv_writer.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <filesystem>
+#include <iterator>
 #include <string>
 #include <utility>
 
-#include "fmt/ranges.h"
+#include "fmt/format.h"
 
 #include "yacl/base/exception.h"
 #include "yacl/io/rw/float.h"

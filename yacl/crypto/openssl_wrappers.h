@@ -16,9 +16,7 @@
 
 #include <memory>
 #include <string>
-#include <unordered_map>
 
-#include "hash/hash_interface.h" /* yacl hash to openssl hash */
 #include "openssl/bio.h"
 #include "openssl/bn.h"
 #include "openssl/core.h"

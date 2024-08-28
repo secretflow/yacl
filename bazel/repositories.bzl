@@ -34,8 +34,11 @@ def yacl_deps():
     _com_github_msgpack_msgpack()
     _com_github_greendow_hash_drbg()
 
-    # crypto related
+    # ssl
+    _com_github_tongsuo_tongsuo()
     _com_github_openssl_openssl()
+
+    # crypto related
     _com_github_blake3team_blake3()
     _com_github_libsodium()
     _com_github_libtom_libtommath()
@@ -92,6 +95,7 @@ def _com_github_brpc_brpc():
         patches = [
             "@yacl//bazel:patches/brpc.patch",
             "@yacl//bazel:patches/brpc_m1.patch",
+            "@yacl//bazel:patches/brpc_crypto.patch",
         ],
         urls = [
             "https://github.com/apache/brpc/archive/refs/tags/1.10.0.tar.gz",
@@ -156,11 +160,11 @@ def _com_google_absl():
     maybe(
         http_archive,
         name = "com_google_absl",
-        sha256 = "f50e5ac311a81382da7fa75b97310e4b9006474f9560ac46f54a9967f07d4ae3",
+        sha256 = "733726b8c3a6d39a4120d7e45ea8b41a434cdacde401cba500f14236c49b39dc",
         type = "tar.gz",
-        strip_prefix = "abseil-cpp-20240722.0",
+        strip_prefix = "abseil-cpp-20240116.2",
         urls = [
-            "https://github.com/abseil/abseil-cpp/archive/refs/tags/20240722.0.tar.gz",
+            "https://github.com/abseil/abseil-cpp/archive/refs/tags/20240116.2.tar.gz",
         ],
     )
 
@@ -177,15 +181,28 @@ def _com_github_openssl_openssl():
         build_file = "@yacl//bazel:openssl.BUILD",
     )
 
+def _com_github_tongsuo_tongsuo():
+    maybe(
+        http_archive,
+        name = "com_github_tongsuo_tongsuo",
+        sha256 = "57c2741750a699bfbdaa1bbe44a5733e9c8fc65d086c210151cfbc2bbd6fc975",
+        type = "tar.gz",
+        strip_prefix = "Tongsuo-8.4.0",
+        urls = [
+            "https://github.com/Tongsuo-Project/Tongsuo/archive/refs/tags/8.4.0.tar.gz",
+        ],
+        build_file = "@yacl//bazel:tongsuo.BUILD",
+    )
+
 def _com_github_fmtlib_fmt():
     maybe(
         http_archive,
         name = "com_github_fmtlib_fmt",
-        strip_prefix = "fmt-11.0.2",
-        sha256 = "6cb1e6d37bdcb756dbbe59be438790db409cdb4868c66e888d5df9f13f7c027f",
+        strip_prefix = "fmt-10.2.1",
+        sha256 = "1250e4cc58bf06ee631567523f48848dc4596133e163f02615c97f78bab6c811",
         build_file = "@yacl//bazel:fmtlib.BUILD",
         urls = [
-            "https://github.com/fmtlib/fmt/archive/refs/tags/11.0.2.tar.gz",
+            "https://github.com/fmtlib/fmt/archive/refs/tags/10.2.1.tar.gz",
         ],
     )
 
@@ -254,10 +271,10 @@ def _rule_python():
     maybe(
         http_archive,
         name = "rules_python",
-        sha256 = "be04b635c7be4604be1ef20542e9870af3c49778ce841ee2d92fcb42f9d9516a",
-        strip_prefix = "rules_python-0.35.0",
+        sha256 = "4912ced70dc1a2a8e4b86cec233b192ca053e82bc72d877b98e126156e8f228d",
+        strip_prefix = "rules_python-0.32.2",
         urls = [
-            "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.35.0.tar.gz",
+            "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.32.2.tar.gz",
         ],
     )
 

@@ -25,8 +25,6 @@ std::array<uint8_t, 32> Sha256(ByteContainerView data);  // 256-bits
 
 std::array<uint8_t, 32> Sm3(ByteContainerView data);  // 256-bits
 
-std::array<uint8_t, 64> Blake2(ByteContainerView data);  // 512-bits
-
 std::array<uint8_t, 32> Blake3(ByteContainerView data);  // 256-bits
 
 #define DECLARE_HASH_OUT_128(func)                                   \
@@ -41,7 +39,14 @@ std::array<uint8_t, 32> Blake3(ByteContainerView data);  // 256-bits
 
 DECLARE_HASH_OUT_128(Sha256);  // uint128_t Sha256_128(ByteContainerView data);
 DECLARE_HASH_OUT_128(Sm3);     // uint128_t Sm3_128(ByteContainerView data);
-DECLARE_HASH_OUT_128(Blake2);  // uint128_t Blake2_128(ByteContainerView data);
+
 DECLARE_HASH_OUT_128(Blake3);  // uint128_t Blake3_128(ByteContainerView data);
+
+#ifndef YACL_WITH_TONGSUO
+std::array<uint8_t, 64> Blake2(ByteContainerView data);  // 512-bits
+DECLARE_HASH_OUT_128(Blake2);  // uint128_t Blake2_128(ByteContainerView data);
+#endif
+
+#undef DECLARE_HASH_OUT_128
 
 }  // namespace yacl::crypto

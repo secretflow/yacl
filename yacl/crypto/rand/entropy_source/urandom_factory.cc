@@ -44,7 +44,7 @@ Buffer UrandomEntropySource::GetEntropy(uint32_t num_bytes) {
   return out;
 }
 
-REGISTER_ENTROPY_SOURCE_LIBRARY("urandom", 100, UrandomEntropySource::Check,
+REGISTER_ENTROPY_SOURCE_LIBRARY("urandom", 90, UrandomEntropySource::Check,
                                 UrandomEntropySource::Create);
 
 }  // namespace yacl::crypto
