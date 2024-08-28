@@ -16,7 +16,7 @@
 
 #include <vector>
 
-#include "yacl/crypto/aead/sm4_mac.h"
+#include "yacl/crypto/aead/sm4_mte.h"
 #include "yacl/crypto/experimental/tpre/capsule.h"
 
 namespace yacl::crypto {

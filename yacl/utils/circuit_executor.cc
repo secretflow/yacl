@@ -92,7 +92,7 @@ void PlainExecutor<T>::Finalize(absl::Span<T> outputs) {
     for (size_t j = 0; j < circ_->now[i]; ++j) {
       result[j] = wires_[index - circ_->now[i] + j];
     }
-    outputs[circ_->nov - i - 1] = *(uint128_t*)result.data();
+    outputs[circ_->nov - i - 1] = *(T*)result.data();
     index -= circ_->now[i];
   }
 }

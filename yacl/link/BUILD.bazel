@@ -93,6 +93,7 @@ yacl_cc_test(
         ":context",
         ":factory",
         ":link",
+        "//yacl/crypto:key_utils",
     ],
 )
 

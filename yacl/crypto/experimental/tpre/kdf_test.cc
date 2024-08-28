@@ -14,7 +14,6 @@
 
 #include "yacl/crypto/experimental/tpre/kdf.h"
 
-#include "gtest/gtest.h"
 #include "fmt/ranges.h"
 
 namespace yacl::crypto::test {

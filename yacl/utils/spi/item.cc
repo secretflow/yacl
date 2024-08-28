@@ -14,6 +14,8 @@
 
 #include "yacl/utils/spi/item.h"
 
+#include "fmt/ranges.h"
+
 #include "yacl/math/mpint/mp_int.h"
 #include "fmt/ranges.h"
 

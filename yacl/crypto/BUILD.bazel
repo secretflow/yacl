@@ -24,10 +24,11 @@ yacl_cc_library(
     deps = [
         "//yacl/base:byte_container_view",
         "//yacl/base:exception",
-        "//yacl/crypto/hash:hash_interface",
         "//yacl/utils:scope_guard",
-        "@com_github_openssl_openssl//:openssl",
-    ],
+    ] + select({
+        "//bazel/config:gm": ["@com_github_tongsuo_tongsuo//:tongsuo"],
+        "//conditions:default": ["@com_github_openssl_openssl//:openssl"],
+    }),
 )
 
 yacl_cc_library(
@@ -39,6 +40,7 @@ yacl_cc_library(
     deps = [
         ":openssl_wrappers",
         "//yacl:secparam",
+        "//yacl/crypto/hash:hash_interface",
         "//yacl/io/stream",
     ],
 )

@@ -67,7 +67,7 @@ class RdSeedEntropySource : public EntropySource {
 
   Buffer GetEntropy(uint32_t bits_of_entropy) noexcept override;
 
-  std::string Name() override { return "Rdseed entropy source"; }
+  std::string Name() override { return "rdseed entropy source"; }
 };
 
 }  // namespace yacl::crypto

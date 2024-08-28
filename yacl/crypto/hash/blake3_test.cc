@@ -123,7 +123,8 @@ TEST(Blake3HashTest, CustomOutLength) {
     Blake3Hash blake3(i);
 
     std::string vector1_bytes;
-    ASSERT_TRUE(absl::HexStringToBytes(test_data_blake3.vector1, &vector1_bytes));
+    ASSERT_TRUE(
+        absl::HexStringToBytes(test_data_blake3.vector1, &vector1_bytes));
 
     // Shorter outputs are prefixes of longer ones.
     // reference

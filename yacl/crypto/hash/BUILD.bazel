@@ -25,7 +25,6 @@ yacl_cc_library(
         "//yacl/base:exception",
         "//yacl/crypto:openssl_wrappers",
         "//yacl/utils:scope_guard",
-        "@com_github_openssl_openssl//:openssl",
     ],
 )
 
@@ -72,7 +71,7 @@ yacl_cc_library(
     deps = [
         "//yacl:secparam",
         "//yacl/base:byte_container_view",
-        "@com_github_openssl_openssl//:openssl",
+        "//yacl/crypto:openssl_wrappers",
     ],
 )
 

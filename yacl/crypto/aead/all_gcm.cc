@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/aead/gcm_crypto.h"
+#include "yacl/crypto/aead/all_gcm.h"
 
 #include "yacl/crypto/openssl_wrappers.h"
 
@@ -21,14 +21,18 @@ namespace yacl::crypto {
 namespace {
 
 constexpr size_t kAesMacSize = 16;
+// constexpr size_t kSm4MacSize = 16;
 
 size_t GetMacSize(GcmCryptoSchema schema) {
   switch (schema) {
     case GcmCryptoSchema::AES128_GCM:
     case GcmCryptoSchema::AES256_GCM:
       return kAesMacSize;
-    // case GcmCryptoSchema::SM4_GCM:
-    //   return kAesMacSize;
+#ifdef YACL_WITH_TONGSUO
+    case GcmCryptoSchema::SM4_GCM:
+      return kAesMacSize;
+#endif
+
     default:
       YACL_THROW("Unknown crypto schema: {}", static_cast<int>(schema));
   }

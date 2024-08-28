@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/aead/gcm_crypto.h"
+#include "yacl/crypto/aead/all_gcm.h"
 
 #include <memory>
 #include <string>
@@ -32,18 +32,22 @@ constexpr char iv_96[] = "000000000000";
 }  // namespace
 
 template <typename T>
-class AesGcmCryptoTest : public testing::Test {};
+class AllGcmTest : public testing::Test {};
 using MyTypes = ::testing::Types<Aes128GcmCrypto, Aes256GcmCrypto
-                                 // Sm4GcmCrypto
+#ifdef YACL_WITH_TONGSUO
+                                 ,
+                                 Sm4GcmCrypto
+#endif
                                  >;
-TYPED_TEST_SUITE(AesGcmCryptoTest, MyTypes);
 
-TYPED_TEST(AesGcmCryptoTest, EncryptDecrypt_ShouldOk) {
+TYPED_TEST_SUITE(AllGcmTest, MyTypes);
+
+TYPED_TEST(AllGcmTest, EncryptDecrypt_ShouldOk) {
   std::string key;
-  if (std::is_same<TypeParam, Aes128GcmCrypto>::value) {
-    key = std::string(key_128);
-  } else if (std::is_same<TypeParam, Aes256GcmCrypto>::value) {
+  if (std::is_same<TypeParam, Aes256GcmCrypto>::value) {
     key = std::string(key_256);
+  } else {
+    key = std::string(key_128);
   }
   TypeParam crypto(key, ByteContainerView(iv_96, sizeof(iv_96) - 1));
   std::string plaintext = "I am a plaintext.";
@@ -61,13 +65,12 @@ TYPED_TEST(AesGcmCryptoTest, EncryptDecrypt_ShouldOk) {
   EXPECT_EQ(plaintext, std::string(decrypted.begin(), decrypted.end()));
 }
 
-TYPED_TEST(AesGcmCryptoTest,
-           EncryptDecrypt_withErrorGMAC_ShouldThrowException) {
+TYPED_TEST(AllGcmTest, EncryptDecrypt_withErrorGMAC_ShouldThrowException) {
   std::string key;
-  if (std::is_same<TypeParam, Aes128GcmCrypto>::value) {
-    key = std::string(key_128);
-  } else if (std::is_same<TypeParam, Aes256GcmCrypto>::value) {
+  if (std::is_same<TypeParam, Aes256GcmCrypto>::value) {
     key = std::string(key_256);
+  } else {
+    key = std::string(key_128);
   }
   TypeParam crypto(key, ByteContainerView(iv_96, sizeof(iv_96) - 1));
   std::string plaintext = "I am a plaintext.";
@@ -87,13 +90,13 @@ TYPED_TEST(AesGcmCryptoTest,
   });
 }
 
-TYPED_TEST(AesGcmCryptoTest, EncryptDecrypt_withErrorAAD_ShouldThrowException) {
+TYPED_TEST(AllGcmTest, EncryptDecrypt_withErrorAAD_ShouldThrowException) {
   // GIVEN
   std::string key;
-  if (std::is_same<TypeParam, Aes128GcmCrypto>::value) {
-    key = std::string(key_128);
-  } else if (std::is_same<TypeParam, Aes256GcmCrypto>::value) {
+  if (std::is_same<TypeParam, Aes256GcmCrypto>::value) {
     key = std::string(key_256);
+  } else {
+    key = std::string(key_128);
   }
   TypeParam crypto(key, ByteContainerView(iv_96, sizeof(iv_96) - 1));
   std::string plaintext = "I am a plaintext.";

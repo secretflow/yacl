@@ -34,8 +34,11 @@ def yacl_deps():
     _com_github_msgpack_msgpack()
     _com_github_greendow_hash_drbg()
 
-    # crypto related
+    # ssl
+    _com_github_tongsuo_tongsuo()
     _com_github_openssl_openssl()
+
+    # crypto related
     _com_github_blake3team_blake3()
     _com_github_libsodium()
     _com_github_libtom_libtommath()
@@ -92,6 +95,7 @@ def _com_github_brpc_brpc():
         patches = [
             "@yacl//bazel:patches/brpc.patch",
             "@yacl//bazel:patches/brpc_m1.patch",
+            "@yacl//bazel:patches/brpc_crypto.patch",
         ],
         urls = [
             "https://github.com/apache/brpc/archive/refs/tags/1.10.0.tar.gz",
@@ -175,6 +179,19 @@ def _com_github_openssl_openssl():
             "https://github.com/openssl/openssl/archive/refs/tags/openssl-3.0.12.tar.gz",
         ],
         build_file = "@yacl//bazel:openssl.BUILD",
+    )
+
+def _com_github_tongsuo_tongsuo():
+    maybe(
+        http_archive,
+        name = "com_github_tongsuo_tongsuo",
+        sha256 = "57c2741750a699bfbdaa1bbe44a5733e9c8fc65d086c210151cfbc2bbd6fc975",
+        type = "tar.gz",
+        strip_prefix = "Tongsuo-8.4.0",
+        urls = [
+            "https://github.com/Tongsuo-Project/Tongsuo/archive/refs/tags/8.4.0.tar.gz",
+        ],
+        build_file = "@yacl//bazel:tongsuo.BUILD",
     )
 
 def _com_github_fmtlib_fmt():

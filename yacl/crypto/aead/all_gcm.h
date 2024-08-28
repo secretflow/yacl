@@ -22,14 +22,16 @@
 #include "yacl/secparam.h"
 
 /* security parameter declaration */
-YACL_MODULE_DECLARE("aes_gcm", SecParam::C::k128, SecParam::S::INF);
+YACL_MODULE_DECLARE("all_gcm", SecParam::C::k128, SecParam::S::INF);
 
 namespace yacl::crypto {
 
 enum class GcmCryptoSchema : int {
   AES128_GCM, /* security level = 128 */
   AES256_GCM, /* security level = 256 */
-  // SM4_GCM /* TODO openssl 3.2 supports SM4 GCM */
+#ifdef YACL_WITH_TONGSUO
+  SM4_GCM /* NOTE only Yacl built with gm mode supports this feature */
+#endif
 };
 
 // -------------
@@ -72,11 +74,13 @@ class Aes256GcmCrypto : public GcmCrypto {
       : GcmCrypto(GcmCryptoSchema::AES256_GCM, key, iv) {}
 };
 
-// class Sm4GcmCrypto : public GcmCrypto {
-//  public:
-//   Sm4GcmCrypto(ByteContainerView key, ByteContainerView iv)
-//       : GcmCrypto(GcmCryptoSchema::SM4_GCM, key, iv) {}
-// };
+#ifdef YACL_WITH_TONGSUO
+class Sm4GcmCrypto : public GcmCrypto {
+ public:
+  Sm4GcmCrypto(ByteContainerView key, ByteContainerView iv)
+      : GcmCrypto(GcmCryptoSchema::SM4_GCM, key, iv) {}
+};
+#endif
 
 /* to a string which openssl recognizes */
 inline const char* ToString(GcmCryptoSchema scheme) {
@@ -85,8 +89,10 @@ inline const char* ToString(GcmCryptoSchema scheme) {
       return "aes-128-gcm";
     case GcmCryptoSchema::AES256_GCM:
       return "aes-256-gcm";
-    // case GcmCryptoSchema::SM4_GCM:
-    //   return "sm4-gcm";
+#ifdef YACL_WITH_TONGSUO
+    case GcmCryptoSchema::SM4_GCM:
+      return "sm4-gcm";
+#endif
     default:
       YACL_THROW("Unsupported gcm scheme: {}", static_cast<int>(scheme));
   }

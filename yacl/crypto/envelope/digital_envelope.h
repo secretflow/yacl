@@ -19,8 +19,8 @@
 #include "yacl/base/byte_container_view.h"
 
 /* submodules */
-#include "yacl/crypto/aead/gcm_crypto.h"
-#include "yacl/crypto/aead/sm4_mac.h"
+#include "yacl/crypto/aead/all_gcm.h"
+#include "yacl/crypto/aead/sm4_mte.h"
 #include "yacl/crypto/block_cipher/symmetric_crypto.h"
 #include "yacl/crypto/hash/ssl_hash.h"
 #include "yacl/crypto/hmac/hmac_sm3.h"

@@ -40,6 +40,7 @@ std::array<uint8_t, 32> Sm3(ByteContainerView data) {
   return out;
 }
 
+#ifndef YACL_WITH_TONGSUO
 std::array<uint8_t, 64> Blake2(ByteContainerView data) {
   auto buf = SslHash(HashAlgorithm::BLAKE2B).Update(data).CumulativeHash();
   YACL_ENFORCE(buf.size() >= 64);
@@ -47,6 +48,7 @@ std::array<uint8_t, 64> Blake2(ByteContainerView data) {
   memcpy(out.data(), buf.data(), 64);
   return out;
 }
+#endif
 
 std::array<uint8_t, 32> Blake3(ByteContainerView data) {
   YACL_ENFORCE(BLAKE3_OUT_LEN == 32);
