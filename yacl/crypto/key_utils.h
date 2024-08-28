@@ -18,6 +18,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include "yacl/crypto/hash/hash_interface.h"
 #include "yacl/crypto/openssl_wrappers.h"
 
 namespace yacl::crypto {

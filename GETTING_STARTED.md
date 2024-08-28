@@ -59,6 +59,7 @@ To build Yacl, at yacl's root directory, run the following
 bazel build //...
 bazel build //... -c opt        # build as optimized mode
 bazel build //... -c dbg        # build as debug mode
+bazel build //... --config gm   # build with gm mode
 ```
 
 To test Yacl

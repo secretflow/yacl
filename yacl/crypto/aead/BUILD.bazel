@@ -17,9 +17,9 @@ load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
 package(default_visibility = ["//visibility:public"])
 
 yacl_cc_library(
-    name = "gcm_crypto",
-    srcs = ["gcm_crypto.cc"],
-    hdrs = ["gcm_crypto.h"],
+    name = "all_gcm",
+    srcs = ["all_gcm.cc"],
+    hdrs = ["all_gcm.h"],
     deps = [
         "//yacl:secparam",
         "//yacl/base:int128",
@@ -28,17 +28,17 @@ yacl_cc_library(
 )
 
 yacl_cc_test(
-    name = "gcm_crypto_test",
-    srcs = ["gcm_crypto_test.cc"],
+    name = "all_gcm_test",
+    srcs = ["all_gcm_test.cc"],
     deps = [
-        ":gcm_crypto",
+        ":all_gcm",
     ],
 )
 
 yacl_cc_library(
-    name = "sm4_mac",
-    srcs = ["sm4_mac.cc"],
-    hdrs = ["sm4_mac.h"],
+    name = "sm4_mte",
+    srcs = ["sm4_mte.cc"],
+    hdrs = ["sm4_mte.h"],
     deps = [
         "//yacl:secparam",
         "//yacl/crypto/block_cipher:symmetric_crypto",
@@ -48,9 +48,9 @@ yacl_cc_library(
 )
 
 yacl_cc_test(
-    name = "sm4_mac_test",
-    srcs = ["sm4_mac_test.cc"],
+    name = "sm4_mte_test",
+    srcs = ["sm4_mte_test.cc"],
     deps = [
-        ":sm4_mac",
+        ":sm4_mte",
     ],
 )

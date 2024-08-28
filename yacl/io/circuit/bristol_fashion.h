@@ -66,6 +66,8 @@ class CircuitReader {
     Init(path);
   }
 
+  ~CircuitReader() = default;
+
   void ReadMeta();
   void ReadAllGates();
   void ReadAll() { ReadAllGates(); }
@@ -80,7 +82,7 @@ class CircuitReader {
       in_->Close();
     }
     if (circ_ != nullptr) {
-      circ_.release();
+      circ_.reset();
     }
   }
 

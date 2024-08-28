@@ -42,3 +42,10 @@ build:ubsan --features=ubsan
 test --keep_going
 test --test_output=errors
 test --test_timeout=360
+
+# make sure brpc is built with tongsuo in gm mode
+# this flag is used by the brpc project
+build:gm --define BRPC_WITH_TONGSUO=true
+
+# make sure yacl is built with tongsuo in gm mode
+build:gm --define YACL_WITH_TONGSUO=true

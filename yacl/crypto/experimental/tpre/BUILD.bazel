@@ -115,7 +115,7 @@ yacl_cc_library(
     deps = [
         ":capsule",
         ":keys",
-        "//yacl/crypto/aead:sm4_mac",
+        "//yacl/crypto/aead:sm4_mte",
         "//yacl/crypto/ecc:spi",
     ],
 )

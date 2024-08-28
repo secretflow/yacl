@@ -30,7 +30,6 @@ yacl_cc_library(
         "//yacl/crypto/ecc:spi",
         "//yacl/crypto/hash:blake3",
         "//yacl/crypto/hash:ssl_hash",
-        "@com_github_openssl_openssl//:openssl",
         "@yacl//yacl/utils:parallel",
     ],
     alwayslink = 1,
