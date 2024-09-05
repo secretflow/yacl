@@ -282,10 +282,10 @@ def _rules_foreign_cc():
     maybe(
         http_archive,
         name = "rules_foreign_cc",
-        sha256 = "b3127e65fc189f28833be0cf64ba8b33b0bbb2707b7d448ba3baba5247a3c9f8",
-        strip_prefix = "rules_foreign_cc-5c34b7136f0dec5d8abf2b840796ec8aef56a7c1",
+        sha256 = "2bed3467034d1d8259dcd7df9fd2a051c7a80c1bc23d954511353306096ba996",
+        strip_prefix = "rules_foreign_cc-b25485b26d6ddf6be8bde2bc0c651b1a06ebe54c",
         urls = [
-            "https://github.com/bazelbuild/rules_foreign_cc/archive/5c34b7136f0dec5d8abf2b840796ec8aef56a7c1.tar.gz",
+            "https://github.com/bazelbuild/rules_foreign_cc/archive/b25485b26d6ddf6be8bde2bc0c651b1a06ebe54c.tar.gz",
         ],
     )
 
