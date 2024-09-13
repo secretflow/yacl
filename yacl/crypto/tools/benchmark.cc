@@ -23,20 +23,26 @@ void BM_DefaultArguments(benchmark::internal::Benchmark* b) {
       ->Arg(1 << 10)
       ->Arg(1 << 15)
       ->Arg(1 << 20)
-      ->Arg(22437250);
+      ->Arg(16777216);  // 2^24
 }
 
 // Register benchmarks for (Circular) CrHash
-BENCHMARK_REGISTER_F(ToolBench, RP)->Apply(BM_DefaultArguments);
-BENCHMARK_REGISTER_F(ToolBench, CRHASH)->Apply(BM_DefaultArguments);
-BENCHMARK_REGISTER_F(ToolBench, CRHASH_INPLACE)->Apply(BM_DefaultArguments);
-BENCHMARK_REGISTER_F(ToolBench, CCRHASH)->Apply(BM_DefaultArguments);
-BENCHMARK_REGISTER_F(ToolBench, CCRHASH_INPLACE)->Apply(BM_DefaultArguments);
-BENCHMARK_REGISTER_F(ToolBench, RO)->Apply(BM_DefaultArguments);
+BENCHMARK_REGISTER_F(TheoreticalToolBench, RO)->Apply(BM_DefaultArguments);
+BENCHMARK_REGISTER_F(TheoreticalToolBench, RP)->Apply(BM_DefaultArguments);
+BENCHMARK_REGISTER_F(TheoreticalToolBench, CRHASH)->Apply(BM_DefaultArguments);
+BENCHMARK_REGISTER_F(TheoreticalToolBench, CRHASH_INPLACE)
+    ->Apply(BM_DefaultArguments);
+BENCHMARK_REGISTER_F(TheoreticalToolBench, CCRHASH)->Apply(BM_DefaultArguments);
+BENCHMARK_REGISTER_F(TheoreticalToolBench, CCRHASH_INPLACE)
+    ->Apply(BM_DefaultArguments);
 
-BENCHMARK_REGISTER_F(ToolBench, PRG)
-    ->Unit(benchmark::kMillisecond)
-    ->Arg(static_cast<int64_t>(PRG_MODE::kAesEcb))
-    ->Arg(static_cast<int64_t>(PRG_MODE::kSm4Ecb));
+BENCHMARK_REGISTER_F(PrgBench, PrgAesEcb)->Apply(BM_DefaultArguments);
+BENCHMARK_REGISTER_F(PrgBench, PrgSm4Ecb)->Apply(BM_DefaultArguments);
+
+BENCHMARK_REGISTER_F(FillPRandBench, FillPRand_AES128_ECB)
+    ->Apply(BM_DefaultArguments);
+
+BENCHMARK_REGISTER_F(FillPRandBench, FillPRandWithMersennePrime_AES128_ECB)
+    ->Apply(BM_DefaultArguments);
 
 }  // namespace yacl::crypto

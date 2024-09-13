@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/pke/asymmetric_rsa_crypto.h"
+#include "yacl/crypto/pke/rsa_enc.h"
 
 #include <vector>
 

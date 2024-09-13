@@ -19,41 +19,43 @@
 #include <vector>
 
 #include "yacl/crypto/key_utils.h"
-#include "yacl/crypto/pke/asymmetric_crypto.h"
+#include "yacl/crypto/pke/pke_interface.h"
 #include "yacl/secparam.h"
 
 /* security parameter declaration */
-YACL_MODULE_DECLARE("rsa_enc", SecParam::C::k128, SecParam::S::INF);
+YACL_MODULE_DECLARE("sm2_enc", SecParam::C::k128, SecParam::S::INF);
 
 namespace yacl::crypto {
 
-// RSA with OAEP
-class RsaEncryptor : public AsymmetricEncryptor {
+// SM2
+class Sm2Encryptor : public PkeEncryptor {
  public:
-  explicit RsaEncryptor(openssl::UniquePkey&& pk) : pk_(std::move(pk)) {}
-  explicit RsaEncryptor(/* pem key */ ByteContainerView pk_buf)
+  explicit Sm2Encryptor(openssl::UniquePkey&& pk) : pk_(std::move(pk)) {}
+  explicit Sm2Encryptor(ByteContainerView pk_buf)
       : pk_(LoadKeyFromBuf(pk_buf)) {}
 
-  AsymCryptoSchema GetSchema() const override { return schema_; }
+  PkeScheme GetScheme() const override { return scheme_; }
   std::vector<uint8_t> Encrypt(ByteContainerView plaintext) override;
 
  private:
   const openssl::UniquePkey pk_;
-  const AsymCryptoSchema schema_ = AsymCryptoSchema::RSA2048_OAEP;
+  const PkeScheme scheme_ = PkeScheme::SM2;
 };
 
-class RsaDecryptor : public AsymmetricDecryptor {
+class Sm2Decryptor : public PkeDecryptor {
  public:
-  explicit RsaDecryptor(openssl::UniquePkey&& sk) : sk_(std::move(sk)) {}
-  explicit RsaDecryptor(/* pem key */ ByteContainerView sk_buf)
+  explicit Sm2Decryptor(
+      openssl::UniquePkey&& sk /* should contain (sk, pk) pair */)
+      : sk_(std::move(sk)) {}
+  explicit Sm2Decryptor(ByteContainerView sk_buf)
       : sk_(LoadKeyFromBuf(sk_buf)) {}
 
-  AsymCryptoSchema GetSchema() const override { return schema_; }
+  PkeScheme GetScheme() const override { return scheme_; }
   std::vector<uint8_t> Decrypt(ByteContainerView ciphertext) override;
 
  private:
   const openssl::UniquePkey sk_;
-  const AsymCryptoSchema schema_ = AsymCryptoSchema::RSA2048_OAEP;
+  const PkeScheme scheme_ = PkeScheme::SM2;
 };
 
 }  // namespace yacl::crypto

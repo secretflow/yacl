@@ -12,28 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
+#include "yacl/crypto/pke/sm2_enc.h"
 
-#include <vector>
+#include "gtest/gtest.h"
 
-#include "yacl/base/byte_container_view.h"
+#include "yacl/crypto/openssl_wrappers.h"
 
 namespace yacl::crypto {
 
-enum class AsymCryptoSchema { UNKNOWN, RSA2048_OAEP, RSA3072_OAEP, SM2 };
+TEST(Sm2Enc, EncryptDecrypt_shouldOk) {
+  // GIVEN
+  auto [pk_buf, sk_buf] = GenSm2KeyPairToPemBuf();
+  std::string m = "I am a plaintext.";
 
-class AsymmetricEncryptor {
- public:
-  virtual ~AsymmetricEncryptor() = default;
-  virtual AsymCryptoSchema GetSchema() const = 0;
-  virtual std::vector<uint8_t> Encrypt(ByteContainerView plaintext) = 0;
-};
+  // WHEN
+  auto enc_ctx = Sm2Encryptor(pk_buf);
+  auto dec_ctx = Sm2Decryptor(sk_buf);
 
-class AsymmetricDecryptor {
- public:
-  virtual ~AsymmetricDecryptor() = default;
-  virtual AsymCryptoSchema GetSchema() const = 0;
-  virtual std::vector<uint8_t> Decrypt(ByteContainerView ciphertext) = 0;
-};
+  auto c = enc_ctx.Encrypt(m);
+  auto m_check = dec_ctx.Decrypt(c);
+
+  // THEN
+  EXPECT_EQ(std::memcmp(m.data(), m_check.data(), m.size()), 0);
+}
 
 }  // namespace yacl::crypto

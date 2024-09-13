@@ -24,8 +24,8 @@
 #include "yacl/crypto/block_cipher/symmetric_crypto.h"
 #include "yacl/crypto/hash/ssl_hash.h"
 #include "yacl/crypto/hmac/hmac_sm3.h"
-#include "yacl/crypto/pke/asymmetric_rsa_crypto.h"
-#include "yacl/crypto/pke/asymmetric_sm2_crypto.h"
+#include "yacl/crypto/pke/rsa_enc.h"
+#include "yacl/crypto/pke/sm2_enc.h"
 #include "yacl/crypto/rand/rand.h"
 
 namespace yacl::crypto {

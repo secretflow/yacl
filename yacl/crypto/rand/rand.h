@@ -26,7 +26,11 @@
 #include "yacl/base/int128.h"
 #include "yacl/crypto/openssl_wrappers.h"
 #include "yacl/crypto/rand/drbg/drbg.h"
+#include "yacl/math/mpint/mp_int.h"
 #include "yacl/secparam.h"
+
+/* security parameter declaration */
+YACL_MODULE_DECLARE("rand", SecParam::C::k128, SecParam::S::k64);
 
 namespace yacl::crypto {
 
@@ -75,13 +79,6 @@ std::vector<uint8_t> RandBytes(uint64_t len, bool fast_mode = false);
 std::vector<uint8_t> FastRandBytes(uint64_t len);
 std::vector<uint8_t> SecureRandBytes(uint64_t len);
 
-// wanring: the output may not be strictly uniformly random
-// FIXME(@shanzhu.cjm) Improve performance
-inline uint32_t RandInRange(uint32_t n) {
-  uint32_t tmp = FastRandU64();
-  return tmp % n;
-}
-
 // -----------------------------
 // Random Support for Yacl Types
 // -----------------------------
@@ -115,6 +112,31 @@ inline std::vector<T> RandVec(uint64_t len, bool fast_mode = false) {
   std::vector<T> out(len);
   FillRand((char *)out.data(), sizeof(T) * len, fast_mode);
   return out;
+}
+
+// -----------------------------------
+// Random Support for Integral Numbers
+// -----------------------------------
+
+// warning: the output may not be strictly uniformly random
+// FIXME(@shanzhu.cjm) Improve performance
+inline uint32_t RandInRange(uint32_t n) {
+  uint32_t tmp = FastRandU64();
+  return tmp % n;
+}
+
+template <typename T = uint128_t,
+          std::enable_if_t<std::is_integral_v<T>, int> = 0>
+inline T RandLtN(T n) {
+  // see: nist-sp800-90A, Appendix A.5.3
+  // efficiency: constant-round
+  auto required_size =
+      sizeof(T) + (YACL_MODULE_SECPARAM_S_UINT("rand") + 7) / 8;
+  auto rand_bytes = SecureRandBytes(required_size);
+  math::MPInt r;
+  r.FromMagBytes(rand_bytes, Endian::little);
+  math::MPInt::Mod(r, math::MPInt(n), &r);
+  return r.Get<T>();
 }
 
 }  // namespace yacl::crypto

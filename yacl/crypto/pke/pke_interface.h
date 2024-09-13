@@ -12,30 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/pke/asymmetric_rsa_crypto.h"
+#pragma once
 
-#include <string>
+#include <vector>
 
-#include "gtest/gtest.h"
-
-#include "yacl/crypto/openssl_wrappers.h"
+#include "yacl/base/byte_container_view.h"
 
 namespace yacl::crypto {
 
-TEST(AsymmetricRsa, EncryptDecrypt_shouldOk) {
-  // GIVEN
-  auto [pk, sk] = GenRsaKeyPairToPemBuf();
-  std::string m = "I am a plaintext.";
+enum class PkeScheme { UNKNOWN, RSA2048_OAEP, RSA3072_OAEP, SM2 };
 
-  // WHEN
-  auto enc_ctx = RsaEncryptor(pk);
-  auto dec_ctx = RsaDecryptor(sk);
+class PkeEncryptor {
+ public:
+  virtual ~PkeEncryptor() = default;
+  virtual PkeScheme GetScheme() const = 0;
+  virtual std::vector<uint8_t> Encrypt(ByteContainerView plaintext) = 0;
+};
 
-  auto c = enc_ctx.Encrypt(m);
-  auto m_check = dec_ctx.Decrypt(c);
-
-  // THEN
-  EXPECT_EQ(std::memcmp(m.data(), m_check.data(), m.size()), 0);
-}
+class PkeDecryptor {
+ public:
+  virtual ~PkeDecryptor() = default;
+  virtual PkeScheme GetScheme() const = 0;
+  virtual std::vector<uint8_t> Decrypt(ByteContainerView ciphertext) = 0;
+};
 
 }  // namespace yacl::crypto

@@ -17,19 +17,19 @@ load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
 package(default_visibility = ["//visibility:public"])
 
 yacl_cc_library(
-    name = "asymmetric_crypto",
-    hdrs = ["asymmetric_crypto.h"],
+    name = "pke_interface",
+    hdrs = ["pke_interface.h"],
     deps = [
         "//yacl/base:byte_container_view",
     ],
 )
 
 yacl_cc_library(
-    name = "asymmetric_sm2_crypto",
-    srcs = ["asymmetric_sm2_crypto.cc"],
-    hdrs = ["asymmetric_sm2_crypto.h"],
+    name = "sm2_enc",
+    srcs = ["sm2_enc.cc"],
+    hdrs = ["sm2_enc.h"],
     deps = [
-        ":asymmetric_crypto",
+        ":pke_interface",
         "//yacl:secparam",
         "//yacl/base:exception",
         "//yacl/crypto:key_utils",
@@ -37,19 +37,19 @@ yacl_cc_library(
 )
 
 yacl_cc_test(
-    name = "asymmetric_sm2_crypto_test",
-    srcs = ["asymmetric_sm2_crypto_test.cc"],
+    name = "sm2_enc_test",
+    srcs = ["sm2_enc_test.cc"],
     deps = [
-        ":asymmetric_sm2_crypto",
+        ":sm2_enc",
     ],
 )
 
 yacl_cc_library(
-    name = "asymmetric_rsa_crypto",
-    srcs = ["asymmetric_rsa_crypto.cc"],
-    hdrs = ["asymmetric_rsa_crypto.h"],
+    name = "rsa_enc",
+    srcs = ["rsa_enc.cc"],
+    hdrs = ["rsa_enc.h"],
     deps = [
-        ":asymmetric_crypto",
+        ":pke_interface",
         "//yacl:secparam",
         "//yacl/base:exception",
         "//yacl/crypto:key_utils",
@@ -57,9 +57,9 @@ yacl_cc_library(
 )
 
 yacl_cc_test(
-    name = "asymmetric_rsa_crypto_test",
-    srcs = ["asymmetric_rsa_crypto_test.cc"],
+    name = "rsa_enc_test",
+    srcs = ["rsa_enc_test.cc"],
     deps = [
-        ":asymmetric_rsa_crypto",
+        ":rsa_enc",
     ],
 )

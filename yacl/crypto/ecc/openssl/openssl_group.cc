@@ -121,7 +121,7 @@ void OpensslGroup::DoubleInplace(EcPoint *p) const {
 
 EcPoint OpensslGroup::MulBase(const MPInt &scalar) const {
   auto res = MakeOpensslPoint();
-  auto s = Mp2Bn(scalar);
+  auto s = Mp2Bn(scalar.Mod(order_)); /* it's a must for sm2 */
   // EC_POINT_mul has random memory leaks, be careful.
   // See UT for demo code.
   // We tested openssl 3.1.0, it still leaks.
@@ -147,8 +147,8 @@ void OpensslGroup::MulInplace(EcPoint *point, const MPInt &scalar) const {
 EcPoint OpensslGroup::MulDoubleBase(const MPInt &s1, const MPInt &s2,
                                     const EcPoint &p2) const {
   auto res = MakeOpensslPoint();
-  auto bn1 = Mp2Bn(s1);
-  auto bn2 = Mp2Bn(s2);
+  auto bn1 = Mp2Bn(s1.Mod(order_)); /* it's a must for sm2 */
+  auto bn2 = Mp2Bn(s2.Mod(order_)); /* it's a must for sm2 */
   OSSL_RET_1(EC_POINT_mul(group_.get(), CastAny<EC_POINT>(res), bn1.get(),
                           CastAny<EC_POINT>(p2), bn2.get(), ctx_.get()));
   return res;
@@ -331,8 +331,7 @@ EcPoint OpensslGroup::HashToCurve(HashToCurveStrategy strategy,
     // hash value to BN
     YACL_ENFORCE(BN_bin2bn(buf.data(), buf.size(), bn.get()) != nullptr,
                  "Convert hash value to bignumber fail");
-    OSSL_RET_1(BN_nnmod(bn.get(), bn.get(), field_p_.get(), ctx_.get()),
-               "hash-to-curve: bn mod p fail");
+    OSSL_RET_1(BN_nnmod(bn.get(), bn.get(), field_p_.get(), ctx_.get()));
 
     // check BN on the curve
     int ret = EC_POINT_set_compressed_coordinates(
