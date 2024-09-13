@@ -50,7 +50,7 @@ yacl_cc_test(
     srcs = ["key_utils_test.cc"],
     deps = [
         ":key_utils",
-        "//yacl/crypto/pke:asymmetric_rsa_crypto",  # for test
+        "//yacl/crypto/pke:rsa_enc",  # for test
         "//yacl/crypto/sign:rsa_signing",  # for test
     ],
 )

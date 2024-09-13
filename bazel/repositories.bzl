@@ -172,11 +172,11 @@ def _com_github_openssl_openssl():
     maybe(
         http_archive,
         name = "com_github_openssl_openssl",
-        sha256 = "9a7a7355f3d4b73f43b5730ce80371f9d1f97844ffc8c4b01c723ba0625d6aad",
+        sha256 = "bedbb16955555f99b1a7b1ba90fc97879eb41025081be359ecd6a9fcbdf1c8d2",
         type = "tar.gz",
-        strip_prefix = "openssl-openssl-3.0.12",
+        strip_prefix = "openssl-openssl-3.3.2",
         urls = [
-            "https://github.com/openssl/openssl/archive/refs/tags/openssl-3.0.12.tar.gz",
+            "https://github.com/openssl/openssl/archive/refs/tags/openssl-3.3.2.tar.gz",
         ],
         build_file = "@yacl//bazel:openssl.BUILD",
     )

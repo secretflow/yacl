@@ -12,30 +12,47 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/pke/asymmetric_sm2_crypto.h"
+#include "yacl/crypto/pke/rsa_enc.h"
 
 #include <string>
 
 #include "gtest/gtest.h"
 
+#include "yacl/base/exception.h"
 #include "yacl/crypto/openssl_wrappers.h"
 
 namespace yacl::crypto {
 
-TEST(AsymmetricSm2, EncryptDecrypt_shouldOk) {
+TEST(RsaEnc, EncryptDecrypt_shouldOk) {
   // GIVEN
-  auto [pk, sk] = GenSm2KeyPairToPemBuf();
+  auto [pk, sk] = GenRsaKeyPairToPemBuf();
   std::string m = "I am a plaintext.";
 
   // WHEN
-  auto enc_ctx = Sm2Encryptor(pk);
-  auto dec_ctx = Sm2Decryptor(sk);
+  auto enc_ctx = RsaEncryptor(pk);
+  auto dec_ctx = RsaDecryptor(sk);
 
   auto c = enc_ctx.Encrypt(m);
   auto m_check = dec_ctx.Decrypt(c);
 
   // THEN
   EXPECT_EQ(std::memcmp(m.data(), m_check.data(), m.size()), 0);
+}
+
+TEST(RsaEnc, ShouldNotOk) {
+  // GIVEN
+  auto [pk1, sk1] = GenRsaKeyPairToPemBuf();
+  auto [pk2, sk2] = GenRsaKeyPairToPemBuf();
+  std::string m = "I am a plaintext.";
+
+  // WHEN
+  auto enc_ctx = RsaEncryptor(pk1);
+  auto dec_ctx = RsaDecryptor(sk2);  // decrypt with wrong key
+
+  auto c = enc_ctx.Encrypt(m);
+
+  // THEN
+  EXPECT_THROW(dec_ctx.Decrypt(c), yacl::Exception);
 }
 
 }  // namespace yacl::crypto

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/pke/asymmetric_sm2_crypto.h"
+#include "yacl/crypto/pke/sm2_enc.h"
 
 #include <vector>
 
@@ -20,11 +20,18 @@
 
 namespace yacl::crypto {
 
+namespace {
+// The default sm2 id. see:
+// http://www.gmbz.org.cn/main/viewfile/2018011001400692565.html
+constexpr std::string_view kDefaultSm2Id = {"1234567812345678"};
+}  // namespace
+
 std::vector<uint8_t> Sm2Encryptor::Encrypt(ByteContainerView plaintext) {
   // see: https://www.openssl.org/docs/man3.0/man3/EVP_PKEY_encrypt.html
   auto ctx = openssl::UniquePkeyCtx(
       EVP_PKEY_CTX_new(pk_.get(), /* engine = default */ nullptr));
   YACL_ENFORCE(ctx != nullptr);
+  EVP_PKEY_CTX_set1_id(ctx.get(), kDefaultSm2Id.data(), kDefaultSm2Id.size());
 
   // init context
   OSSL_RET_1(EVP_PKEY_encrypt_init(ctx.get()));
@@ -47,6 +54,7 @@ std::vector<uint8_t> Sm2Decryptor::Decrypt(ByteContainerView ciphertext) {
   auto ctx = openssl::UniquePkeyCtx(
       EVP_PKEY_CTX_new(sk_.get(), /* engine = default */ nullptr));
   YACL_ENFORCE(ctx != nullptr);
+  EVP_PKEY_CTX_set1_id(ctx.get(), kDefaultSm2Id.data(), kDefaultSm2Id.size());
 
   // init context
   OSSL_RET_1(EVP_PKEY_decrypt_init(ctx.get()));

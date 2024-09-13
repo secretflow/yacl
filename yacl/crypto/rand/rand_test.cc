@@ -14,7 +14,11 @@
 
 #include "yacl/crypto/rand/rand.h"
 
+#include <limits>
+
 #include "gtest/gtest.h"
+
+#include "yacl/base/int128.h"
 
 namespace yacl::crypto {
 
@@ -81,6 +85,31 @@ TEST(GenericRandTest, RandVec01Test) {
   auto diff = std::abs(one_num - zero_num);
 
   EXPECT_TRUE(diff < 300);
+}
+
+TEST(GenericRandTest, RandLtnTest) {
+  {
+    uint8_t mersenne_prime = 127;
+    auto rand = RandLtN(mersenne_prime);
+    EXPECT_TRUE(rand < mersenne_prime);
+  }
+  {
+    uint32_t mersenne_prime = 2147483647;
+    auto rand = RandLtN(mersenne_prime);
+    EXPECT_TRUE(rand < mersenne_prime);
+  }
+  {
+    uint64_t mersenne_prime = 2305843009213693951;
+    auto rand = RandLtN(mersenne_prime);
+    EXPECT_TRUE(rand < mersenne_prime);
+  }
+  {
+    uint64_t u64max = std::numeric_limits<uint64_t>::max();
+    uint128_t mersenne_prime = MakeUint128(u64max >> 1, u64max);
+    SPDLOG_INFO(mersenne_prime);  // 170141183460469231731687303715884105727
+    auto rand = RandLtN(mersenne_prime);
+    EXPECT_TRUE(rand < mersenne_prime);
+  }
 }
 
 }  // namespace yacl::crypto
