@@ -19,7 +19,7 @@
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/dynamic_bitset.h"
-#include "yacl/crypto/ossl-provider/helper.h"
+#include "yacl/crypto/ossl_provider/helper.h"
 #include "yacl/crypto/rand/entropy_source/entropy_source.h"
 #include "yacl/math/gadget.h"
 

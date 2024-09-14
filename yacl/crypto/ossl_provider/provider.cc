@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/ossl-provider/rand_impl.h"
-#include "yacl/crypto/ossl-provider/version.h"
+#include "yacl/crypto/ossl_provider/rand_impl.h"
+#include "yacl/crypto/ossl_provider/version.h"
 
 using FuncPtr = void (*)();
 
