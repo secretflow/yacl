@@ -56,7 +56,7 @@ inline std::string GetProviderPath() {
     std::string path1;
     std::string path2;
     std::string path3 =
-        fmt::format("/yacl/crypto/ossl-provider/libprov_shared{}", SO_EXT);
+        fmt::format("/yacl/crypto/ossl_provider/libprov_shared{}", SO_EXT);
 
     // step 1: determine if target is "cc_test" or "cc_library"
     if (selfdir_str.find("sandbox") != std::string::npos) {

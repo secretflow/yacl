@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "yacl/base/exception.h"
-#include "yacl/crypto/ossl-provider/helper.h"
+#include "yacl/crypto/ossl_provider/helper.h"
 #include "yacl/secparam.h"
 
 namespace yacl::crypto {
