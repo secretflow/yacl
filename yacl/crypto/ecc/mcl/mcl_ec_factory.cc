@@ -32,7 +32,7 @@ std::map<CurveName, int> Name2MclCurveEnum = {
   case mcl_curve_macro: {                                                \
     static auto generator = [&] {                                        \
       auto p = std::make_shared<class_name::Ec>();                       \
-      mcl::initCurve<class_name::Ec, class_name::Fr>(                    \
+      mcl::initCurve<class_name::Ec>(                    \
           curve_type, p.get(), mcl::fp::Mode::FP_AUTO, mcl::ec::Jacobi); \
       return p;                                                          \
     }();                                                                 \

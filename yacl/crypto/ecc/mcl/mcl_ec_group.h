@@ -35,7 +35,7 @@ class MclEGFactory {
 template <typename Fp_, typename Zn_>
 class MclGroupT : public EcGroupSketch {
  public:
-  using Ec = mcl::EcT<Fp_>;
+  using Ec = mcl::EcT<Fp_, Zn_>;
   using Fr = Zn_;
   using Fp = Fp_;
   using BaseFp = typename Fp::BaseFp;
