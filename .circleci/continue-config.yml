@@ -80,7 +80,7 @@ jobs:
       - build_and_test
   macOS_ut_arm64:
     macos:
-      xcode: 15.1.0
+      xcode: 16.0.0
     resource_class: macos.m1.medium.gen1
     steps:
       - checkout
