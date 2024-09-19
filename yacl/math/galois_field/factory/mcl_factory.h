@@ -19,6 +19,10 @@
 
 #include "yacl/math/galois_field/factory/gf_scalar.h"
 
+namespace mcl::bn::local {
+struct FrTag;
+}
+
 namespace yacl::math {
 
 class MclFieldFactory {
@@ -121,6 +125,7 @@ using DefaultFp = mcl::FpT<>;                     // size 512
 using FpWithSize256 = mcl::FpT<mcl::FpTag, 256>;  // Max element size 256 bits
 using DefaultFp2 = mcl::Fp2T<mcl::FpT<>>;
 using DefaultFp6 = mcl::Fp6T<mcl::FpT<>>;
-using DefaultFp12 = mcl::Fp12T<mcl::FpT<>>;  // size 512
+using DefaultFp12 =
+    mcl::Fp12T<mcl::FpT<>, mcl::FpT<mcl::bn::local::FrTag>>;  // size 512
 
 }  // namespace yacl::math

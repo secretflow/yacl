@@ -15,8 +15,6 @@
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@rules_foreign_cc//foreign_cc:defs.bzl", "make")
 load("@yacl//bazel:yacl.bzl", "yacl_cmake_external")
-load("@rules_foreign_cc//foreign_cc:defs.bzl", "make")
-load("@bazel_skylib//lib:selects.bzl", "selects")
 
 package(default_visibility = ["//visibility:public"])
 
