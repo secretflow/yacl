@@ -17,13 +17,22 @@
 #include "gtest/gtest.h"
 
 TEST(Int128Test, NumericLimitsTest) {
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Winteger-overflow"
+#else
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Woverflow"
+#endif
   EXPECT_EQ(std::numeric_limits<int128_t>::max() + 1,
             std::numeric_limits<int128_t>::min());
   EXPECT_EQ(std::numeric_limits<int128_t>::min() - 1,
             std::numeric_limits<int128_t>::max());
+#ifdef __clang__
+#pragma clang diagnostic pop
+#else
 #pragma GCC diagnostic pop
+#endif
 }
 
 TEST(Uint128Test, NumericLimitsTest) {
