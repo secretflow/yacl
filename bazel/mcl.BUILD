@@ -65,9 +65,6 @@ yacl_cmake_external(
         ":cpu_arm64_v8a": android_config,
         "//conditions:default": default_config,
     }),
-    defines = {
-        "MCL_MSM": "0",
-    },
     # generate_crosstool_file = False,
     lib_source = ":source",
     out_static_libs = [
