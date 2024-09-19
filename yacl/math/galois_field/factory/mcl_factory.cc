@@ -81,7 +81,7 @@ std::unique_ptr<GaloisField> MclFieldFactory::Create(
           new MclField<mcl::Fp6T<mcl::FpT<mcl::FpTag, 512>>, 6>(mod));
     case 12:
       return std::unique_ptr<GaloisField>(
-          new MclField<mcl::Fp12T<mcl::FpT<mcl::FpTag, 512>>, 12>(mod));
+          new MclField<mcl::Fp12T<mcl::FpT<mcl::FpTag, 512>, mcl::FpT<mcl::bn::local::FrTag, 512>>, 12>(mod));
     default:
       YACL_THROW("Not supported Field by {}", kMclLib);
   }
@@ -354,7 +354,6 @@ template class MclField<DefaultFp12, 12>;
 //  Instantiate Pairing Curve Field from template
 // ===============================================================
 // Declare class instances for Pairing Curve
-template class MclField<mcl::bls12::GT, 12>;
 template class MclField<mcl::bnsnark::GT, 12>;
 
 // ONLY for test, not recommended to use in production
