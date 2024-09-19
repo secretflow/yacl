@@ -120,8 +120,8 @@ class MclField : public GFScalarSketch<T> {
 
 using DefaultFp = mcl::FpT<>;                     // size 512
 using FpWithSize256 = mcl::FpT<mcl::FpTag, 256>;  // Max element size 256 bits
-using DefaultFp2 = mcl::bn::Fp2;
-using DefaultFp6 = mcl::bn::Fp6;
-using DefaultFp12 = mcl::bn::Fp12;  // size 512
+using DefaultFp2 = mcl::Fp2T<mcl::FpT<>>;
+using DefaultFp6 = mcl::Fp6T<mcl::FpT<>>;
+using DefaultFp12 = mcl::Fp12T<mcl::FpT<>, mcl::FpT<mcl::bn::local::FrTag, 512>>;  // size 512
 
 }  // namespace yacl::math

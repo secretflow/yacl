@@ -15,8 +15,6 @@
 load("@bazel_skylib//lib:selects.bzl", "selects")
 load("@rules_foreign_cc//foreign_cc:defs.bzl", "make")
 load("@yacl//bazel:yacl.bzl", "yacl_cmake_external")
-load("@rules_foreign_cc//foreign_cc:defs.bzl", "make")
-load("@bazel_skylib//lib:selects.bzl", "selects")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -67,6 +65,9 @@ yacl_cmake_external(
         ":cpu_arm64_v8a": android_config,
         "//conditions:default": default_config,
     }),
+    defines = {
+        "MCL_MSM": "0",
+    },
     # generate_crosstool_file = False,
     lib_source = ":source",
     out_static_libs = [

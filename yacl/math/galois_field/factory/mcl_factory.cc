@@ -354,6 +354,7 @@ template class MclField<DefaultFp12, 12>;
 //  Instantiate Pairing Curve Field from template
 // ===============================================================
 // Declare class instances for Pairing Curve
+template class MclField<mcl::bls12::GT, 12>;
 template class MclField<mcl::bnsnark::GT, 12>;
 
 // ONLY for test, not recommended to use in production
