@@ -41,10 +41,11 @@ namespace yacl::crypto {
 // ---------------------------
 
 // Core implementation of filling deterministic pseudorandomness, return the
-// increased counter (count++, presumably).
-// Note: FillPRand is different from drbg, NIST800-90A since FillPRand will
-// never perform healthcheck, reseed. FillPRand is only an abstract API for the
-// theoretical tool: PRG.
+// increased counter (count++, presumably). FillPRand-like implementations never
+// perform healthcheck, reseed.
+//
+// NOTE FillPRand is not an instantiation of NIST800-90A.
+//
 uint64_t FillPRand(SymmetricCrypto::CryptoType type, uint128_t seed,
                    uint64_t iv, uint64_t count, char* buf, size_t len);
 

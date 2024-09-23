@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <climits>
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <random>
 #include <type_traits>
@@ -24,8 +25,10 @@
 
 #include "yacl/base/dynamic_bitset.h"
 #include "yacl/base/int128.h"
+#include "yacl/crypto/block_cipher/symmetric_crypto.h"
 #include "yacl/crypto/openssl_wrappers.h"
 #include "yacl/crypto/rand/drbg/drbg.h"
+#include "yacl/crypto/tools/prg.h"
 #include "yacl/math/mpint/mp_int.h"
 #include "yacl/secparam.h"
 
@@ -114,6 +117,18 @@ inline std::vector<T> RandVec(uint64_t len, bool fast_mode = false) {
   return out;
 }
 
+// Generate random T-type vectors in fast mode
+template <typename T, std::enable_if_t<std::is_standard_layout_v<T>, int> = 0>
+inline std::vector<T> FastRandVec(uint64_t len) {
+  return RandVec<T>(len, true);
+}
+
+// Generate random T-type vectors in secure mode
+template <typename T, std::enable_if_t<std::is_standard_layout_v<T>, int> = 0>
+inline std::vector<T> SecureRandVec(uint64_t len) {
+  return RandVec<T>(len, false);
+}
+
 // -----------------------------------
 // Random Support for Integral Numbers
 // -----------------------------------
@@ -138,5 +153,76 @@ inline T RandLtN(T n) {
   math::MPInt::Mod(r, math::MPInt(n), &r);
   return r.Get<T>();
 }
+
+// Implementation of standard (cpp) UniformRandomBitGenerator
+//
+// see: https://en.cppreference.com/w/cpp/named_req/UniformRandomBitGenerator
+//
+// This implementation is provided to be used as the random bit source of
+// std::shuffle. std::shuffle should internally call YaclStdUrbd with
+// std::uniform_int_distribution, which again internally uses the method defined
+// in A.5.1 of SP800-90A (reviewed on MacOS with libc++).
+//
+template <typename T, std::enable_if_t<std::is_unsigned_v<T>, bool> = true>
+class YaclStdUrbg {
+ public:
+  using result_type = T;
+  YaclStdUrbg() { drbg_ = DrbgFactory::Instance().Create("ctr-drbg"); };
+
+  static constexpr T min() { return std::numeric_limits<T>::min(); }
+  static constexpr T max() { return std::numeric_limits<T>::max(); }
+
+  T operator()() {
+    T ret;
+    drbg_->Fill((char *)&ret, sizeof(T));
+    return ret;
+  }
+
+ private:
+  std::unique_ptr<Drbg> drbg_;
+};
+
+// Implementation of standard (cpp) and replayable UniformRandomBitGenerator
+//
+// see: https://en.cppreference.com/w/cpp/named_req/UniformRandomBitGenerator
+//
+// This implementation is provided to be used as the random bit source of
+// std::shuffle. std::shuffle should internally call YaclStdUrbd with
+// std::uniform_int_distribution, which again internally uses the method defined
+// in A.5.1 of SP800-90A (reviewed on MacOS with libc++).
+//
+// NOTE this implementation is not compatiable with NIST standards as it allows
+// the manipulation of internal random states.
+//
+template <typename T, std::enable_if_t<std::is_unsigned_v<T>, bool> = true>
+class YaclReplayUrbg {
+ public:
+  using result_type = T;
+  using CType = yacl::crypto::SymmetricCrypto::CryptoType;
+
+  YaclReplayUrbg(uint128_t seed, uint64_t ctr, uint64_t iv = 0,
+                 CType ctype = CType::AES128_CTR)
+      : seed_(seed), ctr_(ctr), iv_(iv), ctype_(ctype) {}
+
+  static constexpr T min() { return std::numeric_limits<T>::min(); }
+  static constexpr T max() { return std::numeric_limits<T>::max(); }
+
+  T operator()() {
+    T ret;
+    ctr_ = FillPRand(ctype_, seed_, iv_, ctr_, (char *)&ret, sizeof(T));
+    return ret;
+  }
+
+  uint64_t GetSeed() const { return seed_; }
+  uint64_t GetCounter() const { return ctr_; }
+  uint64_t GetIV() const { return iv_; }
+  CType GetCType() const { return ctype_; }
+
+ private:
+  const uint128_t seed_;
+  uint64_t ctr_;  // NOTE ctr_ is mutable
+  const uint64_t iv_;
+  const CType ctype_;
+};
 
 }  // namespace yacl::crypto
