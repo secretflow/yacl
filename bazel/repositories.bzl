@@ -19,6 +19,7 @@ def yacl_deps():
     _rule_proto()
     _rule_python()
     _rules_foreign_cc()
+    _rules_jni()
     _com_github_madler_zlib()
     _com_google_protobuf()
     _com_github_gflags_gflags()
@@ -33,6 +34,9 @@ def yacl_deps():
     _com_github_dltcollab_sse2neon()
     _com_github_msgpack_msgpack()
     _com_github_greendow_hash_drbg()
+
+    _com_github_pybind11_bazel()
+    _com_github_pybind11()
 
     # ssl
     _com_github_tongsuo_tongsuo()
@@ -82,6 +86,29 @@ def _org_interconnection():
         name = "macos_omp_arm64",
         build_file = "@yacl//bazel:local_openmp_macos.BUILD",
         path = "/opt/homebrew/opt/libomp/",
+    )
+
+def _com_github_pybind11_bazel():
+    maybe(
+        http_archive,
+        name = "pybind11_bazel",
+        sha256 = "dc4882b23a617575d0fd822aba88aa4a14133c3d428b5a8fb83d81d03444a475",
+        strip_prefix = "pybind11_bazel-8889d39b2b925b2a47519ae09402a96f00ccf2b4",
+        urls = [
+            "https://github.com/pybind/pybind11_bazel/archive/8889d39b2b925b2a47519ae09402a96f00ccf2b4.zip",
+        ],
+    )
+
+def _com_github_pybind11():
+    maybe(
+        http_archive,
+        name = "pybind11",
+        build_file = "@pybind11_bazel//:pybind11.BUILD",
+        sha256 = "bf8f242abd1abcd375d516a7067490fb71abd79519a282d22b6e4d19282185a7",
+        strip_prefix = "pybind11-2.12.0",
+        urls = [
+            "https://github.com/pybind/pybind11/archive/refs/tags/v2.12.0.tar.gz",
+        ],
     )
 
 def _com_github_brpc_brpc():
@@ -285,6 +312,17 @@ def _rules_foreign_cc():
         sha256 = "a2e6fb56e649c1ee79703e99aa0c9d13c6cc53c8d7a0cbb8797ab2888bbc99a3",
         strip_prefix = "rules_foreign_cc-0.12.0",
         url = "https://github.com/bazelbuild/rules_foreign_cc/releases/download/0.12.0/rules_foreign_cc-0.12.0.tar.gz",
+    )
+
+def _rules_jni():
+    maybe(
+        http_archive,
+        name = "rules_jni",
+        sha256 = "a84863992f425220e1b5e7dfd4663ef1f7c69d63aff6e09a154880744ce0bab0",
+        strip_prefix = "rules_jni-0.10.1",
+        urls = [
+            "https://github.com/fmeum/rules_jni/archive/refs/tags/v0.10.1.tar.gz",
+        ],
     )
 
 def _com_github_libsodium():
