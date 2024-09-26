@@ -70,6 +70,8 @@ include(ExternalFmt)
 include(ExternalSPDLog)
 include(ExternalGTest)
 
+enable_testing()
+
 add_library(yacl STATIC)
 
 target_include_directories (yacl 

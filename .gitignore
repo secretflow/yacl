@@ -48,3 +48,5 @@ external
 
 #brpc
 rpc_data
+
+Testing/Temporary/*
