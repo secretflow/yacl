@@ -19,12 +19,8 @@
 
 #include "yacl/crypto/ecc/ec_point.h"
 #include "yacl/crypto/ecc/ecc_spi.h"
-#include "yacl/link/link.h"
-#include "yacl/secparam.h"
 
 namespace examples::psi {
-
-namespace yc = yacl::crypto;
 
 // An example of PSI protocol
 //
@@ -37,22 +33,40 @@ class EcdhPsi {
  public:
   EcdhPsi() {
     // Use FourQ curve
-    ec_ = yc::EcGroupFactory::Instance().Create(/* curve name */ "FourQ");
+    ec_ = yacl::crypto::EcGroupFactory::Instance().Create(
+        /* curve name */ "FourQ");
 
     // Generate random key
-    yc::MPInt::RandomLtN(ec_->GetOrder(), &sk_);
+    yacl::crypto::MPInt::RandomLtN(ec_->GetOrder(), &sk_);
   }
 
+  explicit EcdhPsi(const yacl::crypto::MPInt& sk) { sk_ = sk; }
+
   // Mask input strings with secret key, and outputs the EcPoint results
-  void MaskStrings(absl::Span<std::string> in, absl::Span<yc::EcPoint> out);
+  void MaskStrings(absl::Span<std::string> in,
+                   absl::Span<yacl::crypto::EcPoint> out) const;
 
   // Mask input EcPoints with secret key, and outputs the serialized
   // EcPoint strings
-  void MaskEcPoints(absl::Span<yc::EcPoint> in, absl::Span<std::string> out);
+  void MaskEcPointsAndHashToU128(absl::Span<yacl::crypto::EcPoint> in,
+                                 absl::Span<uint128_t> out) const;
+
+  // ----------------------------
+  // Extra functions (for Python)
+  // ----------------------------
+
+  // Mask input strings with secret key, and outputs the EcPoint results
+  std::vector<std::string> MaskStringsEx(std::vector<std::string> in) const;
+
+  // Mask input strings with secret key, and outputs the EcPoint results
+  std::vector<uint128_t> MaskEcPointsAndHashToU128Ex(
+      std::vector<std::string> in) const;
+
+  std::shared_ptr<yacl::crypto::EcGroup> GetGroup() const { return ec_; }
 
  private:
-  yc::MPInt sk_;                     // secret key
-  std::shared_ptr<yc::EcGroup> ec_;  // ec group
+  yacl::crypto::MPInt sk_;                     // secret key
+  std::shared_ptr<yacl::crypto::EcGroup> ec_;  // ec group
 };
 
 }  // namespace examples::psi

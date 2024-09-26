@@ -12,13 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "examples/psi/ecdh_psi.h"
+#include "examples/psi/cpp/ecdh_psi.h"
 
 #include <algorithm>
 
 #include "gtest/gtest.h"
 
 #include "yacl/crypto/hash/hash_utils.h"
+
+namespace yc = yacl::crypto;
 
 namespace examples::psi {
 
@@ -30,9 +32,11 @@ std::vector<std::string> CreateRangeItems(size_t begin, size_t size) {
   }
   return ret;
 }
-inline std::vector<size_t> GetIntersectionIdx(
-    const std::vector<std::string> &x, const std::vector<std::string> &y) {
-  std::set<std::string> set(x.begin(), x.end());
+
+template <typename T>
+inline std::vector<size_t> GetIntersectionIdx(const std::vector<T> &x,
+                                              const std::vector<T> &y) {
+  std::set<T> set(x.begin(), x.end());
   std::vector<size_t> ret;
   for (size_t i = 0; i < y.size(); ++i) {
     if (set.count(y[i]) != 0) {
@@ -82,17 +86,19 @@ TEST(PsiTest, Works) {
   // -------------------
   //       Step 3
   // -------------------
-  std::vector<std::string> y_str(n);
+  std::vector<uint128_t> y_final(n);
   // y_str = y_points ^ {alice_sk}
-  alice.MaskEcPoints(absl::MakeSpan(y_points), absl::MakeSpan(y_str));
+  alice.MaskEcPointsAndHashToU128(absl::MakeSpan(y_points),
+                                  absl::MakeSpan(y_final));
 
-  std::vector<std::string> x_str(n);
+  std::vector<uint128_t> x_final(n);
   // x_str = x_points ^ {bob_sk}
-  bob.MaskEcPoints(absl::MakeSpan(x_points), absl::MakeSpan(x_str));
+  bob.MaskEcPointsAndHashToU128(absl::MakeSpan(x_points),
+                                absl::MakeSpan(x_final));
 
   /* check results */
   auto compare = GetIntersectionIdx(x, y);  // result
-  auto z = GetIntersectionIdx(x_str, y_str);
+  auto z = GetIntersectionIdx(x_final, y_final);
 
   EXPECT_EQ(compare.size(), z.size());
 
@@ -101,4 +107,51 @@ TEST(PsiTest, Works) {
   }
 }
 
+TEST(PsiExTest, Works) {
+  size_t n = 4;
+  auto x = CreateRangeItems(0, n);
+  auto y = CreateRangeItems(3, n);
+
+  EcdhPsi alice;
+  EcdhPsi bob;
+
+  // -------------------
+  //       Step 1
+  // -------------------
+  std::vector<std::string> x_points = alice.MaskStringsEx(x);
+  std::vector<std::string> y_points = bob.MaskStringsEx(y);
+
+  // -------------------
+  //       Step 2
+  // -------------------
+  //
+  // Alice send x_points to bob, and bob send y_points to alice
+  //
+  // ... code here (omitted) ...
+  //
+  // You may mannually send the EcPoints through yacl::link::Context, which
+  // handles an RPC channel, see: yacl/link/context.h. You may also use any
+  // method that you like to let Alice talk to Bob. Remember the communication
+  // channel needs to be a secure P2P channel.
+  //
+  // Since most of communication methods only accept strings or bytes, you may
+  // serialize EcPoints by calling ec_->SerializePoint(/* ec points here */).
+  // see: yacl/ecc/ecc_spi.h for more details.
+
+  // -------------------
+  //       Step 3
+  // -------------------
+  std::vector<uint128_t> y_final = alice.MaskEcPointsAndHashToU128Ex(y_points);
+  std::vector<uint128_t> x_final = bob.MaskEcPointsAndHashToU128Ex(x_points);
+
+  /* check results */
+  auto compare = GetIntersectionIdx(x, y);  // result
+  auto z = GetIntersectionIdx(x_final, y_final);
+
+  EXPECT_EQ(compare.size(), z.size());
+
+  for (size_t i = 0; i < z.size(); ++i) {
+    EXPECT_EQ(compare[i], z[i]);
+  }
+}
 }  // namespace examples::psi

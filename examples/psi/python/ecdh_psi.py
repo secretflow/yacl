@@ -12,9 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-package(default_visibility = ["//visibility:public"])
+from ecdh_psi_pybind.libs import EcdhPsiCC
 
-filegroup(
-    name = "psi_data",
-    srcs = glob(["data/*"]),
-)
+class EcdhPsi:
+
+    def __init__(self):
+        self.cc_impl = EcdhPsiCC()
+
+    def mask_strs(self, x):
+        return self.cc_impl.MaskStrings(x);
+
+    def mask_ec_points_and_hash_to_u128(self, x):
+        return self.cc_impl.MaskEcPointsAndHashToU128(x);

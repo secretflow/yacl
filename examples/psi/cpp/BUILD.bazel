@@ -1,4 +1,4 @@
-# Copyright 2023 Ant Group Co., Ltd.
+# Copyright 2024 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,58 +12,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
+load("//bazel:yacl.bzl", "yacl_cc_binary", "yacl_cc_library", "yacl_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
 yacl_cc_library(
-    name = "argument",
+    name = "ecdh_psi",
     srcs = [
-        "argument.cc",
+        "ecdh_psi.cc",
     ],
     hdrs = [
-        "argument.h",
+        "ecdh_psi.h",
     ],
     deps = [
-        ":arg_impl",
-    ],
-)
-
-yacl_cc_library(
-    name = "arg_impl",
-    srcs = [
-        "arg_kv.cc",
-        "arg_set.cc",
-    ],
-    hdrs = [
-        "arg_k.h",
-        "arg_kv.h",
-        "arg_set.h",
-    ],
-    deps = [
-        ":util",
-        "//yacl/base:exception",
-        "//yacl/math/mpint",
-    ],
-)
-
-yacl_cc_library(
-    name = "util",
-    srcs = [
-        "util.cc",
-    ],
-    hdrs = [
-        "util.h",
-    ],
-    deps = [
-        "@com_google_absl//absl/strings",
+        "//yacl/crypto/ecc",
+        "//yacl/link",
     ],
 )
 
 yacl_cc_test(
-    name = "util_test",
+    name = "ecdh_psi_test",
+    srcs = ["ecdh_psi_test.cc"],
+    deps = [":ecdh_psi"],
+)
+
+yacl_cc_binary(
+    name = "ecdh_psi_main",
     srcs = [
-        "util_test.cc",
+        "ecdh_psi_main.cc",
+        "main_utils.h",
     ],
-    deps = [":util"],
+    data = [
+        "//examples/psi:psi_data",
+    ],
+    deps = [
+        ":ecdh_psi",
+        "//yacl/io/rw:csv_reader",
+    ],
 )
