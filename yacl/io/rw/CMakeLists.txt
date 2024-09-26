@@ -13,23 +13,26 @@
 # limitations under the License.
 
 set(YACL_SOURCE_FILES ${YACL_SOURCE_FILES}
-    ${CMAKE_CURRENT_LIST_DIR}/parallel.cc
-    ${CMAKE_CURRENT_LIST_DIR}/thread_pool.cc
-    ${CMAKE_CURRENT_LIST_DIR}/elapsed_timer.cc
+    ${CMAKE_CURRENT_LIST_DIR}/csv_reader.cc
+    ${CMAKE_CURRENT_LIST_DIR}/csv_writer.cc
+    ${CMAKE_CURRENT_LIST_DIR}/mmapped_file.cc
 )
 
 # Add header files for installation
 install(
     FILES
-        ${CMAKE_CURRENT_LIST_DIR}/parallel.h
-        ${CMAKE_CURRENT_LIST_DIR}/thread_pool.h
-        ${CMAKE_CURRENT_LIST_DIR}/elapsed_timer.h
+        ${CMAKE_CURRENT_LIST_DIR}/csv_reader.h
+        ${CMAKE_CURRENT_LIST_DIR}/csv_writer.h
+        ${CMAKE_CURRENT_LIST_DIR}/mmapped_file.h
+        ${CMAKE_CURRENT_LIST_DIR}/reader.h
+        ${CMAKE_CURRENT_LIST_DIR}/writer.h
+        ${CMAKE_CURRENT_LIST_DIR}/schema.h
     DESTINATION
-        ${CMAKE_INSTALL_INCLUDEDIR}/yacl/utils
+        ${CMAKE_INSTALL_INCLUDEDIR}/yacl/io/stream
 )
 
 set(YACL_SOURCE_FILES ${YACL_SOURCE_FILES} PARENT_SCOPE)
 
-add_executable(parallel_test parallel_test.cc)
-target_link_libraries(parallel_test PRIVATE yacl gtest_main)
-add_test(NAME parallel_test COMMAND parallel_test)
+add_executable(rw_test rw_test.cc)
+target_link_libraries(rw_test PRIVATE yacl gtest_main gflags)
+add_test(NAME rw_test COMMAND rw_test WORKING_DIRECTORY ${PROJECT_SOURCE_DIR})

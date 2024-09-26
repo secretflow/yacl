@@ -69,6 +69,7 @@ include(ExternalAbseil)
 include(ExternalFmt)
 include(ExternalSPDLog)
 include(ExternalGTest)
+include(ExternalGflags)
 
 enable_testing()
 
