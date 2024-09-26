@@ -21,7 +21,9 @@ set(CMAKE_CXX_FLAGS_OLD "${CMAKE_CXX_FLAGS}")
 
 # Add other flags here.
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-unused-parameter")
+set(BUILD_TESTING OFF CACHE INTERNAL "")
 
 FetchContent_MakeAvailable(gflags)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_OLD}")
+unset(BUILD_TESTING)
