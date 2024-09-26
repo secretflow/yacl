@@ -31,6 +31,7 @@ header: # <1>
     - '**/*.patch'
     - '**/*.lds'
     - '**/*.csv'
+    - '**/*.rst'
     - 'LICENSE'
     - 'NOTICE'
     - '.bazelversion'
