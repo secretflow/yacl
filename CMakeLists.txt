@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-cmake_minimum_required(VERSION 3.30)
+cmake_minimum_required(VERSION 3.20)
 
 project(
     yacl
@@ -84,6 +84,7 @@ set(YACL_SOURCE_FILES "")
 
 add_subdirectory(yacl/base)
 add_subdirectory(yacl/utils)
+add_subdirectory(yacl/io)
 
 target_sources(yacl PRIVATE ${YACL_SOURCE_FILES})
 target_link_libraries(yacl PRIVATE fmt::fmt absl::stacktrace absl::symbolize)
