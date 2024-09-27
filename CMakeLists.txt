@@ -70,6 +70,7 @@ include(ExternalFmt)
 include(ExternalSPDLog)
 include(ExternalGTest)
 include(ExternalGflags)
+include(ExternalMsgpack)
 
 enable_testing()
 
@@ -88,4 +89,4 @@ add_subdirectory(yacl/utils)
 add_subdirectory(yacl/io)
 
 target_sources(yacl PRIVATE ${YACL_SOURCE_FILES})
-target_link_libraries(yacl PRIVATE fmt::fmt absl::stacktrace absl::symbolize)
+target_link_libraries(yacl PUBLIC fmt::fmt absl::stacktrace absl::symbolize)
