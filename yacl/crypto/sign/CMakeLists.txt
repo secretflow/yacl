@@ -13,24 +13,24 @@
 # the License.
 
 set(YACL_SOURCE_FILES
-    ${YACL_SOURCE_FILES} ${CMAKE_CURRENT_LIST_DIR}/exception.cc
-    ${CMAKE_CURRENT_LIST_DIR}/int128.cc)
+    ${YACL_SOURCE_FILES} ${CMAKE_CURRENT_LIST_DIR}/rsa_signing.cc
+    ${CMAKE_CURRENT_LIST_DIR}/sm2_signing.cc)
 
 # Add header files for installation
 install(
-  FILES ${CMAKE_CURRENT_LIST_DIR}/aligened_vector.h
-        ${CMAKE_CURRENT_LIST_DIR}/block.h
-        ${CMAKE_CURRENT_LIST_DIR}/buffer.h
-        ${CMAKE_CURRENT_LIST_DIR}/byte_container_view.h
-        ${CMAKE_CURRENT_LIST_DIR}/dynamic_bitset.h
-        ${CMAKE_CURRENT_LIST_DIR}/exception.h
-        ${CMAKE_CURRENT_LIST_DIR}/int128.h
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/yacl/base)
+  FILES ${CMAKE_CURRENT_LIST_DIR}/rsa_signing.h
+        ${CMAKE_CURRENT_LIST_DIR}/signing.h
+        ${CMAKE_CURRENT_LIST_DIR}/sm2_signing.h
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/yacl/crypto/sign)
 
 set(YACL_SOURCE_FILES
     ${YACL_SOURCE_FILES}
     PARENT_SCOPE)
 
-add_executable(buffer_test buffer_test.cc)
-target_link_libraries(buffer_test PRIVATE yacl gtest_main)
-add_test(NAME buffer_test COMMAND buffer_test)
+add_executable(rsa_signing_test rsa_signing_test.cc)
+target_link_libraries(rsa_signing_test PRIVATE yacl gtest_main)
+add_test(NAME rsa_signing_test COMMAND rsa_signing_test)
+
+add_executable(sm2_signing_test sm2_signing_test.cc)
+target_link_libraries(sm2_signing_test PRIVATE yacl gtest_main)
+add_test(NAME sm2_signing_test COMMAND sm2_signing_test)

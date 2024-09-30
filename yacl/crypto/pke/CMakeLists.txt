@@ -12,25 +12,24 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-set(YACL_SOURCE_FILES
-    ${YACL_SOURCE_FILES} ${CMAKE_CURRENT_LIST_DIR}/exception.cc
-    ${CMAKE_CURRENT_LIST_DIR}/int128.cc)
+set(YACL_SOURCE_FILES ${YACL_SOURCE_FILES} ${CMAKE_CURRENT_LIST_DIR}/rsa_enc.cc
+                      ${CMAKE_CURRENT_LIST_DIR}/sm2_enc.cc)
 
 # Add header files for installation
 install(
-  FILES ${CMAKE_CURRENT_LIST_DIR}/aligened_vector.h
-        ${CMAKE_CURRENT_LIST_DIR}/block.h
-        ${CMAKE_CURRENT_LIST_DIR}/buffer.h
-        ${CMAKE_CURRENT_LIST_DIR}/byte_container_view.h
-        ${CMAKE_CURRENT_LIST_DIR}/dynamic_bitset.h
-        ${CMAKE_CURRENT_LIST_DIR}/exception.h
-        ${CMAKE_CURRENT_LIST_DIR}/int128.h
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/yacl/base)
+  FILES ${CMAKE_CURRENT_LIST_DIR}/rsa_enc.h
+        ${CMAKE_CURRENT_LIST_DIR}/pke_interface.h
+        ${CMAKE_CURRENT_LIST_DIR}/sm2_enc.h
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/yacl/crypto/pke)
 
 set(YACL_SOURCE_FILES
     ${YACL_SOURCE_FILES}
     PARENT_SCOPE)
 
-add_executable(buffer_test buffer_test.cc)
-target_link_libraries(buffer_test PRIVATE yacl gtest_main)
-add_test(NAME buffer_test COMMAND buffer_test)
+add_executable(rsa_enc_test rsa_enc_test.cc)
+target_link_libraries(rsa_enc_test PRIVATE yacl gtest_main)
+add_test(NAME rsa_enc_test COMMAND rsa_enc_test)
+
+add_executable(sm2_enc_test sm2_enc_test.cc)
+target_link_libraries(sm2_enc_test PRIVATE yacl gtest_main)
+add_test(NAME sm2_enc_test COMMAND sm2_enc_test)

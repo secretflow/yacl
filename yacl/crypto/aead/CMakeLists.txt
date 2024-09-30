@@ -12,25 +12,22 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-set(YACL_SOURCE_FILES
-    ${YACL_SOURCE_FILES} ${CMAKE_CURRENT_LIST_DIR}/exception.cc
-    ${CMAKE_CURRENT_LIST_DIR}/int128.cc)
+set(YACL_SOURCE_FILES ${YACL_SOURCE_FILES} ${CMAKE_CURRENT_LIST_DIR}/all_gcm.cc
+                      ${CMAKE_CURRENT_LIST_DIR}/sm4_mte.cc)
 
 # Add header files for installation
-install(
-  FILES ${CMAKE_CURRENT_LIST_DIR}/aligened_vector.h
-        ${CMAKE_CURRENT_LIST_DIR}/block.h
-        ${CMAKE_CURRENT_LIST_DIR}/buffer.h
-        ${CMAKE_CURRENT_LIST_DIR}/byte_container_view.h
-        ${CMAKE_CURRENT_LIST_DIR}/dynamic_bitset.h
-        ${CMAKE_CURRENT_LIST_DIR}/exception.h
-        ${CMAKE_CURRENT_LIST_DIR}/int128.h
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/yacl/base)
+install(FILES ${CMAKE_CURRENT_LIST_DIR}/all_gcm.h
+              ${CMAKE_CURRENT_LIST_DIR}/sm4_mte.h
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/yacl/crypto/aead)
 
 set(YACL_SOURCE_FILES
     ${YACL_SOURCE_FILES}
     PARENT_SCOPE)
 
-add_executable(buffer_test buffer_test.cc)
-target_link_libraries(buffer_test PRIVATE yacl gtest_main)
-add_test(NAME buffer_test COMMAND buffer_test)
+add_executable(all_gcm_test all_gcm_test.cc)
+target_link_libraries(all_gcm_test PRIVATE yacl gtest_main)
+add_test(NAME all_gcm_test COMMAND all_gcm_test)
+
+add_executable(sm4_mte_test sm4_mte_test.cc)
+target_link_libraries(sm4_mte_test PRIVATE yacl gtest_main)
+add_test(NAME sm4_mte_test COMMAND sm4_mte_test)

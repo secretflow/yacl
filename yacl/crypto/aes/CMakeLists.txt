@@ -12,25 +12,18 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-set(YACL_SOURCE_FILES
-    ${YACL_SOURCE_FILES} ${CMAKE_CURRENT_LIST_DIR}/exception.cc
-    ${CMAKE_CURRENT_LIST_DIR}/int128.cc)
-
 # Add header files for installation
 install(
-  FILES ${CMAKE_CURRENT_LIST_DIR}/aligened_vector.h
-        ${CMAKE_CURRENT_LIST_DIR}/block.h
-        ${CMAKE_CURRENT_LIST_DIR}/buffer.h
-        ${CMAKE_CURRENT_LIST_DIR}/byte_container_view.h
-        ${CMAKE_CURRENT_LIST_DIR}/dynamic_bitset.h
-        ${CMAKE_CURRENT_LIST_DIR}/exception.h
-        ${CMAKE_CURRENT_LIST_DIR}/int128.h
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/yacl/base)
+  FILES ${CMAKE_CURRENT_LIST_DIR}/aes_intrinsics.h
+        ${CMAKE_CURRENT_LIST_DIR}/aes_opt.h
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/yacl/crypto/aes)
 
 set(YACL_SOURCE_FILES
     ${YACL_SOURCE_FILES}
     PARENT_SCOPE)
 
-add_executable(buffer_test buffer_test.cc)
-target_link_libraries(buffer_test PRIVATE yacl gtest_main)
-add_test(NAME buffer_test COMMAND buffer_test)
+add_executable(aes_test aes_test.cc)
+target_link_libraries(aes_test PRIVATE yacl gtest_main)
+add_test(NAME aes_test COMMAND aes_test)
+
+# TODO Add benchmark target
