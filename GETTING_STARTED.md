@@ -49,16 +49,16 @@ $ sudo mv bazel /usr/local/bin # you need sudo to do this
 To build Yacl, at yacl's root directory, run the following
 
 ```sh
-$ bazel build //...
-$ bazel build //... -c opt        # build as optimized mode
-$ bazel build //... -c dbg        # build as debug mode
-$ bazel build //... --config gm   # build with gm mode
+$ bazel build //yacl/...
+$ bazel build //yacl/... -c opt        # build as optimized mode
+$ bazel build //yacl/... -c dbg        # build as debug mode
+$ bazel build //yacl/... --config gm   # build with gm mode
 ```
 
 To test Yacl
 
 ```sh
-$ bazel test //...
+$ bazel test //yacl/...
 ```
 
 ### MacOS
@@ -83,16 +83,16 @@ $ brew install bazelisk cmake ninja nasm automake libtool libomp
 To build Yacl, at yacl's root directory, run the following
 
 ```sh
-$ bazel build //...
-$ bazel build //... -c opt        # build as optimized mode
-$ bazel build //... -c dbg        # build as debug mode
-$ bazel build //... --config gm   # build with gm mode
+$ bazel build //yacl/...
+$ bazel build //yacl/... -c opt        # build as optimized mode
+$ bazel build //yacl/... -c dbg        # build as debug mode
+$ bazel build //yacl/... --config gm   # build with gm mode
 ```
 
 To test Yacl
 
 ```sh
-$ bazel test //...
+$ bazel test //yacl/...
 ```
 
 ## Setup compilation database for your lsp

@@ -88,6 +88,9 @@ yacl_cc_library(
     ],
     hdrs = ["intel_factory.h"],
     copts = AES_COPT_FLAGS,
+    target_compatible_with = [
+        "@platforms//cpu:x86_64",
+    ],
     visibility = ["//yacl/math/galois_field:__pkg__"],  # grant visibility to main target
     deps = [
         ":spi",

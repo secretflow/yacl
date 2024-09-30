@@ -186,4 +186,40 @@ TEST(GenericRandTest, ReplayRandomShuffleTest) {
     EXPECT_EQ(std::memcmp(vec1.data(), vec4.data(), sizeof(uint128_t) * n), 0);
   }
 }
+
+TEST(GenericRandTest, QuickShuffleTest) {
+  int n = 257;
+
+  auto vec = FastRandVec<uint128_t>(n);
+  auto ctr = FastRandU64();
+  auto seed = SecureRandSeed();
+
+  // copy
+  auto vec_bkup = vec;
+  // copy
+  auto vec_1 = vec;
+  auto ctr_1 = ctr;
+  // copy
+  auto vec_2 = vec;
+  auto ctr_2 = FastRandU64();
+
+  ReplayShuffle(vec.begin(), vec.end(), seed, &ctr);
+
+  // replay
+  ReplayShuffle(vec_1.begin(), vec_1.end(), seed, &ctr_1);
+  EXPECT_EQ(std::memcmp(vec.data(), vec_1.data(), sizeof(uint128_t) * n), 0);
+
+  // different state gives different shuffle
+  ReplayShuffle(vec_2.begin(), vec_2.end(), SecureRandSeed(), &ctr_2);
+  EXPECT_NE(std::memcmp(vec.data(), vec_2.data(), sizeof(uint128_t) * n), 0);
+
+  // values are exactly the same
+  std::sort(vec_bkup.begin(), vec_bkup.end());
+  std::sort(vec_1.begin(), vec_1.end());
+  std::sort(vec_2.begin(), vec_2.end());
+  EXPECT_EQ(std::memcmp(vec_bkup.data(), vec_1.data(), sizeof(uint128_t) * n),
+            0);
+  EXPECT_EQ(std::memcmp(vec_bkup.data(), vec_2.data(), sizeof(uint128_t) * n),
+            0);
+}
 }  // namespace yacl::crypto
