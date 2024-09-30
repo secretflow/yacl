@@ -22,6 +22,8 @@
 
 #include "gtest/gtest.h"
 
+#include "yacl/crypto/rand/rand.h"
+
 namespace yacl::crypto {
 namespace {
 
@@ -321,6 +323,39 @@ TEST(PRTest, MersennePrime8) {
   constexpr uint8_t k_mp8_mask = 127;
   for (auto e : out) {
     EXPECT_LT(e, k_mp8_mask);
+  }
+}
+
+TEST(PRTest, Ltn128) {
+  std::vector<uint128_t> out(1000);
+  uint128_t n = FastRandU128();
+  FillPRandWithLtN<uint128_t>(SymmetricCrypto::CryptoType::AES128_ECB, 0, 0, 0,
+                              absl::MakeSpan(out), n);
+  EXPECT_NE(out[0], out[1]);
+  for (auto e : out) {
+    EXPECT_LT(e, n);
+  }
+}
+
+TEST(PRTest, Ltn64) {
+  std::vector<uint64_t> out(1000);
+  uint64_t n = FastRandU64();
+  FillPRandWithLtN<uint64_t>(SymmetricCrypto::CryptoType::AES128_ECB, 0, 0, 0,
+                             absl::MakeSpan(out), n);
+  EXPECT_NE(out[0], out[1]);
+  for (auto e : out) {
+    EXPECT_LT(e, n);
+  }
+}
+
+TEST(PRTest, Ltn32) {
+  std::vector<uint64_t> out(1000);
+  uint32_t n = FastRandU32();
+  FillPRandWithLtN<uint64_t>(SymmetricCrypto::CryptoType::AES128_ECB, 0, 0, 0,
+                             absl::MakeSpan(out), n);
+  EXPECT_NE(out[0], out[1]);
+  for (auto e : out) {
+    EXPECT_LT(e, n);
   }
 }
 

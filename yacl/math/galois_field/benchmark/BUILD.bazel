@@ -1,4 +1,4 @@
-# Copyright 2023 Ant Group Co., Ltd.
+# Copyright 2024 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,37 +15,10 @@
 load("//bazel:yacl.bzl", "yacl_cc_binary")
 
 yacl_cc_binary(
-    name = "serialize",
-    srcs = ["serialize_bench.cc"],
+    name = "operation_bench",
+    srcs = ["operation_bench.cc"],
     deps = [
-        "//yacl/math/mpint",
-        "@com_github_google_benchmark//:benchmark",
-    ],
-)
-
-yacl_cc_binary(
-    name = "mpint",
-    srcs = ["mpint_bench.cc"],
-    deps = [
-        "//yacl/math/mpint",
-        "@com_github_google_benchmark//:benchmark_main",
-    ],
-)
-
-yacl_cc_binary(
-    name = "prime",
-    srcs = ["prime_bench.cc"],
-    deps = [
-        "//yacl/math/mpint",
-        "@com_github_google_benchmark//:benchmark_main",
-    ],
-)
-
-yacl_cc_binary(
-    name = "mod",
-    srcs = ["mod_bench.cc"],
-    deps = [
-        "//yacl/math/mpint",
+        "//yacl/math/galois_field:gf",
         "@com_github_google_benchmark//:benchmark_main",
     ],
 )

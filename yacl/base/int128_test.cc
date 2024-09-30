@@ -16,6 +16,8 @@
 
 #include "gtest/gtest.h"
 
+#include "yacl/crypto/rand/rand.h"
+
 TEST(Int128Test, NumericLimitsTest) {
 #ifdef __clang__
 #pragma clang diagnostic push
@@ -76,4 +78,18 @@ TEST(Int128Test, Decompose) {
   }
 }
 
-TEST(Int128Test, RandomTest) {}
+TEST(Int128Test, CountLzTest) {
+  uint128_t x = 0;
+  EXPECT_EQ(yacl::CountLZ(x), 128);
+
+  x = 1;
+  EXPECT_EQ(yacl::CountLZ(x), 127);
+
+  x = yacl::crypto::FastRandU128();
+  EXPECT_EQ(yacl::CountLZ(x), yacl::CountLZ(x));
+
+  x = std::numeric_limits<uint128_t>::max();
+  int offset = yacl::crypto::RandLtN(128);
+  x >>= offset;
+  EXPECT_EQ(yacl::CountLZ(x), offset);
+}

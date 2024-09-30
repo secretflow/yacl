@@ -52,6 +52,16 @@ void FillRand(char *buf, size_t len, bool fast_mode = false);
 // Random Support for Generic Types
 // --------------------------------
 
+// Generate uint32_t random value
+uint32_t RandU32(bool fast_mode = false);
+
+// Generate uint32_t random value, in a faster but less secure way
+inline uint32_t FastRandU32() { return RandU32(true); }
+
+// Generate uint32_t random value, in a slower but more secure way
+// (randomness comes directly from an random entropy source)
+inline uint32_t SecureRandU32() { return RandU32(false); }
+
 // Generate uint64_t random value
 uint64_t RandU64(bool fast_mode = false);
 
@@ -224,5 +234,36 @@ class YaclReplayUrbg {
   const uint64_t iv_;
   const CType ctype_;
 };
+
+template <class RandomIt>
+void ReplayShuffle(RandomIt first, RandomIt last, uint128_t seed,
+                   uint64_t *ctr) {
+  YACL_ENFORCE(ctr != nullptr);
+
+  using diff_t = typename std::iterator_traits<RandomIt>::difference_type;
+  diff_t n = last - first;
+
+  // prepare n-1 random numbers
+  // ind[0] in [0, 1], ind[1] in [0, 2] ... ind[n-2] in [0, n-1]
+  std::vector<uint128_t> ind(n - 1);
+
+  *ctr = yacl::crypto::FillPRand(
+      yacl::crypto::SymmetricCrypto::CryptoType::AES128_CTR, seed, 0, *ctr,
+      (char *)ind.data(), (n - 1) * sizeof(uint128_t));
+
+  // Though this is not strictly uniform random. it will
+  // provide statistical security of no less than 40 bits.
+  // i.e. for some fixed k, the statistical distance between our random
+  // variables and the ground truth uniform distribution over [0, k-1] is no
+  // more that 1/2 * (k / 2^{128}) < 2^{-64} (if we assume k < 2^64).
+  for (int64_t idx = 0; idx < n - 1; ++idx) {
+    ind[idx] = ind[idx] % (idx + 2);
+  }
+
+  // Knuth-Durstenfeld Shuffle
+  for (diff_t i = n - 1; i > 0; --i) {  //
+    std::swap(first[i], first[ind[i - 1]]);
+  }
+}
 
 }  // namespace yacl::crypto

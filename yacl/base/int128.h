@@ -18,6 +18,8 @@
 #include <iostream>
 #include <limits>
 
+#include "absl/numeric/bits.h"
+
 // NOTE:
 // We add our own int128 due to:
 // - absl::int128 forget to support fully `constexpr`, i.e. `operator>>`. Giving
@@ -74,6 +76,15 @@ inline constexpr uint128_t Uint128Min() { return 0; }
 std::pair<int64_t, uint64_t> DecomposeInt128(int128_t v);
 
 std::pair<uint64_t, uint64_t> DecomposeUInt128(uint128_t v);
+
+inline int CountLZ(uint128_t v) {
+  auto [hi, lo] = DecomposeUInt128(v);
+  return hi == 0 ? absl::countl_zero(lo) + 64 : absl::countl_zero(hi);
+}
+
+inline int CountBitWidth(uint128_t v) {
+  return std::numeric_limits<uint128_t>::digits - CountLZ(v);
+}
 
 }  // namespace yacl
 

@@ -41,6 +41,7 @@ yacl_cc_library(
     srcs = ["int128.cc"],
     hdrs = ["int128.h"],
     deps = [
+        "@com_google_absl//absl/numeric:bits",
         "@com_google_absl//absl/numeric:int128",
     ],
 )
@@ -50,6 +51,7 @@ yacl_cc_test(
     srcs = ["int128_test.cc"],
     deps = [
         ":int128",
+        "//yacl/crypto/rand",
     ],
 )
 

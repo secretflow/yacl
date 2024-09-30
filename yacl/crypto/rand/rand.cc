@@ -67,6 +67,13 @@ void FillRand(char *buf, size_t len, bool fast_mode) {
 // ---------------------
 // Other Implementations
 // ---------------------
+//
+uint32_t RandU32(bool fast_mode) {
+  uint32_t rand32 = 0;
+  FillRand(reinterpret_cast<char *>(&rand32), sizeof(uint32_t), fast_mode);
+  return rand32;
+}
+
 uint64_t RandU64(bool fast_mode) {
   uint64_t rand64 = 0;
   FillRand(reinterpret_cast<char *>(&rand64), sizeof(uint64_t), fast_mode);

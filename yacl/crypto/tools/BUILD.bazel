@@ -43,6 +43,7 @@ yacl_cc_test(
     srcs = ["prg_test.cc"],
     deps = [
         ":prg",
+        "//yacl/crypto/rand",
     ],
 )
 
