@@ -22,9 +22,6 @@ header: # <1>
     - '**'
 
   paths-ignore: # <8>
-    # OPENSOURCE-CLEANUP REMOVE BEGIN
-    - 'OWNERS'
-    # OPENSOURCE-CLEANUP REMOVE END
     - '.circleci'
     - '.github'
     - '**/*.md'
