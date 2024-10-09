@@ -16,10 +16,10 @@
 install(FILES ${CMAKE_CURRENT_LIST_DIR}/gadget.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/yacl/crypto/math)
 
+add_subdirectory(galois_field)
+add_subdirectory(mpint)
+
 set(YACL_SOURCE_FILES
     ${YACL_SOURCE_FILES}
     PARENT_SCOPE)
 
-
-add_subdirectory(galois_field)
-add_subdirectory(mpint)

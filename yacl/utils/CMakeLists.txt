@@ -28,6 +28,8 @@ install(
         ${CMAKE_INSTALL_INCLUDEDIR}/yacl/utils
 )
 
+add_subdirectory(spi)
+
 set(YACL_SOURCE_FILES ${YACL_SOURCE_FILES} PARENT_SCOPE)
 
 add_executable(parallel_test parallel_test.cc)

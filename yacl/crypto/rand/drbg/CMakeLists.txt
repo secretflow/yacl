@@ -30,3 +30,4 @@ set(YACL_SOURCE_FILES
 add_executable(drbg_test factory_test.cc)
 target_link_libraries(drbg_test PRIVATE yacl gtest_main)
 add_test(NAME drbg_test COMMAND drbg_test)
+

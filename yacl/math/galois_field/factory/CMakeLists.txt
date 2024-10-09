@@ -15,8 +15,8 @@
 set(YACL_SOURCE_FILES
     ${YACL_SOURCE_FILES}
     ${CMAKE_CURRENT_LIST_DIR}/gf_spi.cc
-    ${CMAKE_CURRENT_LIST_DIR}/intel_factory.cc
     ${CMAKE_CURRENT_LIST_DIR}/mcl_factory.cc
+    # ${CMAKE_CURRENT_LIST_DIR}/intel_factory.cc
     ${CMAKE_CURRENT_LIST_DIR}/mpint_factory.cc)
 
 # Add header files for installation
@@ -24,8 +24,8 @@ install(
   FILES ${CMAKE_CURRENT_LIST_DIR}/gf_scalar.h
         ${CMAKE_CURRENT_LIST_DIR}/gf_vector.h
         ${CMAKE_CURRENT_LIST_DIR}/gf_spi.h
-        ${CMAKE_CURRENT_LIST_DIR}/intel_factory.h
         ${CMAKE_CURRENT_LIST_DIR}/mcl_factory.h
+        ${CMAKE_CURRENT_LIST_DIR}/intel_factory.h
         ${CMAKE_CURRENT_LIST_DIR}/mpint_factory.h
   DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/yacl/math/galois_field/factory)
 
@@ -33,14 +33,14 @@ set(YACL_SOURCE_FILES
     ${YACL_SOURCE_FILES}
     PARENT_SCOPE)
 
-add_executable(intel_factory_test intel_factory_test.cc)
-target_link_libraries(intel_factory_test PRIVATE yacl gtest_main)
-add_test(NAME intel_factory_test COMMAND intel_factory_test)
-
 add_executable(mcl_factory_test mcl_factory_test.cc)
 target_link_libraries(mcl_factory_test PRIVATE yacl gtest_main)
-add_test(NAME mcl_factory_test COMMAND mpc_factory_test)
+add_test(NAME mcl_factory_test COMMAND mcl_factory_test)
 
 add_executable(mpint_factory_test mpint_factory_test.cc)
 target_link_libraries(mpint_factory_test PRIVATE yacl gtest_main)
-add_test(NAME mpint_factory_test COMMAND mcl_factory_test)
+add_test(NAME mpint_factory_test COMMAND mpint_factory_test)
+
+# add_executable(intel_factory_test intel_factory_test.cc)
+# target_link_libraries(intel_factory_test PRIVATE yacl gtest_main)
+# add_test(NAME intel_factory_test COMMAND intel_factory_test)

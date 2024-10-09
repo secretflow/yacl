@@ -20,9 +20,10 @@ project(
   DESCRIPTION
     "YACL (Yet Another Common crypto library) is a C++ library that contains cryptography, network and io modules which other SecretFlow code depends on."
   HOMEPAGE_URL "https://github.com/secretflow/yacl"
-  LANGUAGES CXX)
+  LANGUAGES CXX C)
 
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/")
+set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE
@@ -68,6 +69,7 @@ endif()
 set(FETCHCONTENT_BASE_DIR ${CMAKE_BINARY_DIR}/external_cmake)
 
 include(ExternalAbseil)
+include(ExternalBlake3)
 include(ExternalFmt)
 include(ExternalSPDLog)
 include(ExternalGTest)
@@ -77,6 +79,8 @@ include(ExternalOpenSSL)
 include(ExternalLibtommath)
 include(ExternalSse2neon)
 include(ExternalMcl)
+include(ExternalFourQ)
+include(ExternalLibSodium)
 
 enable_testing()
 
@@ -94,6 +98,8 @@ target_include_directories(
                                                        # version of your package
 )
 
+target_include_directories(yacl PUBLIC ${CMAKE_BINARY_DIR}/include)
+
 set(YACL_SOURCE_FILES "")
 
 add_subdirectory(yacl/base)
@@ -103,5 +109,20 @@ add_subdirectory(yacl/utils)
 add_subdirectory(yacl/math)
 
 target_sources(yacl PRIVATE ${YACL_SOURCE_FILES})
-target_link_libraries(yacl PUBLIC fmt::fmt absl::stacktrace absl::symbolize
-                                  OpenSSL::Crypto libtommath mcl::mcl)
+
+target_link_libraries(
+  yacl
+  PUBLIC fmt::fmt
+         absl::stacktrace
+         absl::symbolize
+         BLAKE3::blake3
+         mcl::mcl
+         ExtLibsodium::libsodium
+         ExtLibtommath::libtommath
+         ExtFourQ::fourq)
+
+if(YACL_WITH_EXT_OPENSSL)
+  target_link_libraries(yacl PUBLIC ExtOpenSSL::Crypto ExtOpenSSL::SSL)
+else()
+  target_link_libraries(yacl PUBLIC OpenSSL::Crypto OpenSSL::SSL)
+endif()

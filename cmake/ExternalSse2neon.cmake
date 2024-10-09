@@ -18,11 +18,10 @@ ExternalProject_Add(
   URL https://github.com/DLTcollab/sse2neon/archive/8df2f48dbd0674ae5087f7a6281af6f55fa5a8e2.tar.gz
   URL_HASH
     SHA256=787e0a7a64f1461b48232a7f9b9e9c14fa4a35a30875f2fb91aec6ddeaddfc0f
-  DOWNLOAD_NO_PROGRESS true
   BUILD_IN_SOURCE true
   CONFIGURE_COMMAND ""
   INSTALL_COMMAND "")
 
 ExternalProject_Get_Property(sse2neon SOURCE_DIR)
 include_directories(${SOURCE_DIR})
-unset(${SOURCE_DIR})
+unset(SOURCE_DIR)

@@ -20,6 +20,8 @@ install(FILES ${CMAKE_CURRENT_LIST_DIR}/gf.h
               ${CMAKE_CURRENT_LIST_DIR}/gf_instrinsic.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/yacl/math/galois_field)
 
+add_subdirectory(factory)
+
 set(YACL_SOURCE_FILES
     ${YACL_SOURCE_FILES}
     PARENT_SCOPE)
@@ -32,4 +34,3 @@ add_executable(gf_intrinsic_test gf_intrinsic_test.cc)
 target_link_libraries(gf_intrinsic_test PRIVATE yacl gtest_main)
 add_test(NAME gf_intrinsic_test COMMAND gf_intrinsic_test)
 
-add_subdirectory(factory)

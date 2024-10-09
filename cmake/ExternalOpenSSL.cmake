@@ -12,29 +12,50 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-# Trying to find system openssl first (failures are allowed)
-find_package(OpenSSL)
+set(YACL_EXT_OPENSSL_VERSION 3.3.2)
+set(YACL_EXT_OPENSSL_URL
+    https://github.com/openssl/openssl/archive/refs/tags/openssl-3.3.2.tar.gz)
+set(YACL_EXT_OPENSSL_SHA256
+    bedbb16955555f99b1a7b1ba90fc97879eb41025081be359ecd6a9fcbdf1c8d2)
+set(YACL_WITH_EXT_OPENSSL TRUE)
 
-# if not found, or version not supoprted
-if(${OPENSSL_FOUND} AND ${OPENSSL_VERSION} VERSION_LESS "5.0.0")
-  message("Yacl does not support ${OPENSSL_VERSION}, using downloaded openssl")
+# Trying to find system openssl first (failures are allowed) see:
+# https://cmake.org/cmake/help/v3.4/module/FindOpenSSL.html
+find_package(OpenSSL QUIET)
+
+if(${OPENSSL_FOUND} AND ${OPENSSL_VERSION} VERSION_GREATER "5.0.0")
+  message(STATUS "Found system OpenSSL (${OPENSSL_VERSION})")
+  set(YACL_WITH_EXT_OPENSSL FALSE)
+else()
+  message(STATUS "OpenSSL not found, or its version is incompatiable")
+  message(STATUS "Use downloaded OpenSSL (${YACL_EXT_OPENSSL_VERSION}) instead")
+  set(YACL_WITH_EXT_OPENSSL TRUE)
+endif()
+
+if(YACL_WITH_EXT_OPENSSL)
   ExternalProject_Add(
-    OpenSSL
+    openssl
     PREFIX "external_openssl"
-    URL https://github.com/openssl/openssl/archive/refs/tags/openssl-3.3.2.tar.gz
-    URL_HASH
-      SHA256=bedbb16955555f99b1a7b1ba90fc97879eb41025081be359ecd6a9fcbdf1c8d2
-    DOWNLOAD_NO_PROGRESS true
+    URL ${YACL_EXT_OPENSSL_URL}
+    URL_HASH SHA256=${YACL_EXT_OPENSSL_SHA256}
     BUILD_IN_SOURCE true
     CONFIGURE_COMMAND
       ./Configure no-legacy no-weak-ssl-ciphers no-tests no-shared no-ui-console
-      no-docs --prefix=${CMAKE_BINARY_DIR}
-    INSTALL_COMMAND make install)
+      no-docs no-apps --banner=Finished --release --prefix=${CMAKE_BINARY_DIR}
+      -w
+    BUILD_COMMAND make -j4 build_sw
+    INSTALL_COMMAND make install_sw
+    EXCLUDE_FROM_ALL)
 
-  # see: https://cmake.org/cmake/help/v3.4/module/FindOpenSSL.html
-  set(OPENSSL_USE_STATIC_LIBS TRUE)
-  find_package(OpenSSL REQUIRED)
+  add_library(ExtOpenSSL_Crypto STATIC IMPORTED)
+  set_target_properties(
+    ExtOpenSSL_Crypto PROPERTIES IMPORTED_LOCATION
+                                 ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libcrypto.a)
+  add_library(ExtOpenSSL::Crypto ALIAS ExtOpenSSL_Crypto)
 
-else()
-  message("using system openssl")
+  add_library(ExtOpenSSL_SSL STATIC IMPORTED)
+  set_target_properties(
+    ExtOpenSSL_SSL PROPERTIES IMPORTED_LOCATION
+                              ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/libssl.a)
+  add_library(ExtOpenSSL::SSL ALIAS ExtOpenSSL_SSL)
 endif()

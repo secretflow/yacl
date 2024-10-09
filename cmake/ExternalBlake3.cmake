@@ -12,12 +12,14 @@
 # License for the specific language governing permissions and limitations under
 # the License.
 
-ExternalProject_Add(
-  fmt
+FetchContent_Declare(
+  blake3
   URL https://github.com/BLAKE3-team/BLAKE3/archive/refs/tags/1.5.4.tar.gz
   URL_HASH
-    SHA256=ddd24f26a31d23373e63d9be2e723263ac46c8b6d49902ab08024b573fd2a416)
+    SHA256=ddd24f26a31d23373e63d9be2e723263ac46c8b6d49902ab08024b573fd2a416
+  SOURCE_SUBDIR c)
 
-FetchContent_MakeAvailable(fmt)
+FetchContent_MakeAvailable(blake3)
 
-include_directories(${fmt_SOURCE_DIR}/include)
+include_directories(${blake3_SOURCE_DIR})
+

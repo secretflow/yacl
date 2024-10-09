@@ -342,7 +342,10 @@ TEST_F(MPIntTest, ToBytesWorks) {
   EXPECT_EQ(buf.data<uint16_t>()[0], 0x3456);
 
   a = MPInt(-1);
-  EXPECT_EQ(a.ToBytes(10, Endian::little), a.ToBytes(10, Endian::big));
+  auto out1 =a.ToBytes(10, Endian::little);
+  auto out2 =a.ToBytes(10, Endian::big);
+  EXPECT_EQ(out1.size(), out2.size());
+  EXPECT_EQ(memcmp(out1.data(), out2.data(), out1.size()), 0);
 }
 
 TEST_F(MPIntTest, MsgpackWorks) {

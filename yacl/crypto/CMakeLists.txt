@@ -20,25 +20,24 @@ install(FILES ${CMAKE_CURRENT_LIST_DIR}/key_utils.h
               ${CMAKE_CURRENT_LIST_DIR}/openssl_wrappers.h
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/yacl/crypto)
 
-set(YACL_SOURCE_FILES
-    ${YACL_SOURCE_FILES}
-    PARENT_SCOPE)
-
 add_subdirectory(aead)
 add_subdirectory(aes)
 add_subdirectory(block_cipher)
-# add_subdirectory(ecc)
+add_subdirectory(ecc)
 add_subdirectory(envelope)
 # add_subdirectory(experimental)
 add_subdirectory(hash)
 add_subdirectory(hmac)
 # add_subdirectory(pairing)
 add_subdirectory(pke)
-# add_subdirectory(rand)
+add_subdirectory(rand)
 add_subdirectory(sign)
 add_subdirectory(tools)
+
+set(YACL_SOURCE_FILES
+    ${YACL_SOURCE_FILES}
+    PARENT_SCOPE)
 
 add_executable(key_utils_test key_utils_test.cc)
 target_link_libraries(key_utils_test PRIVATE yacl gtest_main)
 add_test(NAME key_utils_test COMMAND key_utils_test)
-
