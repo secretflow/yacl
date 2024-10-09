@@ -372,11 +372,11 @@ def _com_github_dltcollab_sse2neon():
     maybe(
         http_archive,
         name = "com_github_dltcollab_sse2neon",
-        sha256 = "787e0a7a64f1461b48232a7f9b9e9c14fa4a35a30875f2fb91aec6ddeaddfc0f",
-        strip_prefix = "sse2neon-8df2f48dbd0674ae5087f7a6281af6f55fa5a8e2",
+        sha256 = "b7db0851d86322865368358e4aedbc275d124f8871c75bfbabfb08f5254a3a60",
+        strip_prefix = "sse2neon-b72d48ef491e3c471e10c86715361d421d54ccd7",
         type = "tar.gz",
         urls = [
-            "https://github.com/DLTcollab/sse2neon/archive/8df2f48dbd0674ae5087f7a6281af6f55fa5a8e2.tar.gz",
+            "https://github.com/DLTcollab/sse2neon/archive/b72d48ef491e3c471e10c86715361d421d54ccd7.tar.gz",
         ],
         build_file = "@yacl//bazel:sse2neon.BUILD",
     )
