@@ -24,6 +24,7 @@ set(YACL_SOURCE_FILES
 
 add_executable(aes_test aes_test.cc)
 target_link_libraries(aes_test PRIVATE yacl gtest_main)
+target_link_options(aes_test PRIVATE "-all_load") # for spi
 add_test(NAME aes_test COMMAND aes_test)
 
 # TODO Add benchmark target

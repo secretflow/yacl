@@ -37,6 +37,7 @@ set(YACL_SOURCE_FILES
 
 add_executable(ecc_sodium_ed25519_test ed25519_test.cc)
 target_link_libraries(ecc_sodium_ed25519_test PRIVATE yacl gtest_main)
+target_link_options(ecc_sodium_ed25519_test PRIVATE "-all_load") # for spi
 add_test(NAME ecc_sodium_ed25519_test COMMAND ecc_sodium_ed25519_test)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS_OLD}")

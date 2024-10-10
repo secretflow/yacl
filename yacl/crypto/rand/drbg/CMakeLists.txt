@@ -29,5 +29,5 @@ set(YACL_SOURCE_FILES
 
 add_executable(drbg_test factory_test.cc)
 target_link_libraries(drbg_test PRIVATE yacl gtest_main)
+target_link_options(drbg_test PRIVATE "-all_load") # for spi
 add_test(NAME drbg_test COMMAND drbg_test)
-

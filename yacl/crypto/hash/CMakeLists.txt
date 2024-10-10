@@ -14,8 +14,7 @@
 
 set(YACL_SOURCE_FILES
     ${YACL_SOURCE_FILES} ${CMAKE_CURRENT_LIST_DIR}/ssl_hash.cc
-    ${CMAKE_CURRENT_LIST_DIR}/blake3.cc
-    ${CMAKE_CURRENT_LIST_DIR}/hash_utils.cc)
+    ${CMAKE_CURRENT_LIST_DIR}/blake3.cc ${CMAKE_CURRENT_LIST_DIR}/hash_utils.cc)
 
 # Add header files for installation
 install(
@@ -31,10 +30,12 @@ set(YACL_SOURCE_FILES
 
 add_executable(blake3_test blake3_test.cc)
 target_link_libraries(blake3_test PRIVATE yacl gtest_main)
+target_link_options(blake3_test PRIVATE "-all_load") # for spi
 add_test(NAME blake3_test COMMAND blake3_test)
 
 add_executable(ssl_hash_all_test ssl_hash_all_test.cc)
 target_link_libraries(ssl_hash_all_test PRIVATE yacl gtest_main)
+target_link_options(ssl_hash_all_test PRIVATE "-all_load") # for spi
 add_test(NAME ssl_hash_all_test COMMAND ssl_hash_all_test)
 
 # TODO add benchmark target

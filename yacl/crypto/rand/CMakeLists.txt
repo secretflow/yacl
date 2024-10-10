@@ -27,6 +27,7 @@ set(YACL_SOURCE_FILES
 
 add_executable(rand_test rand_test.cc)
 target_link_libraries(rand_test PRIVATE yacl gtest_main)
+target_link_options(rand_test PRIVATE "-all_load") # for spi
 add_test(NAME rand_test COMMAND rand_test)
 
 # TODO Add benchmark target

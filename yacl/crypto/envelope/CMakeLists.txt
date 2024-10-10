@@ -25,4 +25,5 @@ set(YACL_SOURCE_FILES
 
 add_executable(digital_envelope_test digital_envelope_test.cc)
 target_link_libraries(digital_envelope_test PRIVATE yacl gtest_main)
+target_link_options(digital_envelope_test PRIVATE "-all_load") # for spi
 add_test(NAME digital_envelope_test COMMAND digital_envelope_test)

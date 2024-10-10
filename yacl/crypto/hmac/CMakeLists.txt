@@ -26,4 +26,5 @@ set(YACL_SOURCE_FILES
 
 add_executable(hmac_all_test hmac_all_test.cc)
 target_link_libraries(hmac_all_test PRIVATE yacl gtest_main)
+target_link_options(hmac_all_test PRIVATE "-all_load") # for spi
 add_test(NAME hmac_all_test COMMAND hmac_all_test)

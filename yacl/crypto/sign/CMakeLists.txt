@@ -29,8 +29,10 @@ set(YACL_SOURCE_FILES
 
 add_executable(rsa_signing_test rsa_signing_test.cc)
 target_link_libraries(rsa_signing_test PRIVATE yacl gtest_main)
+target_link_options(rsa_signing_test PRIVATE "-all_load") # for spi
 add_test(NAME rsa_signing_test COMMAND rsa_signing_test)
 
 add_executable(sm2_signing_test sm2_signing_test.cc)
 target_link_libraries(sm2_signing_test PRIVATE yacl gtest_main)
+target_link_options(sm2_signing_test PRIVATE "-all_load") # for spi
 add_test(NAME sm2_signing_test COMMAND sm2_signing_test)

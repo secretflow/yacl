@@ -33,4 +33,5 @@ set(YACL_SOURCE_FILES
 
 add_executable(buffer_test buffer_test.cc)
 target_link_libraries(buffer_test PRIVATE yacl gtest_main)
+target_link_options(buffer_test PRIVATE "-all_load") # for spi
 add_test(NAME buffer_test COMMAND buffer_test)

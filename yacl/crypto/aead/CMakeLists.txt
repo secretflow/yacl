@@ -26,8 +26,10 @@ set(YACL_SOURCE_FILES
 
 add_executable(all_gcm_test all_gcm_test.cc)
 target_link_libraries(all_gcm_test PRIVATE yacl gtest_main)
+target_link_options(all_gcm_test PRIVATE "-all_load") # for spi
 add_test(NAME all_gcm_test COMMAND all_gcm_test)
 
 add_executable(sm4_mte_test sm4_mte_test.cc)
 target_link_libraries(sm4_mte_test PRIVATE yacl gtest_main)
+target_link_options(all_gcm_test PRIVATE "-all_load") # for spi
 add_test(NAME sm4_mte_test COMMAND sm4_mte_test)

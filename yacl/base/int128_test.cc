@@ -76,4 +76,3 @@ TEST(Int128Test, Decompose) {
   }
 }
 
-TEST(Int128Test, RandomTest) {}

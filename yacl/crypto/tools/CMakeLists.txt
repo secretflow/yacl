@@ -29,18 +29,22 @@ set(YACL_SOURCE_FILES
 
 add_executable(crhash_test crhash_test.cc)
 target_link_libraries(crhash_test PRIVATE yacl gtest_main)
+target_link_options(crhash_test PRIVATE "-all_load") # for spi
 add_test(NAME crhash_test COMMAND crhash_test)
 
 add_executable(prg_test prg_test.cc)
 target_link_libraries(prg_test PRIVATE yacl gtest_main)
+target_link_options(prg_test PRIVATE "-all_load") # for spi
 add_test(NAME prg_test COMMAND prg_test)
 
 add_executable(ro_test ro_test.cc)
 target_link_libraries(ro_test PRIVATE yacl gtest_main)
+target_link_options(ro_test PRIVATE "-all_load") # for spi
 add_test(NAME ro_test COMMAND ro_test)
 
 add_executable(rp_test rp_test.cc)
 target_link_libraries(rp_test PRIVATE yacl gtest_main)
+target_link_options(rp_test PRIVATE "-all_load") # for spi
 add_test(NAME rp_test COMMAND rp_test)
 
 # TODO add benchmark target

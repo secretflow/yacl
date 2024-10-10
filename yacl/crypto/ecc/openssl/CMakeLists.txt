@@ -26,5 +26,5 @@ set(YACL_SOURCE_FILES
 
 add_executable(ecc_openssl_test openssl_test.cc)
 target_link_libraries(ecc_openssl_test PRIVATE yacl gtest_main)
-add_test(NAME
-ecc_openssl_test COMMAND ecc_openssl_test)
+target_link_options(ecc_openssl_test PRIVATE "-all_load") # for spi
+add_test(NAME ecc_openssl_test COMMAND ecc_openssl_test)

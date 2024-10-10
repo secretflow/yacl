@@ -27,4 +27,5 @@ set(YACL_SOURCE_FILES
 
 add_executable(FourQ_test FourQ_test.cc)
 target_link_libraries(FourQ_test PRIVATE yacl gtest_main)
+target_link_options(FourQ_test PRIVATE "-all_load") # for spi
 add_test(NAME FourQ_test COMMAND FourQ_test)

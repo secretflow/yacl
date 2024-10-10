@@ -43,4 +43,5 @@ set(YACL_SOURCE_FILES
 
 add_executable(ecc_test ecc_test.cc)
 target_link_libraries(ecc_test PRIVATE yacl gtest_main)
+target_link_options(ecc_test PRIVATE "-all_load") # for spi
 add_test(NAME ecc_test COMMAND ecc_test)

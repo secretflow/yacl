@@ -32,8 +32,10 @@ set(YACL_SOURCE_FILES
 
 add_executable(ecc_toy_montgomery_test montgomery_test.cc)
 target_link_libraries(ecc_toy_montgomery_test PRIVATE yacl gtest_main)
+target_link_options(ecc_toy_montgomery_test PRIVATE "-all_load") # for spi
 add_test(NAME ecc_toy_montgomery_test COMMAND ecc_toy_montgomery_test)
 
 add_executable(ecc_toy_weierstrass_test weierstrass_test.cc)
 target_link_libraries(ecc_toy_weierstrass_test PRIVATE yacl gtest_main)
+target_link_options(ecc_toy_weierstrass_test PRIVATE "-all_load") # for spi
 add_test(NAME ecc_toy_weierstrass_test COMMAND ecc_toy_weierstrass_test)

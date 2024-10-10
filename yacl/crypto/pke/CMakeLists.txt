@@ -28,8 +28,10 @@ set(YACL_SOURCE_FILES
 
 add_executable(rsa_enc_test rsa_enc_test.cc)
 target_link_libraries(rsa_enc_test PRIVATE yacl gtest_main)
+target_link_options(rsa_enc_test PRIVATE "-all_load") # for spi
 add_test(NAME rsa_enc_test COMMAND rsa_enc_test)
 
 add_executable(sm2_enc_test sm2_enc_test.cc)
 target_link_libraries(sm2_enc_test PRIVATE yacl gtest_main)
+target_link_options(sm2_enc_test PRIVATE "-all_load") # for spi
 add_test(NAME sm2_enc_test COMMAND sm2_enc_test)

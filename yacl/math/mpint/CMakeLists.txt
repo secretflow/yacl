@@ -34,15 +34,17 @@ set(YACL_SOURCE_FILES
 
 add_executable(montgomery_math_test montgomery_math_test.cc)
 target_link_libraries(montgomery_math_test PRIVATE yacl gtest_main)
+target_link_options(montgomery_math_test PRIVATE "-all_load") # for spi
 add_test(NAME montgomery_math_test COMMAND montgomery_math_test)
 
 add_executable(mp_int_test mp_int_test.cc)
 target_link_libraries(mp_int_test PRIVATE yacl gtest_main)
+target_link_options(mp_int_test PRIVATE "-all_load") # for spi
 add_test(NAME mp_int_test COMMAND mp_int_test)
 
 add_executable(tommath_ext_test tommath_ext_test.cc)
 target_link_libraries(tommath_ext_test PRIVATE yacl gtest_main)
-add_test(NAME tommath_ext_test COMMAND
-tommath_ext_test)
+target_link_options(tommath_ext_test PRIVATE "-all_load") # for spi
+add_test(NAME tommath_ext_test COMMAND tommath_ext_test)
 
 # TODO add benchmark target
