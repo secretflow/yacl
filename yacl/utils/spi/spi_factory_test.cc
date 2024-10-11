@@ -53,7 +53,7 @@ class MockPaillierLib : public MockPheSpi {
 
   static std::unique_ptr<MockPheSpi> Create(const std::string &phe_name,
                                             const SpiArgs &args) {
-    // fmt::println("Create MockPaillierLib with args {}", args);
+    fmt::println("Create MockPaillierLib with args {}", args);
 
     YACL_ENFORCE(phe_name == "paillier");
     return std::make_unique<MockPaillierLib>(

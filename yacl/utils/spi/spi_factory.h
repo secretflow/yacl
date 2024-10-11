@@ -24,7 +24,6 @@
 #include <vector>
 
 #include "absl/strings/ascii.h"
-#include "fmt/ranges.h"
 #include "spdlog/spdlog.h"
 
 #include "yacl/base/exception.h"
@@ -99,16 +98,10 @@ class SpiFactoryBase {
       }
 
       // check the target lib is founded after for-loop
-      if (ListLibraries().size() != 0) {
-        std::string all_libs =
-            fmt::format("{}", fmt::join(ListLibraries(), " and "));
-        YACL_ENFORCE(lib_name,
-                     "There are no lib supports {}, please use other "
-                     "feature/args, supported libs: {}",
-                     feature_name, all_libs);
-      } else {
-        YACL_ENFORCE(lib_name, "There are no libs registered");
-      }
+      YACL_ENFORCE(
+          lib_name,
+          "There are no lib supports {}, please use other feature/args",
+          feature_name);
     } else {
       // The user has specified lib
       auto lib_it = libs_map_.find(*lib_name);
