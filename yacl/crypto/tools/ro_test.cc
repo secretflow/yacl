@@ -14,9 +14,6 @@
 
 #include "yacl/crypto/tools/ro.h"
 
-#include <random>
-#include <string>
-
 #include "gtest/gtest.h"
 
 #include "yacl/base/byte_container_view.h"
@@ -34,14 +31,20 @@ TEST_P(RandomOracleTest, Default) {
   const auto& param = GetParam();
   const auto& RO = RandomOracle::GetDefault();
   auto input = FastRandBytes(param);
-  EXPECT_EQ(RO.Gen(input), RO.Gen(input));
+  auto out1 = RO.Gen(input);
+  auto out2 = RO.Gen(input);
+  EXPECT_EQ(out1.size(), out2.size());
+  EXPECT_EQ(memcmp(out1.data(), out2.data(), out1.size()), 0);
 }
 
 TEST_P(RandomOracleTest, OutLen8) {
   const auto& param = GetParam();
   auto RO = RandomOracle(HashAlgorithm::BLAKE3, 8);
   auto input = FastRandBytes(param);
-  EXPECT_EQ(RO.Gen(input), RO.Gen(input));
+  auto out1 = RO.Gen(input);
+  auto out2 = RO.Gen(input);
+  EXPECT_EQ(out1.size(), out2.size());
+  EXPECT_EQ(memcmp(out1.data(), out2.data(), out1.size()), 0);
 }
 
 TEST(RandomOracleTest, EdgeTest1) {

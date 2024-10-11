@@ -13,25 +13,21 @@
 # the License.
 
 set(YACL_SOURCE_FILES
-    ${YACL_SOURCE_FILES} ${CMAKE_CURRENT_LIST_DIR}/exception.cc
-    ${CMAKE_CURRENT_LIST_DIR}/int128.cc)
+    ${YACL_SOURCE_FILES} ${CMAKE_CURRENT_LIST_DIR}/urandom_factory.cc
+    ${CMAKE_CURRENT_LIST_DIR}/rdseed_factory.cc)
 
 # Add header files for installation
 install(
-  FILES ${CMAKE_CURRENT_LIST_DIR}/aligened_vector.h
-        ${CMAKE_CURRENT_LIST_DIR}/block.h
-        ${CMAKE_CURRENT_LIST_DIR}/buffer.h
-        ${CMAKE_CURRENT_LIST_DIR}/byte_container_view.h
-        ${CMAKE_CURRENT_LIST_DIR}/dynamic_bitset.h
-        ${CMAKE_CURRENT_LIST_DIR}/exception.h
-        ${CMAKE_CURRENT_LIST_DIR}/int128.h
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/yacl/base)
+  FILES ${CMAKE_CURRENT_LIST_DIR}/entropy_source.h
+        ${CMAKE_CURRENT_LIST_DIR}/urandom_factory.h
+        ${CMAKE_CURRENT_LIST_DIR}/rdseed_factory.h
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/yacl/crypto/rand/entropy_source)
 
 set(YACL_SOURCE_FILES
     ${YACL_SOURCE_FILES}
     PARENT_SCOPE)
 
-add_executable(buffer_test buffer_test.cc)
-target_link_libraries(buffer_test PRIVATE yacl gtest_main)
-target_link_options(buffer_test PRIVATE "-all_load") # for spi
-add_test(NAME buffer_test COMMAND buffer_test)
+add_executable(es_test factory_test.cc)
+target_link_libraries(es_test PRIVATE yacl gtest_main)
+target_link_options(es_test PRIVATE "-all_load") # for spi
+add_test(NAME es_test COMMAND es_test)

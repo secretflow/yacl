@@ -12,9 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/math/galois_field/factory/intel_factory.h"
-
-#include <cstdint>
+#include "yacl/math/galois_field/gf.h"
 
 #include "gtest/gtest.h"
 

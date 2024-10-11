@@ -13,25 +13,22 @@
 # the License.
 
 set(YACL_SOURCE_FILES
-    ${YACL_SOURCE_FILES} ${CMAKE_CURRENT_LIST_DIR}/exception.cc
-    ${CMAKE_CURRENT_LIST_DIR}/int128.cc)
+    ${YACL_SOURCE_FILES} ${CMAKE_CURRENT_LIST_DIR}/lib25519_factory.cc
+    ${CMAKE_CURRENT_LIST_DIR}/ed25519_group.cc
+    ${CMAKE_CURRENT_LIST_DIR}/lib25519_group.cc)
 
 # Add header files for installation
 install(
-  FILES ${CMAKE_CURRENT_LIST_DIR}/aligened_vector.h
-        ${CMAKE_CURRENT_LIST_DIR}/block.h
-        ${CMAKE_CURRENT_LIST_DIR}/buffer.h
-        ${CMAKE_CURRENT_LIST_DIR}/byte_container_view.h
-        ${CMAKE_CURRENT_LIST_DIR}/dynamic_bitset.h
-        ${CMAKE_CURRENT_LIST_DIR}/exception.h
-        ${CMAKE_CURRENT_LIST_DIR}/int128.h
-  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/yacl/base)
+  FILES ${CMAKE_CURRENT_LIST_DIR}/ed25519_group.h
+        ${CMAKE_CURRENT_LIST_DIR}/lib25519_group.h
+        ${CMAKE_CURRENT_LIST_DIR}/lib25519_private.h
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/yacl/crypto/ecc/lib25519)
 
 set(YACL_SOURCE_FILES
     ${YACL_SOURCE_FILES}
     PARENT_SCOPE)
 
-add_executable(buffer_test buffer_test.cc)
-target_link_libraries(buffer_test PRIVATE yacl gtest_main)
-target_link_options(buffer_test PRIVATE "-all_load") # for spi
-add_test(NAME buffer_test COMMAND buffer_test)
+add_executable(ecc_lib25519_ed25519_test ed25519_test.cc)
+target_link_libraries(ecc_lib25519_ed25519_test PRIVATE yacl gtest_main)
+target_link_options(ecc_lib25519_ed25519_test PRIVATE "-all_load") # for spi
+add_test(NAME ecc_lib25519_ed25519_test COMMAND ecc_lib25519_ed25519_test)

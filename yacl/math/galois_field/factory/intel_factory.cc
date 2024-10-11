@@ -18,6 +18,16 @@
 #include <utility>
 
 #include "yacl/base/block.h"
+#include "yacl/base/int128.h"
+#ifndef __aarch64__
+// sse
+#include <emmintrin.h>
+#include <smmintrin.h>
+// pclmul
+#include <wmmintrin.h>
+#else
+#include "sse2neon.h"
+#endif
 
 namespace yacl::math {
 
@@ -232,4 +242,4 @@ bool IntrinsicFieldFactory::Check(const std::string& field_name,
   }
 }
 
-};  // namespace yacl::math
+}  // namespace yacl::math
