@@ -16,21 +16,6 @@
 
 #include "fmt/ranges.h"
 
-// formatter to format SpiArgs values
-template <>
-struct fmt::formatter<std::map<std::string, yacl::SpiArg>::value_type> {
-  template <typename ParseContext>
-  constexpr auto parse(ParseContext &ctx) {
-    return ctx.begin();
-  }
-
-  template <typename FormatContext>
-  auto format(const std::map<std::string, yacl::SpiArg>::value_type &fp,
-              FormatContext &ctx) const {
-    return fmt::format_to(ctx.out(), "{}", fp.second);
-  }
-};
-
 namespace yacl {
 
 SpiArgs::SpiArgs(std::initializer_list<SpiArg> args) {
