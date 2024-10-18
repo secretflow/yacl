@@ -298,10 +298,10 @@ def _rule_python():
     maybe(
         http_archive,
         name = "rules_python",
-        sha256 = "ca77768989a7f311186a29747e3e95c936a41dffac779aff6b443db22290d913",
-        strip_prefix = "rules_python-0.36.0",
+        sha256 = "0cc05ddb27614baecace068986931e2a6e9f69114e6115fc5dc58250faf56e0f",
+        strip_prefix = "rules_python-0.37.0",
         urls = [
-            "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.36.0.tar.gz",
+            "https://github.com/bazelbuild/rules_python/archive/refs/tags/0.37.0.tar.gz",
         ],
     )
 
