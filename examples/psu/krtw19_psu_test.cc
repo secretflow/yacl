@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "examples/psu/krtw19_psu.h"
+#include "psu/krtw19_psu.h"
 
 #include <algorithm>
 #include <future>

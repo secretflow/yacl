@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "examples/psi/python/ecdh_psi_pybind.h"
+#include "psi/python/ecdh_psi_pybind.h"
 
 #include "pybind11/complex.h"
 #include "pybind11/functional.h"

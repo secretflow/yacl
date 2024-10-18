@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
+load("@yacl//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -23,7 +23,7 @@ yacl_cc_library(
     ],
     deps = [
         ":sigma_owh",
-        "//yacl/crypto/hash:hash_utils",
+        "@yacl//yacl/crypto/hash:hash_utils",
     ],
 )
 
@@ -43,8 +43,8 @@ yacl_cc_library(
     ],
     deps = [
         ":sigma_owh",
-        "//yacl/crypto/tools:ro",
-        "//yacl/utils:parallel",
+        "@yacl//yacl/crypto/tools:ro",
+        "@yacl//yacl/utils:parallel",
     ],
 )
 
@@ -53,7 +53,7 @@ yacl_cc_test(
     srcs = ["sigma_test.cc"],
     deps = [
         ":sigma",
-        "//yacl/crypto/rand",
+        "@yacl//yacl/crypto/rand",
     ],
 )
 
@@ -64,8 +64,8 @@ yacl_cc_library(
         "sigma_config.h",
     ],
     deps = [
-        "//yacl/crypto/ecc",
-        "//yacl/crypto/hash:hash_interface",
+        "@yacl//yacl/crypto/ecc",
+        "@yacl//yacl/crypto/hash:hash_interface",
     ],
 )
 
@@ -77,6 +77,6 @@ yacl_cc_library(
     ],
     deps = [
         ":sigma_config",
-        "//yacl/crypto/rand",
+        "@yacl//yacl/crypto/rand",
     ],
 )

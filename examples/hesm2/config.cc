@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "examples/hesm2/config.h"
+#include "hesm2/config.h"
 
-#include "examples/hesm2/t1.h"
-#include "examples/hesm2/t2.h"
+#include "hesm2/t1.h"
+#include "hesm2/t2.h"
 
 namespace examples::hesm2 {
 

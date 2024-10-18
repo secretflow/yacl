@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "examples/psi/cpp/ecdh_psi.h"
-#include "examples/psi/java/EcdhPsi.hdrs.h/EcdhPsi.h"
-#include "examples/psi/java/jni_wrappers.h"
+#include "psi/cpp/ecdh_psi.h"
+#include "psi/java/EcdhPsi.hdrs.h/EcdhPsi.h"
+#include "psi/java/jni_wrappers.h"
 
 #include "yacl/math/mpint/mp_int.h"
 #include "yacl/utils/serialize.h"

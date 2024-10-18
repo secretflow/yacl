@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:yacl.bzl", "yacl_cc_binary", "yacl_cc_library", "yacl_cc_test")
+load("@yacl//bazel:yacl.bzl", "yacl_cc_binary", "yacl_cc_library", "yacl_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -25,8 +25,8 @@ yacl_cc_library(
         "ecdh_psi.h",
     ],
     deps = [
-        "//yacl/crypto/ecc",
-        "//yacl/link",
+        "@yacl//yacl/crypto/ecc",
+        "@yacl//yacl/link",
     ],
 )
 
@@ -43,10 +43,10 @@ yacl_cc_binary(
         "main_utils.h",
     ],
     data = [
-        "//examples/psi:psi_data",
+        "//psi:psi_data",
     ],
     deps = [
         ":ecdh_psi",
-        "//yacl/io/rw:csv_reader",
+        "@yacl//yacl/io/rw:csv_reader",
     ],
 )

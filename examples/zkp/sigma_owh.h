@@ -14,12 +14,15 @@
 
 #pragma once
 
-#include "examples/zkp/sigma_config.h"
+#include "zkp/sigma_config.h"
 
 #include "yacl/crypto/ecc/group_sketch.h"
 #include "yacl/crypto/rand/rand.h"
 
-namespace yacl::crypto {
+namespace examples::zkp {
+
+using namespace yacl::crypto;
+using namespace yacl::math;
 
 // As we abide an unifying view to implement the Sigma-type zero-knowledge
 // proof (ZKP) schemes, in which a one-way group homomorphism(OWH) would
@@ -40,4 +43,4 @@ class SigmaOWH {
                                     const Witness& witness);
 };
 
-}  // namespace yacl::crypto
+}  // namespace examples::zkp

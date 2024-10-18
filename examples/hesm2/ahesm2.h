@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "examples/hesm2/ciphertext.h"
-#include "examples/hesm2/private_key.h"
+#include "hesm2/ciphertext.h"
+#include "hesm2/private_key.h"
 
 namespace examples::hesm2 {
 

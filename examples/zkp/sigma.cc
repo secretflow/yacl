@@ -12,12 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "examples/zkp/sigma.h"
+#include "zkp/sigma.h"
 
 #include "yacl/crypto/tools/ro.h"
 #include "yacl/utils/parallel.h"
 
 namespace examples::zkp {
+
+using namespace yacl::crypto;
+using namespace yacl::math;
 
 SigmaProtocol::SigmaProtocol(SigmaType type,
                              const std::shared_ptr<EcGroup>& group,

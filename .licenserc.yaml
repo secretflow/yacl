@@ -35,6 +35,7 @@ header: # <1>
     - 'LICENSE'
     - 'NOTICE'
     - '.bazelversion'
+    - '.bazelignore'
     - '.clang-format'
     - '.clang-tidy'
     - '.gitattributes'

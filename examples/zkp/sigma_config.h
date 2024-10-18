@@ -17,7 +17,10 @@
 #include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/crypto/hash/hash_interface.h"
 
-namespace yacl::crypto {
+namespace examples::zkp {
+
+using namespace yacl::crypto;
+using namespace yacl::math;
 
 // EC-based Sigma proof systems should be implemented over prime-order ecc
 // groups.
@@ -132,4 +135,4 @@ struct SigmaShortProof {
   Challenge challenge;
 };
 
-}  // namespace yacl::crypto
+}  // namespace examples::zkp

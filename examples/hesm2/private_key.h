@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "examples/hesm2/public_key.h"
+#include "hesm2/public_key.h"
 
 #include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/math/mpint/mp_int.h"

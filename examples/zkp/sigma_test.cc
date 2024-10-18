@@ -12,13 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "examples/zkp/sigma.h"
+#include "zkp/sigma.h"
 
 #include "gtest/gtest.h"
 
 #include "yacl/crypto/rand/rand.h"
 
 namespace examples::zkp {
+
+using namespace yacl::crypto;
+using namespace yacl::math;
 
 namespace {
 

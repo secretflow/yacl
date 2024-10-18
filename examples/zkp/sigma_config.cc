@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "examples/zkp/sigma_config.h"
+#include "zkp/sigma_config.h"
 
-namespace yacl::crypto {
+namespace examples::zkp {
+
+using namespace yacl::crypto;
+using namespace yacl::math;
 
 // 0 means n, user should assign these to actual numbers
 const std::vector<SigmaConfig> kSigmaConfig = {
@@ -138,4 +141,4 @@ SigmaConfig GetSeveralDlog(uint64_t num) {
   return GetSigmaConfig(SigmaType::SeveralDlog).SetDynNum(num);
 }
 
-}  // namespace yacl::crypto
+}  // namespace examples::zkp

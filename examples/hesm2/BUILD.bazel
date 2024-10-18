@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:yacl.bzl", "yacl_cc_binary")
+load("@yacl//bazel:yacl.bzl", "yacl_cc_binary")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -31,10 +31,10 @@ yacl_cc_binary(
         "t2.h",
     ],
     deps = [
-        "//yacl/crypto/ecc:spi",
-        "//yacl/crypto/ecc/openssl",
-        "//yacl/math/mpint",
-        "//yacl/utils:cuckoo_index",  # 添加 cuckoo_index 依赖
-        "//yacl/utils/spi",
+        "@yacl//yacl/crypto/ecc:spi",
+        "@yacl//yacl/crypto/ecc/openssl",
+        "@yacl//yacl/math/mpint",
+        "@yacl//yacl/utils:cuckoo_index",  # 添加 cuckoo_index 依赖
+        "@yacl//yacl/utils/spi",
     ],
 )
