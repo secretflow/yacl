@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "examples/zkp/sigma_owh.h"
+#include "zkp/sigma_owh.h"
 
-namespace yacl::crypto {
+namespace examples::zkp {
+
+using namespace yacl::crypto;
+using namespace yacl::math;
 
 const std::string kSigmaDefaultSeedPrefix = "YACL-SIGMA-PROOF-SEED";
 
@@ -108,4 +111,4 @@ SigmaStatement SigmaOWH::ToStatement(const SigmaConfig& config,
   }
 }
 
-}  // namespace yacl::crypto
+}  // namespace examples::zkp

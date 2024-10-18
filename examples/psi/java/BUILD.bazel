@@ -45,10 +45,10 @@ cc_library(
     name = "jni_wrappers",
     hdrs = ["jni_wrappers.h"],
     deps = [
-        "//yacl/base:exception",
-        "//yacl/base:int128",
-        "//yacl/crypto/hash:hash_utils",
-        "//yacl/math/mpint",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/base:int128",
+        "@yacl//yacl/crypto/hash:hash_utils",
+        "@yacl//yacl/math/mpint",
     ],
 )
 
@@ -60,7 +60,17 @@ cc_jni_library(
     deps = [
         ":EcdhPsi.hdrs",  # the generated headers
         ":jni_wrappers",
-        "//examples/psi/cpp:ecdh_psi",
-        "//yacl/utils:serialize",
+        "//psi/cpp:ecdh_psi",
+        "@yacl//yacl/utils:serialize",
     ],
+)
+
+# To generate a LibEcdhPsi_deploy.jar, simply call
+# ------------------------------------------------
+# bazel build //examples/psi/java:LibEcdhPsi_deploy.jar
+#
+# Then the generated jar file should be located in bazel-out/...
+java_binary(
+    name = "LibEcdhPsi",
+    runtime_deps = [":EcdhPsi"],
 )

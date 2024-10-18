@@ -29,9 +29,9 @@ cd bazel-bin/examples/hesm2
 ```cpp
 #include <iostream>
 
-#include "examples/hesm2/ahesm2.h"
-#include "examples/hesm2/config.h"
-#include "examples/hesm2/private_key.h"
+#include "hesm2/ahesm2.h"
+#include "hesm2/config.h"
+#include "hesm2/private_key.h"
 
 #include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/math/mpint/mp_int.h"

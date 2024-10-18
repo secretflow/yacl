@@ -33,17 +33,17 @@ pybind_extension(
     ],
     linkopts = select({
         "@bazel_tools//src/conditions:darwin": [
-            "-Wl,-exported_symbols_list,$(location //examples/psi/python:exported_symbols.lds)",
+            "-Wl,-exported_symbols_list,$(location //psi/python:exported_symbols.lds)",
         ],
         "//conditions:default": [
-            "-Wl,--version-script,$(location //examples/psi/python:version_script.lds)",
+            "-Wl,--version-script,$(location //psi/python:version_script.lds)",
         ],
     }),
     deps = [
         ":exported_symbols.lds",
         ":version_script.lds",
-        "//yacl/crypto/ecc",
-        "//yacl/crypto/hash:hash_utils",
+        "@yacl//yacl/crypto/ecc",
+        "@yacl//yacl/crypto/hash:hash_utils",
     ],
 )
 

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "examples/psi/cpp/ecdh_psi.h"
+#include "psi/cpp/ecdh_psi.h"
 
 #include <memory>
 #include <vector>
