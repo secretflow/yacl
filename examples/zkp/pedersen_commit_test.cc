@@ -12,13 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "examples/zkp/pedersen_commit.h"
+#include "zkp/pedersen_commit.h"
 
 #include "gtest/gtest.h"
 
 #include "yacl/crypto/rand/rand.h"
 
-namespace yacl::crypto {
+namespace examples::zkp {
+
+using namespace yacl::crypto;
+using namespace yacl::math;
 
 TEST(PedersenCommit, OpenTest) {
   MPInt blind1;
@@ -38,8 +41,8 @@ TEST(PedersenCommit, OpenTest) {
 }
 
 TEST(PedersenCommit, PedersenCommitTest) {
-  std::shared_ptr<EcGroup> group =
-      EcGroupFactory::Instance().Create(kSigmaEcName, ArgLib = kSigmaEcLib);
+  std::shared_ptr<EcGroup> group = EcGroupFactory::Instance().Create(
+      kSigmaEcName, yacl::ArgLib = kSigmaEcLib);
 
   auto rnd_seed1 = RandBytes(32);
   auto rnd_seed2 = RandBytes(32);
@@ -60,4 +63,4 @@ TEST(PedersenCommit, PedersenCommitTest) {
   EXPECT_FALSE(ctx.Open(commit, input2, blind2));
 }
 
-}  // namespace yacl::crypto
+}  // namespace examples::zkp

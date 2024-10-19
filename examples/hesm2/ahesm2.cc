@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "examples/hesm2/ahesm2.h"
+#include "hesm2/ahesm2.h"
 
 #include <atomic>
 
-#include "examples/hesm2/ciphertext.h"
-#include "examples/hesm2/config.h"
-#include "examples/hesm2/private_key.h"
-#include "examples/hesm2/t1.h"
-#include "examples/hesm2/t2.h"
+#include "hesm2/ciphertext.h"
+#include "hesm2/config.h"
+#include "hesm2/private_key.h"
+#include "hesm2/t1.h"
+#include "hesm2/t2.h"
 
 #include "yacl/crypto/ecc/ec_point.h"
 #include "yacl/math/mpint/mp_int.h"

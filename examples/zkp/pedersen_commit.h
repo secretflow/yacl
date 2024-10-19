@@ -14,11 +14,14 @@
 
 #pragma once
 
-#include "examples/zkp/sigma_owh.h"
+#include "zkp/sigma_owh.h"
 
 #include "yacl/crypto/hash/hash_utils.h"
 
-namespace yacl::crypto {
+namespace examples::zkp {
+
+using namespace yacl::crypto;
+using namespace yacl::math;
 
 // This is an implementation of Pedersen commitment scheme depended on the
 // `SigmaOWH`.
@@ -70,7 +73,7 @@ class PedersenCommit {
   //
   // utility functions
   //
-  static MPInt HashInput(ByteContainerView input) {
+  static MPInt HashInput(yacl::ByteContainerView input) {
     auto hashed_input = Sha256(input);
     MPInt input_bn;
     input_bn.Deserialize(hashed_input);
@@ -78,8 +81,8 @@ class PedersenCommit {
   }
 
   static PedersenCommit &GetDefault() {
-    static std::shared_ptr<EcGroup> group =
-        EcGroupFactory::Instance().Create(kSigmaEcName, ArgLib = kSigmaEcLib);
+    static std::shared_ptr<EcGroup> group = EcGroupFactory::Instance().Create(
+        kSigmaEcName, yacl::ArgLib = kSigmaEcLib);
     static PedersenCommit ctx(group);
     return ctx;
   }
@@ -89,17 +92,17 @@ class PedersenCommit {
   SigmaGenerator generators_;
 };
 
-inline EcPoint PedersenHashAndCommit(const ByteContainerView &input,
+inline EcPoint PedersenHashAndCommit(const yacl::ByteContainerView &input,
                                      const MPInt &blind) {
   return PedersenCommit::GetDefault().Commit(PedersenCommit::HashInput(input),
                                              blind);
 }
 
 inline bool PedersenHashAndOpen(const EcPoint &commit,
-                                const ByteContainerView &input,
+                                const yacl::ByteContainerView &input,
                                 const MPInt &blind) {
   auto input_bn = PedersenCommit::HashInput(input);
   return PedersenCommit::GetDefault().Open(commit, input_bn, blind);
 }
 
-}  // namespace yacl::crypto
+}  // namespace examples::zkp

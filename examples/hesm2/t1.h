@@ -21,7 +21,7 @@
 #include <shared_mutex>
 #include <unordered_map>
 
-#include "examples/hesm2/config.h"
+#include "hesm2/config.h"
 
 #include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/math/mpint/mp_int.h"
