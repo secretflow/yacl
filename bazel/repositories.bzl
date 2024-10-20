@@ -88,8 +88,8 @@ def _com_github_brpc_brpc():
     maybe(
         http_archive,
         name = "com_github_brpc_brpc",
-        sha256 = "fe4eb10b4ca1a59e0f71086552b2d8897afd66df93b53c18ad83f6a93717cc2d",
-        strip_prefix = "brpc-1.10.0",
+        sha256 = "ef87e543a50b7246ce833065a861084f8c32a4e227369b4405f225f82a8d3030",
+        strip_prefix = "brpc-1.11.0",
         type = "tar.gz",
         patch_args = ["-p1"],
         patches = [
@@ -98,7 +98,7 @@ def _com_github_brpc_brpc():
             "@yacl//bazel:patches/brpc_crypto.patch",
         ],
         urls = [
-            "https://github.com/apache/brpc/archive/refs/tags/1.10.0.tar.gz",
+            "https://github.com/apache/brpc/archive/refs/tags/1.11.0.tar.gz",
         ],
     )
 
