@@ -152,7 +152,7 @@ def _com_google_protobuf():
         patch_args = ["-p1"],
         patches = ["@yacl//bazel:patches/protobuf.patch"],
         urls = [
-            "https://github.com/protocolbuffers/protobuf/releases/download/v21.12/protobuf-all-21.12.tar.gz",
+            "https://github.com/protocolbuffers/protobuf/releases/download/v28.3/protobuf-all-21.12.tar.gz",
         ],
     )
 
