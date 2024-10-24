@@ -19,6 +19,7 @@ def yacl_deps():
     _rule_proto()
     _rule_python()
     _rules_foreign_cc()
+    _build_bazel_apple_support()
     _com_github_madler_zlib()
     _com_google_protobuf()
     _com_github_gflags_gflags()
@@ -416,4 +417,12 @@ def _lib25519():
         urls = [
             "https://lib25519.cr.yp.to/lib25519-20240321.tar.gz",
         ],
+    )
+
+def _build_bazel_apple_support():
+    maybe(
+        http_archive,
+        name = "build_bazel_apple_support",
+        sha256 = "b53f6491e742549f13866628ddffcc75d1f3b2d6987dc4f14a16b242113c890b",
+        url = "https://github.com/bazelbuild/apple_support/releases/download/1.17.1/apple_support.1.17.1.tar.gz",
     )
