@@ -20,7 +20,7 @@ new_local_repository(
     path = "..",
 )
 
-load("//repositories.bzl", "example_deps")
+load("//:repositories.bzl", "example_deps")
 
 example_deps()
 
