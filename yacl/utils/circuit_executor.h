@@ -14,16 +14,20 @@
 
 #pragma once
 
+#include <bits/stdc++.h>
+
+#include <boost/dynamic_bitset.hpp>
 #include <memory>
 
+#include "yacl/base/buffer.h"
 #include "yacl/base/dynamic_bitset.h"
 #include "yacl/io/circuit/bristol_fashion.h"
 
+using namespace std;
 namespace yacl {
 
 // plaintext protocol that executes everything without link
 
-template <typename T = uint64_t>
 class PlainExecutor {
  public:
   // Constructor
@@ -33,17 +37,20 @@ class PlainExecutor {
   void LoadCircuitFile(const std::string &path);
 
   // Setup the input wire (local operation)
+  template <typename T = uint64_t>
   void SetupInputs(absl::Span<T> inputs);
-
+  void SetupInputs(vector<uint8_t> inputs_bi);
   // Execute the circuit
   void Exec();
 
   // Finalize and get the result
+  template <typename T = uint64_t>
   void Finalize(absl::Span<T> outputs);
 
- private:
+ public:
   // NOTE: please make sure you use the correct order of wires
-  dynamic_bitset<T> wires_;              // shares
+  boost::dynamic_bitset<uint8_t> wires_;  // shares   GC的时候这里要重新写vector
+                                          // <uint128_t> 是否可以，以及顺序问题
   std::shared_ptr<io::BFCircuit> circ_;  // bristol fashion circuit
 };
 
