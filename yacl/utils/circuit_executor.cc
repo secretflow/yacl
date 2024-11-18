@@ -13,9 +13,7 @@
 // limitations under the License.
 
 #include "yacl/utils/circuit_executor.h"
-
-using namespace std;
-
+// using namespace std;
 namespace yacl {
 
 namespace {
@@ -34,7 +32,7 @@ void PlainExecutor<T>::LoadCircuitFile(const std::string& path) {
   circ_ = reader.StealCirc();
 }
 
-std::string dynamic_bitset_to_string(const boost::dynamic_bitset<>& bits) {
+std::string dynamic_bitset_to_string(const dynamic_bitset<>& bits) {
   std::string str(bits.size(), '0');  // 创建一个与位集大小相同的字符串
   for (size_t i = 0; i < bits.size(); ++i) {
     if (bits[i]) {
@@ -64,10 +62,11 @@ void PlainExecutor<T>::Exec() {
   //   wires_[i - 2] = wires_[i];
   // }
   // cout << "线路输入：";
-  // cout << wires_.size() << endl;
+  // // cout << wires_.size() << endl;
   // for (int i = 0; i < 768; i++) {
   //   cout << wires_[i];
   // }
+  // cout << endl;
   // // cout << dynamic_bitset_to_string(wires_) << endl;
   // cout << endl;
   // Evaluate all gates, sequentially
@@ -158,8 +157,7 @@ void PlainExecutor<T>::Finalize(absl::Span<T> outputs) {
   //   --end;
   // }
 
-  cout << endl;
-  for (size_t i = 0; i < 32; ++i) {
+    for (size_t i = 0; i < 32; ++i) {
     dynamic_bitset<T> result(8);
     for (size_t j = 0; j < 8; ++j) {
       result[j] =

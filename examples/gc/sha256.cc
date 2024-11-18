@@ -13,9 +13,8 @@
 #include "yacl/io/circuit/bristol_fashion.h"
 #include "yacl/utils/circuit_executor.h"
 
-using namespace std;
-using namespace yacl;
-
+// using namespace std;
+// using namespace yacl;
 // void sha256_preprocess(uint8_t *input_data, size_t input_len,
 //                        uint8_t **padded_data, size_t *padded_len) {
 //   size_t pad_len = input_len + 1 + 8;  // +1 for 0x80 and +8 for length
@@ -63,68 +62,68 @@ vector<uint8_t> preprocess(const std::vector<uint8_t> &message) {
   while ((padded_message.size() * 8) % 512 != 448) {
     padded_message.push_back(0x00);
   }
-  // cout << "11  " << padded_message.size() * 8 << endl;
-  // cout << "origin_len" << original_length << endl;
+  // std::cout << "11  " << padded_message.size() * 8 << endl;
+  // std::cout << "origin_len" << original_length << endl;
   // vector<uint8_t> temp;
   // 添加原始消息长度（64 位）
   for (int i = 7; i >= 0; --i) {
     padded_message.push_back((original_length >> (i * 8)) & 0xFF);
     // temp.push_back((original_length >> (i * 8)) & 0xFF);
   }
-  // cout << "len:";
+  // std::cout << "len:";
   // for (int i = 0; i < temp.size(); i++) {
   //   bitset<8> b(temp[i]);
-  //   cout << b << ' ';
+  //   std::cout << b << ' ';
   // }
-  // cout << endl;
+  // std::cout << endl;
 
   return padded_message;
 }
 
-uint128_t ReverseBytes(uint128_t x) {
-  auto byte_view = ByteContainerView(&x, sizeof(x));
-  uint128_t ret = 0;
-  auto buf = std::vector<uint8_t>(sizeof(ret));
-  for (size_t i = 0; i < byte_view.size(); ++i) {
-    buf[byte_view.size() - i - 1] = byte_view[i];
-  }
-  std::memcpy(&ret, buf.data(), buf.size());
-  return ret;
-}
+// uint128_t ReverseBytes(uint128_t x) {
+//   auto byte_view = ByteContainerView(&x, sizeof(x));
+//   uint128_t ret = 0;
+//   auto buf = std::vector<uint8_t>(sizeof(ret));
+//   for (size_t i = 0; i < byte_view.size(); ++i) {
+//     buf[byte_view.size() - i - 1] = byte_view[i];
+//   }
+//   std::memcpy(&ret, buf.data(), buf.size());
+//   return ret;
+// }
 
-std::string uint128ToBinaryString(__uint128_t value) {
-  std::string result;
-  for (int i = 127; i >= 0; --i) {
-    result += ((value >> i) & 1) ? '1' : '0';
-  }
-  return result;
-}
+// std::string uint128ToBinaryString(__uint128_t value) {
+//   std::string result;
+//   for (int i = 127; i >= 0; --i) {
+//     result += ((value >> i) & 1) ? '1' : '0';
+//   }
+//   return result;
+// }
 
-uint128_t CopyDataAsUint128(const uint8_t *data, bool flag) {
-  uint128_t ret;
-  int len = flag ? sizeof(uint128_t) / 2 : sizeof(uint128_t);
-  for (int idx = 0; idx < len; ++idx) {
-    reinterpret_cast<uint8_t *>(&ret)[idx] = data[idx];
-    // cout << uint128ToBinaryString(ret) << endl;
-  }
-  return ret;
-}
+// uint128_t CopyDataAsUint128(const uint8_t *data, bool flag) {
+//   uint128_t ret;
+//   int len = flag ? sizeof(uint128_t) / 2 : sizeof(uint128_t);
+//   for (int idx = 0; idx < len; ++idx) {
+//     reinterpret_cast<uint8_t *>(&ret)[idx] = data[idx];
+//     // std::cout << uint128ToBinaryString(ret) << endl;
+//   }
+//   return ret;
+// }
 
-std::vector<uint8_t> stringToBinary(const std::string &str) {
-  std::vector<uint8_t> binaryData(str.begin(), str.end());
-  return binaryData;
-}
+// std::vector<uint8_t> stringToBinary(const std::string &str) {
+//   std::vector<uint8_t> binaryData(str.begin(), str.end());
+//   return binaryData;
+// }
 
-std::string uint128ToString(__uint128_t value) {
-  if (value == 0) return "0";
+// std::string uint128ToString(__uint128_t value) {
+//   if (value == 0) return "0";
 
-  std::string result;
-  while (value > 0) {
-    result.insert(result.begin(), '0' + static_cast<char>(value % 10));
-    value /= 10;
-  }
-  return result;
-}
+//   std::string result;
+//   while (value > 0) {
+//     result.insert(result.begin(), '0' + static_cast<char>(value % 10));
+//     value /= 10;
+//   }
+//   return result;
+// }
 
 // template <typename T>
 // void PlainExecutor<T>::Finalize(absl::Span<T> outputs) {
@@ -145,11 +144,11 @@ std::string uint128ToString(__uint128_t value) {
 //         outputs[circ_->nov - i - 1] =
 //             *(uint128_t*)result.data();  // 先得到最后位置上的
 //         index -= circ_->now[i];
-//         cout << std::hex << outputs[circ_->nov - i - 1] << "\t";
+//         std::cout << std::hex << outputs[circ_->nov - i - 1] << "\t";
 //       }
 //     }
 //   }
-//   cout << endl;
+//   std::cout << endl;
 // }
 
 // template <typename T>
@@ -177,24 +176,24 @@ std::string uint128ToString(__uint128_t value) {
 
 //   // 打印二进制数据
 //   for (uint8_t byte : binaryData) {
-//     std::cout << std::bitset<8>(byte) << " ";
+//     std::std::cout << std::bitset<8>(byte) << " ";
 //   }
-//   std::cout << std::endl;
+//   std::std::cout << std::endl;
 
 //   return 0;
 // }
 
-void get_sha256_initial_hash_values(uint32_t hash[8]) {
-  // SHA256 的初始哈希值（每个值为 32 位）
-  hash[0] = 0x6a09e667;
-  hash[1] = 0xbb67ae85;
-  hash[2] = 0x3c6ef372;
-  hash[3] = 0xa54ff53a;
-  hash[4] = 0x510e527f;
-  hash[5] = 0x9b05688c;
-  hash[6] = 0x1f83d9ab;
-  hash[7] = 0x5be0cd19;
-}
+// void get_sha256_initial_hash_values(uint32_t hash[8]) {
+//   // SHA256 的初始哈希值（每个值为 32 位）
+//   hash[0] = 0x6a09e667;
+//   hash[1] = 0xbb67ae85;
+//   hash[2] = 0x3c6ef372;
+//   hash[3] = 0xa54ff53a;
+//   hash[4] = 0x510e527f;
+//   hash[5] = 0x9b05688c;
+//   hash[6] = 0x1f83d9ab;
+//   hash[7] = 0x5be0cd19;
+// }
 int main() {
   // const char *data = "Hello, OpenSSL!";
   // size_t data_len = strlen(data);
@@ -203,17 +202,17 @@ int main() {
   // uint8_t *padded_data;
   // size_t padded_len;
   // sha256_preprocess((uint8_t *)data, data_len, &padded_data, &padded_len);
-  // cout << "预处理：";
+  // std::cout << "预处理：";
   // for (int i = 0; i < 64; i++) {
-  //   cout << std::hex << static_cast<int>(padded_data[i]);
+  //   std::cout << std::hex << static_cast<int>(padded_data[i]);
   // }
-  // cout << endl;
+  // std::cout << endl;
 
   // vector<uint8_t> data_vec(padded_data, padded_data + 64);
 
   std::string input;
-  cout << "请输入:";
-  cin >> input;
+  std::cout << "请输入:";
+  std::cin >> input;
   std::vector<uint8_t> message(input.begin(), input.end());
 
   // 预处理消息
@@ -237,26 +236,26 @@ int main() {
   }
   reverse(data_vec.begin(), data_vec.end());
 
-  // cout << "预处理：";
+  // std::cout << "预处理：";
   // for (int i = 0; i < data_vec.size(); i++) {
   //   bitset<8> b(data_vec[i]);
-  //   cout << b;
+  //   std::cout << b;
   // }
-  // cout << endl;
+  // std::cout << endl;
 
   for (auto &elem : byte_hash_vec) {
     elem = reverse_bits(elem);
   }
   reverse(byte_hash_vec.begin(), byte_hash_vec.end());
 
-  // cout << "hash";
+  // std::cout << "hash";
   // for (int i = 0; i < 32; i++) {
   //   bitset<8> b(byte_hash_vec[i]);
-  //   cout << b;
+  //   std::cout << b;
   // }
-  // cout << endl;
+  // std::cout << endl;
 
-  vector<uint8_t> input_vec;
+  std::vector<uint8_t> input_vec;
 
   for (auto &elem : data_vec) {
     input_vec.push_back(elem);
@@ -277,21 +276,21 @@ int main() {
 
   // for (auto &elem : output_vec) {
   //   bitset<128> b(elem);
-  //   cout << b;
+  //   std::cout << b;
   // }
-  // cout << endl;
+  // std::cout << endl;
 
-  vector<uint8_t> result(32);
-  string pth_str = fmt::format("{}/yacl/io/circuit/data/sha256.txt",
-                               std::filesystem::current_path().string());
-  PlainExecutor<uint8_t> exec;
+  std::vector<uint8_t> result(32);
+  std::string pth_str = fmt::format("{}/yacl/io/circuit/data/sha256.txt",
+                                    std::filesystem::current_path().string());
+  ycal::PlainExecutor<uint8_t> exec;
 
-  // cout << "指针内容：" << *(uint8_t *)input_vec.data() << endl;
+  // std::cout << "指针内容：" << *(uint8_t *)input_vec.data() << endl;
 
   exec.LoadCircuitFile(pth_str);
   exec.wires_.resize(
       exec.circ_->nw);  // 这里的wires_类型为boost::dynamic_bitset
-  // cout << "大小：" << exec.wires_.size() << endl;
+  // std::cout << "大小：" << exec.wires_.size() << endl;
 
   // memcpy(&exec.wires_, input_vec.data(), 96 * sizeof(uint8_t));
   for (size_t i = 0; i < input_vec.size(); ++i) {
@@ -300,7 +299,7 @@ int main() {
     }
   }
 
-  // cout << "大小：" << exec.wires_.size() << endl;
+  // std::cout << "大小：" << exec.wires_.size() << endl;
 
   // exec.SetupInputs(absl::MakeSpan(input_vec));  // 拼成一个vector
 
@@ -310,15 +309,15 @@ int main() {
 
   reverse(result.begin(), result.end());
   for (int i = 0; i < 32; i++) {
-    cout << std::hex << std::setw(2) << std::setfill('0')
-         << static_cast<int>(result[i]);
-    // cout << result[i];
+    std::cout << std::hex << std::setw(2) << std::setfill('0')
+              << static_cast<int>(result[i]);
+    // std::cout << result[i];
     // bitset<8> bits(result[i]);
-    // cout << bits;
+    // std::cout << bits;
   }
-  cout << endl;
-  // cout << std::hex << static_cast<int>(result[1]) << "\t" << result[0] <<
-  // endl;
+  std::cout << std::endl;
+  // std::cout << std::hex << static_cast<int>(result[1]) << "\t" << result[0]
+  // << endl;
 
   return 0;
 }

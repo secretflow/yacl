@@ -4,7 +4,7 @@ cc_library(
         "mitccrh.h",
     ],
     deps = ["//yacl/crypto/aes:aes_opt",
-    "//yacl/utils:utils",
+    ":utils",
     "//yacl/crypto/tools:crhash"],     
     copts = ["-mavx","-maes","-mpclmul"]
 )
@@ -39,4 +39,29 @@ cc_binary(
          
     ],
     copts = ["-mavx","-maes","-mpclmul"]
+)
+
+cc_binary(
+    name = "sha256_",
+    srcs = ["sha256.cc"],
+    deps = [
+         ":mitccrh", 
+         "//yacl/base:byte_container_view", 
+         "//yacl/base:dynamic_bitset", 
+         "//yacl/crypto/block_cipher:symmetric_crypto",
+         "//yacl/crypto/hash:hash_utils",
+         "//yacl/crypto/rand:rand",
+         "//yacl/io/circuit:bristol_fashion", 
+         "//yacl/utils:circuit_executor",
+         
+         
+    ],
+    copts = ["-mavx","-maes","-mpclmul"]
+)
+
+cc_library(
+    name = "utils",
+    srcs = ["utils.cc"],
+    hdrs = ["utils.h"],
+    deps = [],
 )

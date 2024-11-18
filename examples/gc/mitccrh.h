@@ -1,19 +1,19 @@
 
 #include <stdio.h>
+#include <utils.h>
 
 #include "yacl/crypto/aes/aes_opt.h"
 #include "yacl/crypto/tools/crhash.h"
-#include "yacl/utils/utils.h"
 /*
  * [REF] Implementation of "Better Concrete Security for Half-Gates Garbling (in
  * the Multi-Instance Setting)" https://eprint.iacr.org/2019/1168.pdf
  */
-using namespace yacl::crypto;
+
 using block = __uint128_t;
 template <int BatchSize = 8>
 class MITCCRH {
  public:
-  AES_KEY scheduled_key[BatchSize];
+  yacl::crypto::AES_KEY scheduled_key[BatchSize];
   block keys[BatchSize];
   int key_used = BatchSize;
   block start_point;

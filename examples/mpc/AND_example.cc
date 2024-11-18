@@ -24,14 +24,12 @@
 
 #include "yacl/crypto/aes/aes_opt.h"
 
-using namespace std;
-using namespace yacl::crypto;
 using uint128_t = __uint128_t;
 
 const uint128_t all_one_uint128_t = ~static_cast<__uint128_t>(0);
 const uint128_t select_mask[2] = {0, all_one_uint128_t};
 
-AES_KEY scheduled_key[2];
+yacl::crypto::AES_KEY scheduled_key[2];
 
 inline uint128_t makeuint128_t(uint64_t high, uint64_t low) {
   return (static_cast<uint128_t>(high) << 64) | low;
@@ -109,13 +107,13 @@ uint128_t GBAND(uint128_t LA0, uint128_t A1, uint128_t LB0, uint128_t B1,
 }
 
 // garble process
-void GB(string* circuits, int length, uint128_t& R, uint128_t* F, uint128_t* e,
-        uint128_t& gate_wires, bool& d) {
+void GB(std::string* circuits, int length, uint128_t& R, uint128_t* F,
+        uint128_t* e, uint128_t& gate_wires, bool& d) {
   R = randomuint128_t();
   R = R | 1;  // ensure the LSB of R is 1
 
   for (int i = 0; i < length; i++) {
-    if (circuits[i].find("input") != string ::npos)
+    if (circuits[i].find("input") != std::string ::npos)
       e[i] = randomuint128_t();
     else {
       gate_wires = GBAND(e[0], e[0] ^ R, e[1], e[1] ^ R, R, F);
@@ -125,14 +123,14 @@ void GB(string* circuits, int length, uint128_t& R, uint128_t* F, uint128_t* e,
 }
 
 // encoding process
-void EN(bool a, bool b, uint128_t* e, unordered_map<string, uint128_t>& buffer,
-        uint128_t R) {
+void EN(bool a, bool b, uint128_t* e,
+        std::unordered_map<std::string, uint128_t>& buffer, uint128_t R) {
   buffer["alice"] = e[0] ^ (select_mask[a] & R);
   buffer["bob"] = e[1] ^ (select_mask[b] & R);
 }
 
 // evaluate process
-uint128_t* EV(unordered_map<string, uint128_t>& buffer) {
+uint128_t* EV(std::unordered_map<std::string, uint128_t>& buffer) {
   uint128_t A = buffer["alice"], B = buffer["bob"];
 
   uint128_t HA, HB, W;
@@ -160,17 +158,17 @@ uint128_t* EV(unordered_map<string, uint128_t>& buffer) {
 
 int main() {
   bool a, b;
-  cout << "Please input the value：" << endl;
-  cin >> a >> b;
+  std::cout << "Please input the value：" << std::endl;
+  std::cin >> a >> b;
 
-  string circuits[3] = {"input1", "input2", "outputAND"};
+  std::string circuits[3] = {"input1", "input2", "outputAND"};
   int length = 3;
   uint128_t e[2];        // circuits garble value of input for encoding
   uint128_t gate_wires;  // circuits garble value of gate output
   bool d;                // value for decoding
   uint128_t F[2];        // two half gates
   uint128_t R;           // delta in gc
-  unordered_map<string, uint128_t>
+  std::unordered_map<std::string, uint128_t>
       buffer;  // simulate the communication process
 
   generateKeys();
@@ -186,7 +184,8 @@ int main() {
   // step 3: evaluation
   EV(buffer);
   // step 4: decoding the result
-  cout << a << " and " << b << " = " << (getLSB(buffer["AND"]) ^ d) << endl;
+  std::cout << a << " and " << b << " = " << (getLSB(buffer["AND"]) ^ d)
+            << std::endl;
 
   return 0;
 }

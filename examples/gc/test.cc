@@ -4,13 +4,14 @@
 #include <type_traits>
 #include <vector>
 
-#include "absl/strings/escaping.h"
+#include "absl/std::strings/escaping.h"
 #include "absl/types/span.h"
 #include "examples/gc/mitccrh.h"
 #include "fmt/format.h"
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/dynamic_bitset.h"
+#include "yacl/base/exception.h"
 #include "yacl/crypto/rand/rand.h"
 #include "yacl/io/circuit/bristol_fashion.h"
 #include "yacl/io/stream/file_io.h"
@@ -18,10 +19,11 @@
 #include "yacl/kernel/algorithms/iknp_ote.h"
 #include "yacl/kernel/ot_kernel.h"
 #include "yacl/kernel/type/ot_store_utils.h"
+#include "yacl/link/context.h"
+#include "yacl/link/factory.h"
 #include "yacl/link/test_util.h"
 #include "yacl/utils/circuit_executor.h"
-using namespace yacl;
-using namespace std;
+
 namespace {
 using uint128_t = __uint128_t;
 }
@@ -30,8 +32,8 @@ const uint128_t all_one_uint128_t = ~static_cast<__uint128_t>(0);
 const uint128_t select_mask[2] = {0, all_one_uint128_t};
 
 std::shared_ptr<io::BFCircuit> circ_;
-vector<uint128_t> wires_;
-vector<uint128_t> gb_value;
+std::vector<uint128_t> wires_;
+std::vector<uint128_t> gb_value;
 
 // enum class Op {
 //   adder64,   √
@@ -47,8 +49,8 @@ vector<uint128_t> gb_value;
 // }
 
 inline uint128_t Aes128(uint128_t k, uint128_t m) {
-  crypto::SymmetricCrypto enc(crypto::SymmetricCrypto::CryptoType::AES128_ECB,
-                              k);
+  yacl::crypto::SymmetricCrypto enc(
+      yacl::crypto::SymmetricCrypto::CryptoType::AES128_ECB, k);
   return enc.Encrypt(m);
 }
 
@@ -127,7 +129,7 @@ void finalize(absl::Span<T> outputs) {
   size_t index = wires_.size();
 
   for (size_t i = 0; i < circ_->nov; ++i) {
-    dynamic_bitset<T> result(circ_->now[i]);
+    yacl::dynamic_bitset<T> result(circ_->now[i]);
     for (size_t j = 0; j < circ_->now[i]; ++j) {
       int wire_index = index - circ_->now[i] + j;
       result[j] = getLSB(wires_[wire_index]) ^
@@ -135,70 +137,109 @@ void finalize(absl::Span<T> outputs) {
                                                  // 对应的混淆电路计算为LSB ^ d
                                                  // 输出线路在后xx位
     }
-    // cout << "输出：" << result.data() << endl;
+    // std::cout << "输出：" << result.data() << std::endl;
     outputs[circ_->nov - i - 1] = *(uint128_t*)result.data();
     index -= circ_->now[i];
   }
 }
 
-int main() {
-  auto lctxs = link::test::SetupWorld(2);
+int main(int argc, char* argv[]) {
+  int FLAGS_rank = std::stoi(argv[1]);
 
-  const size_t num_ot = 5000;
-  const auto ext_algorithm = yacl::crypto::OtKernel::ExtAlgorithm::Ferret;
-  OtSendStore ot_send(num_ot, OtStoreType::Compact);  // placeholder
-  OtRecvStore ot_recv(num_ot, OtStoreType::Compact);  // placeholder
-  OtKernel kernel0(OtKernel::Role::Sender, ext_algorithm);
-  OtKernel kernel1(OtKernel::Role::Receiver, ext_algorithm);
+  size_t world_size = 2;
+  yacl::link::ContextDesc ctx_desc;
 
-  // WHEN
-  auto sender = std::async([&] {
-    kernel0.init(lctxs[0]);
-    kernel0.eval_cot_random_choice(lctxs[0], num_ot, &ot_send);
-  });
-  auto receiver = std::async([&] {
-    kernel1.init(lctxs[1]);
-    kernel1.eval_cot_random_choice(lctxs[1], num_ot, &ot_recv);
-  });
+  for (size_t rank = 0; rank < world_size; rank++) {
+    const auto id = fmt::format("id-{}", rank);
+    const auto host = fmt::format("127.0.0.1:{}", 10086 + rank);
+    ctx_desc.parties.push_back({id, host});
+  }
 
-  sender.get();
-  receiver.get();
-  cout << "OT delta :" << ot_send.GetDelta() << endl;
+  auto lctx = yacl::link::FactoryBrpc().CreateContext(ctx_desc, FLAGS_rank);
+  lctx->ConnectToMesh();
+  // auto lctxs = link::test::SetupWorld(2);
+
+  // const size_t num_ot = 5000;
+  // const auto ext_algorithm = yacl::crypto::OtKernel::ExtAlgorithm::Ferret;
+  // OtSendStore ot_send(num_ot, OtStoreType::Compact);  // placeholder
+  // OtRecvStore ot_recv(num_ot, OtStoreType::Compact);  // placeholder
+  // OtKernel kernel0(OtKernel::Role::Sender, ext_algorithm);
+  // OtKernel kernel1(OtKernel::Role::Receiver, ext_algorithm);
+
+  // // WHEN
+  // auto sender = std::async([&] {
+  //   kernel0.init(lctxs[0]);
+  //   kernel0.eval_cot_random_choice(lctxs[0], num_ot, &ot_send);
+  // });
+  // auto receiver = std::async([&] {
+  //   kernel1.init(lctxs[1]);
+  //   kernel1.eval_cot_random_choice(lctxs[1], num_ot, &ot_recv);
+  // });
+
+  // sender.get();
+  // receiver.get();
+  // std::cout << "OT delta :" << ot_send.GetDelta() << std::endl;
 
   // 参与方的设置，需要参照halfgate_gen/eva和sh_gen/eva   以下是一些用到的变量
   // constant[2]     0为全局delta   1为not门用到的public label
   // 秘钥相关   mitch  秘钥初始化start_point, shared_prg
-  const int kWorldSize = 2;
+
+  // const int kWorldSize = 2;
 
   uint128_t tmp[2];
-  random_uint128_t(tmp, 2);
-  tmp[0] = tmp[0] | 1;                   // 已确保LSB为1
-  uint128_t delta = ot_send.GetDelta();  // 统一全局Delta
+  if (FLAGS_rank == 0) {
+    random_uint128_t(tmp, 2);
+    lctx->Send(1, ByteContainerView(tmp, sizeof(uint128_t) * 2), "tmp");
+    std::cout << "tmpSend" << std::endl;
+  } else {
+    yacl::Buffer r = lctx->Recv(0, "tmp");
+    const uint128_t* buffer_data = r.data<const uint128_t>();
+    memcpy(tmp, buffer_data, sizeof(uint128_t) * 2);
+    std::cout << "tmpRecv" << std::endl;
+  }
+
+  tmp[0] = tmp[0] | 1;       // 已确保LSB为1
+  uint128_t delta = tmp[0];  // 统一全局Delta
 
   uint128_t constant[3];
-  random_uint128_t(constant, 2);
+  if (FLAGS_rank == 0) {
+    random_uint128_t(constant, 2);
+    lctx->Send(1, ByteContainerView(constant, sizeof(uint128_t) * 3),
+               "constant");
+    std::cout << "constantSend" << std::endl;
+  } else {
+    Buffer r = lctx->Recv(0, "constant");
+    const uint128_t* buffer_data = r.data<const uint128_t>();
+    memcpy(constant, buffer_data, sizeof(uint128_t) * 3);
+    std::cout << "constantRecv" << std::endl;
+  }
+
   constant[2] = constant[1] ^ delta;  // gen方使用    constant[1]为eva方使用
 
   MITCCRH<8> mitccrh;  // 密钥生成和加密  8为Batch_size, schedule_key长度
   mitccrh.setS(tmp[1]);  // 秘钥生成start_point
 
   // 电路读取
-  string operate;
-  cin >> operate;
+  std::string operate;
+  std::cin >> operate;
 
-  string pth = fmt::format("{0}/yacl/io/circuit/data/{1}.txt",
-                           std::filesystem::current_path().string(), operate);
+  std::string pth =
+      fmt::format("{0}/yacl/io/circuit/data/{1}.txt",
+                  std::filesystem::current_path().std::string(), operate);
   yacl::io::CircuitReader reader(pth);
   reader.ReadMeta();
   reader.ReadAllGates();
-  circ_ = reader.StealCirc();
+  circ_ = reader.StealCirc();  // 指针
 
   // aes_128随机初始化输入值
   // std::vector<uint128_t> inputs = {crypto::FastRandU128(),
   //                                  crypto::FastRandU128()};
   // std::vector<uint128_t> result(1);
   // 其余情况
-  std::vector<uint64_t> inputs = {crypto::FastRandU64(), crypto::FastRandU64()};
+  uint64_t input = crypto::FastRandU64();
+  std::cout << "input:" << input << std::endl;
+  uint64_t input1;
+
   std::vector<uint64_t> result(1);
 
   // int2bool  还是得老老实实进行GB完整过程，主要目的是存储d[]
@@ -208,22 +249,21 @@ int main() {
   // aes_128
   // dynamic_bitset<uint128_t> bi_val;
   // 其余情况
-  dynamic_bitset<uint64_t> bi_val;
+  yacl::dynamic_bitset<uint64_t> bi_val;
 
-  for (auto input : inputs) {
-    bi_val.append(input);  // 直接转换为二进制  输入线路在前128位
-  }
+  bi_val.append(input);  // 直接转换为二进制  输入线路在前64位
 
   // ***************GB阶段***************
 
   // 初始化
   gb_value.resize(circ_->nw);
-  vector<vector<uint128_t>> table(circ_->ng, vector<uint128_t>(2));
+  uint128_t table[circ_->ng][2];
 
   // 混淆过程
   int num_of_input_wires = 0;
   for (size_t i = 0; i < circ_->niv; ++i) {
     num_of_input_wires += circ_->niw[i];
+    // break;
   }
 
   // random_uint128_t(gb_value.data(), circ_->niw[0]);
@@ -237,8 +277,33 @@ int main() {
     wires_[i] = gb_value[i] ^ (select_mask[bi_val[i]] & delta);
   }
 
+  if (FLAGS_rank == 0) {
+    lctx->Send(1, ByteContainerView(wires_.data(), sizeof(uint128_t) * 64),
+               "garbleInput1");
+    std::cout << "sendInput1" << std::endl;
+
+  } else {
+    yacl::Buffer r = lctx->Recv(0, "garbleInput1");
+
+    const uint128_t* buffer_data = r.data<const uint128_t>();
+    memcpy(wires_.data(), buffer_data, sizeof(uint128_t) * 64);
+    std::cout << "recvInput1" << std::endl;
+  }
+  if (FLAGS_rank == 0) {
+    lctx->Send(1, ByteContainerView(&input, sizeof(uint64_t)), "Input1");
+    std::cout << "Input1OriginSend" << std::endl;
+
+  } else {
+    yacl::Buffer r = lctx->Recv(0, "Input1");
+
+    const uint64_t* buffer_data = r.data<const uint64_t>();
+    input1 = *buffer_data;
+    std::cout << "Input1OriginRecv:" << input1 << std::endl;
+  }
+  // ************混淆方进行发送*********
+
   /* ************暂时没看懂*********** */
-  // 后64位 用OT evaluator 用iknp
+  // 后64位 用OT evaluator 用iknpsendTable
   //   vector<array<uint128_t, 2>> send_blocks;
   //   vector<uint128_t> recv_blocks(num_ot);
   //   dynamic_bitset<uint128_t> choices(num_ot);
@@ -284,45 +349,109 @@ int main() {
   // sender.get();
   // receiver.get();
 
+  // const int kWorldSize = 2;
+  // auto contexts = link::test::SetupWorld(kWorldSize);
+
+  // int num_ot = 64;
+
+  // // WHEN
+
+  // auto sender = std::async([&] { return BaseOtSend(contexts[0], num_ot); });
+  // auto receiver =
+  //     std::async([&] { return BaseOtRecv(contexts[1], choices, num_ot); });
+  // auto send_blocks = sender.get();
+  // auto recv_blocks = receiver.get();
+
   if (operate != "neg64" && operate != "zero_equal") {
-    for (int i = circ_->niw[0]; i < circ_->niw[0] + circ_->niw[1]; i++) {
-      gb_value[i] = ot_send.GetBlock(i - circ_->niw[0], 0);
-      wires_[i] = ot_recv.GetBlock(i - circ_->niw[0]);
-      // wires_[i] = gb_value[i] ^ (select_mask[bi_val[i]] & delta);
+    // const int kWorldSize = 2;
+    // int num_ot = 128;
+
+    // auto lctxs = link::test::SetupWorld(kWorldSize);  // setup network
+    // auto base_ot = MockCots(128, delta);              // mock base ot
+    // dynamic_bitset<uint128_t> choices;
+    // choices.append(inputs[1]);  // 后64位全为0
+
+    // // WHEN
+    // std::vector<std::array<uint128_t, 2>> send_out(num_ot);
+    // std::vector<uint128_t> recv_out(num_ot);
+    // std::future<void> sender = std::async([&] {
+    //   IknpOtExtSend(lctxs[0], base_ot.recv, absl::MakeSpan(send_out), false);
+    // });  // 发送到base_ot.recv
+    // std::future<void> receiver = std::async([&] {
+    //   IknpOtExtRecv(lctxs[1], base_ot.send, choices,
+    //   absl::MakeSpan(recv_out),
+    //                 false);  // 从base_ot.send取
+    // });
+    // receiver.get();
+    // sender.get();
+
+    // for (int i = circ_->niw[0]; i < circ_->niw[0] + circ_->niw[1]; i++) {
+    //   // gb_value[i] = send_out[i - 64][0];
+    //   // wires_[i] = recv_out[i - 64];
+    //   // if (send_out[i - 64][0] ^ delta == send_out[i - 64][1])
+    //   //   std::cout << true << std::endl;
+
+    //   wires_[i] = gb_value[i] ^ (select_mask[bi_val[i]] & delta);
+    // }
+    // 发送混淆值让 计算方 自己选
+    if (FLAGS_rank == 0) {
+      lctx->Send(
+          1, ByteContainerView(gb_value.data() + 64, sizeof(uint128_t) * 64),
+          "garbleInput2");
+      std::cout << "sendInput2" << std::endl;
+
+    } else {
+      yacl::Buffer r = lctx->Recv(0, "garbleInput2");
+      const uint128_t* buffer_data = r.data<const uint128_t>();
+      for (int i = 0; i < circ_->niw[1]; i++) {
+        // gb_value[i] = send_out[i - 64][0];
+        // wires_[i] = recv_out[i - 64];
+        // if (send_out[i - 64][0] ^ delta == send_out[i - 64][1])
+        //   std::cout << true << std::endl;
+
+        wires_[i + circ_->niw[0]] =
+            buffer_data[i] ^ (select_mask[bi_val[i]] & delta);
+      }
+      std::cout << "recvInput2" << std::endl;
     }
   }
+  std::cout << "输入线路值：";
+  for (int i = 0; i < 64; i++) {
+    std::cout << bi_val[i];
+  }
+  std::cout << std::endl;
 
   for (int i = 0; i < circ_->gates.size(); i++) {
     auto gate = circ_->gates[i];
     switch (gate.op) {
-      case io::BFCircuit::Op::XOR: {
+      case yacl::io::BFCircuit::Op::XOR: {
         const auto& iw0 = gb_value.operator[](gate.iw[0]);  // 取到具体值
         const auto& iw1 = gb_value.operator[](gate.iw[1]);
         gb_value[gate.ow[0]] = iw0 ^ iw1;
         break;
       }
-      case io::BFCircuit::Op::AND: {
+      case yacl::io::BFCircuit::Op::AND: {
         const auto& iw0 = gb_value.operator[](gate.iw[0]);
         const auto& iw1 = gb_value.operator[](gate.iw[1]);
         gb_value[gate.ow[0]] = GBAND(iw0, iw0 ^ delta, iw1, iw1 ^ delta, delta,
-                                     table[i].data(), &mitccrh);
+                                     table[i], &mitccrh);
         break;
       }
-      case io::BFCircuit::Op::INV: {
+      case yacl::io::BFCircuit::Op::INV: {
         const auto& iw0 = gb_value.operator[](gate.iw[0]);
         gb_value[gate.ow[0]] = iw0 ^ constant[2];
         break;
       }
-      case io::BFCircuit::Op::EQ: {
+      case yacl::io::BFCircuit::Op::EQ: {
         gb_value[gate.ow[0]] = gate.iw[0];
         break;
       }
-      case io::BFCircuit::Op::EQW: {
+      case yacl::io::BFCircuit::Op::EQW: {
         const auto& iw0 = gb_value.operator[](gate.iw[0]);
         gb_value[gate.ow[0]] = iw0;
         break;
       }
-      case io::BFCircuit::Op::MAND: { /* multiple ANDs */
+      case yacl::io::BFCircuit::Op::MAND: { /* multiple ANDs */
         YACL_THROW("Unimplemented MAND gate");
         break;
       }
@@ -331,37 +460,59 @@ int main() {
     }
   }
 
+  // 发送混淆表
+  if (FLAGS_rank == 0) {
+    lctx->Send(1, ByteContainerView(table, sizeof(uint128_t) * 2 * circ_->ng),
+               "table");
+    std::cout << "sendTable" << std::endl;
+    // std::cout << "table0" << table[132][0];
+
+  } else {
+    yacl::Buffer r = lctx->Recv(0, "table");
+    const uint128_t* buffer_data = r.data<const uint128_t>();
+    int k = 0;
+    for (int i = 0; i < circ_->ng; i++) {
+      for (int j = 0; j < 2; j++) {
+        table[i][j] = buffer_data[k];
+        k++;
+      }
+    }
+
+    std::cout << "recvTable" << std::endl;
+    // std::cout << "table0" << table[132][0];
+  }
+
   // 计算方进行计算 按拓扑顺序进行计算
   for (int i = 0; i < circ_->gates.size(); i++) {
     auto gate = circ_->gates[i];
     switch (gate.op) {
-      case io::BFCircuit::Op::XOR: {
+      case yacl::io::BFCircuit::Op::XOR: {
         const auto& iw0 = wires_.operator[](gate.iw[0]);  // 取到具体值
         const auto& iw1 = wires_.operator[](gate.iw[1]);
         wires_[gate.ow[0]] = iw0 ^ iw1;
         break;
       }
-      case io::BFCircuit::Op::AND: {
+      case yacl::io::BFCircuit::Op::AND: {
         const auto& iw0 = wires_.operator[](gate.iw[0]);
         const auto& iw1 = wires_.operator[](gate.iw[1]);
-        wires_[gate.ow[0]] = EVAND(iw0, iw1, table[i].data(), &mitccrh);
+        wires_[gate.ow[0]] = EVAND(iw0, iw1, table[i], &mitccrh);
         break;
       }
-      case io::BFCircuit::Op::INV: {
+      case yacl::io::BFCircuit::Op::INV: {
         const auto& iw0 = wires_.operator[](gate.iw[0]);
         wires_[gate.ow[0]] = iw0 ^ constant[1];
         break;
       }
-      case io::BFCircuit::Op::EQ: {
+      case yacl::io::BFCircuit::Op::EQ: {
         wires_[gate.ow[0]] = gate.iw[0];
         break;
       }
-      case io::BFCircuit::Op::EQW: {
+      case yacl::io::BFCircuit::Op::EQW: {
         const auto& iw0 = wires_.operator[](gate.iw[0]);
         wires_[gate.ow[0]] = iw0;
         break;
       }
-      case io::BFCircuit::Op::MAND: { /* multiple ANDs */
+      case yacl::io::BFCircuit::Op::MAND: { /* multiple ANDs */
         YACL_THROW("Unimplemented MAND gate");
         break;
       }
@@ -371,31 +522,62 @@ int main() {
   }
 
   // 识别输出线路 进行DE操作
-  finalize(absl::MakeSpan(result));
+  // *********Finalize应该由谁来做，怎么做
+  size_t index = wires_.size();
+  int start = index - circ_->now[0];
+  if (FLAGS_rank == 1) {
+    lctx->Send(0,
+               ByteContainerView(wires_.data() + start, sizeof(uint128_t) * 64),
+               "output");
+    std::cout << "sendOutput" << std::endl;
+    // std::cout << "output:" << wires_[index - 1] << std::endl;
 
-  // 检查计算结果是否正确
-  cout << inputs[0] << " " << inputs[1] << endl;
-  if (operate == "adder64") {
-    cout << inputs[0] + inputs[1] << endl;
-  } else if (operate == "divide64") {
-    cout << static_cast<int64_t>(inputs[0]) / static_cast<int64_t>(inputs[1])
-         << endl;
-  } else if (operate == "udivide64") {
-    cout << inputs[0] / inputs[1] << endl;
-  } else if (operate == "mult64") {
-    cout << inputs[0] * inputs[1] << endl;
-  } else if (operate == "neg64") {
-    cout << -inputs[0] << endl;
-  } else if (operate == "sub64") {
-    cout << inputs[0] - inputs[1] << endl;
-  } else if (operate == "aes_128") {
-    cout << Aes128(ReverseBytes(inputs[0]), ReverseBytes(inputs[1])) << endl;
-    result[0] = ReverseBytes(result[0]);
   } else {
-    cout << "else" << endl;
+    yacl::Buffer r = lctx->Recv(1, "output");
+    const uint128_t* buffer_data = r.data<const uint128_t>();
+
+    memcpy(wires_.data() + start, buffer_data, sizeof(uint128_t) * 64);
+    // for (int i = 0; i < circ_->niw[1]; i++) {
+    //   // gb_value[i] = send_out[i - 64][0];
+    //   // wires_[i] = recv_out[i - 64];
+    //   // if (send_out[i - 64][0] ^ delta == send_out[i - 64][1])
+    //   //   std::cout << true << std::endl;
+
+    //   wires_[i + circ_->niw[0]] =
+    //       buffer_data[i] ^ (select_mask[bi_val[i]] & delta);
+    // }
+    std::cout << "recvOutput" << std::endl;
+    // std::cout << "output:" << wires_[index - 1] << std::endl;
   }
 
-  cout << result[0] << endl;
+  // 检查计算结果是否正确
+  // std::cout << inputs[0] << " " << inputs[1] << std::endl;
+  if (FLAGS_rank == 1) {
+    std::cout << "明文计算结果：";
+    if (operate == "adder64") {
+      std::cout << input1 + input << std::endl;
+    } else if (operate == "divide64") {
+      std::cout << static_cast<int64_t>(input1) / static_cast<int64_t>(input)
+                << std::endl;
+    } else if (operate == "udivide64") {
+      std::cout << input1 / input << std::endl;
+    } else if (operate == "mult64") {
+      std::cout << input1 * input << std::endl;
+    } else if (operate == "neg64") {
+      std::cout << -input1 << std::endl;
+    } else if (operate == "sub64") {
+      std::cout << input1 - input << std::endl;
+    } else if (operate == "aes_128") {
+      std::cout << Aes128(ReverseBytes(input1), ReverseBytes(input))
+                << std::endl;
+      result[0] = ReverseBytes(result[0]);
+    } else {
+      std::cout << "else" << std::endl;
+    }
+  } else {
+    finalize(absl::MakeSpan(result));
+    std::cout << "MPC结果：" << result[0] << std::endl;
+  }
 
   /* WHEN */
   //   PlainExecutor<uint64_t> exec;
