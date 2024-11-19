@@ -90,5 +90,6 @@ yacl_cc_test(
     deps = [
         ":helper",
         "//yacl/base:exception",
+        "@bazel_tools//tools/cpp/runfiles",
     ],
 )
