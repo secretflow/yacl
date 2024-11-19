@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <stdlib.h>
+
 #include <memory>
 
 #include "gtest/gtest.h"
@@ -22,19 +24,31 @@
 #include "openssl/proverr.h"
 #include "openssl/rand.h"
 #include "openssl/randerr.h"
+#include "tools/cpp/runfiles/runfiles.h"
 
 #include "yacl/crypto/openssl_wrappers.h"
 #include "yacl/crypto/ossl_provider/helper.h"
+
+using bazel::tools::cpp::runfiles::Runfiles;
 
 namespace yacl::crypto {
 
 TEST(OpensslTest, ShouldWork) {
   auto libctx = openssl::UniqueLib(OSSL_LIB_CTX_new());
 
+  std::string error;
+  std::unique_ptr<Runfiles> runfiles(Runfiles::CreateForTest(&error));
+
+  ASSERT_TRUE(runfiles != nullptr) << error;
+
+  std::string provider_path =
+      runfiles->Rlocation("_main/yacl/crypto/ossl_provider");
+  setenv("OPENSSL_MODULES", provider_path.c_str(), 1);
+
   // OSSL_PROVIDER_load() loads and initializes a provider. This may simply
   // initialize a provider that was previously added with
-  auto prov = openssl::UniqueProv(
-      OSSL_PROVIDER_load(libctx.get(), GetProviderPath().c_str()));
+  auto prov =
+      openssl::UniqueProv(OSSL_PROVIDER_load(libctx.get(), "libprov_shared"));
   YACL_ENFORCE(prov != nullptr, ERR_error_string(ERR_get_error(), nullptr));
 
   // get provider's entropy source EVP_RAND* rand;
