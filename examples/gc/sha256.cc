@@ -50,7 +50,7 @@ uint8_t reverse_bits(uint8_t byte) {
   return byte;
 }
 
-vector<uint8_t> preprocess(const std::vector<uint8_t> &message) {
+std::vector<uint8_t> preprocess(const std::vector<uint8_t> &message) {
   // 步骤 1: 填充消息
   size_t original_length = message.size() * 8;  // 原始消息的比特长度
   std::vector<uint8_t> padded_message = message;
@@ -218,36 +218,39 @@ int main() {
   // 预处理消息
   std::vector<uint8_t> data_vec = preprocess(message);
 
-  std::vector<uint32_t> hash_vec = {0x6a09e667, 0xbb67ae85, 0x3c6ef372,
-                                    0xa54ff53a, 0x510e527f, 0x9b05688c,
-                                    0x1f83d9ab, 0x5be0cd19};
-  std::vector<uint8_t> byte_hash_vec;
+  // std::vector<uint32_t> hash_vec = {0x6a09e667, 0xbb67ae85, 0x3c6ef372,
+  //                                   0xa54ff53a, 0x510e527f, 0x9b05688c,
+  //                                   0x1f83d9ab, 0x5be0cd19};
+
+  /*
+  Initial hash value, reference:
+  https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
+  Section 5.3
+  */
+  std::vector<uint8_t> byte_hash_vec = {
+      0x6a, 0x09, 0xe6, 0x67, 0xbb, 0x67, 0xae, 0x85, 0x3c, 0x6e, 0xf3,
+      0x72, 0xa5, 0x4f, 0xf5, 0x3a, 0x51, 0x0e, 0x52, 0x7f, 0x9b, 0x05,
+      0x68, 0x8c, 0x1f, 0x83, 0xd9, 0xab, 0x5b, 0xe0, 0xcd, 0x19};
 
   // 遍历 hash_vec 并将每个 uint32_t 分解为 4 个字节存储到 byte_hash_vec 中
-  for (uint32_t value : hash_vec) {
-    byte_hash_vec.push_back(value >> 24 & 0xFF);
-    byte_hash_vec.push_back((value >> 16) & 0xFF);
-    byte_hash_vec.push_back((value >> 8) & 0xFF);
-    byte_hash_vec.push_back((value) & 0xFF);
-  }
-
+  // for (uint32_t value : hash_vec) {
+  //   byte_hash_vec.push_back(value >> 24 & 0xFF);
+  //   byte_hash_vec.push_back((value >> 16) & 0xFF);
+  //   byte_hash_vec.push_back((value >> 8) & 0xFF);
+  //   byte_hash_vec.push_back((value) & 0xFF);
+  // }
   for (auto &elem : data_vec) {
     elem = reverse_bits(elem);
   }
-  reverse(data_vec.begin(), data_vec.end());
-
-  // std::cout << "预处理：";
-  // for (int i = 0; i < data_vec.size(); i++) {
-  //   bitset<8> b(data_vec[i]);
-  //   std::cout << b;
-  // }
-  // std::cout << endl;
-
   for (auto &elem : byte_hash_vec) {
     elem = reverse_bits(elem);
   }
-  reverse(byte_hash_vec.begin(), byte_hash_vec.end());
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 
+  reverse(data_vec.begin(), data_vec.end());
+
+  reverse(byte_hash_vec.begin(), byte_hash_vec.end());
+#endif
   // std::cout << "hash";
   // for (int i = 0; i < 32; i++) {
   //   bitset<8> b(byte_hash_vec[i]);
@@ -283,23 +286,16 @@ int main() {
   std::vector<uint8_t> result(32);
   std::string pth_str = fmt::format("{}/yacl/io/circuit/data/sha256.txt",
                                     std::filesystem::current_path().string());
-  ycal::PlainExecutor<uint8_t> exec;
-
+  yacl::PlainExecutor<uint8_t> exec;
   // std::cout << "指针内容：" << *(uint8_t *)input_vec.data() << endl;
 
   exec.LoadCircuitFile(pth_str);
-  exec.wires_.resize(
-      exec.circ_->nw);  // 这里的wires_类型为boost::dynamic_bitset
-  // std::cout << "大小：" << exec.wires_.size() << endl;
-
-  // memcpy(&exec.wires_, input_vec.data(), 96 * sizeof(uint8_t));
+  exec.wires_.resize(exec.circ_->nw);
   for (size_t i = 0; i < input_vec.size(); ++i) {
     for (int j = 0; j < 8; ++j) {
       exec.wires_[i * 8 + j] = (input_vec[i] >> (7 - j)) & 1;  // 逐位赋值
     }
   }
-
-  // std::cout << "大小：" << exec.wires_.size() << endl;
 
   // exec.SetupInputs(absl::MakeSpan(input_vec));  // 拼成一个vector
 

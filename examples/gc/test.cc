@@ -4,7 +4,7 @@
 #include <type_traits>
 #include <vector>
 
-#include "absl/std::strings/escaping.h"
+// #include "absl/std::strings/escaping.h"
 #include "absl/types/span.h"
 #include "examples/gc/mitccrh.h"
 #include "fmt/format.h"
@@ -17,7 +17,7 @@
 #include "yacl/io/stream/file_io.h"
 #include "yacl/kernel/algorithms/base_ot.h"
 #include "yacl/kernel/algorithms/iknp_ote.h"
-#include "yacl/kernel/ot_kernel.h"
+// #include "yacl/kernel/ot_kernel.h"
 #include "yacl/kernel/type/ot_store_utils.h"
 #include "yacl/link/context.h"
 #include "yacl/link/factory.h"
@@ -31,7 +31,7 @@ using uint128_t = __uint128_t;
 const uint128_t all_one_uint128_t = ~static_cast<__uint128_t>(0);
 const uint128_t select_mask[2] = {0, all_one_uint128_t};
 
-std::shared_ptr<io::BFCircuit> circ_;
+std::shared_ptr<yacl::io::BFCircuit> circ_;
 std::vector<uint128_t> wires_;
 std::vector<uint128_t> gb_value;
 
@@ -55,7 +55,7 @@ inline uint128_t Aes128(uint128_t k, uint128_t m) {
 }
 
 uint128_t ReverseBytes(uint128_t x) {
-  auto byte_view = ByteContainerView(&x, sizeof(x));
+  auto byte_view = yacl::ByteContainerView(&x, sizeof(x));
   uint128_t ret = 0;
   auto buf = std::vector<uint8_t>(sizeof(ret));
   for (size_t i = 0; i < byte_view.size(); ++i) {
@@ -189,7 +189,7 @@ int main(int argc, char* argv[]) {
   uint128_t tmp[2];
   if (FLAGS_rank == 0) {
     random_uint128_t(tmp, 2);
-    lctx->Send(1, ByteContainerView(tmp, sizeof(uint128_t) * 2), "tmp");
+    lctx->Send(1, yacl::ByteContainerView(tmp, sizeof(uint128_t) * 2), "tmp");
     std::cout << "tmpSend" << std::endl;
   } else {
     yacl::Buffer r = lctx->Recv(0, "tmp");
@@ -204,11 +204,11 @@ int main(int argc, char* argv[]) {
   uint128_t constant[3];
   if (FLAGS_rank == 0) {
     random_uint128_t(constant, 2);
-    lctx->Send(1, ByteContainerView(constant, sizeof(uint128_t) * 3),
+    lctx->Send(1, yacl::ByteContainerView(constant, sizeof(uint128_t) * 3),
                "constant");
     std::cout << "constantSend" << std::endl;
   } else {
-    Buffer r = lctx->Recv(0, "constant");
+    yacl::Buffer r = lctx->Recv(0, "constant");
     const uint128_t* buffer_data = r.data<const uint128_t>();
     memcpy(constant, buffer_data, sizeof(uint128_t) * 3);
     std::cout << "constantRecv" << std::endl;
@@ -225,7 +225,7 @@ int main(int argc, char* argv[]) {
 
   std::string pth =
       fmt::format("{0}/yacl/io/circuit/data/{1}.txt",
-                  std::filesystem::current_path().std::string(), operate);
+                  std::filesystem::current_path().string(), operate);
   yacl::io::CircuitReader reader(pth);
   reader.ReadMeta();
   reader.ReadAllGates();
@@ -236,7 +236,7 @@ int main(int argc, char* argv[]) {
   //                                  crypto::FastRandU128()};
   // std::vector<uint128_t> result(1);
   // 其余情况
-  uint64_t input = crypto::FastRandU64();
+  uint64_t input = yacl::crypto::FastRandU64();
   std::cout << "input:" << input << std::endl;
   uint64_t input1;
 
@@ -278,7 +278,8 @@ int main(int argc, char* argv[]) {
   }
 
   if (FLAGS_rank == 0) {
-    lctx->Send(1, ByteContainerView(wires_.data(), sizeof(uint128_t) * 64),
+    lctx->Send(1,
+               yacl::ByteContainerView(wires_.data(), sizeof(uint128_t) * 64),
                "garbleInput1");
     std::cout << "sendInput1" << std::endl;
 
@@ -290,7 +291,7 @@ int main(int argc, char* argv[]) {
     std::cout << "recvInput1" << std::endl;
   }
   if (FLAGS_rank == 0) {
-    lctx->Send(1, ByteContainerView(&input, sizeof(uint64_t)), "Input1");
+    lctx->Send(1, yacl::ByteContainerView(&input, sizeof(uint64_t)), "Input1");
     std::cout << "Input1OriginSend" << std::endl;
 
   } else {
@@ -396,7 +397,8 @@ int main(int argc, char* argv[]) {
     // 发送混淆值让 计算方 自己选
     if (FLAGS_rank == 0) {
       lctx->Send(
-          1, ByteContainerView(gb_value.data() + 64, sizeof(uint128_t) * 64),
+          1,
+          yacl::ByteContainerView(gb_value.data() + 64, sizeof(uint128_t) * 64),
           "garbleInput2");
       std::cout << "sendInput2" << std::endl;
 
@@ -462,8 +464,9 @@ int main(int argc, char* argv[]) {
 
   // 发送混淆表
   if (FLAGS_rank == 0) {
-    lctx->Send(1, ByteContainerView(table, sizeof(uint128_t) * 2 * circ_->ng),
-               "table");
+    lctx->Send(
+        1, yacl::ByteContainerView(table, sizeof(uint128_t) * 2 * circ_->ng),
+        "table");
     std::cout << "sendTable" << std::endl;
     // std::cout << "table0" << table[132][0];
 
@@ -526,9 +529,10 @@ int main(int argc, char* argv[]) {
   size_t index = wires_.size();
   int start = index - circ_->now[0];
   if (FLAGS_rank == 1) {
-    lctx->Send(0,
-               ByteContainerView(wires_.data() + start, sizeof(uint128_t) * 64),
-               "output");
+    lctx->Send(
+        0,
+        yacl::ByteContainerView(wires_.data() + start, sizeof(uint128_t) * 64),
+        "output");
     std::cout << "sendOutput" << std::endl;
     // std::cout << "output:" << wires_[index - 1] << std::endl;
 

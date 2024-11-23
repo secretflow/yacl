@@ -45,14 +45,10 @@ std::string dynamic_bitset_to_string(const dynamic_bitset<>& bits) {
 template <typename T>
 void PlainExecutor<T>::SetupInputs(
     absl::Span<T> inputs) {  // Span方便指针的使用
-                             // YACL_ENFORCE(inputs.size() == circ_->niv);
-                             // for (auto input : inputs) {
-  //   wires_.append(input);  // 直接转换为二进制  输入线路在前128位
-  // }
-
-  // memccpy(wires_.data(), inputs.data(), 1, sizeof(inputs));
-  inputs.size();
   wires_.resize(circ_->nw);
+  for (auto input : inputs) {
+    wires_.append(input);
+  }
 }
 
 template <typename T>
@@ -61,12 +57,12 @@ void PlainExecutor<T>::Exec() {
   // for (int i = 2; i < 514; i++) {
   //   wires_[i - 2] = wires_[i];
   // }
-  // cout << "线路输入：";
-  // // cout << wires_.size() << endl;
+  // std::cout << "线路输入：";
+
   // for (int i = 0; i < 768; i++) {
-  //   cout << wires_[i];
+  //   std::cout << wires_[i];
   // }
-  // cout << endl;
+  // std::cout << std::endl;
   // // cout << dynamic_bitset_to_string(wires_) << endl;
   // cout << endl;
   // Evaluate all gates, sequentially
@@ -126,47 +122,38 @@ void PlainExecutor<T>::Exec() {
 //   }
 // }
 
+// template <typename T>
+// void PlainExecutor<T>::Finalize(absl::Span<T> outputs) {
+//   // YACL_ENFORCE(outputs.size() >= circ_->nov);
+
+//   size_t index = wires_.size();
+
+//   for (size_t i = 0; i < 32; ++i) {
+//     dynamic_bitset<T> result(8);
+//     for (size_t j = 0; j < 8; ++j) {
+//       result[j] =
+//           wires_[index - 8 + j];  // 得到的是逆序的二进制值
+//           对应的混淆电路计算为
+//                                   // LSB ^ d  输出线路在后xx位
+//     }
+//     outputs[32 - i - 1] = *(uint8_t*)result.data();
+//     // outputs[circ_->nov - i - 1] = *(uint128_t*)result.data();
+//     index -= 8;
+//   }
+// }
+
 template <typename T>
 void PlainExecutor<T>::Finalize(absl::Span<T> outputs) {
-  // YACL_ENFORCE(outputs.size() >= circ_->nov);
+  YACL_ENFORCE(outputs.size() >= circ_->nov);
 
   size_t index = wires_.size();
-  // reverse(wires_ + wires_.size() - 256, wires_ + wires_.size());
-  // int arr[256];
-  // for (int i = 0; i < 256; i++) {
-  //   arr[i] = wires_[index - 256 + i];
-  // }
-  // for (int i = 0; i < 256; i++) {
-  //   wires_[index - 256 + i] = arr[255 - i];
-  // }
-
-  // for (int i = 0; i < 256; i++) {
-  //   cout << wires_[index - 256 + i];
-  // }
-  // reverse(wires_ + index - 256, wires_ + index - 250);
-  // int start = index - 256;
-  // int end = index;
-  // while (start < end) {
-  //   // 交换 start 和 end 的位
-  //   bool temp = wires_[start];
-  //   wires_[start] = wires_[end - 1];
-  //   wires_[end - 1] = temp;
-
-  //   // 移动指针
-  //   ++start;
-  //   --end;
-  // }
-
-    for (size_t i = 0; i < 32; ++i) {
-    dynamic_bitset<T> result(8);
-    for (size_t j = 0; j < 8; ++j) {
-      result[j] =
-          wires_[index - 8 + j];  // 得到的是逆序的二进制值 对应的混淆电路计算为
-                                  // LSB ^ d  输出线路在后xx位
+  for (size_t i = 0; i < circ_->nov; ++i) {
+    dynamic_bitset<T> result(circ_->now[i]);
+    for (size_t j = 0; j < circ_->now[i]; ++j) {
+      result[j] = wires_[index - circ_->now[i] + j];
     }
-    outputs[32 - i - 1] = *(uint8_t*)result.data();
-    // outputs[circ_->nov - i - 1] = *(uint128_t*)result.data();
-    index -= 8;
+    outputs[circ_->nov - i - 1] = *(uint128_t*)result.data();
+    index -= circ_->now[i];
   }
 }
 

@@ -1,6 +1,7 @@
 
 #include <stdio.h>
-#include <utils.h>
+
+#include "utils.h"
 
 #include "yacl/crypto/aes/aes_opt.h"
 #include "yacl/crypto/tools/crhash.h"
@@ -29,7 +30,7 @@ class MITCCRH {
   void renew_ks() {
     for (int i = 0; i < BatchSize; ++i)
       keys[i] = start_point ^ make_uint128_t(gid++, 0);
-    AES_opt_key_schedule<BatchSize>(keys, scheduled_key);
+    yacl::crypto::AES_opt_key_schedule<BatchSize>(keys, scheduled_key);
     key_used = 0;
   }
 
@@ -50,7 +51,7 @@ class MITCCRH {
     block tmp[K * H];
     for (int i = 0; i < K * H; ++i) tmp[i] = blks[i];
 
-    ParaEnc<K, H>(tmp, scheduled_key + key_used);
+    yacl::crypto::ParaEnc<K, H>(tmp, scheduled_key + key_used);
     if (used) key_used += K;
 
     for (int i = 0; i < K * H; ++i) blks[i] = blks[i] ^ tmp[i];
