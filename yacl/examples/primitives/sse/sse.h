@@ -39,7 +39,7 @@ class SSE {
   SSE(int bucket_size = 8, int slot_size = 8, int lambda = 128,
       int n_lambda = 256,
       const std::string& filename =
-          "/home/xbw/yacl/yacl/crypto/primitives/sse/test.csv");
+          "/home/xbw/yacl/yacl/examples/primitives/sse/test.csv");
 
   std::pair<
       std::vector<std::vector<yacl::examples::primitives::sse::TSet::Record>>,
