@@ -1,4 +1,4 @@
-// Copyright 2024 Ant Group Co., Ltd.
+// Copyright 2024 Li Zhihang.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/examples/primitives/sse/TSet.h"
+#include "yacl/examples/sse/tset.h"
 
 #include <gtest/gtest.h>
 
 #include <memory>
 
-namespace yacl::examples::primitives::sse {
+namespace examples::sse {
 
 class TSetTest : public ::testing::Test {
  protected:
   void SetUp() override {
     // 初始化TSet系统，使用默认参数
-    tset_ = std::make_unique<TSet>(2,     // bucket_size (B)
-                                   3,     // slot_size (S)
+    tset_ = std::make_unique<TSet>(2,     // bucket_size (b)
+                                   3,     // slot_size (s)
                                    128,   // lambda
                                    256);  // n_lambda
   }
@@ -38,19 +38,19 @@ TEST_F(TSetTest, AreVectorsEqual) {
   std::vector<uint8_t> vec2 = {1, 2, 3};
   std::vector<uint8_t> vec3 = {4, 5, 6};
 
-  EXPECT_TRUE(tset_->areVectorsEqual(vec1, vec2));
-  EXPECT_FALSE(tset_->areVectorsEqual(vec1, vec3));
+  EXPECT_TRUE(tset_->AreVectorsEqual(vec1, vec2));
+  EXPECT_FALSE(tset_->AreVectorsEqual(vec1, vec3));
 }
 
 // 测试 initialize 函数
 TEST_F(TSetTest, Initialize) {
   // 检查 TSet 和 Free 的大小
-  EXPECT_EQ(tset_->getTSet().size(), 2);
-  EXPECT_EQ(tset_->getTSet()[0].size(), 3);
-  EXPECT_EQ(tset_->getTSet()[0][0].label.size(), 128 / 8);
-  EXPECT_EQ(tset_->getTSet()[0][0].value.size(), 256 / 8 + 1);
-  EXPECT_EQ(tset_->getFree().size(), 2);
-  EXPECT_EQ(tset_->getFree()[0].size(), 3);
+  EXPECT_EQ(tset_->GetTSet().size(), 2);
+  EXPECT_EQ(tset_->GetTSet()[0].size(), 3);
+  EXPECT_EQ(tset_->GetTSet()[0][0].label.size(), 128 / 8);
+  EXPECT_EQ(tset_->GetTSet()[0][0].value.size(), 256 / 8 + 1);
+  EXPECT_EQ(tset_->GetFree().size(), 2);
+  EXPECT_EQ(tset_->GetFree()[0].size(), 3);
 }
 
 // 测试 pack/unpack 函数
@@ -60,14 +60,14 @@ TEST_F(TSetTest, PackAndUnpack) {
   std::pair<std::vector<uint8_t>, std::string> data = {vec, str};
 
   // 测试 pack
-  std::vector<uint8_t> packed = tset_->pack(data);
+  std::vector<uint8_t> packed = tset_->Pack(data);
   EXPECT_EQ(packed.size(), vec.size() + str.size() + 4);
   EXPECT_TRUE(std::equal(vec.begin(), vec.end(), packed.begin()));
   EXPECT_TRUE(
       std::equal(str.begin(), str.end(), packed.begin() + vec.size() + 4));
 
   // 测试 unpack
-  auto result = tset_->unpack(packed);
+  auto result = tset_->UnPack(packed);
   EXPECT_EQ(result.first, vec);
   EXPECT_EQ(result.second, str);
 }
@@ -117,7 +117,7 @@ TEST_F(TSetTest, CompleteRetrievalFlow) {
   // Get tag for keyword12
   std::string w = "keyword12";
   auto vector_stag = tset_->TSetGetTag(Kt, w);
-  std::string stag = tset_->vectorToString(vector_stag);
+  std::string stag = tset_->VectorToString(vector_stag);
 
   // Retrieve
   auto retrieved = tset_->TSetRetrieve(TSet, stag);
@@ -132,4 +132,4 @@ TEST_F(TSetTest, CompleteRetrievalFlow) {
   EXPECT_EQ(retrieved[1].second, "value2");
 }
 
-}  // namespace yacl::examples::primitives::sse
+}  // namespace yacl::examples::sse

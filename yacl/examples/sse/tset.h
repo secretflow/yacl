@@ -1,4 +1,4 @@
-// Copyright 2024 Ant Group Co., Ltd.
+// Copyright 2024 Li Zhihang.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@
 #include "yacl/crypto/hmac/hmac_sha256.h"
 #include "yacl/crypto/rand/rand.h"
 
-namespace yacl::examples::primitives::sse {
+namespace examples::sse {
 
 class TSet {
  public:
@@ -33,18 +33,18 @@ class TSet {
     std::vector<uint8_t> value;  // 存储长度为 n(λ) + 1 的位字符串
   };
 
-  TSet(int B, int S, int lambda, int n_lambda);
+  TSet(int b, int s, int lambda, int n_lambda);
 
-  bool areVectorsEqual(const std::vector<uint8_t>& vec1,
+  bool AreVectorsEqual(const std::vector<uint8_t>& vec1,
                        const std::vector<uint8_t>& vec2) const;
 
-  std::vector<uint8_t> pack(
+  std::vector<uint8_t> Pack(
       const std::pair<std::vector<uint8_t>, std::string>& data) const;
 
-  std::pair<std::vector<uint8_t>, std::string> unpack(
+  std::pair<std::vector<uint8_t>, std::string> UnPack(
       const std::vector<uint8_t>& packed_data) const;
 
-  std::string vectorToString(const std::vector<uint8_t>& vec) const;
+  std::string VectorToString(const std::vector<uint8_t>& vec) const;
 
   std::pair<std::vector<std::vector<Record>>, std::string> TSetSetup(
       const std::unordered_map<
@@ -60,18 +60,18 @@ class TSet {
       const std::string& stag) const;
 
   // 公共接口函数，用于访问私有成员变量
-  const std::vector<std::vector<Record>>& getTSet() const { return TSet_; }
-  const std::vector<std::set<int>>& getFree() const { return Free_; }
+  const std::vector<std::vector<Record>>& GetTSet() const { return tset_; }
+  const std::vector<std::set<int>>& GetFree() const { return free_; }
 
  private:
-  void initialize();
+  void Initialize();
 
-  int B_;
-  int S_;
+  int b_;
+  int s_;
   int lambda_;
   int n_lambda_;
-  std::vector<std::vector<Record>> TSet_;
-  std::vector<std::set<int>> Free_;
+  std::vector<std::vector<Record>> tset_;
+  std::vector<std::set<int>> free_;
 };
 
-}  // namespace yacl::examples::primitives::sse
+}  // namespace examples::sse

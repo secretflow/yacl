@@ -1,4 +1,4 @@
-# Copyright 2024 Ant Group Co., Ltd.
+# Copyright 2024 Li Zhihang.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,9 +17,9 @@ load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
 package(default_visibility = ["//visibility:public"])
 
 yacl_cc_library(
-    name = "TSet",
-    srcs = ["TSet.cc"],
-    hdrs = ["TSet.h"],
+    name = "tset",
+    srcs = ["tset.cc"],
+    hdrs = ["tset.h"],
     deps = [
         "//yacl/crypto/hash:ssl_hash",
         "//yacl/crypto/hmac:hmac_sha256",
@@ -28,10 +28,10 @@ yacl_cc_library(
 )
 
 yacl_cc_test(
-    name = "TSet_test",
-    srcs = ["TSet_test.cc"],
+    name = "tset_test",
+    srcs = ["tset_test.cc"],
     deps = [
-        ":TSet",
+        ":tset",
     ],
 )
 
@@ -42,7 +42,7 @@ yacl_cc_library(
     deps = [
         "//yacl/crypto/ecc/openssl",
         "//yacl/crypto/rand",
-        "//yacl/examples/primitives/sse:TSet",
+        "//yacl/examples/sse:tset",
         "//yacl/io/rw:csv_reader",
         "//yacl/io/stream:file_io",
         "//yacl/math/mpint",
@@ -52,6 +52,9 @@ yacl_cc_library(
 yacl_cc_test(
     name = "sse_test",
     srcs = ["sse_test.cc"],
+    data = [
+        "data/test_data.csv",
+    ],
     deps = [
         ":sse",
     ],

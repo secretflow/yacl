@@ -1,4 +1,4 @@
-// Copyright 2024 Ant Group Co., Ltd.
+// Copyright 2024 Li Zhihang.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/examples/primitives/sse/sse.h"
+#include "yacl/examples/sse/sse.h"
 
 #include <gtest/gtest.h>
 
 #include <unordered_set>
 
-namespace yacl::examples::primitives::sse {
+namespace examples::sse {
 
-class SSETest : public ::testing::Test {
+class SseTest : public ::testing::Test {
  protected:
   void SetUp() override {
     // 初始化SSE系统，使用默认参数
-    sse_ = std::make_unique<SSE>(8,     // bucket_size
+    sse_ = std::make_unique<Sse>(8,     // bucket_size
                                  8,     // slot_size
                                  128,   // lambda (安全参数)
                                  256);  // n_lambda
@@ -35,10 +35,10 @@ class SSETest : public ::testing::Test {
     EXPECT_FALSE(kt.empty());
   }
 
-  std::unique_ptr<SSE> sse_;
+  std::unique_ptr<Sse> sse_;
 };
 
-TEST_F(SSETest, BasicSearch) {
+TEST_F(SseTest, BasicSearch) {
   std::vector<std::string> keyword = {"race=Black"};
   auto results = sse_->SearchProtocol(keyword);
   std::unordered_set<std::string> expected_results = {"ID_130162", "ID_130165"};
@@ -49,21 +49,21 @@ TEST_F(SSETest, BasicSearch) {
 }
 
 // 测试空关键词搜索
-TEST_F(SSETest, EmptyKeywordSearch) {
+TEST_F(SseTest, EmptyKeywordSearch) {
   std::vector<std::string> keyword_empty = {};
   auto results = sse_->SearchProtocol(keyword_empty);
   EXPECT_TRUE(results.empty());
 }
 
 // 测试不存在的关键词搜索
-TEST_F(SSETest, NonExistentKeywordSearch) {
+TEST_F(SseTest, NonExistentKeywordSearch) {
   std::vector<std::string> non_existent = {"education=NonExistent"};
   auto results = sse_->SearchProtocol(non_existent);
   EXPECT_TRUE(results.empty());
 }
 
 //  测试两个关键词
-TEST_F(SSETest, TwoKeywordsSearch) {
+TEST_F(SseTest, TwoKeywordsSearch) {
   std::vector<std::string> two_keywords = {"race=Black", "gender=Male"};
   auto results = sse_->SearchProtocol(two_keywords);
   std::unordered_set<std::string> expected_results = {"ID_130162", "ID_130165"};
@@ -74,7 +74,7 @@ TEST_F(SSETest, TwoKeywordsSearch) {
 }
 
 // 测试三个关键词
-TEST_F(SSETest, ThreeKeywordsSearch) {
+TEST_F(SseTest, ThreeKeywordsSearch) {
   std::vector<std::string> three_keywords = {"race=Black", "gender=Male",
                                              "relationship=Husband"};
   auto results = sse_->SearchProtocol(three_keywords);
@@ -86,7 +86,7 @@ TEST_F(SSETest, ThreeKeywordsSearch) {
 }
 
 // 测试两个关键词，结果为空
-TEST_F(SSETest, TwoKeywordsNotExistSearch) {
+TEST_F(SseTest, TwoKeywordsNotExistSearch) {
   std::vector<std::string> two_keywords_not_exist = {"race=Black",
                                                      "education=NonExistent"};
   auto results = sse_->SearchProtocol(two_keywords_not_exist);
@@ -94,7 +94,7 @@ TEST_F(SSETest, TwoKeywordsNotExistSearch) {
 }
 
 // 测试多次搜索的一致性
-TEST_F(SSETest, SearchConsistency) {
+TEST_F(SseTest, SearchConsistency) {
   std::vector<std::string> keyword = {"workclass=Private"};
 
   // 第一次搜索
@@ -110,7 +110,7 @@ TEST_F(SSETest, SearchConsistency) {
 }
 
 // 测试EDB的保存和加载
-TEST_F(SSETest, SaveAndLoadEDB) {
+TEST_F(SseTest, SaveAndLoadEDB) {
   // 首先执行一次搜索并保存结果
   std::vector<std::string> keyword = {"education=Bachelors"};
   auto results_before = sse_->SearchProtocol(keyword);
@@ -123,7 +123,7 @@ TEST_F(SSETest, SaveAndLoadEDB) {
       test_dir + "K_map.bin", test_dir + "TSet.bin", test_dir + "XSet.bin");
 
   // 创建新的SSE实例并加载EDB
-  auto new_sse = std::make_unique<SSE>();
+  auto new_sse = std::make_unique<Sse>();
   auto [loaded_k_map, loaded_tset, loaded_xset] = new_sse->LoadEDB(
       test_dir + "K_map.bin", test_dir + "TSet.bin", test_dir + "XSet.bin");
 
@@ -137,4 +137,4 @@ TEST_F(SSETest, SaveAndLoadEDB) {
   }
 }
 
-}  // namespace yacl::examples::primitives::sse
+}  // namespace examples::sse
