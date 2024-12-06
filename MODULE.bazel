@@ -25,7 +25,7 @@ module(
 )
 
 # --registry=https://bcr.bazel.build
-bazel_dep(name = "rules_proto", version = "4.0.0")
+bazel_dep(name = "rules_proto", version = "7.0.2")
 bazel_dep(name = "bazel_skylib", version = "1.7.1")
 bazel_dep(name = "rules_cc")
 single_version_override(
