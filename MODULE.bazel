@@ -47,7 +47,7 @@ bazel_dep(name = "rules_foreign_cc", version = "0.12.0")
 bazel_dep(name = "platforms", version = "0.0.8")
 
 # self-hosted registry
-bazel_dep(name = "brpc", version = "1.11.0-20241119-72ce354")
+bazel_dep(name = "brpc", version = "1.11.0")
 bazel_dep(name = "cpu_features", version = "0.9.0")
 bazel_dep(name = "simplest-ot", version = "0.0.1")
 bazel_dep(name = "libtommath", version = "0.0.0-20240407-42b3fb0")
