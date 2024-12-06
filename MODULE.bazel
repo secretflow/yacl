@@ -27,7 +27,7 @@ module(
 # --registry=https://bcr.bazel.build
 bazel_dep(name = "rules_proto", version = "4.0.0")
 bazel_dep(name = "bazel_skylib", version = "1.7.1")
-bazel_dep(name = "rules_cc")
+bazel_dep(name = "rules_cc", version = "0.0.12")
 single_version_override(
     module_name = "rules_cc",
     version = "0.0.12",
@@ -58,8 +58,8 @@ bazel_dep(name = "sse2neon", version = "1.7.0-20240330-8df2f48")
 bazel_dep(name = "hash_drbg", version = "0.0.0-20230516-2411fa9")
 bazel_dep(name = "org_interconnection", version = "0.0.1")
 bazel_dep(name = "lib25519", version = "20240321")
-bazel_dep(name = "mcl", version = "1.99", repo_name = "mcl")
-bazel_dep(name = "protobuf")
+bazel_dep(name = "mcl", version = "1.99")
+bazel_dep(name = "protobuf", version = "25.5")
 single_version_override(
     module_name = "protobuf",
     version = "25.5",
