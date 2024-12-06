@@ -67,7 +67,7 @@ single_version_override(
 
 # --registry=https://baidu.github.io/babylon/registry
 bazel_dep(name = "leveldb", version = "1.23")
-bazel_dep(name = "openssl", version = "3.3.2")
+bazel_dep(name = "openssl", version = "3.3.2.bcr.1")
 
 # test
 bazel_dep(name = "googletest", version = "1.15.2", dev_dependency = True)
