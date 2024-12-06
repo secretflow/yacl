@@ -18,13 +18,6 @@
 
 namespace yacl::crypto {
 
-namespace {
-
-constexpr size_t HMAC_SIZE = 32;
-constexpr size_t HMAC_KEY_SIZE = 16;
-
-}  // namespace
-
 std::vector<uint8_t> Sm4MteEncrypt(ByteContainerView key, ByteContainerView iv,
                                    ByteContainerView plaintext) {
   // Step 1. get hash of (iv || key)
@@ -32,9 +25,9 @@ std::vector<uint8_t> Sm4MteEncrypt(ByteContainerView key, ByteContainerView iv,
       Sm3Hash().Update(iv).Update(key).CumulativeHash();
 
   // Step2. get hmac of plaintext
-  YACL_ENFORCE_GE(iv_key_hash.size(), HMAC_KEY_SIZE);
+  YACL_ENFORCE_GE(iv_key_hash.size(), kSm4MteKeySize);
   std::vector<uint8_t> hmac_plaintext =
-      HmacSm3(ByteContainerView(iv_key_hash.data(), HMAC_KEY_SIZE))
+      HmacSm3(ByteContainerView(iv_key_hash.data(), kSm4MteKeySize))
           .Update(plaintext)
           .CumulativeMac();
   hmac_plaintext.insert(hmac_plaintext.end(), plaintext.begin(),
@@ -54,17 +47,19 @@ std::vector<uint8_t> Sm4MteDecrypt(ByteContainerView key, ByteContainerView iv,
   std::vector<uint8_t> hmac_plaintext(ciphertext.size());
   SymmetricCrypto(SymmetricCrypto::CryptoType::SM4_CTR, key, iv)
       .Decrypt(ciphertext, absl::MakeSpan(hmac_plaintext));
-  YACL_ENFORCE_GT(hmac_plaintext.size(), HMAC_SIZE);
-  ByteContainerView hmac_from_cipher(hmac_plaintext.data(), HMAC_SIZE);
-  ByteContainerView plaintext_from_cipher(hmac_plaintext.data() + HMAC_SIZE,
-                                          hmac_plaintext.size() - HMAC_SIZE);
+  YACL_ENFORCE_GT(hmac_plaintext.size(), kSm4MteMacCipherSize);
+  ByteContainerView hmac_from_cipher(hmac_plaintext.data(),
+                                     kSm4MteMacCipherSize);
+  ByteContainerView plaintext_from_cipher(
+      hmac_plaintext.data() + kSm4MteMacCipherSize,
+      hmac_plaintext.size() - kSm4MteMacCipherSize);
 
   // Step 2. cal hmac
   std::vector<uint8_t> iv_key_hash =
       Sm3Hash().Update(iv).Update(key).CumulativeHash();
-  YACL_ENFORCE_GE(iv_key_hash.size(), HMAC_KEY_SIZE);
+  YACL_ENFORCE_GE(iv_key_hash.size(), kSm4MteKeySize);
   std::vector<uint8_t> hmac_actual =
-      HmacSm3(ByteContainerView(iv_key_hash.data(), HMAC_KEY_SIZE))
+      HmacSm3(ByteContainerView(iv_key_hash.data(), kSm4MteKeySize))
           .Update(plaintext_from_cipher)
           .CumulativeMac();
 
@@ -72,7 +67,7 @@ std::vector<uint8_t> Sm4MteDecrypt(ByteContainerView key, ByteContainerView iv,
   YACL_ENFORCE_EQ(hmac_actual.size(), hmac_from_cipher.size());
   YACL_ENFORCE(std::equal(hmac_actual.begin(), hmac_actual.end(),
                           hmac_from_cipher.begin()));
-  return {hmac_plaintext.begin() + HMAC_SIZE, hmac_plaintext.end()};
+  return {hmac_plaintext.begin() + kSm4MteMacCipherSize, hmac_plaintext.end()};
 }
 
 }  // namespace yacl::crypto

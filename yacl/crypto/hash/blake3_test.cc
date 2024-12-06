@@ -53,9 +53,7 @@ TestData test_data_blake3 = {
 
 TEST(Blake3HashTest, TestVector1) {
   Blake3Hash blake3;
-  std::string vector_bytes;
-
-  ASSERT_TRUE(absl::HexStringToBytes(test_data_blake3.vector1, &vector_bytes));
+  std::string vector_bytes = absl::HexStringToBytes(test_data_blake3.vector1);
 
   std::vector<uint8_t> hash = blake3.Update(vector_bytes).CumulativeHash();
 
@@ -66,8 +64,7 @@ TEST(Blake3HashTest, TestVector1) {
 
 TEST(Blake3HashTest, TestVector2) {
   Blake3Hash blake3;
-  std::string vector_bytes;
-  ASSERT_TRUE(absl::HexStringToBytes(test_data_blake3.vector2, &vector_bytes));
+  std::string vector_bytes = absl::HexStringToBytes(test_data_blake3.vector2);
 
   std::vector<uint8_t> hash = blake3.Update(vector_bytes).CumulativeHash();
 
@@ -80,10 +77,8 @@ TEST(Blake3HashTest, TestVector2) {
 // a clean state, allowing a new hash operation to take place.
 TEST(Blake3HashTest, ResetBetweenUpdates) {
   Blake3Hash blake3;
-  std::string vector1_bytes;
-  ASSERT_TRUE(absl::HexStringToBytes(test_data_blake3.vector1, &vector1_bytes));
-  std::string vector2_bytes;
-  ASSERT_TRUE(absl::HexStringToBytes(test_data_blake3.vector2, &vector2_bytes));
+  std::string vector1_bytes = absl::HexStringToBytes(test_data_blake3.vector1);
+  std::string vector2_bytes = absl::HexStringToBytes(test_data_blake3.vector2);
   std::vector<uint8_t> hash = blake3.Update(vector1_bytes)
                                   .Reset()
                                   .Update(vector2_bytes)
@@ -97,10 +92,8 @@ TEST(Blake3HashTest, ResetBetweenUpdates) {
 // calls to Update.
 TEST(Blake3HashTest, MultipleUpdates) {
   Blake3Hash blake3;
-  std::string vector1_bytes;
-  ASSERT_TRUE(absl::HexStringToBytes(test_data_blake3.vector1, &vector1_bytes));
-  std::string suffix_bytes;
-  ASSERT_TRUE(absl::HexStringToBytes(test_data_blake3.suffix, &suffix_bytes));
+  std::string vector1_bytes = absl::HexStringToBytes(test_data_blake3.vector1);
+  std::string suffix_bytes = absl::HexStringToBytes(test_data_blake3.suffix);
 
   std::vector<uint8_t> result = blake3.Update(vector1_bytes).CumulativeHash();
   EXPECT_EQ(absl::BytesToHexString(
@@ -122,9 +115,8 @@ TEST(Blake3HashTest, CustomOutLength) {
   for (size_t i = 0; i <= (8 * BLAKE3_OUT_LEN); i++) {
     Blake3Hash blake3(i);
 
-    std::string vector1_bytes;
-    ASSERT_TRUE(
-        absl::HexStringToBytes(test_data_blake3.vector1, &vector1_bytes));
+    std::string vector1_bytes =
+        absl::HexStringToBytes(test_data_blake3.vector1);
 
     // Shorter outputs are prefixes of longer ones.
     // reference
@@ -153,8 +145,7 @@ TEST(Blake3HashTest, MaximumLength) {
 
   Blake3Hash blake3(max_size);
 
-  std::string vector1_bytes;
-  ASSERT_TRUE(absl::HexStringToBytes(test_data_blake3.vector1, &vector1_bytes));
+  std::string vector1_bytes = absl::HexStringToBytes(test_data_blake3.vector1);
 
   auto len = std::min(max_size, static_cast<size_t>(BLAKE3_OUT_LEN));
 

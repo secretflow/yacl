@@ -37,7 +37,7 @@ int rdseed64_step(uint64_t *out) {
 
 }  // namespace
 
-Buffer RdSeedEntropySource::GetEntropy(uint32_t bits_of_entropy) noexcept {
+Buffer RdSeedEntropySource::GetEntropy(uint32_t bits_of_entropy) {
   // required bits_of_entropy should > 0
   if (bits_of_entropy == 0) {
     return {};

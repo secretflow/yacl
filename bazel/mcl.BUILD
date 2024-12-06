@@ -13,8 +13,7 @@
 # limitations under the License.
 
 load("@bazel_skylib//lib:selects.bzl", "selects")
-load("@rules_foreign_cc//foreign_cc:defs.bzl", "make")
-load("@yacl//bazel:yacl.bzl", "yacl_cmake_external")
+load("@rules_foreign_cc//foreign_cc:defs.bzl", "cmake", "make")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -58,13 +57,14 @@ android_config = {
 
 # bad for mac intel
 # https://github.com/herumi/mcl/issues/174
-yacl_cmake_external(
+cmake(
     name = "mcl-cmake",
     build_args = ["-j"],
     cache_entries = select({
         ":cpu_arm64_v8a": android_config,
         "//conditions:default": default_config,
     }),
+    generate_args = ["-G Ninja"],
     # generate_crosstool_file = False,
     lib_source = ":source",
     out_static_libs = [

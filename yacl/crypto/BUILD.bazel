@@ -26,8 +26,8 @@ yacl_cc_library(
         "//yacl/base:exception",
         "//yacl/utils:scope_guard",
     ] + select({
-        "//bazel/config:gm": ["@com_github_tongsuo_tongsuo//:tongsuo"],
-        "//conditions:default": ["@com_github_openssl_openssl//:openssl"],
+        "//bazel/config:gm": ["@tongsuo"],
+        "//conditions:default": ["@openssl"],
     }),
 )
 

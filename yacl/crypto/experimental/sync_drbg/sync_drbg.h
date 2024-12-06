@@ -21,8 +21,8 @@
 #include <variant>
 #include <vector>
 
-#include "hash_drbg.h"  // from @com_github_greendow_hash_drbg//:hash_drbg
-#include "hash_drbg_error_codes.h"  // from @com_github_greendow_hash_drbg//:hash_drbg
+#include "hash_drbg.h"              // from @hash_drbg//:hash_drbg
+#include "hash_drbg_error_codes.h"  // from @hash_drbg//:hash_drbg
 #include "spdlog/spdlog.h"
 
 #include "yacl/base/byte_container_view.h"

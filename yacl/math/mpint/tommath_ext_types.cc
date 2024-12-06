@@ -82,11 +82,13 @@ void mpx_reserve(mp_int *a, size_t n_digits) {
         (unsigned)a->used,                                                     \
         (unsigned)((MP_SIZEOF_BITS(type) + MP_DIGIT_BIT - 1) / MP_DIGIT_BIT)); \
     type res = 0u;                                                             \
-    while (i-- > 0u) {                                                         \
-      res <<= ((MP_SIZEOF_BITS(type) <= MP_DIGIT_BIT) ? 0 : MP_DIGIT_BIT);     \
-      res |= (type)a->dp[i];                                                   \
-      if (MP_SIZEOF_BITS(type) <= MP_DIGIT_BIT) {                              \
-        break;                                                                 \
+    if (i) {                                                                   \
+      while (i-- > 0u) {                                                       \
+        res <<= ((MP_SIZEOF_BITS(type) <= MP_DIGIT_BIT) ? 0 : MP_DIGIT_BIT);   \
+        res |= (type)a->dp[i];                                                 \
+        if (MP_SIZEOF_BITS(type) <= MP_DIGIT_BIT) {                            \
+          break;                                                               \
+        }                                                                      \
       }                                                                        \
     }                                                                          \
     return res;                                                                \

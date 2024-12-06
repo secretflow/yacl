@@ -41,8 +41,8 @@ yacl_cc_library(
     deps = [
         ":kvstore",
         "//yacl/base:exception",
-        "@com_github_brpc_brpc//:brpc",
-        "@com_github_google_leveldb//:leveldb",
+        "@brpc",
+        "@leveldb",
     ],
 )
 

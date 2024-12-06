@@ -28,7 +28,7 @@ yacl_cc_library(
         "//yacl/link:context",
         "//yacl/link:test_util",
         "//yacl/utils:serializer",
-        "@com_github_greendow_hash_drbg//:hash_drbg",
+        "@hash_drbg",
     ],
 )
 

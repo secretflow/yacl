@@ -55,8 +55,8 @@ yacl_cc_library(
         ":blackbox_service_errorcode",
         ":blackbox_service_proto",
         "//yacl/base:exception",
-        "@com_github_brpc_brpc//:brpc",
-        "@com_google_absl//absl/strings",
+        "@abseil-cpp//absl/strings",
+        "@brpc",
     ],
 )
 
@@ -66,7 +66,7 @@ yacl_cc_library(
     deps = [
         ":blackbox_dummy_service_impl",
         "//yacl/base:exception",
-        "@com_github_brpc_brpc//:brpc",
+        "@brpc",
     ],
 )
 

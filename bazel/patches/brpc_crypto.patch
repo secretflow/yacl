@@ -7,8 +7,8 @@ index b2a453e0..10eeee74 100644
      }) + select({
          "//bazel/config:brpc_with_boringssl": ["@boringssl//:ssl", "@boringssl//:crypto"],
 -        "//conditions:default": ["@openssl//:ssl", "@openssl//:crypto"],
-+        "//bazel/config:brpc_with_tongsuo": ["@com_github_tongsuo_tongsuo//:tongsuo"],
-+        "//conditions:default": ["@com_github_openssl_openssl//:openssl"],
++        "//bazel/config:brpc_with_tongsuo": ["@tongsuo//:tongsuo"],
++        "//conditions:default": ["@openssl//:openssl"],
      }),
  )
 

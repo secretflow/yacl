@@ -32,7 +32,7 @@ yacl_cc_library(
         "//yacl/base:exception",
         "//yacl/crypto/tools:ro",
         "//yacl/link",
-        "@simplest_ot//:simplest_ot_portable",
+        "@simplest-ot//:simplest_ot_portable",
     ],
 )
 
@@ -52,7 +52,7 @@ yacl_cc_library(
         "//yacl/link",
         "//yacl/math:gadget",
         "//yacl/math/galois_field:gf_intrinsic",
-        "@simplest_ot//:simplest_ot_x86_asm",
+        "@simplest-ot//:simplest_ot_x86_asm",
     ],
 )
 
@@ -65,7 +65,7 @@ yacl_cc_library(
         "//yacl/base:exception",
         "//yacl/kernel/type:ot_store_utils",
         "//yacl/link",
-        "@com_google_absl//absl/types:span",
+        "@abseil-cpp//absl/types:span",
     ] + select({
         "@bazel_tools//src/conditions:linux_x86_64": [
             ":x86_asm_ot_interface",
@@ -158,7 +158,7 @@ yacl_cc_library(
         "//yacl/kernel/type:ot_store_utils",
         "//yacl/link",
         "//yacl/math:gadget",
-        "@com_google_absl//absl/numeric:bits",
+        "@abseil-cpp//absl/numeric:bits",
     ],
 )
 
@@ -188,7 +188,7 @@ yacl_cc_library(
         "//yacl/kernel/type:ot_store_utils",
         "//yacl/link",
         "//yacl/math:gadget",
-        "@com_google_absl//absl/numeric:bits",
+        "@abseil-cpp//absl/numeric:bits",
     ],
 )
 
@@ -294,7 +294,7 @@ yacl_cc_library(
         "//yacl/utils:matrix_utils",
     ] + select({
         "@platforms//cpu:aarch64": [
-            "@com_github_dltcollab_sse2neon//:sse2neon",
+            "@sse2neon",
         ],
         "//conditions:default": [],
     }),

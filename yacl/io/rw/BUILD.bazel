@@ -38,7 +38,7 @@ yacl_cc_library(
     name = "float",
     hdrs = ["float.h"],
     visibility = ["//visibility:public"],
-    deps = ["@com_google_absl//absl/strings"],
+    deps = ["@abseil-cpp//absl/strings"],
 )
 
 yacl_cc_library(
@@ -52,8 +52,8 @@ yacl_cc_library(
         ":mmapped_file",
         "//yacl/base:exception",
         "//yacl/io/stream",
-        "@com_github_fmtlib_fmt//:fmtlib",
-        "@com_google_absl//absl/strings",
+        "@abseil-cpp//absl/strings",
+        "@fmt",
     ],
 )
 
@@ -67,7 +67,7 @@ yacl_cc_library(
         ":interface",
         "//yacl/base:exception",
         "//yacl/io/stream",
-        "@com_github_fmtlib_fmt//:fmtlib",
+        "@fmt",
     ],
 )
 
@@ -77,8 +77,8 @@ yacl_cc_library(
     hdrs = ["mmapped_file.h"],
     deps = [
         "//yacl/base:exception",
-        "@com_google_absl//absl/base:malloc_internal",
-        "@com_google_absl//absl/cleanup",
+        "@abseil-cpp//absl/base:malloc_internal",
+        "@abseil-cpp//absl/cleanup",
     ],
 )
 
@@ -99,7 +99,7 @@ yacl_cc_test(
     deps = [
         ":rw",
         "//yacl/utils:elapsed_timer",
-        "@com_github_gflags_gflags//:gflags",
-        "@com_google_absl//absl/strings",
+        "@abseil-cpp//absl/strings",
+        "@gflags",
     ],
 )

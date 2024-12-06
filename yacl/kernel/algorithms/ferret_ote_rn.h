@@ -48,6 +48,7 @@ inline void MpCotRNSend(const std::shared_ptr<link::Context>& ctx,
   const uint64_t batch_size = spcot_size;
   const uint64_t batch_num = math::DivCeil(full_size, batch_size);
   YACL_ENFORCE(batch_num <= idx_num);
+  YACL_ENFORCE(batch_num >= 1);
 
   const uint64_t last_size = full_size - (batch_num - 1) * batch_size;
   const uint64_t batch_length = math::Log2Ceil(batch_size);
@@ -106,6 +107,7 @@ inline void MpCotRNRecv(const std::shared_ptr<link::Context>& ctx,
   const uint64_t batch_size = spcot_size;
   const uint64_t batch_num = math::DivCeil(full_size, batch_size);
   YACL_ENFORCE(batch_num <= idx_num);
+  YACL_ENFORCE(batch_num >= 1);
 
   const uint64_t last_size = full_size - (batch_num - 1) * batch_size;
   const uint64_t batch_length = math::Log2Ceil(batch_size);

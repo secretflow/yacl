@@ -116,6 +116,6 @@ yacl_cc_binary(
         ":rp",
         "//yacl/base:aligned_vector",
         "//yacl/crypto/rand",
-        "@com_github_google_benchmark//:benchmark_main",
+        "@google_benchmark//:benchmark_main",
     ],
 )

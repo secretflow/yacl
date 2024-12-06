@@ -138,6 +138,7 @@ void GilboaVoleBench(benchmark::State& state, Args&&... args) {
     }
     state.ResumeTiming();
   }
+  YACL_ENFORCE(state.iterations() > 0);
   state.counters["send"] /= state.iterations();
   state.counters["recv"] /= state.iterations();
   state.counters["send_byte"] /= state.iterations();
@@ -196,6 +197,7 @@ void SilentVoleBench(benchmark::State& state, Args&&... args) {
     }
     state.ResumeTiming();
   }
+  YACL_ENFORCE(state.iterations() > 0);
   state.counters["send"] /= state.iterations();
   state.counters["recv"] /= state.iterations();
   state.counters["send_byte"] /= state.iterations();
