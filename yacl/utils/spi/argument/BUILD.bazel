@@ -56,7 +56,7 @@ yacl_cc_library(
         "util.h",
     ],
     deps = [
-        "@com_google_absl//absl/strings",
+        "@abseil-cpp//absl/strings",
     ],
 )
 

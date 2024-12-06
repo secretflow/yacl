@@ -39,19 +39,6 @@ cc_shared_library(
     ],
 )
 
-# helper for loading provider
-yacl_cc_library(
-    name = "helper",
-    hdrs = [
-        "helper.h",
-    ],
-    visibility = ["//visibility:public"],  # public
-    deps = [
-        "//yacl/crypto:openssl_wrappers",  # openssl here
-        "@com_google_absl//absl/strings",
-    ],
-)
-
 # private target
 yacl_cc_library(
     name = "provider",
@@ -88,8 +75,8 @@ yacl_cc_test(
         ":prov_shared",
     ],
     deps = [
-        ":helper",
         "//yacl/base:exception",
+        "//yacl/crypto:openssl_wrappers",
         "@bazel_tools//tools/cpp/runfiles",
     ],
 )

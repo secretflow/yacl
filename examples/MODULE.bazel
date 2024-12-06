@@ -1,4 +1,4 @@
-# Copyright 2023 Ant Group Co., Ltd.
+# Copyright 2024 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,22 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@yacl//bazel:yacl.bzl", "yacl_cmake_external")
-
-package(default_visibility = ["//visibility:public"])
-
-filegroup(
-    name = "all_srcs",
-    srcs = glob(["**"]),
-)
-
-yacl_cmake_external(
-    name = "libtommath",
-    cache_entries = {
-        "CMAKE_INSTALL_LIBDIR": "lib",
-        "CMAKE_POSITION_INDEPENDENT_CODE": "ON",
-    },
-    copts = ["-Wno-error"],
-    lib_source = ":all_srcs",
-    out_static_libs = ["libtommath.a"],
-)
+###############################################################################
+# Bazel now uses Bzlmod by default to manage external dependencies.
+# Please consider migrating your external dependencies from WORKSPACE to MODULE.bazel.
+#
+# For more details, please check https://github.com/bazelbuild/bazel/issues/18958
+###############################################################################

@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <exception>
+
 #include "absl/strings/str_split.h"
 #include "benchmark/benchmark.h"
 #include "gflags/gflags.h"
@@ -181,10 +183,14 @@ void InitAndRunBenchmarks() {
 }  // namespace yacl::crypto::bench
 
 int main(int argc, char** argv) {
-  google::ParseCommandLineFlags(&argc, &argv, true);
-  benchmark::Initialize(&argc, argv);
-  yacl::crypto::bench::InitAndRunBenchmarks();
-  benchmark::RunSpecifiedBenchmarks();
-  benchmark::Shutdown();
+  try {
+    google::ParseCommandLineFlags(&argc, &argv, true);
+    benchmark::Initialize(&argc, argv);
+    yacl::crypto::bench::InitAndRunBenchmarks();
+    benchmark::RunSpecifiedBenchmarks();
+    benchmark::Shutdown();
+  } catch (std::exception& e) {
+    YACL_THROW("Something is wrong!");
+  }
   return 0;
 }

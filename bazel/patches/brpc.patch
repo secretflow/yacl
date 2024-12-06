@@ -99,7 +99,7 @@ index 0bdaa4d3..b23881b3 100644
 @@ -326,13 +326,13 @@ cc_library(
      visibility = ["//visibility:public"],
      deps = [
-         "@com_github_gflags_gflags//:gflags",
+         "@gflags//:gflags",
 -        "@com_github_madler_zlib//:zlib",
 +        "@zlib//:zlib",
          "@com_google_protobuf//:protobuf",

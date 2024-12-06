@@ -15,6 +15,10 @@
 common --experimental_repo_remote_exec
 common --experimental_cc_shared_library
 
+common --registry=https://raw.githubusercontent.com/secretflow/bazel-registry/main
+common --registry=https://bcr.bazel.build
+common --registry=https://baidu.github.io/babylon/registry
+
 build --incompatible_new_actions_api=false
 build --copt=-fdiagnostics-color=always
 build --enable_platform_specific_config
@@ -39,6 +43,7 @@ build:macos --action_env MACOSX_DEPLOYMENT_TARGET=13.0
 
 build:asan --features=asan
 build:ubsan --features=ubsan
+
 
 test --keep_going
 test --test_output=errors

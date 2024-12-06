@@ -28,9 +28,9 @@ load("@yacl//bazel:repositories.bzl", "yacl_deps")
 
 yacl_deps()
 
-load("@rules_python//python:repositories.bzl", "py_repositories")
+# load("@rules_python//python:repositories.bzl", "py_repositories")
 
-py_repositories()
+# py_repositories()
 
 load("@pybind11_bazel//:python_configure.bzl", "python_configure")
 

@@ -26,7 +26,7 @@ yacl_cc_library(
     ],
     copts = AES_COPT_FLAGS,
     deps = [
-        "@com_google_absl//absl/types:span",
+        "@abseil-cpp//absl/types:span",
         "@yacl//yacl/base:exception",
         "@yacl//yacl/base:int128",
         "@yacl//yacl/crypto/hash:hash_utils",

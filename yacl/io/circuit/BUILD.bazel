@@ -25,16 +25,16 @@ yacl_cc_library(
     name = "bristol_fashion",
     srcs = ["bristol_fashion.cc"],
     hdrs = ["bristol_fashion.h"],
+    data = [":circuit_data"],
     deps = [
+        "//yacl/base:byte_container_view",
         "//yacl/io/stream:file_io",
-        "//yacl/link:context",
     ],
 )
 
 yacl_cc_test(
     name = "bristol_fashion_test",
     srcs = ["bristol_fashion_test.cc"],
-    data = [":circuit_data"],
     deps = [
         ":bristol_fashion",
     ],

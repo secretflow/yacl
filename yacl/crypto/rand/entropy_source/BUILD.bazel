@@ -69,7 +69,7 @@ yacl_cc_library(
     visibility = ["//visibility:private"],
     deps = [
         ":spi",
-        "@com_github_google_cpu_features//:cpu_features",
+        "@cpu_features//:cpuinfo",
     ],
     alwayslink = 1,
 )

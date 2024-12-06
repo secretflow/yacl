@@ -86,7 +86,7 @@ def yacl_cc_library(
             "//conditions:default": [],
         }),
         deps = deps + [
-            "@com_github_gabime_spdlog//:spdlog",
+            "@spdlog//:spdlog",
         ],
         **kargs
     )
@@ -112,7 +112,7 @@ def yacl_cc_test(
             "//conditions:default": [],
         }),
         deps = deps + [
-            "@com_google_googletest//:gtest_main",
+            "@googletest//:gtest_main",
         ],
         linkopts = linkopts + ["-ldl"],
         **kwargs

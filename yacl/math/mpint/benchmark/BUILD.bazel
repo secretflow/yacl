@@ -19,7 +19,7 @@ yacl_cc_binary(
     srcs = ["serialize_bench.cc"],
     deps = [
         "//yacl/math/mpint",
-        "@com_github_google_benchmark//:benchmark",
+        "@google_benchmark//:benchmark",
     ],
 )
 
@@ -28,7 +28,7 @@ yacl_cc_binary(
     srcs = ["mpint_bench.cc"],
     deps = [
         "//yacl/math/mpint",
-        "@com_github_google_benchmark//:benchmark_main",
+        "@google_benchmark//:benchmark_main",
     ],
 )
 
@@ -37,7 +37,7 @@ yacl_cc_binary(
     srcs = ["prime_bench.cc"],
     deps = [
         "//yacl/math/mpint",
-        "@com_github_google_benchmark//:benchmark_main",
+        "@google_benchmark//:benchmark_main",
     ],
 )
 
@@ -46,6 +46,6 @@ yacl_cc_binary(
     srcs = ["mod_bench.cc"],
     deps = [
         "//yacl/math/mpint",
-        "@com_github_google_benchmark//:benchmark_main",
+        "@google_benchmark//:benchmark_main",
     ],
 )

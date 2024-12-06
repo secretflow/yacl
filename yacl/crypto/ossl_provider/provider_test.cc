@@ -27,7 +27,6 @@
 #include "tools/cpp/runfiles/runfiles.h"
 
 #include "yacl/crypto/openssl_wrappers.h"
-#include "yacl/crypto/ossl_provider/helper.h"
 
 using bazel::tools::cpp::runfiles::Runfiles;
 

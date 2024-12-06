@@ -31,7 +31,7 @@ yacl_cc_library(
         "//yacl/crypto/ecc:spi",
         "//yacl/math/galois_field:gf",
         "//yacl/utils/spi",
-        "@com_google_absl//absl/strings",
+        "@abseil-cpp//absl/strings",
     ],
 )
 
@@ -42,7 +42,7 @@ yacl_cc_library(
 #     deps = [
 #         "//yacl/crypto/ecc:spi",
 #         "//yacl/math/galois_field:gf",
-#         "@com_google_absl//absl/strings",
+#         "@abseil-cpp//absl/strings",
 #     ],
 # )
 

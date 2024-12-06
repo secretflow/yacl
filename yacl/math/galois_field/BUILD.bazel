@@ -64,7 +64,7 @@ yacl_cc_library(
         "//yacl/base:exception",
         "//yacl/base:int128",
         "//yacl/math:gadget",
-        "@com_google_absl//absl/types:span",
+        "@abseil-cpp//absl/types:span",
     ],
 )
 

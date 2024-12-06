@@ -16,10 +16,13 @@
 
 #include "absl/strings/numbers.h"
 #include "absl/strings/str_split.h"
+#include "spdlog/spdlog.h"
 
 #include "yacl/base/exception.h"
 
 namespace yacl::io {
+
+const std::string BuiltinBFCircuit::CircDataDir = "yacl/io/circuit/data";
 
 void BFCircuit::PrintSummary() {
   SPDLOG_INFO("number of gates: {}", ng);
@@ -146,6 +149,65 @@ void CircuitReader::ReadAllGates() {
       YACL_THROW("Unknown Gate Type: {}", op_str);
     }
   }
+}
+
+namespace {
+constexpr std::array<uint8_t, 32> GetSha256InitialHashValues() {
+  return {0x19, 0xcd, 0xe0, 0x5b, 0xab, 0xd9, 0x83, 0x1f, 0x8c, 0x68, 0x05,
+          0x9b, 0x7f, 0x52, 0x0e, 0x51, 0x3a, 0xf5, 0x4f, 0xa5, 0x72, 0xf3,
+          0x6e, 0x3c, 0x85, 0xae, 0x67, 0xbb, 0x67, 0xe6, 0x09, 0x6a};
+}
+}  // namespace
+
+std::vector<uint8_t> BuiltinBFCircuit::PrepareSha256Input(
+    ByteContainerView input) {
+  constexpr size_t kFixPadSize = 1;                 // in bytes
+  constexpr size_t kMsgLenSize = sizeof(uint64_t);  // in bytes
+  constexpr size_t kMsgBlockSize = 64;              // in bytes
+  const auto kInitSha256Bytes = GetSha256InitialHashValues();
+
+  uint64_t input_size = input.size();  // in bytes
+  uint64_t zero_padding_size =
+      (input_size + kFixPadSize + kMsgLenSize) % kMsgBlockSize == 0
+          ? 0
+          : kMsgBlockSize -
+                (input_size + kFixPadSize + kMsgLenSize) % kMsgBlockSize;
+  uint64_t message_size =
+      input_size + kFixPadSize + zero_padding_size + kMsgLenSize;
+  uint64_t result_size = message_size + kInitSha256Bytes.size();
+
+  // TODO: support arbitrary large input
+  YACL_ENFORCE(message_size == kMsgBlockSize);
+
+  // Declare the result byte-vector
+  size_t offset = 0;
+  std::vector<uint8_t> result(result_size);
+
+  // the next 64 bits should be the byte length of input message
+  uint64_t input_bitnum = input_size * 8;  // in bits
+  std::memcpy(result.data() + offset, &input_bitnum, sizeof(input_bitnum));
+  offset += sizeof(uint64_t);
+
+  // zero padding (result vector has zero initialization)
+  // ... should doing nothing ...
+  offset += zero_padding_size;
+
+  // additional padding bit-'1' (as a mark)
+  result[offset] = 0x80;
+  offset += kFixPadSize;
+
+  // original input message
+  auto input_reverse = std::vector<uint8_t>(input.begin(), input.end());
+  std::reverse(input_reverse.begin(), input_reverse.end());
+  std::memcpy(result.data() + offset, input_reverse.data(), input_size);
+  offset += input_size;
+
+  // initial hash values
+  std::memcpy(result.data() + offset, kInitSha256Bytes.data(),
+              kInitSha256Bytes.size());
+  // offset += kInitSha256Bytes.size();
+
+  return result;
 }
 
 }  // namespace yacl::io
