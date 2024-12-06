@@ -29,6 +29,9 @@ YACL_MODULE_DECLARE("sm4_mac", SecParam::C::k128, SecParam::S::INF);
 
 namespace yacl::crypto {
 
+constexpr size_t kSm4MteMacCipherSize = 32;  // the encrypted sm3 hmac size
+constexpr size_t kSm4MteKeySize = 16;
+
 // SM4-CTR based MAC then Encryption(Mte). Hmac-sm3 is used as MAC algorithm
 // here.
 

@@ -78,8 +78,8 @@ class DcfKey {
     void SetV(uint128_t v) { this->v_ = v; }
 
    private:
-    uint128_t seed_ = 0;  // this level's seed, default = 0
-    uint128_t v_;
+    uint128_t seed_ = 0;   // this level's seed, default = 0
+    uint128_t v_{0};       // default to 0
     uint8_t t_store_ = 0;  // 1st bit=> t_left, 2nd bit=> t_right
   };
 

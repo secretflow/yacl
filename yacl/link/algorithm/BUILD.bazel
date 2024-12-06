@@ -24,7 +24,7 @@ yacl_cc_library(
         "//yacl/base:exception",
         "//yacl/link:context",
         "//yacl/link:trace",
-        "@com_github_fmtlib_fmt//:fmtlib",
+        "@fmt",
     ],
 )
 
@@ -45,8 +45,8 @@ yacl_cc_library(
         "//yacl/base:exception",
         "//yacl/link:context",
         "//yacl/link:trace",
-        "@com_github_fmtlib_fmt//:fmtlib",
-        "@com_google_absl//absl/numeric:bits",
+        "@abseil-cpp//absl/numeric:bits",
+        "@fmt",
     ],
 )
 
@@ -67,7 +67,7 @@ yacl_cc_library(
         "//yacl/base:exception",
         "//yacl/link:context",
         "//yacl/link:trace",
-        "@com_github_fmtlib_fmt//:fmtlib",
+        "@fmt",
     ],
 )
 
@@ -89,7 +89,7 @@ yacl_cc_library(
         "//yacl/link:context",
         "//yacl/link:trace",
         "//yacl/utils:serialize",
-        "@com_github_fmtlib_fmt//:fmtlib",
+        "@fmt",
     ],
 )
 
@@ -111,7 +111,7 @@ yacl_cc_library(
         "//yacl/link:context",
         "//yacl/link:trace",
         "//yacl/utils:serialize",
-        "@com_github_fmtlib_fmt//:fmtlib",
+        "@fmt",
     ],
 )
 

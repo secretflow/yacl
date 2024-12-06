@@ -1,4 +1,4 @@
-# Copyright 2022 Ant Group Co., Ltd.
+# Copyright 2024 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,21 +12,34 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@yacl//bazel:yacl.bzl", "yacl_cmake_external")
+load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
-filegroup(
-    name = "all_srcs",
-    srcs = glob(["**"]),
+yacl_cc_library(
+    name = "oprf_ctx",
+    srcs = ["oprf_ctx.cc"],
+    hdrs = ["oprf_ctx.h"],
+    deps = [
+        "//yacl/base:exception",
+        "//yacl/crypto/ecc",
+        "//yacl/crypto/hash:ssl_hash",
+    ],
 )
 
-yacl_cmake_external(
-    name = "fmtlib",
-    cache_entries = {
-        "FMT_TEST": "OFF",
-    },
-    defines = ["FMT_HEADER_ONLY"],
-    lib_source = ":all_srcs",
-    out_headers_only = True,
+yacl_cc_library(
+    name = "oprf",
+    # srcs = ["oprf.cc"],
+    hdrs = ["oprf.h"],
+    deps = [
+        ":oprf_ctx",
+    ],
+)
+
+yacl_cc_test(
+    name = "oprf_test",
+    srcs = ["oprf_test.cc"],
+    deps = [
+        ":oprf",
+    ],
 )

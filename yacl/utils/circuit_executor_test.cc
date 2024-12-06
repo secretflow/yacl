@@ -16,13 +16,14 @@
 #include "yacl/utils/circuit_executor.h"
 
 #include <algorithm>
+#include <cstdint>
 
-#include "absl/strings/escaping.h"
 #include "gtest/gtest.h"
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/dynamic_bitset.h"
 #include "yacl/crypto/block_cipher/symmetric_crypto.h"
+#include "yacl/crypto/hash/ssl_hash.h"
 #include "yacl/crypto/rand/rand.h"
 #include "yacl/io/circuit/bristol_fashion.h"
 
@@ -68,11 +69,11 @@ TEST(ArithmaticTest, Add64Test) {
   std::vector<uint64_t> result(1);
 
   /* WHEN */
-  PlainExecutor<uint64_t> exec;
+  PlainExecutor exec;
   exec.LoadCircuitFile(io::BuiltinBFCircuit::Add64Path());
-  exec.SetupInputs(absl::MakeSpan(inputs));
+  exec.SetupInputs<uint64_t>(absl::MakeSpan(inputs));
   exec.Exec();
-  exec.Finalize(absl::MakeSpan(result));
+  exec.Finalize<uint64_t>(absl::MakeSpan(result));
 
   /* THEN */
   EXPECT_EQ(result[0], Add64(inputs[0], inputs[1]));
@@ -84,11 +85,11 @@ TEST(ArithmaticTest, Sub64Test) {
   std::vector<uint64_t> result(1);
 
   /* WHEN */
-  PlainExecutor<uint64_t> exec;
+  PlainExecutor exec;
   exec.LoadCircuitFile(io::BuiltinBFCircuit::Sub64Path());
-  exec.SetupInputs(absl::MakeSpan(inputs));
+  exec.SetupInputs<uint64_t>(absl::MakeSpan(inputs));
   exec.Exec();
-  exec.Finalize(absl::MakeSpan(result));
+  exec.Finalize<uint64_t>(absl::MakeSpan(result));
 
   /* THEN */
   EXPECT_EQ(result[0], Sub64(inputs[0], inputs[1]));
@@ -100,11 +101,11 @@ TEST(ArithmaticTest, Neg64Test) {
   std::vector<uint64_t> result(1);
 
   /* WHEN */
-  PlainExecutor<uint64_t> exec;
+  PlainExecutor exec;
   exec.LoadCircuitFile(io::BuiltinBFCircuit::Neg64Path());
-  exec.SetupInputs(absl::MakeSpan(inputs));
+  exec.SetupInputs<uint64_t>(absl::MakeSpan(inputs));
   exec.Exec();
-  exec.Finalize(absl::MakeSpan(result));
+  exec.Finalize<uint64_t>(absl::MakeSpan(result));
 
   /* THEN */
   EXPECT_EQ(result[0], Neg64(inputs[0]));
@@ -116,11 +117,11 @@ TEST(ArithmaticTest, Mul64Test) {
   std::vector<uint64_t> result(1);
 
   /* WHEN */
-  PlainExecutor<uint64_t> exec;
+  PlainExecutor exec;
   exec.LoadCircuitFile(io::BuiltinBFCircuit::Mul64Path());
-  exec.SetupInputs(absl::MakeSpan(inputs));
+  exec.SetupInputs<uint64_t>(absl::MakeSpan(inputs));
   exec.Exec();
-  exec.Finalize(absl::MakeSpan(result));
+  exec.Finalize<uint64_t>(absl::MakeSpan(result));
 
   /* THEN */
   EXPECT_EQ(result[0], Mul64(inputs[0], inputs[1]));
@@ -132,11 +133,11 @@ TEST(ArithmaticTest, Div64Test) {
   std::vector<uint64_t> result(1);
 
   /* WHEN */
-  PlainExecutor<uint64_t> exec;
+  PlainExecutor exec;
   exec.LoadCircuitFile(io::BuiltinBFCircuit::Div64Path());
-  exec.SetupInputs(absl::MakeSpan(inputs));
+  exec.SetupInputs<uint64_t>(absl::MakeSpan(inputs));
   exec.Exec();
-  exec.Finalize(absl::MakeSpan(result));
+  exec.Finalize<uint64_t>(absl::MakeSpan(result));
 
   /* THEN */
   EXPECT_EQ(result[0], Div64(inputs[0], inputs[1]));
@@ -149,11 +150,11 @@ TEST(ArithmaticTest, UDiv64Test) {
 
   /* WHEN */
 
-  PlainExecutor<uint64_t> exec;
+  PlainExecutor exec;
   exec.LoadCircuitFile(io::BuiltinBFCircuit::UDiv64Path());
-  exec.SetupInputs(absl::MakeSpan(inputs));
+  exec.SetupInputs<uint64_t>(absl::MakeSpan(inputs));
   exec.Exec();
-  exec.Finalize(absl::MakeSpan(result));
+  exec.Finalize<uint64_t>(absl::MakeSpan(result));
 
   /* THEN */
   EXPECT_EQ(result[0], UDiv64(inputs[0], inputs[1]));
@@ -165,11 +166,11 @@ TEST(ArithmaticTest, EqzTest) {
   std::vector<uint64_t> result(1);
 
   /* WHEN */
-  PlainExecutor<uint64_t> exec;
+  PlainExecutor exec;
   exec.LoadCircuitFile(io::BuiltinBFCircuit::EqzPath());
-  exec.SetupInputs(absl::MakeSpan(inputs));
+  exec.SetupInputs<uint64_t>(absl::MakeSpan(inputs));
   exec.Exec();
-  exec.Finalize(absl::MakeSpan(result));
+  exec.Finalize<uint64_t>(absl::MakeSpan(result));
 
   /* THEN */
   EXPECT_EQ(result[0], Eqz(inputs[0]));
@@ -188,11 +189,11 @@ TEST(CryptoTest, Aes128Test) {
   std::vector<uint128_t> result(1);
 
   /* WHEN */
-  PlainExecutor<uint128_t> exec;
+  PlainExecutor exec;
   exec.LoadCircuitFile(io::BuiltinBFCircuit::Aes128Path());
-  exec.SetupInputs(absl::MakeSpan(inputs));
+  exec.SetupInputs<uint128_t>(absl::MakeSpan(inputs));
   exec.Exec();
-  exec.Finalize(absl::MakeSpan(result));
+  exec.Finalize<uint128_t>(absl::MakeSpan(result));
 
   /* THEN */
   // NOTE: For AES-128 the wire orders are in the reverse order as used in
@@ -202,10 +203,28 @@ TEST(CryptoTest, Aes128Test) {
   // see: https://nigelsmart.github.io/MPC-Circuits/
   //
   // NOTE: it simply means every byte is reversed, not every bit.
-  auto compare = Aes128(ReverseBytes(inputs[0]), ReverseBytes(inputs[1]));
+  auto aes = Aes128(ReverseBytes(inputs[0]), ReverseBytes(inputs[1]));
   // SPDLOG_INFO(ToBinaryString(ReverseBytes(result[0])));
   // SPDLOG_INFO(ToBinaryString(compare));
-  EXPECT_EQ(ReverseBytes(result[0]), compare);
+  EXPECT_EQ(ReverseBytes(result[0]), aes);
+}
+
+TEST(CryptoTest, Sha256Test) {
+  /* GIVEN */
+  auto message = crypto::FastRandBytes(crypto::RandLtN(32));
+  auto in_buf = io::BuiltinBFCircuit::PrepareSha256Input(message);
+
+  /* WHEN */
+  PlainExecutor exec;
+  exec.LoadCircuitFile(io::BuiltinBFCircuit::Sha256Path());
+  exec.SetupInputs(in_buf);
+  exec.Exec();
+  auto result = exec.Finalize();
+
+  /* THEN */
+  auto sha256 = crypto::Sha256Hash().Update(message).CumulativeHash();
+  EXPECT_EQ(sha256.size(), result.size());
+  EXPECT_TRUE(std::equal(result.begin(), result.end(), sha256.begin()));
 }
 
 }  // namespace yacl

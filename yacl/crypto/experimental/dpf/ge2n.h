@@ -98,7 +98,7 @@ class GE2n {
  private:
   static constexpr StoreTy kMask_ =
       N == 128 ? Uint128Max() : (StoreTy(1) << N) - 1;
-  StoreTy store_;
+  StoreTy store_{0};
 };
 
 }  // namespace yacl::crypto

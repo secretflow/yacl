@@ -14,25 +14,15 @@
 
 #include "yacl/io/circuit/bristol_fashion.h"
 
-#include <cstdint>
-#include <ctime>
-#include <filesystem>
-
-#include "fmt/format.h"
 #include "gtest/gtest.h"
-#include "spdlog/spdlog.h"
 
 #include "yacl/base/exception.h"
-#include "yacl/io/stream/file_io.h"
 
 namespace yacl::io {
 
 namespace {
 
-std::string GetAesBfPath() {
-  return fmt::format("{}/yacl/io/circuit/data/aes_128.txt",
-                     std::filesystem::current_path().string());
-}
+std::string GetAesBfPath() { return BuiltinBFCircuit::Aes128Path(); }
 
 }  // namespace
 

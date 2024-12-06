@@ -102,7 +102,7 @@ TEST(OpensslTest, AddInplaceWorks) {
 
 TEST(OpensslMemLeakTest, MulBaseLeaks) {
   std::shared_ptr<yacl::crypto::EcGroup> ec =
-      yacl::crypto::EcGroupFactory::Instance().Create("sm2",
+      yacl::crypto::EcGroupFactory::Instance().Create("brainpoolP256r1",
                                                       ArgLib = "openssl");
 
   yacl::parallel_for(0, 2, [&](int64_t, int64_t) {

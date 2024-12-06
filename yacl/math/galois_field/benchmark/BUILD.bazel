@@ -19,6 +19,6 @@ yacl_cc_binary(
     srcs = ["operation_bench.cc"],
     deps = [
         "//yacl/math/galois_field:gf",
-        "@com_github_google_benchmark//:benchmark_main",
+        "@google_benchmark//:benchmark_main",
     ],
 )

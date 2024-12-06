@@ -119,7 +119,7 @@ class IntrinsicField : public GFScalarSketch<T> {
   // compile-time utilities for generating galois field basis for uint64_t and
   // uint128_t
   constexpr std::array<T, sizeof(T) * 8> GenGfBasisArray() {
-    std::array<T, sizeof(T) * 8> basis = {0};
+    std::array<T, sizeof(T)* 8> basis = {0};
     uint128_t one = yacl::MakeUint128(0, 1);
     for (size_t i = 0; i < sizeof(T) * 8; ++i) {
       basis[i] = one << i;

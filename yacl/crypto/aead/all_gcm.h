@@ -26,6 +26,21 @@ YACL_MODULE_DECLARE("all_gcm", SecParam::C::k128, SecParam::S::INF);
 
 namespace yacl::crypto {
 
+// ===============================
+// GCM Supported Schema/Algorithms
+// ===============================
+
+constexpr size_t kAes128GcmMacSize = 16;
+constexpr size_t kAes128GcmKeySize = 16;
+
+constexpr size_t kAes256GcmMacSize = 16;
+constexpr size_t kAes256GcmKeySize = 32;
+
+#ifdef YACL_WITH_TONGSUO
+constexpr size_t kSm4GcmMacSize = 16;
+constexpr size_t kSm4GcmKeySize = 16;
+#endif
+
 enum class GcmCryptoSchema : int {
   AES128_GCM, /* security level = 128 */
   AES256_GCM, /* security level = 256 */
@@ -34,9 +49,26 @@ enum class GcmCryptoSchema : int {
 #endif
 };
 
-// -------------
-// GCM Interface
-// -------------
+/* to a string which openssl recognizes */
+inline const char* ToString(GcmCryptoSchema scheme) {
+  switch (scheme) {
+    case GcmCryptoSchema::AES128_GCM:
+      return "aes-128-gcm";
+    case GcmCryptoSchema::AES256_GCM:
+      return "aes-256-gcm";
+#ifdef YACL_WITH_TONGSUO
+    case GcmCryptoSchema::SM4_GCM:
+      return "sm4-gcm";
+#endif
+    default:
+      YACL_THROW("Unsupported gcm scheme: {}", static_cast<int>(scheme));
+  }
+}
+
+// ================
+// GCM Geneic Class
+// ================
+
 class GcmCrypto {
  public:
   GcmCrypto(GcmCryptoSchema schema, ByteContainerView key, ByteContainerView iv)
@@ -59,9 +91,10 @@ class GcmCrypto {
   const std::vector<uint8_t> iv_;   // Initialize vector
 };
 
-// ---------------
-// Implementations
-// ---------------
+// ========================
+// Alias for Specific Types
+// ========================
+
 class Aes128GcmCrypto : public GcmCrypto {
  public:
   Aes128GcmCrypto(ByteContainerView key, ByteContainerView iv)
@@ -81,21 +114,5 @@ class Sm4GcmCrypto : public GcmCrypto {
       : GcmCrypto(GcmCryptoSchema::SM4_GCM, key, iv) {}
 };
 #endif
-
-/* to a string which openssl recognizes */
-inline const char* ToString(GcmCryptoSchema scheme) {
-  switch (scheme) {
-    case GcmCryptoSchema::AES128_GCM:
-      return "aes-128-gcm";
-    case GcmCryptoSchema::AES256_GCM:
-      return "aes-256-gcm";
-#ifdef YACL_WITH_TONGSUO
-    case GcmCryptoSchema::SM4_GCM:
-      return "sm4-gcm";
-#endif
-    default:
-      YACL_THROW("Unsupported gcm scheme: {}", static_cast<int>(scheme));
-  }
-}
 
 }  // namespace yacl::crypto

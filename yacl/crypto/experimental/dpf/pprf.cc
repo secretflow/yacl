@@ -73,8 +73,9 @@ void GgmExpandAndPunc(absl::Span<uint128_t> working_span, GE2n<M> punc_point,
 template <size_t /* input bit num */ M, size_t /* output bit num */ N>
 void PprfPunc(uint128_t prf_key, GE2n<M> punc_point, PprfPuncKey* out) {
   static_assert(M <= 64);
-  auto m = M;  // m is a runtime var
-  auto num = (m == 64) ? std::numeric_limits<size_t>::max() : 1 << m;
+  uint64_t m = M;  // m is a runtime var
+  uint64_t num =
+      (m == 64) ? std::numeric_limits<size_t>::max() : (uint64_t)1 << m;
 
   std::vector<uint128_t> working_vec(num);
   working_vec[0] = prf_key;
