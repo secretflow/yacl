@@ -19,7 +19,7 @@
 #include "yacl/base/int128.h"
 
 #define MP_BITS_TO_DIGITS(bits) ((bits) + MP_DIGIT_BIT - 1) / MP_DIGIT_BIT
-#define MP_BYTES_TO_DIGITS(bytes) MP_BITS_TO_DIGITS((bytes)*CHAR_BIT)
+#define MP_BYTES_TO_DIGITS(bytes) MP_BITS_TO_DIGITS((bytes) * CHAR_BIT)
 
 void mpx_init(mp_int *a);
 void mpx_reserve(mp_int *a, size_t n_digits);
