@@ -86,9 +86,8 @@ class Sse {
 
   void SaveKeys(const std::map<std::string, std::string>& K_map,
                 const std::string& file_path);
-  void SaveTSet(
-      const std::vector<std::vector<TSet::Record>>& TSet,
-      const std::string& file_path);
+  void SaveTSet(const std::vector<std::vector<TSet::Record>>& TSet,
+                const std::string& file_path);
   void SaveXSet(const std::vector<yacl::crypto::EcPoint>& XSet,
                 const std::string& file_path,
                 const std::unique_ptr<yacl::crypto::EcGroup>& ec_group);

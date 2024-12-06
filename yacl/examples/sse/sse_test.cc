@@ -117,7 +117,9 @@ TEST_F(SseTest, SaveAndLoadEDB) {
 
   // 保存EDB到文件
   std::string test_dir = "/tmp/sse_test_data/";
-  system(("mkdir -p " + test_dir).c_str());
+  if (system(("mkdir -p " + test_dir).c_str()) != 0) {
+    FAIL() << "Failed to create directory: " << test_dir;
+  }
 
   auto [k_map, tset, xset] = sse_->SaveEDB(
       test_dir + "K_map.bin", test_dir + "TSet.bin", test_dir + "XSet.bin");

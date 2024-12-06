@@ -24,8 +24,7 @@ Sse::Sse(int bucket_size, int slot_size, int lambda, int n_lambda)
 std::string Sse::GetKt() { return k_map_["Kt"]; }
 
 // EDBSetup
-std::pair<std::vector<std::vector<TSet::Record>>, std::string>
-Sse::EDBSetup() {
+std::pair<std::vector<std::vector<TSet::Record>>, std::string> Sse::EDBSetup() {
   ProcessAndUpdateTAndXSet();
   auto [TSet, Kt] = tset_.TSetSetup(T_, keywords_);
   TSet_ = TSet;

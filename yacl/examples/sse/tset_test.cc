@@ -132,4 +132,4 @@ TEST_F(TSetTest, CompleteRetrievalFlow) {
   EXPECT_EQ(retrieved[1].second, "value2");
 }
 
-}  // namespace yacl::examples::sse
+}  // namespace examples::sse
