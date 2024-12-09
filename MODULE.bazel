@@ -69,22 +69,19 @@ single_version_override(
 bazel_dep(name = "leveldb", version = "1.23")
 bazel_dep(name = "openssl", version = "3.3.2.bcr.1")
 
-
-
 new_local_repository = use_repo_rule("@bazel_tools//tools/build_defs/repo:local.bzl", "new_local_repository")
+
 new_local_repository(
     name = "macos_omp_x64",
     build_file = "@//bazel:local_openmp_macos.BUILD",
     path = "/usr/local/opt/libomp",
 )
 
-
 new_local_repository(
     name = "macos_omp_arm64",
     build_file = "@//bazel:local_openmp_macos.BUILD",
     path = "/opt/homebrew/opt/libomp/",
 )
-
 
 # test
 bazel_dep(name = "googletest", version = "1.15.2", dev_dependency = True)
