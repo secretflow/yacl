@@ -34,7 +34,7 @@ header: # <1>
     - "**/*.rst"
     - "LICENSE"
     - "NOTICE"
-    - ".bazelversion"
+    - ".bazeliskrc"
     - ".bazelignore"
     - ".clang-format"
     - ".clang-tidy"
