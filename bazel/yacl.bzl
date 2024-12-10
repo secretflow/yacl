@@ -111,9 +111,9 @@ def yacl_cc_test(
             "@yacl//bazel/config:gm": ["-DYACL_WITH_TONGSUO"],
             "//conditions:default": [],
         }),
-        deps = deps + [
+        deps = [
             "@googletest//:gtest_main",
-        ],
+        ] + deps,
         linkopts = linkopts + ["-ldl"],
         **kwargs
     )
