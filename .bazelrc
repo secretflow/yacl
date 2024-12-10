@@ -41,7 +41,7 @@ build:macos --macos_minimum_os=13.0
 build:macos --host_macos_minimum_os=13.0
 build:macos --action_env MACOSX_DEPLOYMENT_TARGET=13.0
 
-build:linux_aarch64 --copt=-Wno-mismatched-new-delete
+build:linux_aarch64 --cxxopt=-Wno-mismatched-new-delete
 
 build:asan --features=asan
 build:ubsan --features=ubsan
