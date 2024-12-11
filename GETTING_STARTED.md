@@ -7,6 +7,7 @@ This document includes guidelines.
 To build Yacl from source, you will need the following tools:
 
 - [bazel](https://bazel.build/): We recommend to use the official [bazelisk](https://github.com/bazelbuild/bazelisk?tab=readme-ov-file#installation) to manage bazel version.
+  - If not use bazelisk, please set the environment variable `USE_BAZEL_VERSION` to the specified version, which can be found in the `.bazeliskrc` file.
 - [gcc >= 10.3](https://gcc.gnu.org/)
 - [cmake](https://cmake.org/)
 - [ninja/ninja-build](https://ninja-build.org/)
