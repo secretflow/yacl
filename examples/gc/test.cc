@@ -24,6 +24,8 @@
 #include "yacl/link/test_util.h"
 #include "yacl/utils/circuit_executor.h"
 
+using namespace std;
+using namespace yacl;
 namespace {
 using uint128_t = __uint128_t;
 }
@@ -155,7 +157,8 @@ int main(int argc, char* argv[]) {
     ctx_desc.parties.push_back({id, host});
   }
 
-  auto lctx = yacl::link::FactoryBrpc().CreateContext(ctx_desc, FLAGS_rank);
+  auto lctx = yacl::link::FactoryBrpc().CreateContext(
+      ctx_desc, FLAGS_rank);  // yacl::link::test
   lctx->ConnectToMesh();
   // auto lctxs = link::test::SetupWorld(2);
 
@@ -332,23 +335,27 @@ int main(int argc, char* argv[]) {
   /* ***********尝试使用base_OT*********** */
 
   // auto contexts = link::test::SetupWorld(kWorldSize);
-  // vector<array<uint128_t, 2>> send_blocks;
-  // vector<uint128_t> recv_blocks(num_ot);
-  // dynamic_bitset<uint128_t> choices(num_ot);
-  // for (int i = 64; i < 128; i++) {
-  //   send_blocks.push_back({gb_value[i], gb_value[i] ^ delta});
-  //   choices.push_back(bi_val[i]);
-  // }
+  int num_ot = 64;
+  UninitAlignedVector<array<uint128_t, 2>> send_blocks;
+  UninitAlignedVector<uint128_t> recv_blocks(num_ot);
+  dynamic_bitset<uint64_t> choices(num_ot);
+  for (int i = 64; i < 128; i++) {
+    send_blocks.push_back({gb_value[i], gb_value[i] ^ delta});
+    choices.push_back(bi_val[i]);
+  }
 
-  // std::future<void> sender =
-  //     std::async([&] { BaseOtSend(contexts[0],
-  // absl::MakeSpan(send_blocks));
-  //     });
-  // std::future<void> receiver = std::async(
-  //     [&] { BaseOtRecv(contexts[1], choices, absl::MakeSpan(recv_blocks));
-  //     });
-  // sender.get();
-  // receiver.get();
+  std::future<void> sender =
+      yacl::crypto::BaseOtSend(lctx[0], absl::MakeSpan(send_blocks));
+
+  std::future<void> receiver =
+      yacl::crypto::BaseOtRecv(1, choices, absl::MakeSpan(recv_blocks));
+
+  for (int i = 0; i < num_ot; i++) {
+    if (send_blocks[i][choices[i]] != recv_blocks[i]) {
+      cout << "**********OT错误************";
+      break;
+    }
+  }
 
   // const int kWorldSize = 2;
   // auto contexts = link::test::SetupWorld(kWorldSize);
@@ -394,6 +401,7 @@ int main(int argc, char* argv[]) {
 
     //   wires_[i] = gb_value[i] ^ (select_mask[bi_val[i]] & delta);
     // }
+
     // 发送混淆值让 计算方 自己选
     if (FLAGS_rank == 0) {
       lctx->Send(
