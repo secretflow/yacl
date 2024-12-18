@@ -73,13 +73,13 @@ new_local_repository = use_repo_rule("@bazel_tools//tools/build_defs/repo:local.
 
 new_local_repository(
     name = "macos_omp_x64",
-    build_file = "@//bazel:local_openmp_macos.BUILD",
+    build_file = "@yacl//bazel:local_openmp_macos.BUILD",
     path = "/usr/local/opt/libomp",
 )
 
 new_local_repository(
     name = "macos_omp_arm64",
-    build_file = "@//bazel:local_openmp_macos.BUILD",
+    build_file = "@yacl//bazel:local_openmp_macos.BUILD",
     path = "/opt/homebrew/opt/libomp/",
 )
 
