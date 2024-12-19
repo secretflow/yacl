@@ -25,16 +25,12 @@ module(
 )
 
 # --registry=https://bcr.bazel.build
+bazel_dep(name = "protobuf", version = "27.3")
 bazel_dep(name = "rules_proto", version = "4.0.0")
 bazel_dep(name = "bazel_skylib", version = "1.7.1")
 bazel_dep(name = "apple_support", version = "1.17.1")
-bazel_dep(name = "rules_cc", version = "0.0.12")
-single_version_override(
-    module_name = "rules_cc",
-    version = "0.0.12",
-)
-
-bazel_dep(name = "abseil-cpp", version = "20230802.1")
+bazel_dep(name = "rules_cc", version = "0.0.13")
+bazel_dep(name = "abseil-cpp", version = "20240722.0")
 bazel_dep(name = "gflags", version = "2.2.2")
 bazel_dep(name = "zlib", version = "1.3.1.bcr.3")
 bazel_dep(name = "msgpack-c", version = "6.1.0")
@@ -59,11 +55,6 @@ bazel_dep(name = "hash_drbg", version = "0.0.0-20230516-2411fa9")
 bazel_dep(name = "org_interconnection", version = "0.0.1")
 bazel_dep(name = "lib25519", version = "20240321")
 bazel_dep(name = "mcl", version = "1.99")
-bazel_dep(name = "protobuf", version = "25.5")
-single_version_override(
-    module_name = "protobuf",
-    version = "25.5",
-)
 
 # --registry=https://baidu.github.io/babylon/registry
 bazel_dep(name = "leveldb", version = "1.23")
@@ -73,13 +64,13 @@ new_local_repository = use_repo_rule("@bazel_tools//tools/build_defs/repo:local.
 
 new_local_repository(
     name = "macos_omp_x64",
-    build_file = "@yacl//bazel:local_openmp_macos.BUILD",
+    build_file = "@//bazel:local_openmp_macos.BUILD",
     path = "/usr/local/opt/libomp",
 )
 
 new_local_repository(
     name = "macos_omp_arm64",
-    build_file = "@yacl//bazel:local_openmp_macos.BUILD",
+    build_file = "@//bazel:local_openmp_macos.BUILD",
     path = "/opt/homebrew/opt/libomp/",
 )
 
