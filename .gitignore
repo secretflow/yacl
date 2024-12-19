@@ -50,3 +50,6 @@ external
 
 #brpc
 rpc_data
+
+.clwb
+cmake-build-debug-remote
