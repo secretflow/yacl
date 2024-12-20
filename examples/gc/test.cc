@@ -160,36 +160,15 @@ int main(int argc, char* argv[]) {
   auto lctx = yacl::link::FactoryBrpc().CreateContext(
       ctx_desc, FLAGS_rank);  // yacl::link::test
   lctx->ConnectToMesh();
-  // auto lctxs = link::test::SetupWorld(2);
-
-  // const size_t num_ot = 5000;
-  // const auto ext_algorithm = yacl::crypto::OtKernel::ExtAlgorithm::Ferret;
-  // OtSendStore ot_send(num_ot, OtStoreType::Compact);  // placeholder
-  // OtRecvStore ot_recv(num_ot, OtStoreType::Compact);  // placeholder
-  // OtKernel kernel0(OtKernel::Role::Sender, ext_algorithm);
-  // OtKernel kernel1(OtKernel::Role::Receiver, ext_algorithm);
-
-  // // WHEN
-  // auto sender = std::async([&] {
-  //   kernel0.init(lctxs[0]);
-  //   kernel0.eval_cot_random_choice(lctxs[0], num_ot, &ot_send);
-  // });
-  // auto receiver = std::async([&] {
-  //   kernel1.init(lctxs[1]);
-  //   kernel1.eval_cot_random_choice(lctxs[1], num_ot, &ot_recv);
-  // });
-
-  // sender.get();
-  // receiver.get();
-  // std::cout << "OT delta :" << ot_send.GetDelta() << std::endl;
 
   // 参与方的设置，需要参照halfgate_gen/eva和sh_gen/eva   以下是一些用到的变量
   // constant[2]     0为全局delta   1为not门用到的public label
   // 秘钥相关   mitch  秘钥初始化start_point, shared_prg
 
-  // const int kWorldSize = 2;
-
+  // tmp[0]后续用作delta  tmp[1]用作秘钥start_point
   uint128_t tmp[2];
+
+  // tmp和constant的发送可以放在setup里，专门写一个函数
   if (FLAGS_rank == 0) {
     random_uint128_t(tmp, 2);
     lctx->Send(1, yacl::ByteContainerView(tmp, sizeof(uint128_t) * 2), "tmp");
@@ -205,6 +184,7 @@ int main(int argc, char* argv[]) {
   uint128_t delta = tmp[0];  // 统一全局Delta
 
   uint128_t constant[3];
+
   if (FLAGS_rank == 0) {
     random_uint128_t(constant, 2);
     lctx->Send(1, yacl::ByteContainerView(constant, sizeof(uint128_t) * 3),
@@ -266,7 +246,6 @@ int main(int argc, char* argv[]) {
   int num_of_input_wires = 0;
   for (size_t i = 0; i < circ_->niv; ++i) {
     num_of_input_wires += circ_->niw[i];
-    // break;
   }
 
   // random_uint128_t(gb_value.data(), circ_->niw[0]);
@@ -304,51 +283,19 @@ int main(int argc, char* argv[]) {
     input1 = *buffer_data;
     std::cout << "Input1OriginRecv:" << input1 << std::endl;
   }
+
   // ************混淆方进行发送*********
-
-  /* ************暂时没看懂*********** */
-  // 后64位 用OT evaluator 用iknpsendTable
-  //   vector<array<uint128_t, 2>> send_blocks;
-  //   vector<uint128_t> recv_blocks(num_ot);
-  //   dynamic_bitset<uint128_t> choices(num_ot);
-  //   for (int i = 64; i < 128; i++) {
-  //     send_blocks.push_back({gb_value[i], gb_value[i] ^ delta});
-  //     choices.push_back(bi_val[i]);
-  //   }
-
-  //   auto send = MakeOtSendStore(send_blocks);
-  //   auto recv = MakeOtRecvStore(choices, recv_blocks);
-
-  //   auto lctxs = yacl::link::test::SetupWorld(kWorldSize);
-  //   std::vector<std::array<uint128_t, 2>> send_out(num_ot);
-  //   std::vector<uint128_t> recv_out(num_ot);
-  //   std::future<void> sender = std::async([&] {
-  //     IknpOtExtSend(lctxs[0], recv, absl::MakeSpan(send_out), false);
-  //   });  // 发送到base_ot.recv
-  //   std::future<void> receiver = std::async([&] {
-  //     IknpOtExtRecv(lctxs[1], send, choices, absl::MakeSpan(recv_out),
-  //                   false);  // 从base_ot.send取
-  //   });
-  //   receiver.get();
-  //   sender.get();
-
-  /* ***********尝试使用base_OT*********** */
-
-  // auto contexts = link::test::SetupWorld(kWorldSize);
   int num_ot = 64;
-  UninitAlignedVector<array<uint128_t, 2>> send_blocks;
-  UninitAlignedVector<uint128_t> recv_blocks(num_ot);
+  vector<array<uint128_t, 2>> send_blocks;
+  vector<uint128_t> recv_blocks(num_ot);
   dynamic_bitset<uint64_t> choices(num_ot);
   for (int i = 64; i < 128; i++) {
     send_blocks.push_back({gb_value[i], gb_value[i] ^ delta});
     choices.push_back(bi_val[i]);
   }
 
-  std::future<void> sender =
-      yacl::crypto::BaseOtSend(lctx[0], absl::MakeSpan(send_blocks));
-
-  std::future<void> receiver =
-      yacl::crypto::BaseOtRecv(1, choices, absl::MakeSpan(recv_blocks));
+  yacl::crypto::BaseOtSend(lctx, absl::MakeSpan(send_blocks));
+  yacl::crypto::BaseOtRecv(lctx, bi_val, absl::MakeSpan(recv_blocks));
 
   for (int i = 0; i < num_ot; i++) {
     if (send_blocks[i][choices[i]] != recv_blocks[i]) {
@@ -357,42 +304,7 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  // const int kWorldSize = 2;
-  // auto contexts = link::test::SetupWorld(kWorldSize);
-
-  // int num_ot = 64;
-
-  // // WHEN
-
-  // auto sender = std::async([&] { return BaseOtSend(contexts[0], num_ot); });
-  // auto receiver =
-  //     std::async([&] { return BaseOtRecv(contexts[1], choices, num_ot); });
-  // auto send_blocks = sender.get();
-  // auto recv_blocks = receiver.get();
-
   if (operate != "neg64" && operate != "zero_equal") {
-    // const int kWorldSize = 2;
-    // int num_ot = 128;
-
-    // auto lctxs = link::test::SetupWorld(kWorldSize);  // setup network
-    // auto base_ot = MockCots(128, delta);              // mock base ot
-    // dynamic_bitset<uint128_t> choices;
-    // choices.append(inputs[1]);  // 后64位全为0
-
-    // // WHEN
-    // std::vector<std::array<uint128_t, 2>> send_out(num_ot);
-    // std::vector<uint128_t> recv_out(num_ot);
-    // std::future<void> sender = std::async([&] {
-    //   IknpOtExtSend(lctxs[0], base_ot.recv, absl::MakeSpan(send_out), false);
-    // });  // 发送到base_ot.recv
-    // std::future<void> receiver = std::async([&] {
-    //   IknpOtExtRecv(lctxs[1], base_ot.send, choices,
-    //   absl::MakeSpan(recv_out),
-    //                 false);  // 从base_ot.send取
-    // });
-    // receiver.get();
-    // sender.get();
-
     // for (int i = circ_->niw[0]; i < circ_->niw[0] + circ_->niw[1]; i++) {
     //   // gb_value[i] = send_out[i - 64][0];
     //   // wires_[i] = recv_out[i - 64];
