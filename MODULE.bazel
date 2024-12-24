@@ -55,8 +55,6 @@ bazel_dep(name = "hash_drbg", version = "0.0.0-20230516-2411fa9")
 bazel_dep(name = "org_interconnection", version = "0.0.1")
 bazel_dep(name = "lib25519", version = "20240321")
 bazel_dep(name = "mcl", version = "1.99")
-
-# --registry=https://baidu.github.io/babylon/registry
 bazel_dep(name = "leveldb", version = "1.23")
 bazel_dep(name = "openssl", version = "3.3.2.bcr.1")
 
