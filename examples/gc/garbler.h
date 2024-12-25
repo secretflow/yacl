@@ -42,8 +42,9 @@ class Garbler {
   std::vector<uint128_t> wires_;
   std::vector<uint128_t> gb_value;
   yacl::io::BFCircuit circ_;
-
+  uint128_t** table;
   uint64_t input;
+  uint64_t input_EV;
 
   void setup() {
     // 通信环境初始化
@@ -57,8 +58,8 @@ class Garbler {
     }
 
     // 可以直接用Context
-    auto lctx = yacl::link::FactoryBrpc().CreateContext(ctx_desc,
-                                                        0);  // yacl::link::test
+    lctx = yacl::link::FactoryBrpc().CreateContext(ctx_desc,
+                                                   0);  // yacl::link::test
     lctx->ConnectToMesh();
 
     // delta, inv_constant, start_point 初始化并发送给evaluator
@@ -106,15 +107,18 @@ class Garbler {
                yacl::ByteContainerView(wires_.data(), sizeof(uint128_t) * 64),
                "garbleInput1");
 
-    std::cout << "lctx->Send" << std::endl;
-
     std::cout << "sendInput1" << std::endl;
 
-    // lctx->Send(
-    //     1,
-    //     yacl::ByteContainerView(gb_value.data() + 64, sizeof(uint128_t) *
-    //     64), "garbleInput2");
-    // std::cout << "sendInput2" << std::endl;
+    lctx->Send(
+        1,
+        yacl::ByteContainerView(gb_value.data() + 64, sizeof(uint128_t) * 64),
+        "garbleInput2");
+    std::cout << "sendInput2" << std::endl;
+
+    yacl::Buffer r = lctx->Recv(1, "Input1");
+
+    const uint64_t* buffer_data = r.data<const uint64_t>();
+    input_EV = *buffer_data;
   }
 
   uint128_t GBAND(uint128_t LA0, uint128_t A1, uint128_t LB0, uint128_t B1,
@@ -150,5 +154,89 @@ class Garbler {
     W0 = W0 ^ HLB0;
     W0 = W0 ^ (select_mask_[pb] & tmp);
     return W0;
+  }
+  void GB() {
+    table = new uint128_t*[circ_.ng];
+    for (int i = 0; i < circ_.ng; ++i) {
+      table[i] = new uint128_t[2];  
+    }
+    for (int i = 0; i < circ_.gates.size(); i++) {
+      auto gate = circ_.gates[i];
+      switch (gate.op) {
+        case yacl::io::BFCircuit::Op::XOR: {
+          const auto& iw0 = gb_value.operator[](gate.iw[0]);  // 取到具体值
+          const auto& iw1 = gb_value.operator[](gate.iw[1]);
+          gb_value[gate.ow[0]] = iw0 ^ iw1;
+          break;
+        }
+        case yacl::io::BFCircuit::Op::AND: {
+          const auto& iw0 = gb_value.operator[](gate.iw[0]);
+          const auto& iw1 = gb_value.operator[](gate.iw[1]);
+          gb_value[gate.ow[0]] = GBAND(iw0, iw0 ^ delta, iw1, iw1 ^ delta,
+                                       delta, table[i], &mitccrh);
+          break;
+        }
+        case yacl::io::BFCircuit::Op::INV: {
+          const auto& iw0 = gb_value.operator[](gate.iw[0]);
+          gb_value[gate.ow[0]] = iw0 ^ inv_constant;
+          break;
+        }
+        case yacl::io::BFCircuit::Op::EQ: {
+          gb_value[gate.ow[0]] = gate.iw[0];
+          break;
+        }
+        case yacl::io::BFCircuit::Op::EQW: {
+          const auto& iw0 = gb_value.operator[](gate.iw[0]);
+          gb_value[gate.ow[0]] = iw0;
+          break;
+        }
+        case yacl::io::BFCircuit::Op::MAND: { /* multiple ANDs */
+          YACL_THROW("Unimplemented MAND gate");
+          break;
+        }
+        default:
+          YACL_THROW("Unknown Gate Type: {}", (int)gate.op);
+      }
+    }
+  }
+
+  void sendTable() {
+    lctx->Send(1,
+               yacl::ByteContainerView(table, sizeof(uint128_t) * 2 * circ_.ng),
+               "table");
+    std::cout << "sendTable" << std::endl;
+    
+    
+  }
+  void decode() {
+    // 现接收计算结果
+    size_t index = wires_.size();
+    int start = index - circ_.now[0];
+
+    yacl::Buffer r = lctx->Recv(1, "output");
+    const uint128_t* buffer_data = r.data<const uint128_t>();
+
+    memcpy(wires_.data() + start, buffer_data, sizeof(uint128_t) * 64);
+    std::cout << "recvOutput" << std::endl;
+
+    // decode
+    std::vector<uint64_t> result(1);
+    absl::Span<uint64_t> outputs = absl::MakeSpan(result);
+    for (size_t i = 0; i < circ_.nov; ++i) {
+      yacl::dynamic_bitset<uint64_t> result_block(circ_.now[i]);
+      for (size_t j = 0; j < circ_.now[i]; ++j) {
+        int wire_index = index - circ_.now[i] + j;
+        result_block[j] =
+            getLSB(wires_[wire_index]) ^
+            getLSB(gb_value[wire_index]);  // 得到的是逆序的二进制值
+                                           // 对应的混淆电路计算为LSB ^
+                                           // d 输出线路在后xx位
+      }
+      // std::cout << "输出：" << result.data() << std::endl;
+      outputs[circ_.nov - i - 1] = *(uint128_t*)result_block.data();
+      index -= circ_.now[i];
+    }
+    std::cout << "MPC结果：" << result[0] << std::endl;
+    std::cout << "明文结果：" << input + input_EV << std::endl;
   }
 };
