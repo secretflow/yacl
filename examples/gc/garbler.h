@@ -42,7 +42,7 @@ class Garbler {
   std::vector<uint128_t> wires_;
   std::vector<uint128_t> gb_value;
   yacl::io::BFCircuit circ_;
-  uint128_t** table;
+  uint128_t table[376][2];
   uint64_t input;
   uint64_t input_EV;
 
@@ -98,6 +98,7 @@ class Garbler {
     // random_uint128_t(gb_value.data(), circ_.niw[0]);
     random_uint128_t(gb_value.data(), num_of_input_wires);
 
+  
     // 前64位 直接置换  garbler
     for (int i = 0; i < circ_.niw[0]; i++) {
       wires_[i] = gb_value[i] ^ (select_mask_[bi_val[i]] & delta);
@@ -156,10 +157,10 @@ class Garbler {
     return W0;
   }
   void GB() {
-    table = new uint128_t*[circ_.ng];
-    for (int i = 0; i < circ_.ng; ++i) {
-      table[i] = new uint128_t[2];  
-    }
+    // table = new uint128_t*[circ_.ng];
+    // for (int i = 0; i < circ_.ng; ++i) {
+    //   table[i] = new uint128_t[2];  
+    // }
     for (int i = 0; i < circ_.gates.size(); i++) {
       auto gate = circ_.gates[i];
       switch (gate.op) {
@@ -221,22 +222,29 @@ class Garbler {
 
     // decode
     std::vector<uint64_t> result(1);
-    absl::Span<uint64_t> outputs = absl::MakeSpan(result);
-    for (size_t i = 0; i < circ_.nov; ++i) {
-      yacl::dynamic_bitset<uint64_t> result_block(circ_.now[i]);
-      for (size_t j = 0; j < circ_.now[i]; ++j) {
-        int wire_index = index - circ_.now[i] + j;
-        result_block[j] =
-            getLSB(wires_[wire_index]) ^
-            getLSB(gb_value[wire_index]);  // 得到的是逆序的二进制值
-                                           // 对应的混淆电路计算为LSB ^
-                                           // d 输出线路在后xx位
-      }
-      // std::cout << "输出：" << result.data() << std::endl;
-      outputs[circ_.nov - i - 1] = *(uint128_t*)result_block.data();
-      index -= circ_.now[i];
-    }
+    finalize(absl::MakeSpan(result));
     std::cout << "MPC结果：" << result[0] << std::endl;
     std::cout << "明文结果：" << input + input_EV << std::endl;
   }
+  template <typename T>
+void finalize(absl::Span<T> outputs) {
+  // YACL_ENFORCE(outputs.size() >= circ_->nov);
+
+  size_t index = wires_.size();
+
+  for (size_t i = 0; i < circ_.nov; ++i) {
+    yacl::dynamic_bitset<T> result(circ_.now[i]);
+    for (size_t j = 0; j < circ_.now[i]; ++j) {
+      int wire_index = index - circ_.now[i] + j;
+      result[j] = getLSB(wires_[wire_index]) ^
+                  getLSB(gb_value[wire_index]);  // 得到的是逆序的二进制值
+                                                 // 对应的混淆电路计算为LSB ^ d
+                                                 // 输出线路在后xx位
+    }
+    // std::cout << "输出：" << result.data() << std::endl;
+    outputs[circ_.nov - i - 1] = *(T*)result.data();
+    index -= circ_.now[i];
+  }
+}
+
 };

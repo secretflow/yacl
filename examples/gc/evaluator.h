@@ -44,7 +44,7 @@ class Evaluator {
   std::vector<uint128_t> gb_value;
   yacl::io::BFCircuit circ_;
   std::shared_ptr<yacl::link::Context> lctx;
-  uint128_t** table;
+  uint128_t table[376][2];
   uint64_t input;
 
   void setup() {
@@ -103,15 +103,16 @@ class Evaluator {
     for (int i = 0; i < circ_.niw[1]; i++) {
       wires_[i + circ_.niw[0]] =
           buffer_data[i] ^ (select_mask[bi_val[i]] & delta);
+          
     }
     std::cout << "recvInput2" << std::endl;
     lctx->Send(0, yacl::ByteContainerView(&input, sizeof(uint64_t)), "Input1");
   }
   void recvTable() {
-    table = new uint128_t*[circ_.ng];
-    for (int i = 0; i < circ_.ng; ++i) {
-      table[i] = new uint128_t[2];  
-    }
+    // table = new uint128_t*[circ_.ng];
+    // for (int i = 0; i < circ_.ng; ++i) {
+    //   table[i] = new uint128_t[2];  
+    // }
 
     yacl::Buffer r = lctx->Recv(0, "table");
     const uint128_t* buffer_data = r.data<const uint128_t>();
@@ -124,12 +125,12 @@ class Evaluator {
     }
 
     std::cout << "recvTable" << std::endl;
-    cout << "table：";
-    for(int i = 0; i < circ_.ng; i++){
-      for(int j = 0; j < 2; j++){
-        cout << table[i][j] << endl;
-      }
-    }
+    // cout << "table：";
+    // for(int i = 0; i < circ_.ng; i++){
+    //   for(int j = 0; j < 2; j++){
+    //     cout << table[i][j] << endl;
+    //   }
+    // }
   }
   uint128_t EVAND(uint128_t A, uint128_t B, const uint128_t* table,
                   MITCCRH<8>* mitccrh) {

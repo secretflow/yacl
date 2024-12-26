@@ -138,7 +138,7 @@ int main() {
   std::future<void> thread2 = std::async([&] { evaluator->setup(); });
   thread1.get();
   thread2.get();
-
+  
   // 电路读取
   // std::string operate;
   // cout << "输入进行的操作: ";
@@ -160,19 +160,23 @@ int main() {
   thread2 = std::async([&] { evaluator->inputProcess(*circ_); });
   thread1.get();
   thread2.get();
+  
 
   // 混淆方对整个电路进行混淆, 并将混淆表发送给evaluator
   garbler->GB();
   garbler->sendTable();
 
   evaluator->recvTable();
+  
 
   // // 计算方进行计算 按拓扑顺序进行计算
   evaluator->EV();
 
   // // evaluator发送计算结果 garbler进行DE操作
   evaluator->sendOutput();
+  
   garbler->decode();
+  
 
   // // 检查计算结果是否正确
   // // std::cout << inputs[0] << " " << inputs[1] << std::endl;
