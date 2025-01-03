@@ -23,7 +23,8 @@
 #include "yacl/link/factory.h"
 #include "yacl/link/test_util.h"
 #include "yacl/utils/circuit_executor.h"
-
+#include "yacl/kernel/ot_kernel.h"
+#include "yacl/kernel/type/ot_store_utils.h"
 using namespace std;
 using namespace yacl;
 namespace {
@@ -46,6 +47,10 @@ class Garbler {
   uint64_t input;
   uint64_t input_EV;
 
+  const int num_ot = 64;
+  yacl::crypto::OtSendStore ot_send =  OtSendStore(num_ot, yacl::crypto::OtStoreType::Normal);
+
+
   void setup() {
     // 通信环境初始化
     size_t world_size = 2;
@@ -61,6 +66,12 @@ class Garbler {
     lctx = yacl::link::FactoryBrpc().CreateContext(ctx_desc,
                                                    0);  // yacl::link::test
     lctx->ConnectToMesh();
+
+    //OT off-line
+    const auto ext_algorithm = yacl::crypto::OtKernel::ExtAlgorithm::SoftSpoken;
+    yacl::crypto::OtKernel kernel0(yacl::crypto::OtKernel::Role::Sender, ext_algorithm);
+    kernel0.init(lctx);
+    kernel0.eval_rot(lctx, num_ot, &ot_send);
 
     // delta, inv_constant, start_point 初始化并发送给evaluator
     uint128_t tmp[3];
@@ -120,10 +131,12 @@ class Garbler {
 
     const uint64_t* buffer_data = r.data<const uint64_t>();
     input_EV = *buffer_data;
+    
+    onlineOT();
   }
 
   uint128_t GBAND(uint128_t LA0, uint128_t A1, uint128_t LB0, uint128_t B1,
-                  uint128_t delta, uint128_t* table, MITCCRH<8>* mitccrh) {
+                   uint128_t* table_item, MITCCRH<8>* mitccrh_pointer) {
     bool pa = getLSB(LA0);
     bool pb = getLSB(LB0);
 
@@ -136,25 +149,26 @@ class Garbler {
     H[2] = LB0;
     H[3] = B1;
 
-    mitccrh->hash<2, 2>(H);
+    mitccrh_pointer->hash<2, 2>(H);
 
     HLA0 = H[0];
     HA1 = H[1];
     HLB0 = H[2];
     HB1 = H[3];
 
-    table[0] = HLA0 ^ HA1;
-    table[0] = table[0] ^ (select_mask_[pb] & delta);
+    table_item[0] = HLA0 ^ HA1;
+    table_item[0] = table_item[0] ^ (select_mask_[pb] & delta);
 
     W0 = HLA0;
-    W0 = W0 ^ (select_mask_[pa] & table[0]);
+    W0 = W0 ^ (select_mask_[pa] & table_item[0]);
 
     tmp = HLB0 ^ HB1;
-    table[1] = tmp ^ LA0;
+    table_item[1] = tmp ^ LA0;
 
     W0 = W0 ^ HLB0;
     W0 = W0 ^ (select_mask_[pb] & tmp);
     return W0;
+
   }
   void GB() {
     // table = new uint128_t*[circ_.ng];
@@ -174,7 +188,7 @@ class Garbler {
           const auto& iw0 = gb_value.operator[](gate.iw[0]);
           const auto& iw1 = gb_value.operator[](gate.iw[1]);
           gb_value[gate.ow[0]] = GBAND(iw0, iw0 ^ delta, iw1, iw1 ^ delta,
-                                       delta, table[i], &mitccrh);
+                                        table[i], &mitccrh);
           break;
         }
         case yacl::io::BFCircuit::Op::INV: {
@@ -245,6 +259,14 @@ void finalize(absl::Span<T> outputs) {
     outputs[circ_.nov - i - 1] = *(T*)result.data();
     index -= circ_.now[i];
   }
+}
+void onlineOT(){
+  yacl::dynamic_bitset<uint64_t> d_choice;
+  // yacl::Buffer r = lctx->Recv(1, "d_choice");
+
+  // const uint64_t* buffer_data = r.data<const uint64_t>();
+  // // d_choice = *buffer_data;
+  // cout << "d_choice" <<*buffer_data << endl;
 }
 
 };

@@ -137,6 +137,8 @@ cc_library(
         "//yacl/kernel/algorithms:iknp_ote",
         "//yacl/link:test_util",
         "//yacl/utils:circuit_executor",
+        "//yacl/kernel:ot_kernel",
+        "//yacl/kernel/type:ot_store_utils",
     ],
 )
 
@@ -162,6 +164,8 @@ cc_library(
         "//yacl/kernel/algorithms:iknp_ote",
         "//yacl/link:test_util",
         "//yacl/utils:circuit_executor",
+        "//yacl/kernel:ot_kernel",
+        "//yacl/kernel/type:ot_store_utils",
     ],
 )
 
@@ -188,5 +192,37 @@ cc_binary(
         "//yacl/kernel/algorithms:iknp_ote",
         "//yacl/link:test_util",
         "//yacl/utils:circuit_executor",
+        "//yacl/kernel:ot_kernel",
+        "//yacl/kernel/type:ot_store_utils",
+    ],
+)
+
+cc_binary(
+    name = "rot_test",
+    srcs = ["rot_test.cc"],
+    copts = [
+        "-mavx",
+        "-maes",
+        "-mpclmul",
+    ],
+    deps = [
+        ":mitccrh",
+        ":garbler",
+        ":evaluator",
+        "//yacl/base:byte_container_view",
+        "//yacl/base:dynamic_bitset",
+        "//yacl/crypto/rand",
+        "//yacl/crypto/tools:prg",
+        "//yacl/io/circuit:bristol_fashion",
+        "//yacl/io/stream:file_io",
+        "//yacl/kernel/algorithms:base_ot",
+        "//yacl/kernel/algorithms:iknp_ote",
+        
+        "//yacl/utils:circuit_executor",
+
+        "//yacl/kernel/type:ot_store_utils",
+        "//yacl/link:test_util",
+        "//yacl/kernel:ot_kernel"
+
     ],
 )

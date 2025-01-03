@@ -23,9 +23,12 @@
 #include "yacl/link/factory.h"
 #include "yacl/link/test_util.h"
 #include "yacl/utils/circuit_executor.h"
+#include "yacl/kernel/ot_kernel.h"
+#include "yacl/kernel/type/ot_store_utils.h"
 
 using namespace std;
 using namespace yacl;
+using namespace yacl::crypto;
 namespace {
 using uint128_t = __uint128_t;
 }
@@ -47,6 +50,9 @@ class Evaluator {
   uint128_t table[376][2];
   uint64_t input;
 
+  const int num_ot = 64;
+  yacl::crypto::OtRecvStore ot_recv = OtRecvStore(num_ot, yacl::crypto::OtStoreType::Normal);
+
   void setup() {
     // 通信环境初始化
     size_t world_size = 2;
@@ -61,6 +67,12 @@ class Evaluator {
     lctx = yacl::link::FactoryBrpc().CreateContext(ctx_desc,
                                                    1);  // yacl::link::test
     lctx->ConnectToMesh();
+
+    //OT on-line
+    const auto ext_algorithm = yacl::crypto::OtKernel::ExtAlgorithm::SoftSpoken;
+    yacl::crypto::OtKernel kernel1(yacl::crypto::OtKernel::Role::Receiver, ext_algorithm);
+    kernel1.init(lctx);
+    kernel1.eval_rot(lctx, num_ot, &ot_recv);
 
     uint128_t tmp[3];
     // delta, inv_constant, start_point 接收
@@ -83,11 +95,11 @@ class Evaluator {
     wires_.resize(circ_.nw);
 
     yacl::dynamic_bitset<uint64_t> bi_val;
-    bi_val.append(input);  // 直接转换为二进制  输入线路在前64位
+    
 
     input = yacl::crypto::FastRandU64();
     std::cout << "input of evaluator:" << input << std::endl;
-
+bi_val.append(input);  // 直接转换为二进制  输入线路在前64位
     // 接收garbler混淆值
     yacl::Buffer r = lctx->Recv(0, "garbleInput1");
 
@@ -98,6 +110,7 @@ class Evaluator {
     std::cout << "recvInput1" << std::endl;
 
     // 对evaluator自己的输入值进行混淆
+    
     r = lctx->Recv(0, "garbleInput2");
     buffer_data = r.data<const uint128_t>();
     for (int i = 0; i < circ_.niw[1]; i++) {
@@ -106,6 +119,9 @@ class Evaluator {
           
     }
     std::cout << "recvInput2" << std::endl;
+
+    onLineOT();
+
     lctx->Send(0, yacl::ByteContainerView(&input, sizeof(uint64_t)), "Input1");
   }
   void recvTable() {
@@ -132,8 +148,8 @@ class Evaluator {
     //   }
     // }
   }
-  uint128_t EVAND(uint128_t A, uint128_t B, const uint128_t* table,
-                  MITCCRH<8>* mitccrh) {
+  uint128_t EVAND(uint128_t A, uint128_t B, const uint128_t* table_item,
+                  MITCCRH<8>* mitccrh_pointer) {
     uint128_t HA, HB, W;
     int sa, sb;
 
@@ -143,13 +159,13 @@ class Evaluator {
     uint128_t H[2];
     H[0] = A;
     H[1] = B;
-    mitccrh->hash<2, 1>(H);
+    mitccrh_pointer->hash<2, 1>(H);
     HA = H[0];
     HB = H[1];
 
     W = HA ^ HB;
-    W = W ^ (select_mask[sa] & table[0]);
-    W = W ^ (select_mask[sb] & table[1]);
+    W = W ^ (select_mask[sa] & table_item[0]);
+    W = W ^ (select_mask[sb] & table_item[1]);
     W = W ^ (select_mask[sb] & A);
     return W;
   }
@@ -201,5 +217,17 @@ class Evaluator {
         yacl::ByteContainerView(wires_.data() + start, sizeof(uint128_t) * 64),
         "output");
     std::cout << "sendOutput" << std::endl;
+  }
+  void onLineOT(){
+    yacl::dynamic_bitset<uint64_t> d_choice;
+    yacl::dynamic_bitset<uint64_t> choice;
+    choice.append(input);
+    
+    for(int i = 0; i < 64; i++){
+      int a = ot_recv.GetChoice(i);
+      d_choice[i] = a ^ choice[i];
+    }
+    // cout  << "大小" << sizeof(d_choice) << endl;
+    // lctx->Send(0, yacl::ByteContainerView(&d_choice, sizeof(uint64_t)), "d_choice");
   }
 };
