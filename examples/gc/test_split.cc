@@ -22,7 +22,6 @@ using uint128_t = __uint128_t;
 std::shared_ptr<yacl::io::BFCircuit> circ_;
 
 
-
 inline uint128_t Aes128(uint128_t k, uint128_t m) {
   yacl::crypto::SymmetricCrypto enc(
       yacl::crypto::SymmetricCrypto::CryptoType::AES128_ECB, k);
@@ -38,16 +37,9 @@ int main() {
   std::future<void> thread2 = std::async([&] { evaluator->setup(); });
   thread1.get();
   thread2.get();
-  cout << "ROT:" << garbler -> ot_send.GetBlock(3, evaluator->ot_recv.GetChoice(3)) <<"  "  << evaluator->ot_recv.GetBlock(3) << endl; 
+  
   
   // 电路读取
-  // std::string operate;
-  // cout << "输入进行的操作: ";
-  // std::cin >> operate;
-
-  // std::string pth =
-  //     fmt::format("{0}/yacl/io/circuit/data/{1}.txt",
-  //                 std::filesystem::current_path().string(), operate);
   std::string pth =
       fmt::format("{0}/yacl/io/circuit/data/{1}.txt",
                   std::filesystem::current_path().string(), "adder64");
@@ -56,9 +48,15 @@ int main() {
   reader.ReadAllGates();
   circ_ = reader.StealCirc();  // 指针
 
-  // 输入值混淆
+  // 输入处理
   thread1 = std::async([&] { garbler->inputProcess(*circ_); });
   thread2 = std::async([&] { evaluator->inputProcess(*circ_); });
+  thread1.get();
+  thread2.get();
+
+  // OT
+  thread1 = std::async([&] { evaluator -> onLineOT();});
+  thread2 = std::async([&] { garbler -> onlineOT(); });
   thread1.get();
   thread2.get();
   

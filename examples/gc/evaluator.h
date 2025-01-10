@@ -4,7 +4,6 @@
 #include <type_traits>
 #include <vector>
 
-// #include "absl/std::strings/escaping.h"
 #include "absl/types/span.h"
 #include "examples/gc/mitccrh.h"
 #include "fmt/format.h"
@@ -17,7 +16,6 @@
 #include "yacl/io/stream/file_io.h"
 #include "yacl/kernel/algorithms/base_ot.h"
 #include "yacl/kernel/algorithms/iknp_ote.h"
-// #include "yacl/kernel/ot_kernel.h"
 #include "yacl/kernel/type/ot_store_utils.h"
 #include "yacl/link/context.h"
 #include "yacl/link/factory.h"
@@ -31,6 +29,9 @@ using namespace yacl;
 using namespace yacl::crypto;
 namespace {
 using uint128_t = __uint128_t;
+using OtMsg = uint128_t;
+using OtMsgPair = std::array<OtMsg, 2>;
+using OtChoices = dynamic_bitset<uint128_t>;
 }
 
 uint128_t all_one_uint128_t = ~static_cast<__uint128_t>(0);
@@ -65,10 +66,10 @@ class Evaluator {
     }
 
     lctx = yacl::link::FactoryBrpc().CreateContext(ctx_desc,
-                                                   1);  // yacl::link::test
+                                                   1);  
     lctx->ConnectToMesh();
 
-    //OT on-line
+    //OT off-line
     const auto ext_algorithm = yacl::crypto::OtKernel::ExtAlgorithm::SoftSpoken;
     yacl::crypto::OtKernel kernel1(yacl::crypto::OtKernel::Role::Receiver, ext_algorithm);
     kernel1.init(lctx);
@@ -99,7 +100,7 @@ class Evaluator {
 
     input = yacl::crypto::FastRandU64();
     std::cout << "input of evaluator:" << input << std::endl;
-bi_val.append(input);  // 直接转换为二进制  输入线路在前64位
+    bi_val.append(input);  // 直接转换为二进制  输入线路在前64位
     // 接收garbler混淆值
     yacl::Buffer r = lctx->Recv(0, "garbleInput1");
 
@@ -110,25 +111,20 @@ bi_val.append(input);  // 直接转换为二进制  输入线路在前64位
     std::cout << "recvInput1" << std::endl;
 
     // 对evaluator自己的输入值进行混淆
-    
-    r = lctx->Recv(0, "garbleInput2");
-    buffer_data = r.data<const uint128_t>();
-    for (int i = 0; i < circ_.niw[1]; i++) {
-      wires_[i + circ_.niw[0]] =
-          buffer_data[i] ^ (select_mask[bi_val[i]] & delta);
+    // r = lctx->Recv(0, "garbleInput2");
+    // buffer_data = r.data<const uint128_t>();
+    // for (int i = 0; i < circ_.niw[1]; i++) {
+    //   wires_[i + circ_.niw[0]] =
+    //       buffer_data[i] ^ (select_mask[bi_val[i]] & delta);
           
-    }
-    std::cout << "recvInput2" << std::endl;
+    // }
+    // std::cout << "recvInput2" << std::endl;
 
-    onLineOT();
+    // onLineOT();
 
     lctx->Send(0, yacl::ByteContainerView(&input, sizeof(uint64_t)), "Input1");
   }
   void recvTable() {
-    // table = new uint128_t*[circ_.ng];
-    // for (int i = 0; i < circ_.ng; ++i) {
-    //   table[i] = new uint128_t[2];  
-    // }
 
     yacl::Buffer r = lctx->Recv(0, "table");
     const uint128_t* buffer_data = r.data<const uint128_t>();
@@ -141,12 +137,7 @@ bi_val.append(input);  // 直接转换为二进制  输入线路在前64位
     }
 
     std::cout << "recvTable" << std::endl;
-    // cout << "table：";
-    // for(int i = 0; i < circ_.ng; i++){
-    //   for(int j = 0; j < 2; j++){
-    //     cout << table[i][j] << endl;
-    //   }
-    // }
+
   }
   uint128_t EVAND(uint128_t A, uint128_t B, const uint128_t* table_item,
                   MITCCRH<8>* mitccrh_pointer) {
@@ -219,15 +210,22 @@ bi_val.append(input);  // 直接转换为二进制  输入线路在前64位
     std::cout << "sendOutput" << std::endl;
   }
   void onLineOT(){
-    yacl::dynamic_bitset<uint64_t> d_choice;
-    yacl::dynamic_bitset<uint64_t> choice;
-    choice.append(input);
-    
-    for(int i = 0; i < 64; i++){
-      int a = ot_recv.GetChoice(i);
-      d_choice[i] = a ^ choice[i];
+
+    yacl::dynamic_bitset<uint128_t> choices;
+    choices.append(input);
+
+    yacl::dynamic_bitset<uint128_t> ot = ot_recv.CopyBitBuf();
+    ot.resize(choices.size());
+
+    yacl::dynamic_bitset<uint128_t> masked_choices = ot ^ choices;
+    lctx->Send(0, yacl::ByteContainerView(masked_choices.data(), sizeof(uint128_t)), "masked_choice");
+
+    auto buf = lctx->Recv(lctx->NextRank(), "");
+    std::vector<OtMsgPair> batch_recv(64);
+    std::memcpy(batch_recv.data(), buf.data(), buf.size());
+    for (uint32_t j = 0; j < 64; ++j) {
+      auto idx = 64 + j;
+      wires_[idx] = batch_recv[j][choices[j]] ^ ot_recv.GetBlock(j);
     }
-    // cout  << "大小" << sizeof(d_choice) << endl;
-    // lctx->Send(0, yacl::ByteContainerView(&d_choice, sizeof(uint64_t)), "d_choice");
   }
 };

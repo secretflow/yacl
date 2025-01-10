@@ -4,7 +4,6 @@
 #include <type_traits>
 #include <vector>
 
-// #include "absl/std::strings/escaping.h"
 #include "absl/types/span.h"
 #include "examples/gc/mitccrh.h"
 #include "fmt/format.h"
@@ -17,7 +16,6 @@
 #include "yacl/io/stream/file_io.h"
 #include "yacl/kernel/algorithms/base_ot.h"
 #include "yacl/kernel/algorithms/iknp_ote.h"
-// #include "yacl/kernel/ot_kernel.h"
 #include "yacl/kernel/type/ot_store_utils.h"
 #include "yacl/link/context.h"
 #include "yacl/link/factory.h"
@@ -29,6 +27,9 @@ using namespace std;
 using namespace yacl;
 namespace {
 using uint128_t = __uint128_t;
+using OtMsg = uint128_t;
+using OtMsgPair = std::array<OtMsg, 2>;
+using OtChoices = dynamic_bitset<uint128_t>;
 }
 uint128_t all_one_uint128_t_ = ~static_cast<__uint128_t>(0);
 uint128_t select_mask_[2] = {0, all_one_uint128_t_};
@@ -62,9 +63,9 @@ class Garbler {
       ctx_desc.parties.push_back({id, host});
     }
 
-    // 可以直接用Context
+    
     lctx = yacl::link::FactoryBrpc().CreateContext(ctx_desc,
-                                                   0);  // yacl::link::test
+                                                   0);  
     lctx->ConnectToMesh();
 
     //OT off-line
@@ -89,7 +90,7 @@ class Garbler {
     mitccrh.setS(start_point);
   }
 
-  // 包扩 输入值生成和混淆，并将双方混淆值发送给对方
+  // 包扩 输入值生成和混淆，garbler混淆值的发送
   void inputProcess(yacl::io::BFCircuit param_circ_) {
     circ_ = param_circ_;
     gb_value.resize(circ_.nw);
@@ -106,7 +107,7 @@ class Garbler {
     for (size_t i = 0; i < circ_.niv; ++i) {
       num_of_input_wires += circ_.niw[i];
     }
-    // random_uint128_t(gb_value.data(), circ_.niw[0]);
+    
     random_uint128_t(gb_value.data(), num_of_input_wires);
 
   
@@ -121,18 +122,20 @@ class Garbler {
 
     std::cout << "sendInput1" << std::endl;
 
-    lctx->Send(
-        1,
-        yacl::ByteContainerView(gb_value.data() + 64, sizeof(uint128_t) * 64),
-        "garbleInput2");
-    std::cout << "sendInput2" << std::endl;
+    // lctx->Send(
+    //     1,
+    //     yacl::ByteContainerView(gb_value.data() + 64, sizeof(uint128_t) * 64),
+    //     "garbleInput2");
+    // std::cout << "sendInput2" << std::endl;
+
+    // onlineOT();
 
     yacl::Buffer r = lctx->Recv(1, "Input1");
 
     const uint64_t* buffer_data = r.data<const uint64_t>();
     input_EV = *buffer_data;
     
-    onlineOT();
+    
   }
 
   uint128_t GBAND(uint128_t LA0, uint128_t A1, uint128_t LB0, uint128_t B1,
@@ -171,10 +174,7 @@ class Garbler {
 
   }
   void GB() {
-    // table = new uint128_t*[circ_.ng];
-    // for (int i = 0; i < circ_.ng; ++i) {
-    //   table[i] = new uint128_t[2];  
-    // }
+
     for (int i = 0; i < circ_.gates.size(); i++) {
       auto gate = circ_.gates[i];
       switch (gate.op) {
@@ -220,8 +220,6 @@ class Garbler {
                yacl::ByteContainerView(table, sizeof(uint128_t) * 2 * circ_.ng),
                "table");
     std::cout << "sendTable" << std::endl;
-    
-    
   }
   void decode() {
     // 现接收计算结果
@@ -240,33 +238,51 @@ class Garbler {
     std::cout << "MPC结果：" << result[0] << std::endl;
     std::cout << "明文结果：" << input + input_EV << std::endl;
   }
+
   template <typename T>
-void finalize(absl::Span<T> outputs) {
+  void finalize(absl::Span<T> outputs) {
   // YACL_ENFORCE(outputs.size() >= circ_->nov);
 
-  size_t index = wires_.size();
+    size_t index = wires_.size();
 
-  for (size_t i = 0; i < circ_.nov; ++i) {
-    yacl::dynamic_bitset<T> result(circ_.now[i]);
-    for (size_t j = 0; j < circ_.now[i]; ++j) {
-      int wire_index = index - circ_.now[i] + j;
-      result[j] = getLSB(wires_[wire_index]) ^
-                  getLSB(gb_value[wire_index]);  // 得到的是逆序的二进制值
-                                                 // 对应的混淆电路计算为LSB ^ d
-                                                 // 输出线路在后xx位
+    for (size_t i = 0; i < circ_.nov; ++i) {
+      yacl::dynamic_bitset<T> result(circ_.now[i]);
+      for (size_t j = 0; j < circ_.now[i]; ++j) {
+        int wire_index = index - circ_.now[i] + j;
+        result[j] = getLSB(wires_[wire_index]) ^
+                    getLSB(gb_value[wire_index]);  // 得到的是逆序的二进制值
+                                                  // 对应的混淆电路计算为LSB ^ d
+                                                  // 输出线路在后xx位
+      }
+    
+      outputs[circ_.nov - i - 1] = *(T*)result.data();
+      index -= circ_.now[i];
     }
-    // std::cout << "输出：" << result.data() << std::endl;
-    outputs[circ_.nov - i - 1] = *(T*)result.data();
-    index -= circ_.now[i];
   }
-}
-void onlineOT(){
-  yacl::dynamic_bitset<uint64_t> d_choice;
-  // yacl::Buffer r = lctx->Recv(1, "d_choice");
+  void onlineOT(){
 
-  // const uint64_t* buffer_data = r.data<const uint64_t>();
-  // // d_choice = *buffer_data;
-  // cout << "d_choice" <<*buffer_data << endl;
-}
+    auto buf = lctx->Recv(1, "masked_choice");
+
+    dynamic_bitset<uint128_t> masked_choices(64);
+    std::memcpy(masked_choices.data(), buf.data(), buf.size());
+
+    std::vector<OtMsgPair> batch_send(64);
+
+    for (uint32_t j = 0; j < 64; ++j) {
+      auto idx = 64 + j;
+      if (!masked_choices[j]) {
+        batch_send[j][0] = ot_send.GetBlock(j, 0) ^ gb_value[idx];
+        batch_send[j][1] = ot_send.GetBlock(j, 1) ^ gb_value[idx] ^ delta;
+      } else {
+        batch_send[j][0] = ot_send.GetBlock(j, 1) ^ gb_value[idx];
+        batch_send[j][1] = ot_send.GetBlock(j, 0) ^ gb_value[idx] ^ delta;
+      }
+    }
+
+    lctx->SendAsync(
+        lctx->NextRank(),
+        ByteContainerView(batch_send.data(), sizeof(uint128_t) * 64 * 2),
+        "");
+  }
 
 };

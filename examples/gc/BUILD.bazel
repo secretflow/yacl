@@ -107,11 +107,8 @@ cc_binary(
         "-maes",
         "-mpclmul",
     ],
-   
     deps = [
-        
         "//yacl/io/circuit:bristol_fashion",
-        
     ],
 )
 
@@ -217,12 +214,9 @@ cc_binary(
         "//yacl/io/stream:file_io",
         "//yacl/kernel/algorithms:base_ot",
         "//yacl/kernel/algorithms:iknp_ote",
-        
         "//yacl/utils:circuit_executor",
-
         "//yacl/kernel/type:ot_store_utils",
         "//yacl/link:test_util",
         "//yacl/kernel:ot_kernel"
-
     ],
 )
