@@ -19,7 +19,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "yacl/kernel/algorithms/ot_store.h"
+#include "yacl/kernel/type/ot_store_utils.h"
 #include "yacl/math/gadget.h"
 #include "yacl/secparam.h"
 #include "yacl/utils/cuckoo_index.h"
@@ -55,10 +55,24 @@ namespace yacl::crypto {
 // Security assumptions:
 //  > Correlation-robust hash function, for more details about its
 //  implementation, see `yacl/crypto-tools/rp.h`
-// > Primal LPN, for more details, please see the original paper
+//  > Primal LPN, see: https://eprint.iacr.org/2020/924.pdf
 
 uint64_t FerretCotHelper(const LpnParam& lpn_param, uint64_t ot_num,
                          bool mal = false);
+
+void FerretOtExtSend(const std::shared_ptr<link::Context>& ctx,
+                     /* compact mode */ const OtSendStore& base_cot,
+                     const LpnParam& lpn_param, uint64_t ot_num,
+                     /* compact mode */ OtSendStore* out, bool mal = false);
+
+void FerretOtExtRecv(const std::shared_ptr<link::Context>& ctx,
+                     /* compact mode */ const OtRecvStore& base_cot,
+                     const LpnParam& lpn_param, uint64_t ot_num,
+                     /* compact mode */ OtRecvStore* out, bool mal = false);
+
+// ------------------------------
+//  Historical or Customized APIs
+// ------------------------------
 
 OtSendStore FerretOtExtSend(const std::shared_ptr<link::Context>& ctx,
                             const OtSendStore& base_cot,
@@ -70,11 +84,6 @@ OtRecvStore FerretOtExtRecv(const std::shared_ptr<link::Context>& ctx,
                             const LpnParam& lpn_param, uint64_t ot_num,
                             bool mal = false);
 
-//
-// --------------------------
-//         Customized
-// --------------------------
-//
 // [Warning] for cheetah only
 void FerretOtExtSend_cheetah(const std::shared_ptr<link::Context>& ctx,
                              const OtSendStore& base_cot,

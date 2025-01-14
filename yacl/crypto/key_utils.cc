@@ -104,6 +104,11 @@ openssl::UniquePkey GenSm2KeyPair() {
   YACL_ENFORCE(ctx != nullptr);
   OSSL_RET_1(EVP_PKEY_keygen_init(ctx.get()));
 
+  // in openssl version > 3.0, you should set algorithm object id explicitly
+  // constexpr std::string_view kDefaultSm2Id = {"1234567812345678"};
+  // EVP_PKEY_CTX_set1_id(ctx.get(), kDefaultSm2Id.data(),
+  // kDefaultSm2Id.size());
+
   // generate keys
   OSSL_RET_1(EVP_PKEY_keygen(ctx.get(), &pkey));
   return openssl::UniquePkey(pkey);
@@ -146,8 +151,9 @@ openssl::UniquePkey LoadKeyFromBuf(ByteContainerView buf) {
       /* OSSL_LIB_CTX */ nullptr, /* probquery */ nullptr));
 
   YACL_ENFORCE(decoder != nullptr, "no decoder found");
-  OSSL_RET_1(OSSL_DECODER_from_bio(decoder.get(), bio.get()));
 
+  OSSL_RET_1(OSSL_DECODER_from_bio(decoder.get(), bio.get()));
+  // OSSL_RET_1(OSSL_DECODER_from_bio(decoder.get(), bio.get()));
   return openssl::UniquePkey(pkey);
 }
 
@@ -163,9 +169,8 @@ openssl::UniquePkey LoadKeyFromFile(const std::string& file_path) {
 Buffer ExportPublicKeyToPemBuf(
     /* public key */ const openssl::UniquePkey& pkey) {
   openssl::UniqueBio bio(BIO_new(BIO_s_mem()));  // create an empty bio
-  // export certificate to bio
-  OSSL_RET_1(PEM_write_bio_PUBKEY(bio.get(), pkey.get()),
-             "Failed PEM_export_bio_PUBKEY.");
+  // export public key to bio
+  OSSL_RET_1(PEM_write_bio_PUBKEY(bio.get(), pkey.get()));
   return BioToBuf(bio);
 }
 
@@ -180,10 +185,10 @@ Buffer ExportSecretKeyToPemBuf(
     /* secret key */ const openssl::UniquePkey& pkey) {
   openssl::UniqueBio bio(BIO_new(BIO_s_mem()));  // create an empty bio
 
-  // export certificate to bio
-  OSSL_RET_1(PEM_write_bio_PrivateKey(bio.get(), pkey.get(), nullptr, nullptr,
-                                      0, nullptr, nullptr),
-             "Failed PEM_export_bio_PrivateKey.");
+  // export secret key to bio using PKCS#8 private key format, equivalent to
+  // PEM_write_bio_PKCS8PrivateKey()
+  OSSL_RET_1(PEM_write_bio_PKCS8PrivateKey(bio.get(), pkey.get(), nullptr,
+                                           nullptr, 0, nullptr, nullptr));
   return BioToBuf(bio);
 }
 
@@ -293,10 +298,8 @@ openssl::UniqueX509 MakeX509Cert(
     auto it = subjects.find(std::string(field));
     YACL_ENFORCE(it != subjects.end(), "Cannot find subject field {}.", field);
     OSSL_RET_1(X509_NAME_add_entry_by_txt(
-                   name, it->first.c_str(), MBSTRING_ASC,
-                   reinterpret_cast<const unsigned char*>(it->second.c_str()),
-                   -1, -1, 0),
-               "Set x509 name failed.");
+        name, it->first.c_str(), MBSTRING_ASC,
+        reinterpret_cast<const unsigned char*>(it->second.c_str()), -1, -1, 0));
   }
 
   /* issuer = subject since this cert is self-signed */

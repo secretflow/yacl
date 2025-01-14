@@ -1,0 +1,82 @@
+# Copyright 2022 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
+
+# core
+cc_shared_library(
+    name = "prov_shared",
+    additional_linker_inputs = select({
+        "@bazel_tools//src/conditions:darwin": [
+            ":macos_exported_syms.lds",
+        ],
+        "//conditions:default": [
+            ":linux_exported_syms.lds",
+        ],
+    }),
+    user_link_flags = select({
+        "@bazel_tools//src/conditions:darwin": [
+            "-Wl,-exported_symbols_list,$(location :macos_exported_syms.lds)",
+        ],
+        "//conditions:default": [
+            "-Wl,--version-script,$(location :linux_exported_syms.lds)",
+        ],
+    }),
+    visibility = ["//visibility:public"],  # public
+    deps = [
+        ":provider",
+    ],
+)
+
+# private target
+yacl_cc_library(
+    name = "provider",
+    srcs = [
+        "provider.cc",
+    ],
+    hdrs = [
+        "rand_impl.h",
+        "version.h",
+    ],
+    visibility = ["//visibility:private"],
+    deps = [
+        "//yacl/crypto:openssl_wrappers",  # openssl here
+        "//yacl/crypto/rand/entropy_source",  # use yacl es
+    ],
+    alwayslink = True,  # DO NOT DELETE THIS
+)
+
+# private target
+exports_files(
+    [
+        "linux_exported_syms.lds",
+        "macos_exported_syms.lds",
+    ],
+    visibility = ["//visibility:private"],
+)
+
+yacl_cc_test(
+    name = "provider_test",
+    srcs = [
+        "provider_test.cc",
+    ],
+    data = [
+        ":prov_shared",
+    ],
+    deps = [
+        "//yacl/base:exception",
+        "//yacl/crypto:openssl_wrappers",
+        "@bazel_tools//tools/cpp/runfiles",
+    ],
+)

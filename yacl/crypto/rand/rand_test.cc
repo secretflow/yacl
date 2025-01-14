@@ -14,7 +14,14 @@
 
 #include "yacl/crypto/rand/rand.h"
 
+#include <algorithm>
+#include <cstring>
+#include <limits>
+
 #include "gtest/gtest.h"
+
+#include "yacl/base/int128.h"
+#include "yacl/crypto/block_cipher/symmetric_crypto.h"
 
 namespace yacl::crypto {
 
@@ -83,4 +90,136 @@ TEST(GenericRandTest, RandVec01Test) {
   EXPECT_TRUE(diff < 300);
 }
 
+TEST(GenericRandTest, RandLtnTest) {
+  {
+    uint8_t mersenne_prime = 127;
+    auto rand = RandLtN(mersenne_prime);
+    EXPECT_TRUE(rand < mersenne_prime);
+  }
+  {
+    uint32_t mersenne_prime = 2147483647;
+    auto rand = RandLtN(mersenne_prime);
+    EXPECT_TRUE(rand < mersenne_prime);
+  }
+  {
+    uint64_t mersenne_prime = 2305843009213693951;
+    auto rand = RandLtN(mersenne_prime);
+    EXPECT_TRUE(rand < mersenne_prime);
+  }
+  {
+    uint64_t u64max = std::numeric_limits<uint64_t>::max();
+    // should be 170141183460469231731687303715884105727
+    uint128_t mersenne_prime = MakeUint128(u64max >> 1, u64max);
+    auto rand = RandLtN(mersenne_prime);
+    EXPECT_TRUE(rand < mersenne_prime);
+  }
+}
+
+TEST(GenericRandTest, RandomShuffleTest) {
+  auto vec = FastRandVec<uint128_t>(129);
+  YaclStdUrbg<uint32_t> g;
+  std::shuffle(vec.begin(), vec.end(), g);
+}
+
+TEST(GenericRandTest, ReplayRandomShuffleTest) {
+  int n = 129;
+  auto vec = FastRandVec<uint128_t>(n);
+
+  // same drbg internal states
+  {
+    auto seed = SecureRandSeed();
+    auto ctr = FastRandU64();
+    auto iv = FastRandU64();
+    auto ctype = yacl::crypto::SymmetricCrypto::CryptoType::AES128_CTR;
+    auto vec_copy = vec;
+
+    YaclReplayUrbg<uint32_t> g1(seed, ctr, iv, ctype);
+    std::shuffle(vec.begin(), vec.end(), g1);
+
+    YaclReplayUrbg<uint32_t> g2(seed, ctr, iv, ctype);
+    std::shuffle(vec_copy.begin(), vec_copy.end(), g2);
+
+    EXPECT_EQ(std::memcmp(vec.data(), vec_copy.data(), sizeof(uint128_t) * n),
+              0);
+  }
+
+  // different drbg internal states (seed)
+  {
+    auto seed = SecureRandSeed();
+    auto ctr = FastRandU64();
+    auto iv = FastRandU64();
+    auto ctype = yacl::crypto::SymmetricCrypto::CryptoType::AES128_ECB;
+    auto vec1 = vec;
+    auto vec2 = vec;
+    auto vec3 = vec;
+    auto vec4 = vec;
+
+    YaclReplayUrbg<uint32_t> g1(seed, ctr, iv, ctype);
+    std::shuffle(vec1.begin(), vec1.end(), g1);
+
+    // different seed will almost always result in different shuffles
+    YaclReplayUrbg<uint32_t> g2(seed + 1, ctr, iv, ctype);
+    std::shuffle(vec2.begin(), vec2.end(), g2);
+
+    // NOTE g.GetCounter() will return the after-shuffle prg counter
+    YaclReplayUrbg<uint32_t> g3(seed, g1.GetCounter() + 1, iv, ctype);
+    std::shuffle(vec3.begin(), vec3.end(), g3);
+
+    // NOTE different iv does not gurantee different shuffle, it's
+    // recommended to use different seed to generate different shuffles
+    YaclReplayUrbg<uint32_t> g4(seed, ctr, iv + 1, ctype);
+    std::shuffle(vec4.begin(), vec4.end(), g4);
+
+    // g1 is a random shuffle, different from the original vector
+    EXPECT_NE(std::memcmp(vec.data(), vec1.data(), sizeof(uint128_t) * n), 0);
+
+    // g2 is a different shuffle as g1
+    EXPECT_NE(std::memcmp(vec.data(), vec2.data(), sizeof(uint128_t) * n), 0);
+    EXPECT_NE(std::memcmp(vec1.data(), vec2.data(), sizeof(uint128_t) * n), 0);
+
+    // g3 is a different shuffle as g1
+    EXPECT_NE(std::memcmp(vec.data(), vec3.data(), sizeof(uint128_t) * n), 0);
+    EXPECT_NE(std::memcmp(vec1.data(), vec3.data(), sizeof(uint128_t) * n), 0);
+
+    // NOTE g4 is a SAME shuffle as g1!!!! even though they differ in iv
+    EXPECT_NE(std::memcmp(vec.data(), vec4.data(), sizeof(uint128_t) * n), 0);
+    EXPECT_EQ(std::memcmp(vec1.data(), vec4.data(), sizeof(uint128_t) * n), 0);
+  }
+}
+
+TEST(GenericRandTest, QuickShuffleTest) {
+  int n = 257;
+
+  auto vec = FastRandVec<uint128_t>(n);
+  auto ctr = FastRandU64();
+  auto seed = SecureRandSeed();
+
+  // copy
+  auto vec_bkup = vec;
+  // copy
+  auto vec_1 = vec;
+  auto ctr_1 = ctr;
+  // copy
+  auto vec_2 = vec;
+  auto ctr_2 = FastRandU64();
+
+  ReplayShuffle(vec.begin(), vec.end(), seed, &ctr);
+
+  // replay
+  ReplayShuffle(vec_1.begin(), vec_1.end(), seed, &ctr_1);
+  EXPECT_EQ(std::memcmp(vec.data(), vec_1.data(), sizeof(uint128_t) * n), 0);
+
+  // different state gives different shuffle
+  ReplayShuffle(vec_2.begin(), vec_2.end(), SecureRandSeed(), &ctr_2);
+  EXPECT_NE(std::memcmp(vec.data(), vec_2.data(), sizeof(uint128_t) * n), 0);
+
+  // values are exactly the same
+  std::sort(vec_bkup.begin(), vec_bkup.end());
+  std::sort(vec_1.begin(), vec_1.end());
+  std::sort(vec_2.begin(), vec_2.end());
+  EXPECT_EQ(std::memcmp(vec_bkup.data(), vec_1.data(), sizeof(uint128_t) * n),
+            0);
+  EXPECT_EQ(std::memcmp(vec_bkup.data(), vec_2.data(), sizeof(uint128_t) * n),
+            0);
+}
 }  // namespace yacl::crypto

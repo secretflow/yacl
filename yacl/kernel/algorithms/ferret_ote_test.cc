@@ -27,7 +27,7 @@
 #include "yacl/base/int128.h"
 #include "yacl/crypto/rand/rand.h"
 #include "yacl/crypto/tools/prg.h"
-#include "yacl/kernel/algorithms/ot_store.h"
+#include "yacl/kernel/type/ot_store_utils.h"
 #include "yacl/link/test_util.h"
 
 namespace yacl::crypto {
@@ -51,14 +51,18 @@ TEST_P(FerretOtExtTest, Works) {
   auto cots_compact = MockCompactOts(cot_num);        // mock cots
 
   // WHEN
+
+  OtSendStore ot_send(ot_num, OtStoreType::Compact);
+  OtRecvStore ot_recv(ot_num, OtStoreType::Compact);
+
   auto sender = std::async([&] {
-    return FerretOtExtSend(lctxs[0], cots_compact.send, lpn_param, ot_num);
+    FerretOtExtSend(lctxs[0], cots_compact.send, lpn_param, ot_num, &ot_send);
   });
   auto receiver = std::async([&] {
-    return FerretOtExtRecv(lctxs[1], cots_compact.recv, lpn_param, ot_num);
+    FerretOtExtRecv(lctxs[1], cots_compact.recv, lpn_param, ot_num, &ot_recv);
   });
-  auto ot_recv = receiver.get();
-  auto ot_send = sender.get();
+  receiver.get();
+  sender.get();
 
   // THEN
   auto zero = MakeUint128(0, 0);

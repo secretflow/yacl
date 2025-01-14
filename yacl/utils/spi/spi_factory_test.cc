@@ -17,6 +17,7 @@
 #include <string>
 #include <utility>
 
+#include "fmt/ranges.h"
 #include "gtest/gtest.h"
 
 namespace yacl::test {

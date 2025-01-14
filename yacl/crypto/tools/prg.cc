@@ -14,6 +14,8 @@
 
 #include "yacl/crypto/tools/prg.h"
 
+#include "yacl/crypto/block_cipher/symmetric_crypto.h"
+
 namespace yacl::crypto {
 
 uint64_t FillPRand(SymmetricCrypto::CryptoType type, uint128_t seed,
@@ -38,7 +40,7 @@ uint64_t FillPRand(SymmetricCrypto::CryptoType type, uint128_t seed,
     if (padding_bytes == 0) {
       // No padding, fast path
       auto s = absl::MakeSpan(reinterpret_cast<uint128_t*>(buf), nblock);
-      internal::EcbMakeContentBlocks(count, s);
+      SymmetricCrypto::EcbMakeContentBlocks(count, s);
       crypto->Encrypt(s, s);
     } else {
       if (type == SymmetricCrypto::CryptoType::AES128_ECB ||
@@ -47,7 +49,7 @@ uint64_t FillPRand(SymmetricCrypto::CryptoType type, uint128_t seed,
           // first n-1 block
           auto s =
               absl::MakeSpan(reinterpret_cast<uint128_t*>(buf), nblock - 1);
-          internal::EcbMakeContentBlocks(count, s);
+          SymmetricCrypto::EcbMakeContentBlocks(count, s);
           crypto->Encrypt(s, s);
         }
         // last padding block
@@ -58,7 +60,7 @@ uint64_t FillPRand(SymmetricCrypto::CryptoType type, uint128_t seed,
       } else {
         std::vector<uint128_t> cipher(nblock);
         auto s = absl::MakeSpan(cipher);
-        internal::EcbMakeContentBlocks(count, s);
+        SymmetricCrypto::EcbMakeContentBlocks(count, s);
         crypto->Encrypt(s, s);
         std::memcpy(buf, cipher.data(), nbytes);
       }

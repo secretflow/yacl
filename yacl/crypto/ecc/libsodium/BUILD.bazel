@@ -23,6 +23,7 @@ yacl_cc_library(
     ],
     deps = [
         ":ed25519_group",
+        ":x25519_group",
     ],
     alwayslink = 1,
 )
@@ -39,7 +40,7 @@ yacl_cc_library(
     deps = [
         "//yacl/crypto/ecc:spi",
         "//yacl/crypto/hash:ssl_hash",
-        "@com_github_libsodium//:libsodium",
+        "@libsodium",
         "@yacl//yacl/utils:parallel",
     ],
 )
@@ -54,6 +55,20 @@ yacl_cc_library(
     ],
     deps = [
         ":sodium_group",
+    ],
+)
+
+yacl_cc_library(
+    name = "x25519_group",
+    srcs = [
+        "x25519_group.cc",
+    ],
+    hdrs = [
+        "x25519_group.h",
+    ],
+    deps = [
+        ":sodium_group",
+        "//yacl/crypto/hash:hash_utils",
     ],
 )
 

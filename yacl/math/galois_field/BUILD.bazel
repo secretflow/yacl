@@ -12,17 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
+load("//bazel:yacl.bzl", "AES_COPT_FLAGS", "yacl_cc_library", "yacl_cc_test")
 
 yacl_cc_library(
     name = "gf",
     visibility = ["//visibility:public"],
     deps = [
         ":gf_interface",
-        "//yacl/math/galois_field/factory:intel_factory",
         "//yacl/math/galois_field/factory:mcl_factory",
         "//yacl/math/galois_field/factory:mpint_factory",
-    ],
+    ] + select({
+        "@platforms//cpu:x86_64": [
+            "//yacl/math/galois_field/factory:intel_factory",
+        ],
+        "//conditions:default": [],
+    }),
 )
 
 yacl_cc_library(
@@ -41,5 +45,34 @@ yacl_cc_test(
     ],
     deps = [
         ":gf",
+    ],
+)
+
+yacl_cc_library(
+    name = "gf_intrinsic",
+    srcs = [
+        "gf_intrinsic.cc",
+    ],
+    hdrs = [
+        "gf_intrinsic.h",
+    ],
+    copts = AES_COPT_FLAGS,
+    visibility = ["//visibility:public"],
+    deps = [
+        "//yacl/base:aligned_vector",
+        "//yacl/base:block",
+        "//yacl/base:exception",
+        "//yacl/base:int128",
+        "//yacl/math:gadget",
+        "@abseil-cpp//absl/types:span",
+    ],
+)
+
+yacl_cc_test(
+    name = "gf_intrinsic_test",
+    srcs = ["gf_intrinsic_test.cc"],
+    deps = [
+        ":gf_intrinsic",
+        "//yacl/crypto/rand",
     ],
 )

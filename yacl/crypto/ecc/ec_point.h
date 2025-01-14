@@ -30,6 +30,11 @@ enum class PointOctetFormat {
   // The format is determined by the library itself.
   Autonomous,
 
+  // Uncompressed format
+  // The point is encoded as x||y
+  // For X25519, only need the x value
+  Uncompressed,
+
   // ANSI X9.62 compressed format
   // The point is encoded as z||x, where the octet z specifies which solution of
   // the quadratic equation y is.

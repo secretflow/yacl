@@ -1,0 +1,76 @@
+# Copyright 2023 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+#
+# NOTE Before running the following examples, please make sure you have
+# correctly setup java developement environment.
+#
+# Example:
+#   export JAVA_HOME="$(dirname $(dirname $(realpath $(which javac))))"
+#
+
+load("@rules_jni//jni:cc_jni_library.bzl", "cc_jni_library")
+load("@rules_jni//jni:java_jni_library.bzl", "java_jni_library")
+
+package(default_visibility = ["//visibility:public"])
+
+java_jni_library(
+    name = "EcdhPsi",
+    srcs = [
+        "EcdhPsi.java",
+    ],
+    native_libs = [":ecdh_psi_jni"],
+)
+
+java_test(
+    name = "EcdhPsiTest",
+    srcs = [
+        "EcdhPsiTest.java",
+    ],
+    deps = [":EcdhPsi"],
+)
+
+cc_library(
+    name = "jni_wrappers",
+    hdrs = ["jni_wrappers.h"],
+    deps = [
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/base:int128",
+        "@yacl//yacl/crypto/hash:hash_utils",
+        "@yacl//yacl/math/mpint",
+    ],
+)
+
+cc_jni_library(
+    name = "ecdh_psi_jni",
+    srcs = [
+        "ecdh_psi_jni.cc",
+    ],
+    deps = [
+        ":EcdhPsi.hdrs",  # the generated headers
+        ":jni_wrappers",
+        "//psi/cpp:ecdh_psi",
+        "@yacl//yacl/utils:serialize",
+    ],
+)
+
+# To generate a LibEcdhPsi_deploy.jar, simply call
+# ------------------------------------------------
+# bazel build //examples/psi/java:LibEcdhPsi_deploy.jar
+#
+# Then the generated jar file should be located in bazel-out/...
+java_binary(
+    name = "LibEcdhPsi",
+    runtime_deps = [":EcdhPsi"],
+)

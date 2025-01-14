@@ -30,11 +30,10 @@ static void BM_SecureRand(benchmark::State& state) {
       // setup input
       size_t n = state.range(0);
       std::vector<char> out(n);
-      auto& ctx = RandCtx::GetDefault();
 
       // benchmark
       state.ResumeTiming();
-      FillRand(ctx, out.data(), out.size(), false);
+      FillRand(out.data(), out.size(), false);
       state.PauseTiming();
     }
     state.ResumeTiming();
@@ -48,31 +47,10 @@ static void BM_FastRand(benchmark::State& state) {
       // setup input
       size_t n = state.range(0);
       std::vector<char> out(n);
-      auto& ctx = RandCtx::GetDefault();
 
       // benchmark
       state.ResumeTiming();
-      FillRand(ctx, out.data(), out.size(), true);
-      state.PauseTiming();
-    }
-    state.ResumeTiming();
-  }
-}
-
-static void BM_IcDrbg(benchmark::State& state) {
-  for (auto _ : state) {
-    state.PauseTiming();
-    {
-      // setup input
-      size_t n = state.range(0);
-      std::vector<char> out(n);
-
-      auto drbg = DrbgFactory::Instance().Create("ic-hash-drbg");
-      drbg->SetSeed(1234);
-
-      // benchmark
-      state.ResumeTiming();
-      drbg->Fill(out.data(), out.size());
+      FillRand(out.data(), out.size(), true);
       state.PauseTiming();
     }
     state.ResumeTiming();
@@ -99,13 +77,4 @@ BENCHMARK(BM_FastRand)
     ->Arg(81920)
     ->Arg(1 << 24);
 
-BENCHMARK(BM_IcDrbg)
-    ->Unit(benchmark::kMillisecond)
-    ->Arg(1024)
-    ->Arg(5120)
-    ->Arg(10240)
-    ->Arg(20480)
-    ->Arg(40960)
-    ->Arg(81920)
-    ->Arg(1 << 24);
 }  // namespace yacl::crypto

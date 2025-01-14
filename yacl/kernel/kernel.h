@@ -20,9 +20,14 @@
 
 namespace yacl::crypto {
 
+// Kernel interface class
 class Kernel {
  public:
-  enum class Kind { SingleThread, MultiThread };
+  enum class Kind {
+    SingleThread,  // supports eval
+    MultiThread,   // supports eval, eval_multithread
+    Streaming      // supports eval, eval_multithread, and eval_streaming
+  };
 
   virtual ~Kernel() = default;
 
@@ -32,13 +37,29 @@ class Kernel {
 
   // virtual void comm();
 
-  // virtual void eval();
+  // virtual void eval() = 0;
 };
 
-// Stream kernel
-class StreamKernel : public Kernel {
+// Single-thread kernel
+class SingleThreadKernel : public Kernel {
  public:
   Kind kind() const override { return Kind::SingleThread; }
+
+  // virtual void eval(/* kernel-specific args*/) = 0;
+};
+
+// Multi-thread kernel
+class MultiThreadKernel : public Kernel {
+ public:
+  Kind kind() const override { return Kind::MultiThread; }
+  // virtual void eval_multithread(/* kernel-specific args*/) = 0;
+};
+
+// Streaming kernel
+class StreamingKernel : public Kernel {
+ public:
+  Kind kind() const override { return Kind::Streaming; }
+  // virtual void eval_streaming(/* kernel-specific args*/) = 0;
 };
 
 }  // namespace yacl::crypto

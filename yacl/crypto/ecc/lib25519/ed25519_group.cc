@@ -17,9 +17,10 @@
 namespace yacl::crypto::lib25519 {
 
 MPInt Fe25519ToMPInt(const fe25519& x) {
-  // TODO: whether to freeze x first?
+  fe25519 t = x;
+  fe25519_freeze(&t);
   MPInt r(0, 255);
-  r.FromMagBytes(yacl::ByteContainerView(&x, 32), Endian::little);
+  r.FromMagBytes(yacl::ByteContainerView(&t, 32), Endian::little);
   return r;
 }
 

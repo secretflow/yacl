@@ -40,11 +40,9 @@ class MockTransportTest : public ::testing::Test {
     auto brpc_channel = std::make_unique<brpc::Channel>();
 
     int res = brpc_channel->Init(server_url_.c_str(), "", &options);
-    if (res != 0) {
-      YACL_THROW_NETWORK_ERROR(
-          "Fail to connect to transport service, host={}, err_code={}",
-          server_url_, res);
-    }
+    ASSERT_TRUE(res == 0) << fmt::format(
+        "Fail to connect to transport service, host={}, err_code={}",
+        server_url_, res);
     channel_ = std::move(brpc_channel);
   }
 
@@ -52,7 +50,7 @@ class MockTransportTest : public ::testing::Test {
 
  public:
   std::string peer_{"peer"};
-  std::string server_url_{"127.0.0.1:36988"};
+  std::string server_url_{"127.0.0.1:61234"};
   std::shared_ptr<brpc::Channel> channel_;
   MockTransport transport_;
 };
@@ -95,7 +93,7 @@ TEST_F(MockTransportTest, base_test) {
 }
 
 TEST(UtilTest, get_local_url) {
-  std::string url = "127.0.0.1:9999";
+  std::string url = "127.0.0.1:61234";
   setenv("system.transport", url.c_str(), 1);
 
   auto res = MockTransport::GetLocalUrlFromEnv();

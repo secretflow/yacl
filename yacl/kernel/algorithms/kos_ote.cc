@@ -22,7 +22,7 @@
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/int128.h"
 #include "yacl/crypto/tools/common.h"
-#include "yacl/math/f2k/f2k.h"
+#include "yacl/math/galois_field/gf_intrinsic.h"
 #include "yacl/utils/matrix_utils.h"
 #include "yacl/utils/serialize.h"
 
@@ -165,7 +165,7 @@ void KosOtExtSend(const std::shared_ptr<link::Context>& ctx,
   for (size_t k = 0; k < kKappa; ++k) {
     auto k_msg_span = absl::MakeSpan(
         reinterpret_cast<uint64_t*>(ot_ext[k].data()), 2 * batch_num);
-    q_check[k] = GfMul64(absl::MakeSpan(rand_samples), k_msg_span);
+    q_check[k] = math::Gf64Mul(absl::MakeSpan(rand_samples), k_msg_span);
   }
 
   CheckMsg check_msgs;
@@ -201,7 +201,7 @@ void KosOtExtSend(const std::shared_ptr<link::Context>& ctx,
     }
   }
 
-  uint128_t delta = static_cast<uint128_t>(*base_ot.CopyChoice().data());
+  uint128_t delta = static_cast<uint128_t>(*base_ot.CopyBitBuf().data());
   q_ext.resize(ot_num_valid);
   auto& batch0 = q_ext;
   auto batch1 = VecXorMonochrome(absl::MakeSpan(q_ext), delta);
@@ -270,10 +270,10 @@ void KosOtExtRecv(const std::shared_ptr<link::Context>& ctx,
   // =================== CONSISTENCY CHECK ===================
   auto choice_span = absl::MakeSpan(
       reinterpret_cast<uint64_t*>(choice_ext.data()), batch_num * 2);
-  check_msgs.x = GfMul64(absl::MakeSpan(rand_samples), choice_span);
+  check_msgs.x = math::Gf64Mul(absl::MakeSpan(rand_samples), choice_span);
 
   for (size_t k = 0; k < kKappa; ++k) {
-    check_msgs.t[k] = GfMul64(
+    check_msgs.t[k] = math::Gf64Mul(
         absl::MakeSpan(rand_samples),
         absl::MakeSpan(reinterpret_cast<uint64_t*>(ot_ext.first[k].data()),
                        batch_num * 2));

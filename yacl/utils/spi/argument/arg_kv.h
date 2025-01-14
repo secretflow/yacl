@@ -32,11 +32,14 @@ namespace yacl {
 
 class SpiArg {
  public:
-  explicit SpiArg(const std::string &key) : key_(util::ToSnakeCase(key)) {}
+  explicit SpiArg(const std::string &key) : key_(util::ToSnakeCase(key)) {
+    YACL_ENFORCE(!key_.empty(), "Arg key is empty. raw_key={}", key);
+  }
 
   // If value is a string, it will be automatically converted to lowercase
   template <typename T>
   SpiArg(const std::string &key, T &&value) : key_(util::ToSnakeCase(key)) {
+    YACL_ENFORCE(!key_.empty(), "Arg key is empty. raw_key={}", key);
     operator=(std::forward<T>(value));
   }
 

@@ -52,10 +52,6 @@ TEST(RandomOracleTest, EdgeTest2) {
   EXPECT_THROW(RandomOracle(HashAlgorithm::BLAKE3, 33);, yacl::EnforceNotMet);
 }
 
-TEST(RandomOracleTest, EdgeTest3) {
-  EXPECT_THROW(RandomOracle(HashAlgorithm::BLAKE2B, 65);, yacl::EnforceNotMet);
-}
-
 template <typename T>
 void inline CheckType(const RandomOracle& ro, ByteContainerView input) {
   EXPECT_EQ(ro.Gen<T>(input), ro.Gen<T>(input));

@@ -81,7 +81,9 @@ std::unique_ptr<GaloisField> MclFieldFactory::Create(
           new MclField<mcl::Fp6T<mcl::FpT<mcl::FpTag, 512>>, 6>(mod));
     case 12:
       return std::unique_ptr<GaloisField>(
-          new MclField<mcl::Fp12T<mcl::FpT<mcl::FpTag, 512>>, 12>(mod));
+          new MclField<mcl::Fp12T<mcl::FpT<mcl::FpTag, 512>,
+                                  mcl::FpT<mcl::bn::local::FrTag, 512>>,
+                       12>(mod));
     default:
       YACL_THROW("Not supported Field by {}", kMclLib);
   }
@@ -257,7 +259,7 @@ template <typename T, size_t degree>
 T MclField<T, degree>::RandomT() const {
   const auto per_size = BASE_FP_SIZE;
 
-  T ret;
+  T ret{0};
   Buffer buf(per_size * degree);
   typename T::BaseFp p;
   for (uint64_t i = 0; i < degree; i++) {
@@ -292,7 +294,7 @@ size_t MclField<T, degree>::Serialize(const T& x, uint8_t* buf,
 
 template <typename T, size_t degree>
 T MclField<T, degree>::DeserializeT(ByteContainerView buffer) const {
-  T ret;
+  T ret{0};
   ret.deserialize(buffer.data(), buffer.size());
   return ret;
 }

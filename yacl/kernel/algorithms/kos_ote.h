@@ -19,7 +19,7 @@
 #include "absl/types/span.h"
 
 #include "yacl/base/dynamic_bitset.h"
-#include "yacl/kernel/algorithms/ot_store.h"
+#include "yacl/kernel/type/ot_store_utils.h"
 #include "yacl/link/link.h"
 #include "yacl/secparam.h"
 
@@ -82,7 +82,7 @@ inline OtSendStore KosOtExtSend(const std::shared_ptr<link::Context>& ctx,
   KosOtExtSend(ctx, base_ot, absl::MakeSpan(blocks), cot);
   auto ret = MakeOtSendStore(blocks);
   if (cot) {
-    auto tmp_choice = base_ot.CopyChoice();
+    auto tmp_choice = base_ot.CopyBitBuf();
     ret.SetDelta(static_cast<uint128_t>(*tmp_choice.data()));
   }
   return ret;  // FIXME: Drop explicit copy

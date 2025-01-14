@@ -16,9 +16,7 @@
 
 #include <memory>
 #include <string>
-#include <unordered_map>
 
-#include "hash/hash_interface.h" /* yacl hash to openssl hash */
 #include "openssl/bio.h"
 #include "openssl/bn.h"
 #include "openssl/core.h"
@@ -32,6 +30,7 @@
 #include "openssl/pem.h"
 #include "openssl/provider.h"
 #include "openssl/x509v3.h"
+#include "spdlog/spdlog.h"
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/utils/scope_guard.h"
@@ -127,6 +126,7 @@ inline std::string GetOSSLErr() {
 // Helpers for OpenSSL return values
 // ---------------------------------
 /* enforce return code == 1 */
-#define OSSL_RET_1(MP_ERR, ...) YACL_ENFORCE_EQ((MP_ERR), 1, __VA_ARGS__)
+#define OSSL_RET_1(MP_ERR) \
+  YACL_ENFORCE_EQ((MP_ERR), 1, ::yacl::crypto::openssl::GetOSSLErr())
 
 }  // namespace yacl::crypto::openssl

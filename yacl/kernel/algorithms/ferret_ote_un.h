@@ -52,7 +52,7 @@ inline std::unique_ptr<FerretSimpleMap> MakeSimpleMap(
   std::iota(idx_blocks.begin(), idx_blocks.end(), 0);
 
   // random permutation
-  auto idxes_h = kRP.Gen(idx_blocks);
+  auto idxes_h = kRP.GenForMultiInputs(idx_blocks);
 
   // for each index (value), calculate its cuckoo bin_idx
   for (uint64_t i = 0; i < n; ++i) {
@@ -149,7 +149,7 @@ inline void MpCotUNRecv(const std::shared_ptr<link::Context>& ctx,
 
   // random permutation
   UninitAlignedVector<uint128_t> idx_blocks(idxes.begin(), idxes.end());
-  auto idxes_h = kRP.Gen(idx_blocks);
+  auto idxes_h = kRP.GenForMultiInputs(idx_blocks);
 
   CuckooIndex cuckoo_index(cuckoo_option);
   cuckoo_index.Insert(absl::MakeSpan(idxes_h));

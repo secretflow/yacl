@@ -25,8 +25,8 @@
 
 #include "yacl/base/int128.h"
 #include "yacl/link/test_util.h"
-#include "yacl/math/f2k/f2k.h"
 #include "yacl/math/gadget.h"
+#include "yacl/math/galois_field/gf_intrinsic.h"
 
 namespace yacl::crypto {
 

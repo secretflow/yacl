@@ -49,7 +49,7 @@ commands:
           command: |
             set +e
             declare -i test_status
-            bazel test //... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors --jobs 16 | tee test_result.log; test_status=${PIPESTATUS[0]}
+            bazel test //yacl/... -c opt --ui_event_filters=-info,-debug,-warning --test_output=errors --jobs 16 | tee test_result.log; test_status=${PIPESTATUS[0]}
 
             git clone https://github.com/secretflow/devtools.git
             sh devtools/rename-junit-xml.sh
@@ -80,7 +80,7 @@ jobs:
       - build_and_test
   macOS_ut_arm64:
     macos:
-      xcode: 15.1.0
+      xcode: 16.0.0
     resource_class: macos.m1.medium.gen1
     steps:
       - checkout

@@ -27,91 +27,161 @@
 
 namespace yacl::crypto {
 
-class ToolBench : public benchmark::Fixture {};
+class TheoreticalToolBench : public benchmark::Fixture {};
+class PrgBench : public benchmark::Fixture {};
+class FillPRandBench : public benchmark::Fixture {};
 
-// 1st arg = prg type
-BENCHMARK_DEFINE_F(ToolBench, PRG)(benchmark::State& state) {
-  for (auto _ : state) {
-    state.PauseTiming();
-    Prg<int> prg(0, static_cast<PRG_MODE>(state.range(0)));
-
-    state.ResumeTiming();
-    prg();
-  }
-}
-
-// 1st arg = numer of interations
-BENCHMARK_DEFINE_F(ToolBench, RO)(benchmark::State& state) {
+// 1st arg = number of batched inputs
+BENCHMARK_DEFINE_F(TheoreticalToolBench, RO)(benchmark::State& state) {
+  std::vector<uint128_t> input;
   for (auto _ : state) {
     state.PauseTiming();
     size_t n = state.range(0);
-    auto input = RandBytes(16);
+    input.resize(n);
+    FillRand((char*)input.data(), input.size() * sizeof(uint128_t), true);
+    const auto& RO = RandomOracle::GetDefault();
 
     state.ResumeTiming();
-    const auto& RO = RandomOracle::GetDefault();
     for (size_t i = 0; i < n; ++i) {
-      RO.Gen(input);
+      RO.Gen({&input[i], sizeof(uint128_t)});
     }
   }
 }
 
-// 1st arg = numer of batched inputs
-BENCHMARK_DEFINE_F(ToolBench, RP)(benchmark::State& state) {
+// 1st arg = number of batched inputs
+BENCHMARK_DEFINE_F(TheoreticalToolBench, RP)(benchmark::State& state) {
+  std::vector<uint128_t> input;
   for (auto _ : state) {
     state.PauseTiming();
     size_t n = state.range(0);
-    std::vector<uint128_t> input(n);
+    input.resize(n);
     std::fill(input.begin(), input.end(), 0);
-    state.ResumeTiming();
     using Ctype = SymmetricCrypto::CryptoType;
     const auto& rp = RP(Ctype::AES128_CTR, 0x12345678);
-    rp.Gen(absl::MakeSpan(input));
+
+    state.ResumeTiming();
+    rp.GenForMultiInputs(absl::MakeSpan(input));
   }
 }
 
-// 1st arg = numer of batched inputs
-BENCHMARK_DEFINE_F(ToolBench, CRHASH)(benchmark::State& state) {
+// 1st arg = number of batched inputs
+BENCHMARK_DEFINE_F(TheoreticalToolBench, CRHASH)(benchmark::State& state) {
+  std::vector<uint128_t> input;
   for (auto _ : state) {
     state.PauseTiming();
     size_t n = state.range(0);
-    std::vector<uint128_t> input(n);
+    input.resize(n);
     std::fill(input.begin(), input.end(), 0);
+
     state.ResumeTiming();
     ParaCrHash_128(absl::MakeSpan(input));
   }
 }
 
-BENCHMARK_DEFINE_F(ToolBench, CRHASH_INPLACE)(benchmark::State& state) {
+BENCHMARK_DEFINE_F(TheoreticalToolBench, CRHASH_INPLACE)
+(benchmark::State& state) {
+  std::vector<uint128_t> input;
   for (auto _ : state) {
     state.PauseTiming();
     size_t n = state.range(0);
-    std::vector<uint128_t> input(n);
+    input.resize(n);
     std::fill(input.begin(), input.end(), 0);
+
     state.ResumeTiming();
     ParaCrHashInplace_128(absl::MakeSpan(input));
   }
 }
 
-// 1st arg = numer of batched inputs
-BENCHMARK_DEFINE_F(ToolBench, CCRHASH)(benchmark::State& state) {
+// 1st arg = number of batched inputs
+BENCHMARK_DEFINE_F(TheoreticalToolBench, CCRHASH)(benchmark::State& state) {
+  std::vector<uint128_t> input;
   for (auto _ : state) {
     state.PauseTiming();
     size_t n = state.range(0);
-    std::vector<uint128_t> input(n);
+    input.resize(n);
     std::fill(input.begin(), input.end(), 0);
+
     state.ResumeTiming();
     ParaCcrHash_128(absl::MakeSpan(input));
   }
 }
 
-BENCHMARK_DEFINE_F(ToolBench, CCRHASH_INPLACE)(benchmark::State& state) {
+// 1st arg = number of batched inputs
+BENCHMARK_DEFINE_F(TheoreticalToolBench, CCRHASH_INPLACE)
+(benchmark::State& state) {
+  std::vector<uint128_t> input;
   for (auto _ : state) {
     state.PauseTiming();
     size_t n = state.range(0);
-    std::vector<uint128_t> input(n);
+    input.resize(n);
     std::fill(input.begin(), input.end(), 0);
+
     state.ResumeTiming();
     ParaCcrHashInplace_128(absl::MakeSpan(input));
+  }
+}
+
+// 1st arg = numer of desired outputs
+BENCHMARK_DEFINE_F(PrgBench, PrgAesEcb)
+(benchmark::State& state) {
+  std::vector<uint128_t> out;
+  for (auto _ : state) {
+    state.PauseTiming();
+    Prg<uint128_t> prg(0, PRG_MODE::kAesEcb);
+    size_t n = state.range(0);
+    out.resize(n);
+
+    state.ResumeTiming();
+    prg.Fill(absl::MakeSpan(out));
+  }
+}
+
+// 1st arg = numer of desired outputs
+BENCHMARK_DEFINE_F(PrgBench, PrgSm4Ecb)
+(benchmark::State& state) {
+  std::vector<uint128_t> out;
+  for (auto _ : state) {
+    state.PauseTiming();
+    Prg<uint128_t> prg(0, PRG_MODE::kSm4Ecb);
+    size_t n = state.range(0);
+    out.resize(n);
+
+    state.ResumeTiming();
+    prg.Fill(absl::MakeSpan(out));
+  }
+}
+
+BENCHMARK_DEFINE_F(FillPRandBench, FillPRand_AES128_ECB)
+(benchmark::State& state) {
+  std::vector<uint128_t> out;
+  for (auto _ : state) {
+    state.PauseTiming();
+    size_t n = state.range(0);
+    auto seed = FastRandSeed();
+    auto iv = 0;
+    auto count = 0;
+    auto ctype = SymmetricCrypto::CryptoType::AES128_ECB;
+    out.resize(n);
+
+    state.ResumeTiming();
+    FillPRand(ctype, seed, iv, count, absl::MakeSpan(out));
+  }
+}
+
+BENCHMARK_DEFINE_F(FillPRandBench, FillPRandWithMersennePrime_AES128_ECB)
+(benchmark::State& state) {
+  std::vector<uint128_t> out;
+  for (auto _ : state) {
+    state.PauseTiming();
+    size_t n = state.range(0);
+    auto seed = FastRandSeed();
+    auto iv = 0;
+    auto count = 0;
+    auto ctype = SymmetricCrypto::CryptoType::AES128_ECB;
+    out.resize(n);
+
+    state.ResumeTiming();
+    FillPRandWithMersennePrime(ctype, seed, iv, count, absl::MakeSpan(out));
   }
 }
 

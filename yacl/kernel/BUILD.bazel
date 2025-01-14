@@ -42,7 +42,7 @@ yacl_cc_binary(
     deps = [
         ":svole_kernel",
         "//yacl/link:test_util",
-        "@com_github_google_benchmark//:benchmark",
+        "@google_benchmark//:benchmark",
     ],
 )
 
@@ -53,5 +53,38 @@ yacl_cc_test(
     deps = [
         ":svole_kernel",
         "//yacl/link:test_util",
+    ],
+)
+
+yacl_cc_library(
+    name = "ot_kernel",
+    srcs = [
+        "ot_kernel.cc",
+    ],
+    hdrs = ["ot_kernel.h"],
+    deps = [
+        ":kernel",
+        "//yacl/kernel/algorithms:ferret_ote",
+        "//yacl/kernel/algorithms:softspoken_ote",
+    ],
+)
+
+yacl_cc_test(
+    name = "ot_kernel_test",
+    srcs = ["ot_kernel_test.cc"],
+    copts = AES_COPT_FLAGS,
+    deps = [
+        ":ot_kernel",
+        "//yacl/link:test_util",
+    ],
+)
+
+yacl_cc_binary(
+    name = "ot_kernel_bench",
+    srcs = ["ot_kernel_bench.cc"],
+    deps = [
+        ":ot_kernel",
+        "//yacl/link:test_util",
+        "@google_benchmark//:benchmark",
     ],
 )

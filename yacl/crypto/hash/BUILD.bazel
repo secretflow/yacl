@@ -25,7 +25,6 @@ yacl_cc_library(
         "//yacl/base:exception",
         "//yacl/crypto:openssl_wrappers",
         "//yacl/utils:scope_guard",
-        "@com_github_openssl_openssl//:openssl",
     ],
 )
 
@@ -45,7 +44,7 @@ yacl_cc_library(
         ":hash_interface",
         "//yacl/base:exception",
         "//yacl/base:int128",
-        "@com_github_blake3team_blake3//:blake3_c",
+        "@blake3",
     ],
 )
 
@@ -62,7 +61,7 @@ yacl_cc_binary(
     srcs = ["blake3_bench.cc"],
     deps = [
         ":blake3",
-        "@com_github_google_benchmark//:benchmark_main",
+        "@google_benchmark//:benchmark_main",
     ],
 )
 
@@ -72,7 +71,7 @@ yacl_cc_library(
     deps = [
         "//yacl:secparam",
         "//yacl/base:byte_container_view",
-        "@com_github_openssl_openssl//:openssl",
+        "//yacl/crypto:openssl_wrappers",
     ],
 )
 
@@ -83,6 +82,6 @@ yacl_cc_library(
     deps = [
         ":ssl_hash",
         "//yacl/base:int128",
-        "@com_github_blake3team_blake3//:blake3_c",
+        "@blake3",
     ],
 )

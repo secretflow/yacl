@@ -46,37 +46,41 @@ class RP {
  public:
   using Ctype = SymmetricCrypto::CryptoType;
 
-  explicit RP(Ctype ctype, uint128_t key, uint128_t iv = 0)
-      : sym_alg_(ctype, key, iv) {}
+  constexpr static Ctype kDefaultRpCtype = Ctype::AES128_CBC;
+  constexpr static uint128_t kDefaultRpIV = 0x12345678;
+  constexpr static uint128_t kDefaultRpKey = 0;
 
-  // generate a block x's random permutation, and outputs
-  uint128_t Gen(uint128_t x) const;
+  explicit RP(Ctype ctype = kDefaultRpCtype, uint128_t key = kDefaultRpIV,
+              uint128_t iv = kDefaultRpIV)
+      : ctype_(ctype), key_(key), iv_(iv) {}
 
-  // given input block vector x, generate its random permutation.
-  std::vector<uint128_t> Gen(absl::Span<const uint128_t> x) const;
+  // generate a block x's random permutation, and outputs the results
+  void Gen(uint128_t in, uint128_t* out) const;
+  uint128_t Gen(uint128_t in) const;
 
-  // given input block vector x, generate its random permutation to out.
-  void Gen(absl::Span<const uint128_t> x, absl::Span<uint128_t> out) const;
+  // generate many block's random permutation, and outputs the reuslts
+  void GenForMultiInputs(absl::Span<const uint128_t> in,
+                         absl::Span<uint128_t> out) const;
+
+  std::vector<uint128_t> GenForMultiInputs(
+      absl::Span<const uint128_t> in) const;
 
   // generate (block vector) x's random permutation, and inplace
-  void GenInplace(absl::Span<uint128_t> inout) const;
+  void GenForMultiInputsInplace(absl::Span<uint128_t> inout) const;
 
   // Example: const auto rp = RP::GetDefault();
   static RP& GetDefault() {
     // Note: it's ok to use AES CTR blocks when you want to encrypt multiple
     // blocks, but when you want to encrypt a single block, please use ECB or
     // CBC
-    static RP rp(Ctype::AES128_CBC, 0x12345678);
-    return rp;
-  }
-
-  static const RP& GetCrDefault() {
-    static const RP rp(Ctype::AES128_ECB, 0x12345678);
+    static RP rp(kDefaultRpCtype, kDefaultRpKey, kDefaultRpIV);
     return rp;
   }
 
  private:
-  SymmetricCrypto sym_alg_;
+  Ctype ctype_;    // default
+  uint128_t key_;  // default global key
+  uint128_t iv_;   // default global iv
 };
 
 }  // namespace yacl::crypto

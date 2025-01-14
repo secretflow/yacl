@@ -16,14 +16,25 @@
 
 #include "gtest/gtest.h"
 
+#include "yacl/crypto/rand/rand.h"
+
 TEST(Int128Test, NumericLimitsTest) {
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Winteger-overflow"
+#else
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Woverflow"
+#endif
   EXPECT_EQ(std::numeric_limits<int128_t>::max() + 1,
             std::numeric_limits<int128_t>::min());
   EXPECT_EQ(std::numeric_limits<int128_t>::min() - 1,
             std::numeric_limits<int128_t>::max());
+#ifdef __clang__
+#pragma clang diagnostic pop
+#else
 #pragma GCC diagnostic pop
+#endif
 }
 
 TEST(Uint128Test, NumericLimitsTest) {
@@ -67,4 +78,18 @@ TEST(Int128Test, Decompose) {
   }
 }
 
-TEST(Int128Test, RandomTest) {}
+TEST(Int128Test, CountLzTest) {
+  uint128_t x = 0;
+  EXPECT_EQ(yacl::CountLZ(x), 128);
+
+  x = 1;
+  EXPECT_EQ(yacl::CountLZ(x), 127);
+
+  x = yacl::crypto::FastRandU128();
+  EXPECT_EQ(yacl::CountLZ(x), yacl::CountLZ(x));
+
+  x = std::numeric_limits<uint128_t>::max();
+  int offset = yacl::crypto::RandLtN(128);
+  x >>= offset;
+  EXPECT_EQ(yacl::CountLZ(x), offset);
+}

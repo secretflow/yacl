@@ -83,54 +83,54 @@ class GFVectorizedSketch : public GaloisField {
   virtual std::vector<T> DeserializeT(ByteContainerView buffer) const = 0;
 
  private:
-#define DefineUnaryFunc(FuncName)               \
+#define DefineVecUnaryFunc(FuncName)            \
   auto FuncName(const Item& x) const override { \
     return FuncName(x.AsSpan<T>());             \
   }
 
-#define DefineUnaryInplaceFunc(FuncName) \
+#define DefineVecUnaryInplaceFunc(FuncName) \
   void FuncName(Item* x) const override { return FuncName(x->AsSpan<T>()); }
 
-#define DefineBinaryFunc(FuncName)                             \
+#define DefineVecBinaryFunc(FuncName)                          \
   auto FuncName(const Item& x, const Item& y) const override { \
     return FuncName(x.AsSpan<T>(), y.AsSpan<T>());             \
   }
 
-#define DefineBinaryInplaceFunc(FuncName)                \
+#define DefineVecBinaryInplaceFunc(FuncName)             \
   void FuncName(Item* x, const Item& y) const override { \
     FuncName(x->AsSpan<T>(), y.AsSpan<T>());             \
   }
 
   // if x is scalar, returns bool
   // if x is vectored, returns std::vector<bool>
-  DefineUnaryFunc(IsIdentityOne);
-  DefineUnaryFunc(IsIdentityZero);
-  DefineUnaryFunc(IsInField);
-  DefineBinaryFunc(Equal);
+  DefineVecUnaryFunc(IsIdentityOne);
+  DefineVecUnaryFunc(IsIdentityZero);
+  DefineVecUnaryFunc(IsInField);
+  DefineVecBinaryFunc(Equal);
 
   //==================================//
   //   operations defined on field    //
   //==================================//
 
   // get the additive inverse −a for all elements in set
-  DefineUnaryFunc(Neg);
-  DefineUnaryInplaceFunc(NegInplace);
+  DefineVecUnaryFunc(Neg);
+  DefineVecUnaryInplaceFunc(NegInplace);
 
   // get the multiplicative inverse 1/b for every nonzero element in set
-  DefineUnaryFunc(Inv);
-  DefineUnaryInplaceFunc(InvInplace);
+  DefineVecUnaryFunc(Inv);
+  DefineVecUnaryInplaceFunc(InvInplace);
 
-  DefineBinaryFunc(Add);
-  DefineBinaryInplaceFunc(AddInplace);
+  DefineVecBinaryFunc(Add);
+  DefineVecBinaryInplaceFunc(AddInplace);
 
-  DefineBinaryFunc(Sub);
-  DefineBinaryInplaceFunc(SubInplace);
+  DefineVecBinaryFunc(Sub);
+  DefineVecBinaryInplaceFunc(SubInplace);
 
-  DefineBinaryFunc(Mul);
-  DefineBinaryInplaceFunc(MulInplace);
+  DefineVecBinaryFunc(Mul);
+  DefineVecBinaryInplaceFunc(MulInplace);
 
-  DefineBinaryFunc(Div);
-  DefineBinaryInplaceFunc(DivInplace);
+  DefineVecBinaryFunc(Div);
+  DefineVecBinaryInplaceFunc(DivInplace);
 
   virtual Item Pow(const Item& x, const MPInt& y) const {
     return Pow(x.AsSpan<T>(), y);
@@ -148,11 +148,11 @@ class GFVectorizedSketch : public GaloisField {
   //              I/O               //
   //================================//
 
-  DefineUnaryFunc(DeepCopy);
+  DefineVecUnaryFunc(DeepCopy);
 
   // To human-readable string
-  DefineUnaryFunc(ToString);
-  DefineUnaryFunc(Serialize);
+  DefineVecUnaryFunc(ToString);
+  DefineVecUnaryFunc(Serialize);
 
   // serialize field element(s) to already allocated buffer.
   // if buf is nullptr, then calc serialize size only

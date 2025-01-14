@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
 #include "yacl/base/int128.h"
 #include "yacl/utils/serializer.h"
 

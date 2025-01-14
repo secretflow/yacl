@@ -76,18 +76,23 @@ inline void SigmaInplace(absl::Span<uint128_t> x) {
   }
 }
 
+RP& GetCrHashDefaultRP() {
+  static RP rp(RP::Ctype::AES128_ECB, RP::kDefaultRpKey, RP::kDefaultRpIV);
+  return rp;
+}
+
 }  // namespace
 
 uint128_t CrHash_128(uint128_t x) {
-  const auto& RP = RP::GetDefault();
+  const auto& RP = GetCrHashDefaultRP();
   return RP.Gen(x) ^ x;
 }
 
 // FIXME: Rename to BatchCrHash_128
 std::vector<uint128_t> ParaCrHash_128(absl::Span<const uint128_t> x) {
   std::vector<uint128_t> out(x.size());
-  const auto& RP = RP::GetCrDefault();
-  RP.Gen(x, absl::MakeSpan(out));
+  const auto& RP = GetCrHashDefaultRP();
+  RP.GenForMultiInputs(x, absl::MakeSpan(out));
   std::transform(x.begin(), x.end(), out.begin(), out.begin(),
                  std::bit_xor<uint128_t>());
   return out;
@@ -95,7 +100,7 @@ std::vector<uint128_t> ParaCrHash_128(absl::Span<const uint128_t> x) {
 
 // FIXME: Rename to BatchCrHashInplace_128
 void ParaCrHashInplace_128(absl::Span<uint128_t> inout) {
-  const auto& RP = RP::GetCrDefault();
+  const auto& RP = GetCrHashDefaultRP();
   // TODO: add dynamic batch size
   alignas(32) std::array<uint128_t, kBatchSize> tmp;
   auto tmp_span = absl::MakeSpan(tmp);
@@ -104,7 +109,7 @@ void ParaCrHashInplace_128(absl::Span<uint128_t> inout) {
   uint64_t offset = 0;
   for (; offset + kBatchSize <= size; offset += kBatchSize) {
     auto inout_span = inout.subspan(offset, kBatchSize);
-    RP.Gen(inout_span, tmp_span);
+    RP.GenForMultiInputs(inout_span, tmp_span);
     std::transform(tmp_span.begin(), tmp_span.begin() + kBatchSize,
                    inout_span.begin(), inout_span.begin(),
                    std::bit_xor<uint128_t>());
@@ -112,7 +117,7 @@ void ParaCrHashInplace_128(absl::Span<uint128_t> inout) {
   uint64_t remain = size - offset;
   if (remain > 0) {
     auto inout_span = inout.subspan(offset, remain);
-    RP.Gen(inout_span, tmp_span.subspan(0, remain));
+    RP.GenForMultiInputs(inout_span, tmp_span.subspan(0, remain));
     std::transform(tmp_span.begin(), tmp_span.begin() + remain,
                    inout_span.begin(), inout_span.begin(),
                    std::bit_xor<uint128_t>());

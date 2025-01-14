@@ -16,13 +16,12 @@
 
 #include <memory>
 #include <string>
-#include <utility>
 
-#include "yacl/base/exception.h"
-#include "yacl/base/int128.h"
 #include "yacl/crypto/rand/entropy_source/entropy_source.h"
 #include "yacl/secparam.h"
 #include "yacl/utils/spi/spi_factory.h"
+
+YACL_MODULE_DECLARE("drbg", SecParam::C::k256, SecParam::S::INF);
 
 namespace yacl::crypto {
 
@@ -43,31 +42,32 @@ namespace yacl::crypto {
 // * "HASH-DRBG"
 // * "HMAC-DRBG"
 
-DEFINE_ARG_bool(UseYaclEs);          // spi args, default should be true
-DEFINE_ARG(SecParam::C, SecParamC);  // spi args, default should >= 128
-
 class Drbg {
  public:
   // constructor and destructor
-  explicit Drbg(bool use_yacl_es = true, SecParam::C c = SecParam::C::k128)
-      : use_yacl_es_(use_yacl_es), c_(c) {}
+  //
+  // NOTE: the DRBG.instantiate function should be implemented by derived
+  // classes in the class constructor. Also, DRBG.uninstantiate function should
+  // be implemented in the class destructor
+  //
+  // NOTE: by default, the entropy source of DRBG uses the "auto" entropy source
+  explicit Drbg(const std::shared_ptr<EntropySource>& es) : es_(es) {}
   virtual ~Drbg() = default;
+
+  // reseed this drbg
+  virtual void ReSeed() = 0;
 
   // fill the output with generated randomness
   virtual void Fill(char* buf, size_t len) = 0;
 
-  // set the seed for this drbg
-  // [warning]: this feature may not be allowed by all implementations
-  virtual void SetSeed([[maybe_unused]] uint128_t seed) {
-    YACL_THROW("Set Seed is not Allowed");
-  }
+  // test the drbg instance
+  // virtual void TestDrbg() = 0;
 
   // return the name of the implementation lib
   virtual std::string Name() = 0;
 
  protected:
-  const bool use_yacl_es_;  // whether use yacl's entropy source
-  const SecParam::C c_;     // comp. security parameter
+  const std::shared_ptr<EntropySource>& es_;  // entropy source
 };
 
 // by defalt we want the DRBG has at least 128 bit security strength

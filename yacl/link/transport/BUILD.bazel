@@ -13,8 +13,7 @@
 # limitations under the License.
 
 load("@rules_cc//cc:defs.bzl", "cc_proto_library")
-load("@rules_proto//proto:defs.bzl", "proto_library")
-load("//bazel:yacl.bzl", "yacl_cc_binary", "yacl_cc_library", "yacl_cc_test")
+load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -29,7 +28,7 @@ yacl_cc_library(
         "//yacl/link:retry_options",
         "//yacl/link:ssl_options",
         "//yacl/utils:segment_tree",
-        "@com_github_brpc_brpc//:brpc",
+        "@brpc",
     ],
 )
 

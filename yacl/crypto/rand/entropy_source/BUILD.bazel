@@ -22,7 +22,7 @@ yacl_cc_library(
         ":urandom_factory",
     ] + select({
         "@platforms//cpu:x86_64": [
-            ":intel_factory",
+            ":rdseed_factory",
         ],
         "//conditions:default": [],
     }),
@@ -57,19 +57,19 @@ yacl_cc_library(
     alwayslink = 1,
 )
 
-# private intel drbg impl
+# private rdseed drbg impl
 yacl_cc_library(
-    name = "intel_factory",
+    name = "rdseed_factory",
     srcs = [
-        "intel_factory.cc",
+        "rdseed_factory.cc",
     ],
     hdrs = [
-        "intel_factory.h",
+        "rdseed_factory.h",
     ],
     visibility = ["//visibility:private"],
     deps = [
         ":spi",
-        "@com_github_google_cpu_features//:cpu_features",
+        "@cpu_features//:cpuinfo",
     ],
     alwayslink = 1,
 )

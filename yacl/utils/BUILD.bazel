@@ -17,13 +17,34 @@ load("//bazel:yacl.bzl", "OMP_CFLAGS", "OMP_DEPS", "OMP_LINKFLAGS", "yacl_cc_bin
 package(default_visibility = ["//visibility:public"])
 
 yacl_cc_library(
+    name = "circuit_executor",
+    srcs = ["circuit_executor.cc"],
+    hdrs = ["circuit_executor.h"],
+    deps = [
+        "//yacl/base:dynamic_bitset",
+        "//yacl/io/circuit:bristol_fashion",
+    ],
+)
+
+yacl_cc_test(
+    name = "circuit_executor_test",
+    srcs = ["circuit_executor_test.cc"],
+    data = ["//yacl/io/circuit:circuit_data"],
+    deps = [
+        ":circuit_executor",
+        "//yacl/crypto/block_cipher:symmetric_crypto",
+        "//yacl/crypto/rand",
+    ],
+)
+
+yacl_cc_library(
     name = "hamming",
     hdrs = ["hamming.h"],
     deps = [
         "//yacl/base:exception",
         "//yacl/base:int128",
-        "@com_google_absl//absl/numeric:bits",
-        "@com_google_absl//absl/types:span",
+        "@abseil-cpp//absl/numeric:bits",
+        "@abseil-cpp//absl/types:span",
     ],
 )
 
@@ -51,7 +72,7 @@ yacl_cc_test(
 yacl_cc_library(
     name = "scope_guard",
     hdrs = ["scope_guard.h"],
-    deps = ["@com_google_absl//absl/cleanup"],
+    deps = ["@abseil-cpp//absl/cleanup"],
 )
 
 yacl_cc_test(
@@ -91,7 +112,7 @@ yacl_cc_library(
         "serializer_adapter.h",
     ],
     deps = [
-        "@com_github_msgpack_msgpack//:msgpack",
+        "@msgpack-c//:msgpack",
         "@yacl//yacl/base:byte_container_view",
         "@yacl//yacl/base:int128",
         "@yacl//yacl/io/msgpack:buffer",
@@ -150,11 +171,11 @@ yacl_cc_library(
         "//yacl/base:block",
         "//yacl/base:byte_container_view",
         "//yacl/base:int128",
-        "@com_github_google_cpu_features//:cpu_features",
-        "@com_google_absl//absl/types:span",
+        "@abseil-cpp//absl/types:span",
+        "@cpu_features//:cpuinfo",
     ] + select({
         "@platforms//cpu:aarch64": [
-            "@com_github_dltcollab_sse2neon//:sse2neon",
+            "@sse2neon",
         ],
         "//conditions:default": [],
     }),
@@ -174,7 +195,7 @@ yacl_cc_binary(
     deps = [
         ":matrix_utils",
         "//yacl/crypto/tools:prg",
-        "@com_github_google_benchmark//:benchmark_main",
+        "@google_benchmark//:benchmark_main",
     ],
 )
 
@@ -184,7 +205,7 @@ yacl_cc_binary(
     deps = [
         ":matrix_utils",
         "//yacl/crypto/tools:prg",
-        "@com_github_google_benchmark//:benchmark_main",
+        "@google_benchmark//:benchmark_main",
     ],
 )
 
@@ -196,7 +217,7 @@ yacl_cc_library(
     deps = [
         "//yacl/base:exception",
         "//yacl/base:int128",
-        "@com_google_absl//absl/types:span",
+        "@abseil-cpp//absl/types:span",
     ],
 )
 
@@ -221,7 +242,7 @@ yacl_cc_library(
     }),
     deps = select({
         "@platforms//cpu:x86_64": [
-            "@com_github_google_cpu_features//:cpu_features",
+            "@cpu_features//:cpuinfo",
         ],
         "//conditions:default": [],
     }),
@@ -252,7 +273,7 @@ yacl_cc_binary(
     linkopts = OMP_LINKFLAGS,
     deps = [
         ":parallel",
-        "@com_github_google_benchmark//:benchmark",
+        "@google_benchmark//:benchmark",
     ] + OMP_DEPS,
 )
 

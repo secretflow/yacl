@@ -25,8 +25,8 @@ yacl_cc_library(
     hdrs = ["mp_int_enforce.h"],
     deps = [
         "//yacl/base:exception",
-        "@com_github_fmtlib_fmt//:fmtlib",
-        "@com_github_libtom_libtommath//:libtommath",
+        "@fmt",
+        "@libtommath",
     ],
 )
 
@@ -40,8 +40,8 @@ yacl_cc_library(
         ":tommath_ext_types",
         "//yacl/base:byte_container_view",
         "//yacl/base:int128",
-        "@com_github_fmtlib_fmt//:fmtlib",
-        "@com_github_msgpack_msgpack//:msgpack",
+        "@fmt",
+        "@msgpack-c//:msgpack",
     ],
 )
 
@@ -52,7 +52,7 @@ yacl_cc_library(
     deps = [
         ":mp_int_enforce",
         "//yacl/base:int128",
-        "@com_github_libtom_libtommath//:libtommath",
+        "@libtommath",
     ],
 )
 
@@ -66,7 +66,7 @@ yacl_cc_library(
         "//yacl/base:exception",
         "//yacl/utils:scope_guard",
         "//yacl/utils/spi:type_traits",
-        "@com_github_libtom_libtommath//:libtommath",
+        "@libtommath",
     ],
 )
 
@@ -76,7 +76,7 @@ yacl_cc_library(
     hdrs = ["montgomery_math.h"],
     deps = [
         ":mpint",
-        "@com_github_libtom_libtommath//:libtommath",
+        "@libtommath",
     ],
 )
 
@@ -85,7 +85,7 @@ yacl_cc_test(
     srcs = ["montgomery_math_test.cc"],
     deps = [
         ":montgomery_math",
-        "@com_google_googletest//:gtest",
+        "@googletest//:gtest",
     ],
 )
 
@@ -94,7 +94,7 @@ yacl_cc_test(
     srcs = ["tommath_ext_test.cc"],
     deps = [
         ":tommath_ext_features",
-        "@com_google_googletest//:gtest",
+        "@googletest//:gtest",
     ],
 )
 
@@ -103,6 +103,6 @@ yacl_cc_test(
     srcs = ["mp_int_test.cc"],
     deps = [
         ":mpint",
-        "@com_google_googletest//:gtest",
+        "@googletest//:gtest",
     ],
 )

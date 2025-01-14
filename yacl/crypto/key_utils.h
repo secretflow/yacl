@@ -18,6 +18,7 @@
 #include <unordered_map>
 #include <utility>
 
+#include "yacl/crypto/hash/hash_interface.h"
 #include "yacl/crypto/openssl_wrappers.h"
 
 namespace yacl::crypto {
@@ -25,6 +26,11 @@ namespace yacl::crypto {
 // -------------------
 // Key Pair Generation
 // -------------------
+
+// NOTE In OpenSSL an EVP_PKEY structure containing a private key also contains
+// the public key components and parameters (if any). An OpenSSL private key is
+// equivalent to what some libraries call a "key pair". A private key can be
+// used in functions which require the use of a public key or parameters.
 
 // Generate RSA secret key and public key pair, the resulting key pair is stored
 // in a single UniquePkey object
@@ -48,11 +54,26 @@ namespace yacl::crypto {
 // -------------------
 
 // Load any (format/type/structure) key from buffer, and return a UniquePkey
-// object
+// object,
+//
+// NOTE it's okay to load only the secret-key part to the OpenSSL Pkey
+// structure, but some crypto algorithms (such as SM2) require to load both
+// secret key and public key to the pkey structure, in that case, you should
+// call LoadKeyFromBufs(buf1, buf2) instead.
 [[nodiscard]] openssl::UniquePkey LoadKeyFromBuf(ByteContainerView buf);
+
+// Load any (format/type/structure) key from buffer, and return a UniquePkey
+// object
+[[nodiscard]] openssl::UniquePkey LoadKeyFromBufs(ByteContainerView sk_buf,
+                                                  ByteContainerView pk_buf);
 
 // load any (format/type/structure) key from file, and return a UniquePkey
 // object
+//
+// NOTE it's okay to load only the secret-key part to the OpenSSL Pkey
+// structure, but some crypto algorithms (such as SM2) require to load both
+// secret key and public key to the pkey structure, in that case, you should
+// call LoadKeyFromFiles(path1, path2) instead.
 [[nodiscard]] openssl::UniquePkey LoadKeyFromFile(const std::string& file_path);
 
 // ------------------
@@ -62,6 +83,11 @@ namespace yacl::crypto {
 // Function alias: load pem key from buffer
 [[nodiscard]] inline openssl::UniquePkey LoadPemKey(ByteContainerView buf) {
   return LoadKeyFromBuf(buf);
+}
+
+[[nodiscard]] inline openssl::UniquePkey LoadPemKeys(ByteContainerView sk_buf,
+                                                     ByteContainerView pk_buf) {
+  return LoadKeyFromBufs(sk_buf, pk_buf);
 }
 
 // Function alias: load pem key from file
@@ -95,6 +121,11 @@ void ExportSecretKeyToPemBuf(
 // Function alias: load der key from buffer
 [[nodiscard]] inline openssl::UniquePkey LoadDerKey(ByteContainerView buf) {
   return LoadKeyFromBuf(buf);
+}
+
+[[nodiscard]] inline openssl::UniquePkey LoadDerKeys(ByteContainerView sk_buf,
+                                                     ByteContainerView pk_buf) {
+  return LoadKeyFromBufs(sk_buf, pk_buf);
 }
 
 // Function alias: load der key from file

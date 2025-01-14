@@ -21,10 +21,10 @@ yacl_cc_library(
     srcs = ["exception.cc"],
     hdrs = ["exception.h"],
     deps = [
-        "@com_github_fmtlib_fmt//:fmtlib",
-        "@com_google_absl//absl/debugging:stacktrace",
-        "@com_google_absl//absl/debugging:symbolize",
-        "@com_google_absl//absl/types:span",
+        "@abseil-cpp//absl/debugging:stacktrace",
+        "@abseil-cpp//absl/debugging:symbolize",
+        "@abseil-cpp//absl/types:span",
+        "@fmt",
     ],
 )
 
@@ -41,7 +41,8 @@ yacl_cc_library(
     srcs = ["int128.cc"],
     hdrs = ["int128.h"],
     deps = [
-        "@com_google_absl//absl/numeric:int128",
+        "@abseil-cpp//absl/numeric:bits",
+        "@abseil-cpp//absl/numeric:int128",
     ],
 )
 
@@ -50,6 +51,7 @@ yacl_cc_test(
     srcs = ["int128_test.cc"],
     deps = [
         ":int128",
+        "//yacl/crypto/rand",
     ],
 )
 
@@ -58,7 +60,7 @@ yacl_cc_library(
     hdrs = ["byte_container_view.h"],
     deps = [
         ":buffer",
-        "@com_google_absl//absl/types:span",
+        "@abseil-cpp//absl/types:span",
     ],
 )
 
@@ -85,7 +87,7 @@ yacl_cc_binary(
     linkopts = ["-lm"],
     deps = [
         ":int128",
-        "@com_github_google_benchmark//:benchmark_main",
+        "@google_benchmark//:benchmark_main",
     ],
 )
 
@@ -112,10 +114,10 @@ yacl_cc_library(
     hdrs = ["block.h"],
     deps = [
         "//yacl/base:int128",
-        "@com_google_absl//absl/types:span",
+        "@abseil-cpp//absl/types:span",
     ] + select({
         "@platforms//cpu:aarch64": [
-            "@com_github_dltcollab_sse2neon//:sse2neon",
+            "@sse2neon",
         ],
         "//conditions:default": [],
     }),
@@ -128,7 +130,7 @@ yacl_cc_binary(
         ":block",
         "//yacl/crypto/tools:prg",
         "//yacl/utils:matrix_utils",
-        "@com_github_google_benchmark//:benchmark_main",
+        "@google_benchmark//:benchmark_main",
     ],
 )
 

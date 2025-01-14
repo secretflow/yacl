@@ -45,7 +45,8 @@ inline void PrcInit(const std::shared_ptr<link::Context>& ctx,
   uint128_t my_seed = SecureRandSeed();
   ctx->SendAsync(ctx->NextRank(), SerializeUint128(my_seed), "SEED");
   auto peer_seed = DeserializeUint128(ctx->Recv(ctx->NextRank(), "SEED"));
-  auto keys_block = PrgAesCtr<uint128_t>(my_seed ^ peer_seed, kKkrtWidth);
+  std::array<uint128_t, kKkrtWidth> keys_block;
+  PrgAesCtr<uint128_t>(my_seed ^ peer_seed, absl::MakeSpan(keys_block));
   AES_opt_key_schedule<kKkrtWidth>(keys_block.data(), aes_key);
 }
 

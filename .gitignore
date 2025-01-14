@@ -26,6 +26,8 @@ _build
 
 # bazel
 bazel-*
+# bazel lock file
+MODULE.bazel.lock
 
 # cmake related
 abseil-cpp
@@ -48,3 +50,6 @@ external
 
 #brpc
 rpc_data
+
+.clwb
+cmake-build-debug-remote

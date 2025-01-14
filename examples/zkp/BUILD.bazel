@@ -12,9 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
+load("@yacl//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
 
 package(default_visibility = ["//visibility:public"])
+
+yacl_cc_library(
+    name = "pedersen_commit",
+    hdrs = [
+        "pedersen_commit.h",
+    ],
+    deps = [
+        ":sigma_owh",
+        "@yacl//yacl/crypto/hash:hash_utils",
+    ],
+)
+
+yacl_cc_test(
+    name = "pedersen_commit_test",
+    srcs = ["pedersen_commit_test.cc"],
+    deps = [
+        ":pedersen_commit",
+    ],
+)
 
 yacl_cc_library(
     name = "sigma",
@@ -23,9 +42,9 @@ yacl_cc_library(
         "sigma.h",
     ],
     deps = [
-        "//yacl/crypto/tools:ro",
-        "//yacl/crypto/zkp:sigma_owh",
-        "//yacl/utils:parallel",
+        ":sigma_owh",
+        "@yacl//yacl/crypto/tools:ro",
+        "@yacl//yacl/utils:parallel",
     ],
 )
 
@@ -34,6 +53,30 @@ yacl_cc_test(
     srcs = ["sigma_test.cc"],
     deps = [
         ":sigma",
-        "//yacl/crypto/rand",
+        "@yacl//yacl/crypto/rand",
+    ],
+)
+
+yacl_cc_library(
+    name = "sigma_config",
+    srcs = ["sigma_config.cc"],
+    hdrs = [
+        "sigma_config.h",
+    ],
+    deps = [
+        "@yacl//yacl/crypto/ecc",
+        "@yacl//yacl/crypto/hash:hash_interface",
+    ],
+)
+
+yacl_cc_library(
+    name = "sigma_owh",
+    srcs = ["sigma_owh.cc"],
+    hdrs = [
+        "sigma_owh.h",
+    ],
+    deps = [
+        ":sigma_config",
+        "@yacl//yacl/crypto/rand",
     ],
 )

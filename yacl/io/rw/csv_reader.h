@@ -38,6 +38,8 @@ class CsvReader : public Reader {
   };
 
  public:
+  // NOTE You need to setup each item in the options before calling the
+  // constructor of CsvReader.
   CsvReader(ReaderOptions options, std::unique_ptr<InputStream> in,
             char field_delimiter = ',', char line_delimiter = '\n');
 

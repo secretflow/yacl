@@ -304,10 +304,11 @@ void SgrrOtExtRecv_fixed_index(const OtRecvStore& base_ot, uint32_t n,
   YACL_ENFORCE_GE((uint32_t)128, base_ot.Size());  // base ot num < 128
   YACL_ENFORCE_GE(base_ot.Size(), ot_num);         //
   YACL_ENFORCE_EQ(static_cast<uint64_t>(recv_buf.size()), buf_size);
+  YACL_ENFORCE(ot_num > 0);
 
   // we need log(n) 1-2 OTs from log(n) ROTs
   // most significant bit first
-  dynamic_bitset<uint128_t> choice = base_ot.CopyChoice();
+  dynamic_bitset<uint128_t> choice = base_ot.CopyBitBuf();
   const uint64_t index = GetPuncturedIndex(choice, ot_num - 1);
   YACL_ENFORCE_LT(index, n);  // index < n
 
@@ -366,6 +367,7 @@ void SgrrOtExtSend_fixed_index(const OtSendStore& base_ot, uint32_t n,
   YACL_ENFORCE_GE(base_ot.Size(), ot_num);
   YACL_ENFORCE_GT(n, (uint32_t)1);
   YACL_ENFORCE_EQ(static_cast<uint64_t>(send_buf.size()), buf_size);
+  YACL_ENFORCE(ot_num > 0);
 
   output[0] = SecureRandSeed();
   auto send_msgs = absl::MakeSpan(

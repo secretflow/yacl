@@ -21,16 +21,16 @@ yacl_cc_library(
     srcs = ["digital_envelope.cc"],
     hdrs = ["digital_envelope.h"],
     deps = [
-        "//yacl/crypto/aead:gcm_crypto",
-        "//yacl/crypto/aead:sm4_mac",
+        "//yacl/crypto/aead:all_gcm",
+        "//yacl/crypto/aead:sm4_mte",
         "//yacl/crypto/block_cipher:symmetric_crypto",
         "//yacl/crypto/hash:ssl_hash",
         "//yacl/crypto/hmac:hmac_sm3",
-        "//yacl/crypto/pke:asymmetric_rsa_crypto",
-        "//yacl/crypto/pke:asymmetric_sm2_crypto",
+        "//yacl/crypto/pke:rsa_enc",
+        "//yacl/crypto/pke:sm2_enc",
         "//yacl/crypto/rand",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/types:span",
+        "@abseil-cpp//absl/strings",
+        "@abseil-cpp//absl/types:span",
     ],
 )
 

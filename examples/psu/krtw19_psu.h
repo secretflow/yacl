@@ -19,7 +19,7 @@
 
 #include "yacl/base/int128.h"
 #include "yacl/link/link.h"
-#include "yacl/math/f2k/f2k.h"
+#include "yacl/math/galois_field/gf_intrinsic.h"
 #include "yacl/secparam.h"
 
 /* submodules */
@@ -33,6 +33,11 @@
 YACL_MODULE_DECLARE("krtw_psu", SecParam::C::k128, SecParam::S::k40);
 
 namespace examples::psu {
+
+uint64_t Evaluate(const std::vector<uint64_t>& coeffs, uint64_t x);
+
+std::vector<uint64_t> Interpolate(const std::vector<uint64_t>& xs,
+                                  const std::vector<uint64_t>& ys);
 
 // Scalable Private Set Union from Symmetric-Key Techniques
 // https://eprint.iacr.org/2019/776.pdf (Figure 10)

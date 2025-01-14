@@ -16,12 +16,12 @@
 
 #include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
-#include "yacl/math/f2k/f2k_utils.h"
 #include "yacl/math/gadget.h"
+#include "yacl/math/galois_field/gf_intrinsic.h"
 
 /* submodules */
-#include "yacl/kernel/algorithms/ot_store.h"
 #include "yacl/kernel/algorithms/softspoken_ote.h"
+#include "yacl/kernel/type/ot_store_utils.h"
 #include "yacl/secparam.h"
 
 YACL_MODULE_DECLARE("base_vole", SecParam::C::INF, SecParam::S::INF);
@@ -50,9 +50,9 @@ void inline Ot2VoleSend(OtSendStore& send_ot, absl::Span<K> w) {
   std::array<K, T_bits> w_buff;
   std::array<K, T_bits> basis;
   if (std::is_same<K, uint128_t>::value) {
-    memcpy(basis.data(), gf128_basis.data(), T_bits * sizeof(K));
+    memcpy(basis.data(), math::kGf128Basis().data(), T_bits * sizeof(K));
   } else if (std::is_same<K, uint64_t>::value) {
-    memcpy(basis.data(), gf64_basis.data(), T_bits * sizeof(K));
+    memcpy(basis.data(), math::kGf64Basis().data(), T_bits * sizeof(K));
   } else {
     YACL_THROW("VoleSend Error!");
   }
@@ -75,15 +75,15 @@ void inline Ot2VoleRecv(OtRecvStore& recv_ot, absl::Span<T> u,
   YACL_ENFORCE(recv_ot.Size() >= size * T_bits);
 
   // [Warning] Copying, low efficiency
-  auto choices = recv_ot.CopyChoice();
+  auto choices = recv_ot.CopyBitBuf();
   memcpy(u.data(), choices.data(), size * sizeof(T));
 
   std::array<K, T_bits> v_buff;
   std::array<K, T_bits> basis;
   if (std::is_same<K, uint128_t>::value) {
-    memcpy(basis.data(), gf128_basis.data(), T_bits * sizeof(K));
+    memcpy(basis.data(), math::kGf128Basis().data(), T_bits * sizeof(K));
   } else if (std::is_same<K, uint64_t>::value) {
-    memcpy(basis.data(), gf64_basis.data(), T_bits * sizeof(K));
+    memcpy(basis.data(), math::kGf64Basis().data(), T_bits * sizeof(K));
   } else {
     YACL_THROW("VoleSend Error!");
   }

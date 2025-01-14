@@ -53,10 +53,14 @@ class Sha256Hash final : public SslHash {
   Sha256Hash() : SslHash(HashAlgorithm::SHA256) {}
 };
 
+#ifndef YACL_WITH_TONGSUO
+
 // Blake2Hash implements HashInterface for the Blake2b512 hash function.
 class Blake2Hash final : public SslHash {
  public:
   Blake2Hash() : SslHash(HashAlgorithm::BLAKE2B) {}
 };
+
+#endif
 
 }  // namespace yacl::crypto
