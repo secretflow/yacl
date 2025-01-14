@@ -138,7 +138,7 @@ class OprfClient {
     YACL_ENFORCE(ctx_ != nullptr);  // make sure context is setup
 
     auto* const ec = ctx_->BorrowEcGroup();
-    if (blind_inv_ != 0_mp) {
+    if (blind_inv_ == 0_mp) {
       MPInt::InvertMod(blind_, ec->GetOrder(), &blind_inv_);
     }
 
