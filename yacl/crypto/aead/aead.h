@@ -18,9 +18,9 @@
 
 namespace yacl::crypto {
 
-// =============================================
-// AEAD: Authenticated Encryption And Decryption
-// =============================================
+// ===================================================
+// AEAD: Authenticated Encryption with Associated Data
+// ===================================================
 //
 // AEAD provides confidentiality by encrypting the data with a symmetric
 // encryption algorithm, and provides authenticity by using a MAC tag over the
