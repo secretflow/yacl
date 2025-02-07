@@ -96,7 +96,6 @@ class Sse {
       const std::string& file_path,
       const std::unique_ptr<yacl::crypto::EcGroup>& ec_group);
 
-  // 其他私有成员
   uint128_t iv_;
   std::vector<std::string> keywords_;
   std::vector<std::pair<std::string, std::string>> keyValuePairs_;

@@ -28,21 +28,21 @@ bool TSet::AreVectorsEqual(const std::vector<uint8_t>& vec1,
 
 std::vector<uint8_t> TSet::Pack(
     const std::pair<std::vector<uint8_t>, std::string>& data) const {
-  const auto& first = data.first;    // 前部分（vector<uint8_t>）
-  const auto& second = data.second;  // 后部分（string）
+  const auto& first = data.first;
+  const auto& second = data.second;
 
   std::vector<uint8_t> result;
 
-  // 1. 添加前部分（9 个字节的 vector<uint8_t>）
+  // 1. add the first part (a vector<uint8_t> with 9 bytes)
   result.insert(result.end(), first.begin(), first.end());
 
-  // 2. 添加后部分的长度（4 字节，记录字符串长度，假设最大长度 <= 2^32-1）
+  // 2. add the length of the second part (4 bytes)
   uint32_t second_length = static_cast<uint32_t>(second.size());
   uint8_t length_bytes[4];
   std::memcpy(length_bytes, &second_length, 4);
   result.insert(result.end(), length_bytes, length_bytes + 4);
 
-  // 3. 添加后部分的内容（string 的字节数据）
+  // 3. add the second part (a string)
   result.insert(result.end(), second.begin(), second.end());
 
   return result;
@@ -50,14 +50,14 @@ std::vector<uint8_t> TSet::Pack(
 
 std::pair<std::vector<uint8_t>, std::string> TSet::UnPack(
     const std::vector<uint8_t>& packed_data) const {
-  // 1. 提取前部分（固定 9 个字节）
+  // 1. extract the first part (9 bytes)
   std::vector<uint8_t> first(packed_data.begin(), packed_data.begin() + 9);
 
-  // 2. 提取后部分的长度（从第 9 到第 13 字节）
+  // 2. extract the length of the second part (4 bytes)
   uint32_t second_length = 0;
   std::memcpy(&second_length, packed_data.data() + 9, 4);
 
-  // 3. 提取后部分内容（字符串数据）
+  // 3. extract the second part (a string)
   std::string second(packed_data.begin() + 13,
                      packed_data.begin() + 13 + second_length);
 
@@ -73,10 +73,7 @@ std::string TSet::VectorToString(const std::vector<uint8_t>& vec) const {
 }
 
 void TSet::Initialize() {
-  // 初始化 TSet 数组
   tset_.resize(b_, std::vector<Record>(s_));
-
-  // 初始化 Free 数组
   free_.resize(b_);
   for (int i = 0; i < b_; ++i) {
     for (int j = 1; j <= s_; ++j) {
@@ -84,12 +81,10 @@ void TSet::Initialize() {
     }
   }
 
-  // 初始化 TSet 中的每个 record
   for (int i = 0; i < b_; ++i) {
     for (int j = 0; j < s_; ++j) {
-      tset_[i][j].label.resize(lambda_ / 8, 0);  // 初始化为长度为 λ 的位字符串
-      tset_[i][j].value.resize(n_lambda_ / 8 + 1,
-                               0);  // 初始化为长度为 n(λ) + 1 的位字符串
+      tset_[i][j].label.resize(lambda_ / 8, 0);
+      tset_[i][j].value.resize(n_lambda_ / 8 + 1, 0);
     }
   }
 }
@@ -113,7 +108,7 @@ restart:
     hmac_F_line_Tset.Update(keyword);
     auto mac = hmac_F_line_Tset.CumulativeMac();
     std::string stag = VectorToString(mac);
-    const auto& t = T.find(keyword)->second;  // 使用 find 方法访问元素
+    const auto& t = T.find(keyword)->second;
     yacl::crypto::HmacSha256 hmac_F_Tset(stag);
     size_t i = 1;
     for (const auto& si : t) {
@@ -130,7 +125,6 @@ restart:
         hash_value = (hash_value * 256 + hash[i]) % b_;
       }
       size_t b = (hash_value % b_);
-      // 只取前 128 位（16 字节）
       std::vector<uint8_t> L(hash.begin(), hash.begin() + lambda_ / 8);
       yacl::crypto::Sha256Hash sha256;
       sha256.Reset();
@@ -139,17 +133,14 @@ restart:
         goto restart;
       }
 
-      // 从 Free[b] 中随机选择一个元素 j，并删除
       auto it = free_[b].begin();
-      std::advance(
-          it, yacl::crypto::RandU32() % free_[b].size());  // 随机移动到某个位置
+      std::advance(it, yacl::crypto::RandU32() % free_[b].size());
       int j = *it;
       free_[b].erase(j);
 
       j = (j - 1) % s_;
       tset_[b][j].label = L;
 
-      // 计算 (β|si) ⊕ K
       auto packed_si = Pack(si);
       size_t beta = (i < t.size()) ? 1 : 0;
       std::vector<uint8_t> beta_si;
@@ -199,7 +190,7 @@ std::vector<std::pair<std::vector<uint8_t>, std::string>> TSet::TSetRetrieve(
       hash_value = (hash_value * 256 + hash[i]) % b_;
     }
     size_t b = (hash_value % b_);
-    // 只取前 128 位（16 字节）
+
     std::vector<uint8_t> L(hash.begin(), hash.begin() + lambda_ / 8);
     yacl::crypto::Sha256Hash sha256;
     sha256.Reset();

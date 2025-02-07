@@ -29,8 +29,8 @@ namespace examples::sse {
 class TSet {
  public:
   struct Record {
-    std::vector<uint8_t> label;  // 存储长度为 λ 的位字符串
-    std::vector<uint8_t> value;  // 存储长度为 n(λ) + 1 的位字符串
+    std::vector<uint8_t> label;
+    std::vector<uint8_t> value;
   };
 
   TSet(int b, int s, int lambda, int n_lambda);
@@ -59,7 +59,6 @@ class TSet {
       const std::vector<std::vector<Record>>& TSet,
       const std::string& stag) const;
 
-  // 公共接口函数，用于访问私有成员变量
   const std::vector<std::vector<Record>>& GetTSet() const { return tset_; }
   const std::vector<std::set<int>>& GetFree() const { return free_; }
 

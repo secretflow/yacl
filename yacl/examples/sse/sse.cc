@@ -158,7 +158,6 @@ bool Sse::IsInXSet(const std::unique_ptr<yacl::crypto::EcGroup>& ec_group,
   return false;
 }
 
-// 初始化密钥，curve等参数
 void Sse::Initialize() {
   std::string filename = fmt::format("{}/yacl/examples/sse/data/test_data.csv",
                                      std::filesystem::current_path().string());
@@ -180,7 +179,6 @@ void Sse::Initialize() {
   ec_group_ = yacl::crypto::openssl::OpensslGroup::Create(curve);
 }
 
-// 主功能函数：计算并更新 T 和 XSet
 void Sse::ProcessAndUpdateTAndXSet() {
   yacl::crypto::HmacSha256 hmac_F_SSE_Ks(k_map_["Ks"]);
   yacl::crypto::HmacSha256 hmac_F_SSE_Kx(k_map_["Kx"]);
@@ -235,25 +233,21 @@ void Sse::ProcessAndUpdateTAndXSet() {
   }
 }
 
-// 整合后的函数：读取CSV文件、处理键值对并保存到数据库
 std::tuple<std::vector<std::string>,
            std::vector<std::pair<std::string, std::string>>,
            std::unordered_map<std::string, std::vector<std::string>>>
 Sse::ProcessAndSaveCSV(const std::string& file_path) {
-  // 存储键值对
   std::vector<std::pair<std::string, std::string>> keyValuePairs;
 
-  // 创建输入流
   std::unique_ptr<yacl::io::InputStream> in(
       new yacl::io::FileInputStream(file_path));
 
-  // 定义CSV读取选项
   yacl::io::ReaderOptions read_options;
-  read_options.batch_size = 1;  // 每次读取一行
+  read_options.batch_size = 1;
   read_options.column_reader = false;
   read_options.use_header_order = true;
 
-  // 定义文件架构
+  // Define the schema of the CSV file
   read_options.file_schema.feature_names = {"ID",
                                             "age",
                                             "workclass",
@@ -271,16 +265,15 @@ Sse::ProcessAndSaveCSV(const std::string& file_path) {
                                             "native_country"};
   read_options.file_schema.feature_types.resize(15, yacl::io::Schema::STRING);
 
-  // 创建CSV读取器
   auto reader =
       std::make_shared<yacl::io::CsvReader>(read_options, std::move(in));
   reader->Init();
 
-  // 读取CSV文件并处理为键值对
+  // Read the CSV file and store the key-value pairs
   yacl::io::ColumnVectorBatch batch_dataset;
   while (reader->Next(&batch_dataset)) {
     for (size_t i = 0; i < batch_dataset.Shape().rows; ++i) {
-      std::string id = batch_dataset.At<std::string>(i, 0);  // 获取ID列的值
+      std::string id = batch_dataset.At<std::string>(i, 0);
       for (size_t j = 1; j < batch_dataset.Shape().cols; ++j) {
         std::string key = read_options.file_schema.feature_names[j];
         std::string value = batch_dataset.At<std::string>(i, j);
@@ -289,31 +282,27 @@ Sse::ProcessAndSaveCSV(const std::string& file_path) {
     }
   }
 
-  // 反向索引（从值到键的映）
+  // Initialize the reverse index, from value to key
   std::unordered_map<std::string, std::vector<std::string>> reverseIndex;
 
-  // 存储键值对并生成关键字列表
+  // Save the key-value pairs and generate the list of keywords
   std::set<std::string> keywords_set;
   for (const auto& pair : keyValuePairs) {
-    keywords_set.insert(pair.second);  // 收集所有的关键字
-    reverseIndex[pair.second].push_back(pair.first);  // 更新反向索引
+    keywords_set.insert(pair.second);
+    reverseIndex[pair.second].push_back(pair.first);
   }
 
-  // 将唯一关键字转化为 vector
   std::vector<std::string> keywords(keywords_set.begin(), keywords_set.end());
 
-  // 返回包含关键字和反向索引的 pair
   return {keywords, keyValuePairs, reverseIndex};
 }
 
-// 将 HMAC 结果转换为 uint128_t
 uint128_t Sse::ConvertToUint128(const std::vector<uint8_t>& mac) {
   uint128_t result = 0;
   std::memcpy(&result, mac.data(), std::min(mac.size(), sizeof(result)));
   return result;
 }
 
-// std::vector<uint8_t> 转换为std::string
 std::string Sse::VectorToString(const std::vector<uint8_t>& vec) {
   std::string result;
   for (auto& byte : vec) {
@@ -322,7 +311,6 @@ std::string Sse::VectorToString(const std::vector<uint8_t>& vec) {
   return result;
 }
 
-// 通过值获取对应的多个键
 std::vector<std::string> Sse::FetchKeysByValue(
     const std::unordered_map<std::string, std::vector<std::string>>&
         reverseIndex,
@@ -339,7 +327,6 @@ std::vector<std::string> Sse::FetchKeysByValue(
   return keys;
 }
 
-// AES-CTR 加密函数
 std::vector<uint8_t> Sse::AesCtrEncrypt(const std::vector<uint8_t>& plaintext,
                                         const uint128_t& key,
                                         const uint128_t& iv) {
@@ -350,7 +337,6 @@ std::vector<uint8_t> Sse::AesCtrEncrypt(const std::vector<uint8_t>& plaintext,
   return ciphertext;
 }
 
-// AES-CTR 解密函数
 std::vector<uint8_t> Sse::AesCtrDecrypt(const std::vector<uint8_t>& ciphertext,
                                         const uint128_t& key,
                                         const uint128_t& iv) {
@@ -365,17 +351,13 @@ void Sse::SaveKeys(const std::map<std::string, std::string>& K_map,
                    const std::string& file_path) {
   std::ofstream K_file(file_path, std::ios::binary);
   if (K_file.is_open()) {
-    // 遍历 map，将键和值写入文件
     for (const auto& pair : K_map) {
-      // 写入键和值的长度，然后写入实际内容
       size_t key_size = pair.first.size();
       size_t value_size = pair.second.size();
-      K_file.write(reinterpret_cast<const char*>(&key_size),
-                   sizeof(size_t));                // 写入键的长度
-      K_file.write(pair.first.c_str(), key_size);  // 写入键
-      K_file.write(reinterpret_cast<const char*>(&value_size),
-                   sizeof(size_t));                   // 写入值的长度
-      K_file.write(pair.second.c_str(), value_size);  // 写入值
+      K_file.write(reinterpret_cast<const char*>(&key_size), sizeof(size_t));
+      K_file.write(pair.first.c_str(), key_size);
+      K_file.write(reinterpret_cast<const char*>(&value_size), sizeof(size_t));
+      K_file.write(pair.second.c_str(), value_size);
     }
     K_file.close();
     std::cout << "密钥成功写入文件：" << file_path << std::endl;
@@ -389,19 +371,17 @@ void Sse::SaveTSet(const std::vector<std::vector<TSet::Record>>& TSet,
   std::ofstream tset_file(file_path, std::ios::binary);
 
   if (tset_file.is_open()) {
-    // 遍历 TSet 中的每个 bucket
     for (const auto& bucket : TSet) {
       size_t bucket_size = bucket.size();
       tset_file.write(reinterpret_cast<const char*>(&bucket_size),
-                      sizeof(size_t));  // 写入 bucket 的大小
+                      sizeof(size_t));
 
-      // 遍历每个 bucket 中的 entry
       for (const auto& entry : bucket) {
         size_t entry_size = entry.value.size();
         tset_file.write(reinterpret_cast<const char*>(&entry_size),
-                        sizeof(size_t));  // 写入 entry 的大小
+                        sizeof(size_t));
         tset_file.write(reinterpret_cast<const char*>(entry.value.data()),
-                        entry_size);  // 写入 entry 的内容
+                        entry_size);
       }
     }
 
@@ -418,22 +398,18 @@ void Sse::SaveXSet(const std::vector<yacl::crypto::EcPoint>& XSet,
   std::ofstream xset_file(file_path, std::ios::binary);
 
   if (xset_file.is_open()) {
-    // 写入XSet的大小
     size_t xset_size = XSet.size();
     xset_file.write(reinterpret_cast<const char*>(&xset_size), sizeof(size_t));
 
-    // 遍历每个点并写入其坐标
     for (const auto& point : XSet) {
       auto affine_point = ec_group->GetAffinePoint(point);
       std::string x_str = affine_point.x.ToString();
       std::string y_str = affine_point.y.ToString();
 
-      // 写入x坐标
       size_t x_size = x_str.size();
       xset_file.write(reinterpret_cast<const char*>(&x_size), sizeof(size_t));
       xset_file.write(x_str.c_str(), x_size);
 
-      // 写入y坐标
       size_t y_size = y_str.size();
       xset_file.write(reinterpret_cast<const char*>(&y_size), sizeof(size_t));
       xset_file.write(y_str.c_str(), y_size);
@@ -454,12 +430,10 @@ std::map<std::string, std::string> Sse::LoadKeys(const std::string& file_path) {
     while (K_file_read.peek() != EOF) {
       size_t key_size, value_size;
 
-      // 读取键的长度和内容
       K_file_read.read(reinterpret_cast<char*>(&key_size), sizeof(size_t));
       std::string key(key_size, '\0');
       K_file_read.read(&key[0], key_size);
 
-      // 读取值的长度和内容
       K_file_read.read(reinterpret_cast<char*>(&value_size), sizeof(size_t));
       std::string value(value_size, '\0');
       K_file_read.read(&value[0], value_size);
@@ -482,7 +456,7 @@ std::vector<std::vector<TSet::Record>> Sse::LoadTSet(
   while (tset_file.good()) {
     size_t bucket_size;
     tset_file.read(reinterpret_cast<char*>(&bucket_size), sizeof(size_t));
-    if (!tset_file.good()) break;  // 检查是否到达文件末尾
+    if (!tset_file.good()) break;
 
     std::vector<TSet::Record> bucket;
     for (size_t i = 0; i < bucket_size; i++) {
@@ -507,19 +481,16 @@ std::vector<yacl::crypto::EcPoint> Sse::LoadXSet(
   xset_file.read(reinterpret_cast<char*>(&xset_size), sizeof(size_t));
 
   for (size_t i = 0; i < xset_size; i++) {
-    // 读取x坐标
     size_t x_size;
     xset_file.read(reinterpret_cast<char*>(&x_size), sizeof(size_t));
     std::string x_str(x_size, '\0');
     xset_file.read(&x_str[0], x_size);
 
-    // 读取y坐标
     size_t y_size;
     xset_file.read(reinterpret_cast<char*>(&y_size), sizeof(size_t));
     std::string y_str(y_size, '\0');
     xset_file.read(&y_str[0], y_size);
 
-    // 从字符串构造MPInt
     yacl::math::MPInt x(x_str, 10);
     yacl::math::MPInt y(y_str, 10);
 
