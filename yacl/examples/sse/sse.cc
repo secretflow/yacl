@@ -17,16 +17,14 @@
 namespace examples::sse {
 
 Sse::Sse(int bucket_size, int slot_size, int lambda, int n_lambda)
-    : tset_(bucket_size, slot_size, lambda, n_lambda) {
+    : iv_(yacl::crypto::RandU32()),
+      tset_(bucket_size, slot_size, lambda, n_lambda) {
   Initialize();
 }
 
-std::string Sse::GetKt() { return k_map_["Kt"]; }
-
 // EDBSetup
-std::pair<std::vector<std::vector<TSet::Record>>, std::string> Sse::EDBSetup(
-    const uint128_t& iv) {
-  ProcessAndUpdateTAndXSet(iv);
+std::pair<std::vector<std::vector<TSet::Record>>, std::string> Sse::EDBSetup() {
+  ProcessAndUpdateTAndXSet(iv_);
   auto [TSet, Kt] = tset_.TSetSetup(T_, keywords_);
   TSet_ = TSet;
   k_map_["Kt"] = Kt;
@@ -59,7 +57,7 @@ Sse::LoadEDB(const std::string& k_map_file, const std::string& tset_file,
 
 // SearchProtocol
 std::vector<std::string> Sse::SearchProtocol(
-    const std::vector<std::string>& keywords_Search, const uint128_t& iv) {
+    const std::vector<std::string>& keywords_Search) {
   if (keywords_Search.empty()) {
     return {};
   }
@@ -135,7 +133,7 @@ std::vector<std::string> Sse::SearchProtocol(
   auto Ke_mac = hmac_F_SSE_Search_Ks.CumulativeMac();
   uint128_t Ke = ConvertToUint128(Ke_mac);
   for (const auto& e : E) {
-    std::vector<uint8_t> ind = AesCtrDecrypt(e, Ke, iv);
+    std::vector<uint8_t> ind = AesCtrDecrypt(e, Ke, iv_);
     std::string ind_string(ind.begin(), ind.end());
     std::cout << "Found match: " << ind_string << std::endl;
     results.push_back(ind_string);
@@ -169,6 +167,8 @@ void Sse::Initialize() {
   keyValuePairs_ = keyValuePairs;
   reverseIndex_ = reverseIndex;
 
+  iv_ = yacl::crypto::RandU32();
+
   auto rand_bytes_Ks = yacl::crypto::RandU32();
   auto rand_bytes_Kx = yacl::crypto::RandU32();
   auto rand_bytes_Ki = yacl::crypto::RandU32();
@@ -183,7 +183,7 @@ void Sse::Initialize() {
 }
 
 // 主功能函数：计算并更新 T 和 XSet
-void Sse::ProcessAndUpdateTAndXSet(const uint128_t& iv) {
+void Sse::ProcessAndUpdateTAndXSet(const uint128_t& iv_) {
   yacl::crypto::HmacSha256 hmac_F_SSE_Ks(k_map_["Ks"]);
   yacl::crypto::HmacSha256 hmac_F_SSE_Kx(k_map_["Kx"]);
   yacl::crypto::HmacSha256 hmac_F_SSE_Ki(k_map_["Ki"]);
@@ -223,7 +223,7 @@ void Sse::ProcessAndUpdateTAndXSet(const uint128_t& iv) {
 
       // append (e, y) to t.
       std::vector<uint8_t> ind_vector(ind.begin(), ind.end());
-      std::vector<uint8_t> e = AesCtrEncrypt(ind_vector, Ke, iv);
+      std::vector<uint8_t> e = AesCtrEncrypt(ind_vector, Ke, iv_);
       t.push_back(std::make_pair(e, y.ToString()));
 
       // add xtag to XSet.
