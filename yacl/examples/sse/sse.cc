@@ -360,9 +360,9 @@ void Sse::SaveKeys(const std::map<std::string, std::string>& K_map,
       K_file.write(pair.second.c_str(), value_size);
     }
     K_file.close();
-    std::cout << "密钥成功写入文件：" << file_path << std::endl;
+    std::cout << "Key has been written to the file: " << file_path << std::endl;
   } else {
-    std::cerr << "无法打开文件 " << file_path << " 进行写入。" << std::endl;
+    std::cerr << "Unable to open the file: " << file_path << std::endl;
   }
 }
 
@@ -386,9 +386,10 @@ void Sse::SaveTSet(const std::vector<std::vector<TSet::Record>>& TSet,
     }
 
     tset_file.close();
-    std::cout << "TSet 已成功写入文件：" << file_path << std::endl;
+    std::cout << "TSet has been written to the file: " << file_path
+              << std::endl;
   } else {
-    std::cerr << "无法打开文件 " << file_path << " 进行写入。" << std::endl;
+    std::cerr << "Unable to open file: " << file_path << std::endl;
   }
 }
 
@@ -416,9 +417,10 @@ void Sse::SaveXSet(const std::vector<yacl::crypto::EcPoint>& XSet,
     }
 
     xset_file.close();
-    std::cout << "XSet 已成功写入文件：" << file_path << std::endl;
+    std::cout << "XSet has been written to the file: " << file_path
+              << std::endl;
   } else {
-    std::cerr << "无法打开文件 " << file_path << " 进行写入。" << std::endl;
+    std::cerr << "Unable to open file: " << file_path << std::endl;
   }
 }
 
@@ -441,9 +443,10 @@ std::map<std::string, std::string> Sse::LoadKeys(const std::string& file_path) {
       K_map_read[key] = value;
     }
     K_file_read.close();
-    std::cout << "密钥已成功从文件读取。" << std::endl;
+    std::cout << "The key has been successfully read from the file."
+              << std::endl;
   } else {
-    std::cerr << "无法打开文件 " << file_path << " 进行读取。" << std::endl;
+    std::cerr << "Unable to open file: " << file_path << std::endl;
   }
 
   return K_map_read;
