@@ -24,7 +24,7 @@ Sse::Sse(int bucket_size, int slot_size, int lambda, int n_lambda)
 
 // EDBSetup
 std::pair<std::vector<std::vector<TSet::Record>>, std::string> Sse::EDBSetup() {
-  ProcessAndUpdateTAndXSet(iv_);
+  ProcessAndUpdateTAndXSet();
   auto [TSet, Kt] = tset_.TSetSetup(T_, keywords_);
   TSet_ = TSet;
   k_map_["Kt"] = Kt;
@@ -167,8 +167,6 @@ void Sse::Initialize() {
   keyValuePairs_ = keyValuePairs;
   reverseIndex_ = reverseIndex;
 
-  iv_ = yacl::crypto::RandU32();
-
   auto rand_bytes_Ks = yacl::crypto::RandU32();
   auto rand_bytes_Kx = yacl::crypto::RandU32();
   auto rand_bytes_Ki = yacl::crypto::RandU32();
@@ -183,7 +181,7 @@ void Sse::Initialize() {
 }
 
 // 主功能函数：计算并更新 T 和 XSet
-void Sse::ProcessAndUpdateTAndXSet(const uint128_t& iv_) {
+void Sse::ProcessAndUpdateTAndXSet() {
   yacl::crypto::HmacSha256 hmac_F_SSE_Ks(k_map_["Ks"]);
   yacl::crypto::HmacSha256 hmac_F_SSE_Kx(k_map_["Kx"]);
   yacl::crypto::HmacSha256 hmac_F_SSE_Ki(k_map_["Ki"]);

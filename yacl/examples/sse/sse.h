@@ -65,7 +65,7 @@ class Sse {
                 const yacl::crypto::EcPoint& xtag,
                 const std::vector<yacl::crypto::EcPoint>& XSet);
   void Initialize();
-  void ProcessAndUpdateTAndXSet(const uint128_t& iv);
+  void ProcessAndUpdateTAndXSet();
 
   std::tuple<std::vector<std::string>,
              std::vector<std::pair<std::string, std::string>>,
