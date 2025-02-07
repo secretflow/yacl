@@ -24,8 +24,9 @@ Sse::Sse(int bucket_size, int slot_size, int lambda, int n_lambda)
 std::string Sse::GetKt() { return k_map_["Kt"]; }
 
 // EDBSetup
-std::pair<std::vector<std::vector<TSet::Record>>, std::string> Sse::EDBSetup() {
-  ProcessAndUpdateTAndXSet();
+std::pair<std::vector<std::vector<TSet::Record>>, std::string> Sse::EDBSetup(
+    const uint128_t& iv) {
+  ProcessAndUpdateTAndXSet(iv);
   auto [TSet, Kt] = tset_.TSetSetup(T_, keywords_);
   TSet_ = TSet;
   k_map_["Kt"] = Kt;
@@ -58,7 +59,7 @@ Sse::LoadEDB(const std::string& k_map_file, const std::string& tset_file,
 
 // SearchProtocol
 std::vector<std::string> Sse::SearchProtocol(
-    const std::vector<std::string>& keywords_Search) {
+    const std::vector<std::string>& keywords_Search, const uint128_t& iv) {
   if (keywords_Search.empty()) {
     return {};
   }
@@ -84,14 +85,14 @@ std::vector<std::string> Sse::SearchProtocol(
       hmac_F_SSE_Search_Kz.Update(w1 + std::to_string(c));
       auto mac_z1 = hmac_F_SSE_Search_Kz.CumulativeMac();
       std::string string_z1 = VectorToString(mac_z1);
-      yacl::math::MPInt z1(string_z1);
+      yacl::math::MPInt z1(string_z1, 10);
       z1 = z1.Mod(ec_group_->GetOrder());
 
       hmac_F_SSE_Search_Kx.Reset();
       hmac_F_SSE_Search_Kx.Update(keywords_Search[i - 1]);
       auto mac_for_xtag_search = hmac_F_SSE_Search_Kx.CumulativeMac();
       std::string string_for_xtag_search = VectorToString(mac_for_xtag_search);
-      yacl::math::MPInt for_xtag_search(string_for_xtag_search);
+      yacl::math::MPInt for_xtag_search(string_for_xtag_search, 10);
       for_xtag_search = for_xtag_search.Mod(ec_group_->GetOrder());
 
       auto for_ecc_search = for_xtag_search.MulMod(z1, ec_group_->GetOrder());
@@ -105,7 +106,7 @@ std::vector<std::string> Sse::SearchProtocol(
   bool found = false;
   for (size_t c = 1; c <= size; c++) {
     auto [e, y_string] = t[c - 1];
-    yacl::math::MPInt y(y_string);
+    yacl::math::MPInt y(y_string, 10);
 
     bool allInXSet = true;
     for (size_t i = 2; i <= keywords_Search.size(); i++) {
@@ -134,7 +135,7 @@ std::vector<std::string> Sse::SearchProtocol(
   auto Ke_mac = hmac_F_SSE_Search_Ks.CumulativeMac();
   uint128_t Ke = ConvertToUint128(Ke_mac);
   for (const auto& e : E) {
-    std::vector<uint8_t> ind = AesCtrDecrypt(e, Ke, 0);
+    std::vector<uint8_t> ind = AesCtrDecrypt(e, Ke, iv);
     std::string ind_string(ind.begin(), ind.end());
     std::cout << "Found match: " << ind_string << std::endl;
     results.push_back(ind_string);
@@ -168,17 +169,21 @@ void Sse::Initialize() {
   keyValuePairs_ = keyValuePairs;
   reverseIndex_ = reverseIndex;
 
-  k_map_["Ks"] = "This is Ks";
-  k_map_["Kx"] = "This is Kx";
-  k_map_["Ki"] = "This is Ki";
-  k_map_["Kz"] = "This is Kz";
+  auto rand_bytes_Ks = yacl::crypto::RandU32();
+  auto rand_bytes_Kx = yacl::crypto::RandU32();
+  auto rand_bytes_Ki = yacl::crypto::RandU32();
+  auto rand_bytes_Kz = yacl::crypto::RandU32();
+  k_map_["Ks"] = std::to_string(rand_bytes_Ks);
+  k_map_["Kx"] = std::to_string(rand_bytes_Kx);
+  k_map_["Ki"] = std::to_string(rand_bytes_Ki);
+  k_map_["Kz"] = std::to_string(rand_bytes_Kz);
 
   const auto& curve = yacl::crypto::GetCurveMetaByName("secp224r1");
   ec_group_ = yacl::crypto::openssl::OpensslGroup::Create(curve);
 }
 
 // 主功能函数：计算并更新 T 和 XSet
-void Sse::ProcessAndUpdateTAndXSet() {
+void Sse::ProcessAndUpdateTAndXSet(const uint128_t& iv) {
   yacl::crypto::HmacSha256 hmac_F_SSE_Ks(k_map_["Ks"]);
   yacl::crypto::HmacSha256 hmac_F_SSE_Kx(k_map_["Kx"]);
   yacl::crypto::HmacSha256 hmac_F_SSE_Ki(k_map_["Ki"]);
@@ -190,7 +195,7 @@ void Sse::ProcessAndUpdateTAndXSet() {
 
     auto mac_for_xtag = hmac_F_SSE_Kx.Reset().Update(keyword).CumulativeMac();
     std::string string_for_xtag = VectorToString(mac_for_xtag);
-    yacl::math::MPInt for_xtag(string_for_xtag);
+    yacl::math::MPInt for_xtag(string_for_xtag, 10);
     for_xtag = for_xtag.Mod(ec_group_->GetOrder());
 
     std::vector<std::string> inds = FetchKeysByValue(reverseIndex_, keyword);
@@ -200,7 +205,7 @@ void Sse::ProcessAndUpdateTAndXSet() {
       // xind
       auto mac_xind = hmac_F_SSE_Ki.Reset().Update(ind).CumulativeMac();
       std::string string_xind = VectorToString(mac_xind);
-      yacl::math::MPInt xind(string_xind);
+      yacl::math::MPInt xind(string_xind, 10);
       xind = xind.Mod(ec_group_->GetOrder());
 
       // z
@@ -208,7 +213,7 @@ void Sse::ProcessAndUpdateTAndXSet() {
                        .Update(keyword + std::to_string(c))
                        .CumulativeMac();
       std::string string_z = VectorToString(mac_z);
-      yacl::math::MPInt z(string_z);
+      yacl::math::MPInt z(string_z, 10);
       z = z.Mod(ec_group_->GetOrder());
 
       // Invert_z
@@ -218,7 +223,7 @@ void Sse::ProcessAndUpdateTAndXSet() {
 
       // append (e, y) to t.
       std::vector<uint8_t> ind_vector(ind.begin(), ind.end());
-      std::vector<uint8_t> e = AesCtrEncrypt(ind_vector, Ke, 0);
+      std::vector<uint8_t> e = AesCtrEncrypt(ind_vector, Ke, iv);
       t.push_back(std::make_pair(e, y.ToString()));
 
       // add xtag to XSet.
@@ -517,8 +522,8 @@ std::vector<yacl::crypto::EcPoint> Sse::LoadXSet(
     xset_file.read(&y_str[0], y_size);
 
     // 从字符串构造MPInt
-    yacl::math::MPInt x(x_str);
-    yacl::math::MPInt y(y_str);
+    yacl::math::MPInt x(x_str, 10);
+    yacl::math::MPInt y(y_str, 10);
 
     yacl::crypto::AffinePoint affine_point{x, y};
     XSet.push_back(ec_group->CopyPoint(affine_point));

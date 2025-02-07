@@ -40,7 +40,8 @@ class Sse {
   Sse(int bucket_size = 8, int slot_size = 8, int lambda = 128,
       int n_lambda = 256);
 
-  std::pair<std::vector<std::vector<TSet::Record>>, std::string> EDBSetup();
+  std::pair<std::vector<std::vector<TSet::Record>>, std::string> EDBSetup(
+      const uint128_t& iv);
 
   std::string GetKt();
   std::tuple<std::map<std::string, std::string>,
@@ -57,7 +58,7 @@ class Sse {
           const std::string& xset_file = "/tmp/sse_test_data/XSet.bin");
 
   std::vector<std::string> SearchProtocol(
-      const std::vector<std::string>& keywords);
+      const std::vector<std::string>& keywords, const uint128_t& iv);
 
   ~Sse();
 
@@ -66,7 +67,7 @@ class Sse {
                 const yacl::crypto::EcPoint& xtag,
                 const std::vector<yacl::crypto::EcPoint>& XSet);
   void Initialize();
-  void ProcessAndUpdateTAndXSet();
+  void ProcessAndUpdateTAndXSet(const uint128_t& iv);
 
   std::tuple<std::vector<std::string>,
              std::vector<std::pair<std::string, std::string>>,

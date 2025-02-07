@@ -113,7 +113,7 @@ restart:
     hmac_F_line_Tset.Update(keyword);
     auto mac = hmac_F_line_Tset.CumulativeMac();
     std::string stag = VectorToString(mac);
-    const auto& t = T.at(keyword);  // 使用 at 方法访问元素
+    const auto& t = T.find(keyword)->second;  // 使用 find 方法访问元素
     yacl::crypto::HmacSha256 hmac_F_Tset(stag);
     size_t i = 1;
     for (const auto& si : t) {

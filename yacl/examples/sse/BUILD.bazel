@@ -57,5 +57,6 @@ yacl_cc_test(
     ],
     deps = [
         ":sse",
+        "//yacl/crypto/rand",
     ],
 )
