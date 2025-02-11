@@ -78,7 +78,9 @@ TEST_F(TSetTest, SetupAndGetTag) {
       };
   std::vector<std::string> keywords = {"keyword12", "keyword34"};
 
-  auto [TSet, Kt] = tset_->TSetSetup(T, keywords);
+  // auto [TSet, Kt] = tset_->TSetSetup(T, keywords);
+  auto Kt = tset_->TSetSetup(T, keywords);
+  auto TSet = tset_->GetTSet();
   EXPECT_EQ(TSet.size(), 2);
   EXPECT_EQ(TSet[0].size(), 3);
   EXPECT_FALSE(Kt.empty());
@@ -101,7 +103,9 @@ TEST_F(TSetTest, CompleteRetrievalFlow) {
       };
   std::vector<std::string> keywords = {"keyword12", "keyword34"};
 
-  auto [TSet, Kt] = tset_->TSetSetup(T, keywords);
+  // auto [TSet, Kt] = tset_->TSetSetup(T, keywords);
+  auto Kt = tset_->TSetSetup(T, keywords);
+  auto TSet = tset_->GetTSet();
 
   std::string w = "keyword12";
   auto vector_stag = tset_->TSetGetTag(Kt, w);

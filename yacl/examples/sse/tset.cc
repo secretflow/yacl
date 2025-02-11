@@ -22,12 +22,12 @@ TSet::TSet(int b, int s, int lambda, int n_lambda)
 }
 
 bool TSet::AreVectorsEqual(const std::vector<uint8_t>& vec1,
-                           const std::vector<uint8_t>& vec2) const {
-  return std::equal(vec1.begin(), vec1.end(), vec2.begin(), vec2.end());
+                           const std::vector<uint8_t>& vec2) {
+  return vec1 == vec2;
 }
 
 std::vector<uint8_t> TSet::Pack(
-    const std::pair<std::vector<uint8_t>, std::string>& data) const {
+    const std::pair<std::vector<uint8_t>, std::string>& data) {
   const auto& first = data.first;
   const auto& second = data.second;
 
@@ -49,7 +49,7 @@ std::vector<uint8_t> TSet::Pack(
 }
 
 std::pair<std::vector<uint8_t>, std::string> TSet::UnPack(
-    const std::vector<uint8_t>& packed_data) const {
+    const std::vector<uint8_t>& packed_data) {
   // 1. extract the first part (9 bytes)
   std::vector<uint8_t> first(packed_data.begin(), packed_data.begin() + 9);
 
@@ -64,7 +64,7 @@ std::pair<std::vector<uint8_t>, std::string> TSet::UnPack(
   return {first, second};
 }
 
-std::string TSet::VectorToString(const std::vector<uint8_t>& vec) const {
+std::string TSet::VectorToString(const std::vector<uint8_t>& vec) {
   std::string result;
   for (auto& byte : vec) {
     result += std::to_string(static_cast<int>(byte));
@@ -89,7 +89,7 @@ void TSet::Initialize() {
   }
 }
 
-std::pair<std::vector<std::vector<TSet::Record>>, std::string> TSet::TSetSetup(
+std::string TSet::TSetSetup(
     const std::unordered_map<
         std::string, std::vector<std::pair<std::vector<uint8_t>, std::string>>>&
         T,
@@ -97,65 +97,71 @@ std::pair<std::vector<std::vector<TSet::Record>>, std::string> TSet::TSetSetup(
   std::vector<std::vector<Record>> TSet;
   std::vector<std::set<int>> Free;
 
-restart:
-  Initialize();
+  bool restart_required = true;
+  std::string Kt;
 
-  std::vector<uint8_t> rand_bytes_Kt = yacl::crypto::RandBytes(32);
-  std::string Kt = VectorToString(rand_bytes_Kt);
-  yacl::crypto::HmacSha256 hmac_F_line_Tset(Kt);
-  for (const auto& keyword : keywords) {
-    hmac_F_line_Tset.Reset();
-    hmac_F_line_Tset.Update(keyword);
-    auto mac = hmac_F_line_Tset.CumulativeMac();
-    std::string stag = VectorToString(mac);
-    const auto& t = T.find(keyword)->second;
-    yacl::crypto::HmacSha256 hmac_F_Tset(stag);
-    size_t i = 1;
-    for (const auto& si : t) {
-      hmac_F_Tset.Reset();
-      hmac_F_Tset.Update(std::to_string(i));
-      auto mac = hmac_F_Tset.CumulativeMac();
-      std::string mac_str = VectorToString(mac);
+  while (restart_required) {
+    restart_required = false;
 
-      yacl::crypto::Sm3Hash sm3;
-      sm3.Reset();
-      std::vector<uint8_t> hash = sm3.Update(mac_str).CumulativeHash();
-      size_t hash_value = 0;
-      for (size_t i = 0; i < hash.size(); ++i) {
-        hash_value = (hash_value * 256 + hash[i]) % b_;
+    Initialize();
+
+    std::vector<uint8_t> rand_bytes_Kt = yacl::crypto::RandBytes(32);
+    Kt = VectorToString(rand_bytes_Kt);
+    yacl::crypto::HmacSha256 hmac_F_line_Tset(Kt);
+    for (const auto& keyword : keywords) {
+      hmac_F_line_Tset.Reset();
+      hmac_F_line_Tset.Update(keyword);
+      auto mac = hmac_F_line_Tset.CumulativeMac();
+      std::string stag = VectorToString(mac);
+      const auto& t = T.find(keyword)->second;
+      yacl::crypto::HmacSha256 hmac_F_Tset(stag);
+      size_t i = 1;
+      for (const auto& si : t) {
+        hmac_F_Tset.Reset();
+        hmac_F_Tset.Update(std::to_string(i));
+        auto mac = hmac_F_Tset.CumulativeMac();
+        std::string mac_str = VectorToString(mac);
+
+        yacl::crypto::Sm3Hash sm3;
+        sm3.Reset();
+        std::vector<uint8_t> hash = sm3.Update(mac_str).CumulativeHash();
+        size_t hash_value = 0;
+        for (size_t i = 0; i < hash.size(); ++i) {
+          hash_value = (hash_value * 256 + hash[i]) % b_;
+        }
+        size_t b = (hash_value % b_);
+        std::vector<uint8_t> L(hash.begin(), hash.begin() + lambda_ / 8);
+        yacl::crypto::Sha256Hash sha256;
+        sha256.Reset();
+        std::vector<uint8_t> K = sha256.Update(mac_str).CumulativeHash();
+        if (free_[b].empty()) {
+          restart_required = true;
+          break;
+        }
+
+        auto it = free_[b].begin();
+        std::advance(it, yacl::crypto::RandU128() % free_[b].size());
+        int j = *it;
+        free_[b].erase(j);
+
+        j = (j - 1) % s_;
+        tset_[b][j].label = L;
+
+        auto packed_si = Pack(si);
+        size_t beta = (i < t.size()) ? 1 : 0;
+        std::vector<uint8_t> beta_si;
+        beta_si.push_back(static_cast<uint8_t>(beta));
+        beta_si.insert(beta_si.end(), packed_si.begin(), packed_si.end());
+        std::vector<uint8_t> value_xor_k(beta_si.size());
+        for (size_t k = 0; k < beta_si.size(); ++k) {
+          value_xor_k[k] = beta_si[k] ^ K[k % K.size()];
+        }
+        tset_[b][j].value = value_xor_k;
+        i++;
       }
-      size_t b = (hash_value % b_);
-      std::vector<uint8_t> L(hash.begin(), hash.begin() + lambda_ / 8);
-      yacl::crypto::Sha256Hash sha256;
-      sha256.Reset();
-      std::vector<uint8_t> K = sha256.Update(mac_str).CumulativeHash();
-      if (free_[b].empty()) {
-        goto restart;
-      }
-
-      auto it = free_[b].begin();
-      std::advance(it, yacl::crypto::RandU32() % free_[b].size());
-      int j = *it;
-      free_[b].erase(j);
-
-      j = (j - 1) % s_;
-      tset_[b][j].label = L;
-
-      auto packed_si = Pack(si);
-      size_t beta = (i < t.size()) ? 1 : 0;
-      std::vector<uint8_t> beta_si;
-      beta_si.push_back(static_cast<uint8_t>(beta));
-      beta_si.insert(beta_si.end(), packed_si.begin(), packed_si.end());
-      std::vector<uint8_t> value_xor_k(beta_si.size());
-      for (size_t k = 0; k < beta_si.size(); ++k) {
-        value_xor_k[k] = beta_si[k] ^ K[k % K.size()];
-      }
-      tset_[b][j].value = value_xor_k;
-      i++;
     }
   }
-
-  return {tset_, Kt};
+  return Kt;
 }
 
 std::vector<uint8_t> TSet::TSetGetTag(const std::string& Kt,

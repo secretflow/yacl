@@ -109,12 +109,13 @@ TEST_F(SseTest, SaveAndLoadEDB) {
     FAIL() << "Failed to create directory: " << test_dir;
   }
 
-  auto [k_map, tset, xset] = sse_->SaveEDB(
-      test_dir + "K_map.bin", test_dir + "TSet.bin", test_dir + "XSet.bin");
+  sse_->SaveEDB(test_dir + "K_map.bin", test_dir + "TSet.bin",
+                test_dir + "XSet.bin");
 
   auto new_sse = std::make_unique<Sse>();
-  auto [loaded_k_map, loaded_tset, loaded_xset] = new_sse->LoadEDB(
-      test_dir + "K_map.bin", test_dir + "TSet.bin", test_dir + "XSet.bin");
+
+  new_sse->LoadEDB(test_dir + "K_map.bin", test_dir + "TSet.bin",
+                   test_dir + "XSet.bin");
 
   auto results_after = new_sse->SearchProtocol(keyword);
 

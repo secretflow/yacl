@@ -17,45 +17,33 @@
 namespace examples::sse {
 
 Sse::Sse(int bucket_size, int slot_size, int lambda, int n_lambda)
-    : iv_(yacl::crypto::RandU32()),
-      tset_(bucket_size, slot_size, lambda, n_lambda) {
+    : tset_(bucket_size, slot_size, lambda, n_lambda) {
   Initialize();
 }
 
-// EDBSetup
 std::pair<std::vector<std::vector<TSet::Record>>, std::string> Sse::EDBSetup() {
   ProcessAndUpdateTAndXSet();
-  auto [TSet, Kt] = tset_.TSetSetup(T_, keywords_);
+  auto Kt = tset_.TSetSetup(T_, keywords_);
+  auto TSet = tset_.GetTSet();
   TSet_ = TSet;
   k_map_["Kt"] = Kt;
   return {TSet, Kt};
 }
 
-// SaveEDB
-std::tuple<std::map<std::string, std::string>,
-           std::vector<std::vector<TSet::Record>>,
-           std::vector<yacl::crypto::EcPoint>>
-Sse::SaveEDB(const std::string& k_map_file, const std::string& tset_file,
-             const std::string& xset_file) {
+void Sse::SaveEDB(const std::string& k_map_file, const std::string& tset_file,
+                  const std::string& xset_file) {
   SaveKeys(k_map_, k_map_file);
   SaveTSet(TSet_, tset_file);
   SaveXSet(XSet_, xset_file, ec_group_);
-  return {k_map_, TSet_, XSet_};
 }
 
-// LoadEDB
-std::tuple<std::map<std::string, std::string>,
-           std::vector<std::vector<TSet::Record>>,
-           std::vector<yacl::crypto::EcPoint>>
-Sse::LoadEDB(const std::string& k_map_file, const std::string& tset_file,
-             const std::string& xset_file) {
+void Sse::LoadEDB(const std::string& k_map_file, const std::string& tset_file,
+                  const std::string& xset_file) {
   k_map_ = LoadKeys(k_map_file);
   TSet_ = LoadTSet(tset_file);
   XSet_ = LoadXSet(xset_file, ec_group_);
-  return {k_map_, TSet_, XSet_};
 }
 
-// SearchProtocol
 std::vector<std::string> Sse::SearchProtocol(
     const std::vector<std::string>& keywords_Search) {
   if (keywords_Search.empty()) {
@@ -133,18 +121,27 @@ std::vector<std::string> Sse::SearchProtocol(
   auto Ke_mac = hmac_F_SSE_Search_Ks.CumulativeMac();
   uint128_t Ke = ConvertToUint128(Ke_mac);
   for (const auto& e : E) {
-    std::vector<uint8_t> ind = AesCtrDecrypt(e, Ke, iv_);
+    __uint128_t iv = GetIVForE(e);
+    std::vector<uint8_t> ind = AesCtrDecrypt(e, Ke, iv);
     std::string ind_string(ind.begin(), ind.end());
     std::cout << "Found match: " << ind_string << std::endl;
     results.push_back(ind_string);
   }
-
   return results;
 }
 
 Sse::~Sse() { ec_group_.reset(); }
 
 // ! private functions
+
+__uint128_t Sse::GetIVForE(const std::vector<uint8_t>& e) const {
+  for (const auto& pair : IV_) {
+    if (pair.first == e) {
+      return pair.second;
+    }
+  }
+  throw std::runtime_error("IV not found for the given e");
+}
 
 bool Sse::IsInXSet(const std::unique_ptr<yacl::crypto::EcGroup>& ec_group,
                    const yacl::crypto::EcPoint& xtag,
@@ -219,7 +216,10 @@ void Sse::ProcessAndUpdateTAndXSet() {
 
       // append (e, y) to t.
       std::vector<uint8_t> ind_vector(ind.begin(), ind.end());
-      std::vector<uint8_t> e = AesCtrEncrypt(ind_vector, Ke, iv_);
+
+      __uint128_t iv = yacl::crypto::RandU128();
+      std::vector<uint8_t> e = AesCtrEncrypt(ind_vector, Ke, iv);
+      IV_.push_back(std::make_pair(e, iv));
       t.push_back(std::make_pair(e, y.ToString()));
 
       // add xtag to XSet.
@@ -229,7 +229,7 @@ void Sse::ProcessAndUpdateTAndXSet() {
 
       c++;
     }
-    T_[keyword] = t;
+    T_.emplace(keyword, std::move(t));
   }
 }
 
@@ -440,10 +440,10 @@ std::map<std::string, std::string> Sse::LoadKeys(const std::string& file_path) {
       std::string value(value_size, '\0');
       K_file_read.read(&value[0], value_size);
 
-      K_map_read[key] = value;
+      K_map_read.emplace(key, std::move(value));
     }
     K_file_read.close();
-    std::cout << "The key has been successfully read from the file."
+    std::cout << "The keys have been successfully read from the file."
               << std::endl;
   } else {
     std::cerr << "Unable to open file: " << file_path << std::endl;

@@ -40,46 +40,48 @@ class Sse {
   Sse(int bucket_size = 8, int slot_size = 8, int lambda = 128,
       int n_lambda = 256);
 
+  // Setup the Encrypted Database (EDB)
   std::pair<std::vector<std::vector<TSet::Record>>, std::string> EDBSetup();
 
-  std::tuple<std::map<std::string, std::string>,
-             std::vector<std::vector<TSet::Record>>,
-             std::vector<yacl::crypto::EcPoint>>
-  SaveEDB(const std::string& k_map_file = "/tmp/sse_test_data/K_map.bin",
-          const std::string& tset_file = "/tmp/sse_test_data/TSet.bin",
-          const std::string& xset_file = "/tmp/sse_test_data/XSet.bin");
-  std::tuple<std::map<std::string, std::string>,
-             std::vector<std::vector<TSet::Record>>,
-             std::vector<yacl::crypto::EcPoint>>
-  LoadEDB(const std::string& k_map_file = "/tmp/sse_test_data/K_map.bin",
-          const std::string& tset_file = "/tmp/sse_test_data/TSet.bin",
-          const std::string& xset_file = "/tmp/sse_test_data/XSet.bin");
+  // Save the Encrypted Database (EDB) to files
+  void SaveEDB(const std::string& k_map_file, const std::string& tset_file,
+               const std::string& xset_file);
+  // Load the Encrypted Database (EDB) from files
+  void LoadEDB(const std::string& k_map_file, const std::string& tset_file,
+               const std::string& xset_file);
 
+  // Perform the Search Protocol (OXT: Oblivious Cross-Tags Protocol)
   std::vector<std::string> SearchProtocol(
       const std::vector<std::string>& keywords);
 
   ~Sse();
 
  private:
+  // Get the IV for a given encrypted value
+  __uint128_t GetIVForE(const std::vector<uint8_t>& e) const;
+
+  // Check if a given xtag is in the XSet
   bool IsInXSet(const std::unique_ptr<yacl::crypto::EcGroup>& ec_group,
                 const yacl::crypto::EcPoint& xtag,
                 const std::vector<yacl::crypto::EcPoint>& XSet);
   void Initialize();
   void ProcessAndUpdateTAndXSet();
 
-  std::tuple<std::vector<std::string>,
-             std::vector<std::pair<std::string, std::string>>,
-             std::unordered_map<std::string, std::vector<std::string>>>
+  static std::tuple<std::vector<std::string>,
+                    std::vector<std::pair<std::string, std::string>>,
+                    std::unordered_map<std::string, std::vector<std::string>>>
   ProcessAndSaveCSV(const std::string& file_path);
-  uint128_t ConvertToUint128(const std::vector<uint8_t>& mac);
-  std::string VectorToString(const std::vector<uint8_t>& vec);
-  std::vector<std::string> FetchKeysByValue(
+  static uint128_t ConvertToUint128(const std::vector<uint8_t>& mac);
+  static std::string VectorToString(const std::vector<uint8_t>& vec);
+  // Fetch keys by value from the reverse index
+  static std::vector<std::string> FetchKeysByValue(
       const std::unordered_map<std::string, std::vector<std::string>>&
           reverseIndex,
       const std::string& value);
-
+  // Encrypt plaintext using AES-CTR
   std::vector<uint8_t> AesCtrEncrypt(const std::vector<uint8_t>& plaintext,
                                      const uint128_t& key, const uint128_t& iv);
+  // Decrypt ciphertext using AES-CTR
   std::vector<uint8_t> AesCtrDecrypt(const std::vector<uint8_t>& ciphertext,
                                      const uint128_t& key, const uint128_t& iv);
 
@@ -90,13 +92,13 @@ class Sse {
   void SaveXSet(const std::vector<yacl::crypto::EcPoint>& XSet,
                 const std::string& file_path,
                 const std::unique_ptr<yacl::crypto::EcGroup>& ec_group);
+
   std::map<std::string, std::string> LoadKeys(const std::string& file_path);
   std::vector<std::vector<TSet::Record>> LoadTSet(const std::string& file_path);
   std::vector<yacl::crypto::EcPoint> LoadXSet(
       const std::string& file_path,
       const std::unique_ptr<yacl::crypto::EcGroup>& ec_group);
 
-  uint128_t iv_;
   std::vector<std::string> keywords_;
   std::vector<std::pair<std::string, std::string>> keyValuePairs_;
   std::unordered_map<std::string, std::vector<std::string>> reverseIndex_;
@@ -107,6 +109,7 @@ class Sse {
       T_;
   std::vector<yacl::crypto::EcPoint> XSet_;
   std::vector<std::vector<TSet::Record>> TSet_;
+  std::vector<std::pair<std::vector<uint8_t>, __uint128_t>> IV_;
 
   TSet tset_;
 };

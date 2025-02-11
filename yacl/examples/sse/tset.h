@@ -35,26 +35,29 @@ class TSet {
 
   TSet(int b, int s, int lambda, int n_lambda);
 
-  bool AreVectorsEqual(const std::vector<uint8_t>& vec1,
-                       const std::vector<uint8_t>& vec2) const;
+  static bool AreVectorsEqual(const std::vector<uint8_t>& vec1,
+                              const std::vector<uint8_t>& vec2);
 
-  std::vector<uint8_t> Pack(
-      const std::pair<std::vector<uint8_t>, std::string>& data) const;
+  // Pack a pair of vector and string into a single vector
+  static std::vector<uint8_t> Pack(
+      const std::pair<std::vector<uint8_t>, std::string>& data);
+  // Unpack a vector into a pair of vector and string
+  static std::pair<std::vector<uint8_t>, std::string> UnPack(
+      const std::vector<uint8_t>& packed_data);
 
-  std::pair<std::vector<uint8_t>, std::string> UnPack(
-      const std::vector<uint8_t>& packed_data) const;
+  static std::string VectorToString(const std::vector<uint8_t>& vec);
 
-  std::string VectorToString(const std::vector<uint8_t>& vec) const;
-
-  std::pair<std::vector<std::vector<Record>>, std::string> TSetSetup(
+  std::string TSetSetup(
       const std::unordered_map<
           std::string,
           std::vector<std::pair<std::vector<uint8_t>, std::string>>>& T,
       const std::vector<std::string>& keywords);
 
+  // Get the tag for a given keyword
   std::vector<uint8_t> TSetGetTag(const std::string& Kt,
                                   const std::string& w) const;
 
+  // Retrieve records from the TSet
   std::vector<std::pair<std::vector<uint8_t>, std::string>> TSetRetrieve(
       const std::vector<std::vector<Record>>& TSet,
       const std::string& stag) const;
