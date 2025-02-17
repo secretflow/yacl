@@ -131,9 +131,6 @@ std::string TSet::TSetSetup(
         }
         size_t b = (hash_value % b_);
         std::vector<uint8_t> L(hash.begin(), hash.begin() + lambda_ / 8);
-        yacl::crypto::Sha256Hash sha256;
-        sha256.Reset();
-        std::vector<uint8_t> K = sha256.Update(mac_str).CumulativeHash();
         if (free_[b].empty()) {
           restart_required = true;
           break;
@@ -153,8 +150,19 @@ std::string TSet::TSetSetup(
         beta_si.push_back(static_cast<uint8_t>(beta));
         beta_si.insert(beta_si.end(), packed_si.begin(), packed_si.end());
         std::vector<uint8_t> value_xor_k(beta_si.size());
+
+        yacl::crypto::Sha256Hash sha256;
+        std::vector<uint8_t> K;
+        size_t num_sha256 = (beta_si.size() + 31) / 32;
+        for (size_t n = 0; n < num_sha256; ++n) {
+          sha256.Reset();
+          std::vector<uint8_t> hash_part =
+              sha256.Update(mac_str + std::to_string(n)).CumulativeHash();
+          K.insert(K.end(), hash_part.begin(), hash_part.end());
+        }
+
         for (size_t k = 0; k < beta_si.size(); ++k) {
-          value_xor_k[k] = beta_si[k] ^ K[k % K.size()];
+          value_xor_k[k] = beta_si[k] ^ K[k];
         }
         tset_[b][j].value = value_xor_k;
         i++;
@@ -198,16 +206,25 @@ std::vector<std::pair<std::vector<uint8_t>, std::string>> TSet::TSetRetrieve(
     size_t b = (hash_value % b_);
 
     std::vector<uint8_t> L(hash.begin(), hash.begin() + lambda_ / 8);
+
     yacl::crypto::Sha256Hash sha256;
-    sha256.Reset();
-    std::vector<uint8_t> K = sha256.Update(mac_str).CumulativeHash();
+    std::vector<uint8_t> K;
+
     auto& B = tset[b];
     int j = 0;
     for (; j < s_; ++j) {
       if (AreVectorsEqual(B[j].label, L)) {
+        size_t num_sha256 = (B[j].value.size() + 31) / 32;
+        for (size_t n = 0; n < num_sha256; ++n) {
+          sha256.Reset();
+          std::vector<uint8_t> hash_part =
+              sha256.Update(mac_str + std::to_string(n)).CumulativeHash();
+          K.insert(K.end(), hash_part.begin(), hash_part.end());
+        }
+
         std::vector<uint8_t> v(B[j].value.size());
         for (size_t k = 0; k < v.size(); ++k) {
-          v[k] = B[j].value[k] ^ K[k % K.size()];
+          v[k] = B[j].value[k] ^ K[k];
         }
         // Let β be the first bit of v, and s the remaining n(λ) bits of v
         beta = v[0];

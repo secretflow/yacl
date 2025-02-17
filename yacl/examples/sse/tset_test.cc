@@ -78,7 +78,6 @@ TEST_F(TSetTest, SetupAndGetTag) {
       };
   std::vector<std::string> keywords = {"keyword12", "keyword34"};
 
-  // auto [TSet, Kt] = tset_->TSetSetup(T, keywords);
   auto Kt = tset_->TSetSetup(T, keywords);
   auto TSet = tset_->GetTSet();
   EXPECT_EQ(TSet.size(), 2);
