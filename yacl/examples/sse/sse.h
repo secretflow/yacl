@@ -57,6 +57,9 @@ class Sse {
   ~Sse();
 
  private:
+  // Convert a __uint128_t value to a string
+  std::string Uint128ToString(__uint128_t value);
+
   // Get the IV for a given encrypted value
   __uint128_t GetIVForE(const std::vector<uint8_t>& e) const;
 

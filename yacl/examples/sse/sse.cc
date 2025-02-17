@@ -133,6 +133,14 @@ std::vector<std::string> Sse::SearchProtocol(
 Sse::~Sse() { ec_group_.reset(); }
 
 // ! private functions
+std::string Sse::Uint128ToString(__uint128_t value) {
+  std::string result;
+  while (value > 0) {
+    result.insert(result.begin(), '0' + (value % 10));
+    value /= 10;
+  }
+  return result.empty() ? "0" : result;
+}
 
 __uint128_t Sse::GetIVForE(const std::vector<uint8_t>& e) const {
   for (const auto& pair : IV_) {
@@ -163,14 +171,14 @@ void Sse::Initialize() {
   keyValuePairs_ = keyValuePairs;
   reverseIndex_ = reverseIndex;
 
-  auto rand_bytes_Ks = yacl::crypto::RandU32();
-  auto rand_bytes_Kx = yacl::crypto::RandU32();
-  auto rand_bytes_Ki = yacl::crypto::RandU32();
-  auto rand_bytes_Kz = yacl::crypto::RandU32();
-  k_map_["Ks"] = std::to_string(rand_bytes_Ks);
-  k_map_["Kx"] = std::to_string(rand_bytes_Kx);
-  k_map_["Ki"] = std::to_string(rand_bytes_Ki);
-  k_map_["Kz"] = std::to_string(rand_bytes_Kz);
+  auto rand_bytes_Ks = yacl::crypto::RandU128();
+  auto rand_bytes_Kx = yacl::crypto::RandU128();
+  auto rand_bytes_Ki = yacl::crypto::RandU128();
+  auto rand_bytes_Kz = yacl::crypto::RandU128();
+  k_map_["Ks"] = Uint128ToString(rand_bytes_Ks);
+  k_map_["Kx"] = Uint128ToString(rand_bytes_Kx);
+  k_map_["Ki"] = Uint128ToString(rand_bytes_Ki);
+  k_map_["Kz"] = Uint128ToString(rand_bytes_Kz);
 
   const auto& curve = yacl::crypto::GetCurveMetaByName("secp224r1");
   ec_group_ = yacl::crypto::openssl::OpensslGroup::Create(curve);
