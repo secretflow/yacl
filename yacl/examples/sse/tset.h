@@ -35,18 +35,6 @@ class TSet {
 
   TSet(int b, int s, int lambda, int n_lambda);
 
-  static bool AreVectorsEqual(const std::vector<uint8_t>& vec1,
-                              const std::vector<uint8_t>& vec2);
-
-  // Pack a pair of vector and string into a single vector
-  static std::vector<uint8_t> Pack(
-      const std::pair<std::vector<uint8_t>, std::string>& data);
-  // Unpack a vector into a pair of vector and string
-  static std::pair<std::vector<uint8_t>, std::string> UnPack(
-      const std::vector<uint8_t>& packed_data);
-
-  static std::string VectorToString(const std::vector<uint8_t>& vec);
-
   std::string TSetSetup(
       const std::unordered_map<
           std::string,
@@ -64,9 +52,18 @@ class TSet {
 
   const std::vector<std::vector<Record>>& GetTSet() const { return tset_; }
   const std::vector<std::set<int>>& GetFree() const { return free_; }
+  static std::string VectorToString(const std::vector<uint8_t>& vec);
 
  private:
   void Initialize();
+  std::string Uint128ToString(__uint128_t value);
+
+  // Pack a pair of vector and string into a single vector
+  static std::vector<uint8_t> Pack(
+      const std::pair<std::vector<uint8_t>, std::string>& data);
+  // Unpack a vector into a pair of vector and string
+  static std::pair<std::vector<uint8_t>, std::string> UnPack(
+      const std::vector<uint8_t>& packed_data);
 
   int b_;
   int s_;

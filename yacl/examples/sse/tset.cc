@@ -21,57 +21,6 @@ TSet::TSet(int b, int s, int lambda, int n_lambda)
   Initialize();
 }
 
-bool TSet::AreVectorsEqual(const std::vector<uint8_t>& vec1,
-                           const std::vector<uint8_t>& vec2) {
-  return vec1 == vec2;
-}
-
-std::vector<uint8_t> TSet::Pack(
-    const std::pair<std::vector<uint8_t>, std::string>& data) {
-  const auto& first = data.first;
-  const auto& second = data.second;
-
-  std::vector<uint8_t> result;
-
-  // 1. add the first part (a vector<uint8_t> with 9 bytes)
-  result.insert(result.end(), first.begin(), first.end());
-
-  // 2. add the length of the second part (4 bytes)
-  uint32_t second_length = static_cast<uint32_t>(second.size());
-  uint8_t length_bytes[4];
-  std::memcpy(length_bytes, &second_length, 4);
-  result.insert(result.end(), length_bytes, length_bytes + 4);
-
-  // 3. add the second part (a string)
-  result.insert(result.end(), second.begin(), second.end());
-
-  return result;
-}
-
-std::pair<std::vector<uint8_t>, std::string> TSet::UnPack(
-    const std::vector<uint8_t>& packed_data) {
-  // 1. extract the first part (9 bytes)
-  std::vector<uint8_t> first(packed_data.begin(), packed_data.begin() + 9);
-
-  // 2. extract the length of the second part (4 bytes)
-  uint32_t second_length = 0;
-  std::memcpy(&second_length, packed_data.data() + 9, 4);
-
-  // 3. extract the second part (a string)
-  std::string second(packed_data.begin() + 13,
-                     packed_data.begin() + 13 + second_length);
-
-  return {first, second};
-}
-
-std::string TSet::VectorToString(const std::vector<uint8_t>& vec) {
-  std::string result;
-  for (auto& byte : vec) {
-    result += std::to_string(static_cast<int>(byte));
-  }
-  return result;
-}
-
 void TSet::Initialize() {
   tset_.resize(b_, std::vector<Record>(s_));
   free_.resize(b_);
@@ -94,9 +43,6 @@ std::string TSet::TSetSetup(
         std::string, std::vector<std::pair<std::vector<uint8_t>, std::string>>>&
         T,
     const std::vector<std::string>& keywords) {
-  std::vector<std::vector<Record>> TSet;
-  std::vector<std::set<int>> Free;
-
   bool restart_required = true;
   std::string Kt;
 
@@ -105,8 +51,9 @@ std::string TSet::TSetSetup(
 
     Initialize();
 
-    std::vector<uint8_t> rand_bytes_Kt = yacl::crypto::RandBytes(32);
-    Kt = VectorToString(rand_bytes_Kt);
+    auto rand_bytes_Kt = yacl::crypto::RandU128();
+    Kt = Uint128ToString(rand_bytes_Kt);
+
     yacl::crypto::HmacSha256 hmac_F_line_Tset(Kt);
     for (const auto& keyword : keywords) {
       hmac_F_line_Tset.Reset();
@@ -141,11 +88,11 @@ std::string TSet::TSetSetup(
         int j = *it;
         free_[b].erase(j);
 
+        size_t beta = (i < t.size()) ? 1 : 0;
         j = (j - 1) % s_;
         tset_[b][j].label = L;
 
         auto packed_si = Pack(si);
-        size_t beta = (i < t.size()) ? 1 : 0;
         std::vector<uint8_t> beta_si;
         beta_si.push_back(static_cast<uint8_t>(beta));
         beta_si.insert(beta_si.end(), packed_si.begin(), packed_si.end());
@@ -213,7 +160,7 @@ std::vector<std::pair<std::vector<uint8_t>, std::string>> TSet::TSetRetrieve(
     auto& B = tset[b];
     int j = 0;
     for (; j < s_; ++j) {
-      if (AreVectorsEqual(B[j].label, L)) {
+      if (B[j].label == L) {
         size_t num_sha256 = (B[j].value.size() + 31) / 32;
         for (size_t n = 0; n < num_sha256; ++n) {
           sha256.Reset();
@@ -240,6 +187,62 @@ std::vector<std::pair<std::vector<uint8_t>, std::string>> TSet::TSetRetrieve(
   }
 
   return t;
+}
+
+std::string TSet::VectorToString(const std::vector<uint8_t>& vec) {
+  std::string result;
+  for (auto& byte : vec) {
+    result += std::to_string(static_cast<int>(byte));
+  }
+  return result;
+}
+
+// ! private functions
+std::string TSet::Uint128ToString(__uint128_t value) {
+  std::string result;
+  while (value > 0) {
+    result.insert(result.begin(), '0' + (value % 10));
+    value /= 10;
+  }
+  return result.empty() ? "0" : result;
+}
+
+std::vector<uint8_t> TSet::Pack(
+    const std::pair<std::vector<uint8_t>, std::string>& data) {
+  const auto& first = data.first;
+  const auto& second = data.second;
+
+  std::vector<uint8_t> result;
+
+  // 1. add the first part (a vector<uint8_t> with 9 bytes)
+  result.insert(result.end(), first.begin(), first.end());
+
+  // 2. add the length of the second part (4 bytes)
+  uint32_t second_length = static_cast<uint32_t>(second.size());
+  uint8_t length_bytes[4];
+  std::memcpy(length_bytes, &second_length, 4);
+  result.insert(result.end(), length_bytes, length_bytes + 4);
+
+  // 3. add the second part (a string)
+  result.insert(result.end(), second.begin(), second.end());
+
+  return result;
+}
+
+std::pair<std::vector<uint8_t>, std::string> TSet::UnPack(
+    const std::vector<uint8_t>& packed_data) {
+  // 1. extract the first part (9 bytes)
+  std::vector<uint8_t> first(packed_data.begin(), packed_data.begin() + 9);
+
+  // 2. extract the length of the second part (4 bytes)
+  uint32_t second_length = 0;
+  std::memcpy(&second_length, packed_data.data() + 9, 4);
+
+  // 3. extract the second part (a string)
+  std::string second(packed_data.begin() + 13,
+                     packed_data.begin() + 13 + second_length);
+
+  return {first, second};
 }
 
 }  // namespace examples::sse

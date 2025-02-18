@@ -31,15 +31,6 @@ class TSetTest : public ::testing::Test {
   std::unique_ptr<TSet> tset_;
 };
 
-TEST_F(TSetTest, AreVectorsEqual) {
-  std::vector<uint8_t> vec1 = {1, 2, 3};
-  std::vector<uint8_t> vec2 = {1, 2, 3};
-  std::vector<uint8_t> vec3 = {4, 5, 6};
-
-  EXPECT_TRUE(tset_->AreVectorsEqual(vec1, vec2));
-  EXPECT_FALSE(tset_->AreVectorsEqual(vec1, vec3));
-}
-
 TEST_F(TSetTest, Initialize) {
   EXPECT_EQ(tset_->GetTSet().size(), 2);
   EXPECT_EQ(tset_->GetTSet()[0].size(), 3);
@@ -47,22 +38,6 @@ TEST_F(TSetTest, Initialize) {
   EXPECT_EQ(tset_->GetTSet()[0][0].value.size(), 256 / 8 + 1);
   EXPECT_EQ(tset_->GetFree().size(), 2);
   EXPECT_EQ(tset_->GetFree()[0].size(), 3);
-}
-
-TEST_F(TSetTest, PackAndUnpack) {
-  std::vector<uint8_t> vec = {1, 2, 3, 4, 5, 6, 7, 8, 9};
-  std::string str = "abc";
-  std::pair<std::vector<uint8_t>, std::string> data = {vec, str};
-
-  std::vector<uint8_t> packed = tset_->Pack(data);
-  EXPECT_EQ(packed.size(), vec.size() + str.size() + 4);
-  EXPECT_TRUE(std::equal(vec.begin(), vec.end(), packed.begin()));
-  EXPECT_TRUE(
-      std::equal(str.begin(), str.end(), packed.begin() + vec.size() + 4));
-
-  auto result = tset_->UnPack(packed);
-  EXPECT_EQ(result.first, vec);
-  EXPECT_EQ(result.second, str);
 }
 
 TEST_F(TSetTest, SetupAndGetTag) {
@@ -102,7 +77,6 @@ TEST_F(TSetTest, CompleteRetrievalFlow) {
       };
   std::vector<std::string> keywords = {"keyword12", "keyword34"};
 
-  // auto [TSet, Kt] = tset_->TSetSetup(T, keywords);
   auto Kt = tset_->TSetSetup(T, keywords);
   auto TSet = tset_->GetTSet();
 
