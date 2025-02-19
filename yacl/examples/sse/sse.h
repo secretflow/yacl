@@ -19,6 +19,7 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <stack>
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -37,8 +38,7 @@ namespace examples::sse {
 
 class Sse {
  public:
-  Sse(int bucket_size = 8, int slot_size = 8, int lambda = 128,
-      int n_lambda = 256);
+  explicit Sse(int bucket_size = 8, int slot_size = 8, int lambda = 128);
 
   // Setup the Encrypted Database (EDB)
   std::pair<std::vector<std::vector<TSet::Record>>, std::string> EDBSetup();
@@ -52,11 +52,14 @@ class Sse {
 
   // Perform the Search Protocol (OXT: Oblivious Cross-Tags Protocol)
   std::vector<std::string> SearchProtocol(
-      const std::vector<std::string>& keywords);
+      const std::vector<std::string>& keywords, const std::string& phi = "");
 
   ~Sse();
 
  private:
+  // Evaluate a boolean expression
+  bool EvaluateExpression(const std::string& expr,
+                          const std::unordered_map<std::string, bool>& values);
   // Convert a __uint128_t value to a string
   std::string Uint128ToString(__uint128_t value);
 

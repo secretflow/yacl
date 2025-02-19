@@ -16,8 +16,7 @@
 
 namespace examples::sse {
 
-TSet::TSet(int b, int s, int lambda, int n_lambda)
-    : b_(b), s_(s), lambda_(lambda), n_lambda_(n_lambda) {
+TSet::TSet(int b, int s, int lambda) : b_(b), s_(s), lambda_(lambda) {
   Initialize();
 }
 
@@ -33,7 +32,7 @@ void TSet::Initialize() {
   for (int i = 0; i < b_; ++i) {
     for (int j = 0; j < s_; ++j) {
       tset_[i][j].label.resize(lambda_ / 8, 0);
-      tset_[i][j].value.resize(n_lambda_ / 8 + 1, 0);
+      tset_[i][j].value.resize(lambda_ / 4 + 1, 0);
     }
   }
 }

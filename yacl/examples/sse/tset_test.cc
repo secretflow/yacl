@@ -25,8 +25,8 @@ class TSetTest : public ::testing::Test {
   void SetUp() override {
     tset_ = std::make_unique<TSet>(2,     // bucket_size (b)
                                    3,     // slot_size (s)
-                                   128,   // lambda
-                                   256);  // n_lambda
+                                   128);  // lambda
+                                          //  256);  // n_lambda
   }
   std::unique_ptr<TSet> tset_;
 };

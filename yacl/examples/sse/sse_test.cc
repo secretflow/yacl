@@ -27,8 +27,7 @@ class SseTest : public ::testing::Test {
   void SetUp() override {
     sse_ = std::make_unique<Sse>(8,     // bucket_size
                                  8,     // slot_size
-                                 128,   // lambda(security parameter)
-                                 256);  // n_lambda
+                                 128);  // lambda(security parameter)
 
     auto [tset, kt] = sse_->EDBSetup();
     EXPECT_FALSE(tset.empty());
@@ -75,6 +74,19 @@ TEST_F(SseTest, ThreeKeywordsSearch) {
                                              "relationship=Husband"};
   auto results = sse_->SearchProtocol(three_keywords);
   std::unordered_set<std::string> expected_results = {"ID_130165"};
+  EXPECT_EQ(results.size(), expected_results.size());
+  std::unordered_set<std::string> actual_results(results.begin(),
+                                                 results.end());
+  EXPECT_EQ(actual_results, expected_results);
+}
+
+TEST_F(SseTest, SearchableNormalForm) {
+  std::vector<std::string> keywords = {"race=White", "relationship=Own-child",
+                                       "occupation=Farming-fishing",
+                                       "education=11th"};
+  std::string phi = "v2 OR v3 AND NOT v4";
+  auto results = sse_->SearchProtocol(keywords, phi);
+  std::unordered_set<std::string> expected_results = {"ID_130163"};
   EXPECT_EQ(results.size(), expected_results.size());
   std::unordered_set<std::string> actual_results(results.begin(),
                                                  results.end());

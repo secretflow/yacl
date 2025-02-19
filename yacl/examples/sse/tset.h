@@ -33,7 +33,7 @@ class TSet {
     std::vector<uint8_t> value;
   };
 
-  TSet(int b, int s, int lambda, int n_lambda);
+  explicit TSet(int b, int s, int lambda);
 
   std::string TSetSetup(
       const std::unordered_map<
@@ -68,7 +68,6 @@ class TSet {
   int b_;
   int s_;
   int lambda_;
-  int n_lambda_;
   std::vector<std::vector<Record>> tset_;
   std::vector<std::set<int>> free_;
 };

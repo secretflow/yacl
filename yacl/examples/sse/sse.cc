@@ -16,8 +16,8 @@
 
 namespace examples::sse {
 
-Sse::Sse(int bucket_size, int slot_size, int lambda, int n_lambda)
-    : tset_(bucket_size, slot_size, lambda, n_lambda) {
+Sse::Sse(int bucket_size, int slot_size, int lambda)
+    : tset_(bucket_size, slot_size, lambda) {
   Initialize();
 }
 
@@ -45,7 +45,7 @@ void Sse::LoadEDB(const std::string& k_map_file, const std::string& tset_file,
 }
 
 std::vector<std::string> Sse::SearchProtocol(
-    const std::vector<std::string>& keywords_Search) {
+    const std::vector<std::string>& keywords_Search, const std::string& phi) {
   if (keywords_Search.empty()) {
     return {};
   }
@@ -94,17 +94,28 @@ std::vector<std::string> Sse::SearchProtocol(
     auto [e, y_string] = t[c - 1];
     yacl::math::MPInt y(y_string, 10);
 
-    bool allInXSet = true;
+    std::unordered_map<std::string, bool> values;
     for (size_t i = 2; i <= keywords_Search.size(); i++) {
       auto xtag = ec_group_->Mul(xtoken[c][i], y);
-      if (!IsInXSet(ec_group_, xtag, XSet_)) {
-        allInXSet = false;
-        break;
-      }
+      values["v" + std::to_string(i)] = IsInXSet(ec_group_, xtag, XSet_);
     }
-    if (allInXSet) {
-      E.push_back(e);
-      found = true;
+    if (phi.empty()) {
+      bool all_true = true;
+      for (size_t i = 2; i <= keywords_Search.size(); i++) {
+        if (!values["v" + std::to_string(i)]) {
+          all_true = false;
+          break;
+        }
+      }
+      if (all_true) {
+        E.push_back(e);
+        found = true;
+      }
+    } else {
+      if (EvaluateExpression(phi, values)) {
+        E.push_back(e);
+        found = true;
+      }
     }
   }
 
@@ -133,6 +144,78 @@ std::vector<std::string> Sse::SearchProtocol(
 Sse::~Sse() { ec_group_.reset(); }
 
 // ! private functions
+bool Sse::EvaluateExpression(
+    const std::string& expr,
+    const std::unordered_map<std::string, bool>& values) {
+  std::string modified_expr = expr;
+  size_t pos = 0;
+  while ((pos = modified_expr.find("AND", pos)) != std::string::npos) {
+    modified_expr.replace(pos, 3, "&&");
+    pos += 2;
+  }
+  pos = 0;
+  while ((pos = modified_expr.find("OR", pos)) != std::string::npos) {
+    modified_expr.replace(pos, 2, "||");
+    pos += 2;
+  }
+  pos = 0;
+  while ((pos = modified_expr.find("NOT", pos)) != std::string::npos) {
+    modified_expr.replace(pos, 3, "!");
+    pos += 1;
+  }
+
+  for (const auto& [var_name, value] : values) {
+    std::string search_str = var_name;
+    std::string replace_str = value ? "true" : "false";
+    size_t pos = 0;
+    while ((pos = modified_expr.find(search_str, pos)) != std::string::npos) {
+      modified_expr.replace(pos, search_str.length(), replace_str);
+      pos += replace_str.length();
+    }
+  }
+
+  std::istringstream iss(modified_expr);
+  std::string token;
+  std::stack<bool> operands;
+  std::stack<std::string> operators;
+
+  while (iss >> token) {
+    if (token == "true" || token == "false") {
+      operands.push(token == "true");
+    } else if (token == "&&" || token == "||" || token == "!") {
+      operators.push(token);
+    } else {
+      std::cerr << "Unexpected token: " << token << std::endl;
+      return false;
+    }
+  }
+
+  while (!operators.empty()) {
+    std::string op = operators.top();
+    operators.pop();
+
+    if (op == "&&") {
+      bool rhs = operands.top();
+      operands.pop();
+      bool lhs = operands.top();
+      operands.pop();
+      operands.push(lhs && rhs);
+    } else if (op == "||") {
+      bool rhs = operands.top();
+      operands.pop();
+      bool lhs = operands.top();
+      operands.pop();
+      operands.push(lhs || rhs);
+    } else if (op == "!") {
+      bool rhs = operands.top();
+      operands.pop();
+      operands.push(!rhs);
+    }
+  }
+
+  return operands.top();
+}
+
 std::string Sse::Uint128ToString(__uint128_t value) {
   std::string result;
   while (value > 0) {
@@ -180,7 +263,7 @@ void Sse::Initialize() {
   k_map_["Ki"] = Uint128ToString(rand_bytes_Ki);
   k_map_["Kz"] = Uint128ToString(rand_bytes_Kz);
 
-  const auto& curve = yacl::crypto::GetCurveMetaByName("secp224r1");
+  const auto& curve = yacl::crypto::GetCurveMetaByName("secp256r1");
   ec_group_ = yacl::crypto::openssl::OpensslGroup::Create(curve);
 }
 
