@@ -291,7 +291,6 @@ void Sse::ProcessAndUpdateTAndXSet() {
       std::string string_xind = VectorToString(mac_xind);
       yacl::math::MPInt xind(string_xind, 10);
       xind = xind.Mod(ec_group_->GetOrder());
-
       // z
       auto mac_z = hmac_F_SSE_Kz.Reset()
                        .Update(keyword + std::to_string(c))
@@ -299,7 +298,6 @@ void Sse::ProcessAndUpdateTAndXSet() {
       std::string string_z = VectorToString(mac_z);
       yacl::math::MPInt z(string_z, 10);
       z = z.Mod(ec_group_->GetOrder());
-
       // Invert_z
       yacl::math::MPInt Invert_z = z.InvertMod(ec_group_->GetOrder());
       // y
@@ -307,7 +305,6 @@ void Sse::ProcessAndUpdateTAndXSet() {
 
       // append (e, y) to t.
       std::vector<uint8_t> ind_vector(ind.begin(), ind.end());
-
       __uint128_t iv = yacl::crypto::RandU128();
       std::vector<uint8_t> e = AesCtrEncrypt(ind_vector, Ke, iv);
       IV_.push_back(std::make_pair(e, iv));
