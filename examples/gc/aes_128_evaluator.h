@@ -37,7 +37,7 @@ using OtChoices = dynamic_bitset<uint128_t>;
 uint128_t all_one_uint128_t = ~static_cast<__uint128_t>(0);
 uint128_t select_mask[2] = {0, all_one_uint128_t};
 
-class Evaluator {
+class EvaluatorAES {
  public:
   uint128_t delta;
   uint128_t inv_constant;
@@ -48,10 +48,12 @@ class Evaluator {
   std::vector<uint128_t> gb_value;
   yacl::io::BFCircuit circ_;
   std::shared_ptr<yacl::link::Context> lctx;
-  uint128_t table[376][2];
-  uint64_t input;
+  
+  //根据电路改
+  uint128_t table[36663][2];
+  uint128_t input;
+  const int num_ot = 128;
 
-  const int num_ot = 64;
   yacl::crypto::OtRecvStore ot_recv = OtRecvStore(num_ot, yacl::crypto::OtStoreType::Normal);
 
   void setup() {
@@ -95,10 +97,11 @@ class Evaluator {
     gb_value.resize(circ_.nw);
     wires_.resize(circ_.nw);
 
-    yacl::dynamic_bitset<uint64_t> bi_val;
+    //输入位数有关
+    yacl::dynamic_bitset<uint128_t> bi_val;
     
-
-    input = yacl::crypto::FastRandU64();
+    //输入位数有关
+    input = yacl::crypto::FastRandU128();
     std::cout << "input of evaluator:" << input << std::endl;
     bi_val.append(input);  // 直接转换为二进制  输入线路在前64位
     // 接收garbler混淆值
@@ -106,7 +109,7 @@ class Evaluator {
 
     const uint128_t* buffer_data = r.data<const uint128_t>();
 
-    memcpy(wires_.data(), buffer_data, sizeof(uint128_t) * 64);
+    memcpy(wires_.data(), buffer_data, sizeof(uint128_t) * num_ot);
 
     std::cout << "recvInput1" << std::endl;
 
@@ -122,7 +125,8 @@ class Evaluator {
 
     // onLineOT();
 
-    lctx->Send(0, yacl::ByteContainerView(&input, sizeof(uint64_t)), "Input1");
+    //输入位数有关
+    lctx->Send(0, yacl::ByteContainerView(&input, sizeof(uint128_t)), "Input1");
   }
   void recvTable() {
 
@@ -139,6 +143,8 @@ class Evaluator {
     std::cout << "recvTable" << std::endl;
 
   }
+
+  //未检查
   uint128_t EVAND(uint128_t A, uint128_t B, const uint128_t* table_item,
                   MITCCRH<8>* mitccrh_pointer) {
     uint128_t HA, HB, W;
@@ -205,7 +211,7 @@ class Evaluator {
     int start = index - circ_.now[0];
     lctx->Send(
         0,
-        yacl::ByteContainerView(wires_.data() + start, sizeof(uint128_t) * 64),
+        yacl::ByteContainerView(wires_.data() + start, sizeof(uint128_t) * num_ot),
         "output");
     std::cout << "sendOutput" << std::endl;
   }
@@ -221,10 +227,10 @@ class Evaluator {
     lctx->Send(0, yacl::ByteContainerView(masked_choices.data(), sizeof(uint128_t)), "masked_choice");
 
     auto buf = lctx->Recv(lctx->NextRank(), "");
-    std::vector<OtMsgPair> batch_recv(64);
+    std::vector<OtMsgPair> batch_recv(num_ot);
     std::memcpy(batch_recv.data(), buf.data(), buf.size());
-    for (uint32_t j = 0; j < 64; ++j) {
-      auto idx = 64 + j;
+    for (uint32_t j = 0; j < num_ot; ++j) {
+      auto idx = num_ot + j;
       wires_[idx] = batch_recv[j][choices[j]] ^ ot_recv.GetBlock(j);
     }
   }

@@ -145,4 +145,55 @@ void CircuitReader::ReadAllGates() {
   }
 }
 
+std::vector<uint8_t> BuiltinBFCircuit::PrepareSha256Input(
+  ByteContainerView input) {
+constexpr size_t kFixPadSize = 1;                 // in bytes
+constexpr size_t kMsgLenSize = sizeof(uint64_t);  // in bytes
+constexpr size_t kMsgBlockSize = 64;              // in bytes
+const auto kInitSha256Bytes = GetSha256InitialHashValues();
+
+uint64_t input_size = input.size();  // in bytes
+uint64_t zero_padding_size =
+    (input_size + kFixPadSize + kMsgLenSize) % kMsgBlockSize == 0
+        ? 0
+        : kMsgBlockSize -
+              (input_size + kFixPadSize + kMsgLenSize) % kMsgBlockSize;
+uint64_t message_size =
+    input_size + kFixPadSize + zero_padding_size + kMsgLenSize;
+uint64_t result_size = message_size + kInitSha256Bytes.size();
+
+// TODO: support arbitrary large input
+YACL_ENFORCE(message_size == kMsgBlockSize);
+
+// Declare the result byte-vector
+size_t offset = 0;
+std::vector<uint8_t> result(result_size);
+
+// the next 64 bits should be the byte length of input message
+uint64_t input_bitnum = input_size * 8;  // in bits
+std::memcpy(result.data() + offset, &input_bitnum, sizeof(input_bitnum));
+offset += sizeof(uint64_t);
+
+// zero padding (result vector has zero initialization)
+// ... should doing nothing ...
+offset += zero_padding_size;
+
+// additional padding bit-'1' (as a mark)
+result[offset] = 0x80;
+offset += kFixPadSize;
+
+// original input message
+auto input_reverse = std::vector<uint8_t>(input.begin(), input.end());
+std::reverse(input_reverse.begin(), input_reverse.end());
+std::memcpy(result.data() + offset, input_reverse.data(), input_size);
+offset += input_size;
+
+// initial hash values
+std::memcpy(result.data() + offset, kInitSha256Bytes.data(),
+            kInitSha256Bytes.size());
+// offset += kInitSha256Bytes.size();
+
+return result;
+}
+
 }  // namespace yacl::io

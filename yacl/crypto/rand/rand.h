@@ -81,6 +81,19 @@ inline uint32_t RandInRange(uint32_t n) {
   uint32_t tmp = FastRandU64();
   return tmp % n;
 }
+template <typename T = uint128_t,
+          std::enable_if_t<std::is_integral_v<T>, int> = 0>
+inline T RandLtN(T n) {
+  // see: nist-sp800-90A, Appendix A.5.3
+  // efficiency: constant-round
+  auto required_size =
+      sizeof(T) + (YACL_MODULE_SECPARAM_S_UINT("rand") + 7) / 8;
+  auto rand_bytes = SecureRandBytes(required_size);
+  math::MPInt r;
+  r.FromMagBytes(rand_bytes, Endian::little);
+  math::MPInt::Mod(r, math::MPInt(n), &r);
+  return r.Get<T>();
+}
 // -----------------------------
 // Random Support for Yacl Types
 // -----------------------------

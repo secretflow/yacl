@@ -166,6 +166,60 @@ cc_library(
     ],
 )
 
+cc_library(
+    name = "aes_128_garbler",
+    hdrs = [
+        "aes_128_garbler.h",
+    ],
+    copts = [
+        "-mavx",
+        "-maes",
+        "-mpclmul",
+    ],
+    deps = [
+        ":mitccrh",
+        "//yacl/base:byte_container_view",
+        "//yacl/base:dynamic_bitset",
+        "//yacl/crypto/rand",
+        "//yacl/crypto/tools:prg",
+        "//yacl/io/circuit:bristol_fashion",
+        "//yacl/io/stream:file_io",
+        "//yacl/kernel/algorithms:base_ot",
+        "//yacl/kernel/algorithms:iknp_ote",
+        "//yacl/link:test_util",
+        "//yacl/utils:circuit_executor",
+        "//yacl/kernel:ot_kernel",
+        "//yacl/kernel/type:ot_store_utils",
+    ],
+)
+
+cc_library(
+    name = "aes_128_evaluator",
+    hdrs = [
+        "aes_128_evaluator.h",
+    ],
+    copts = [
+        "-mavx",
+        "-maes",
+        "-mpclmul",
+    ],
+    deps = [
+        ":mitccrh",
+        "//yacl/base:byte_container_view",
+        "//yacl/base:dynamic_bitset",
+        "//yacl/crypto/rand",
+        "//yacl/crypto/tools:prg",
+        "//yacl/io/circuit:bristol_fashion",
+        "//yacl/io/stream:file_io",
+        "//yacl/kernel/algorithms:base_ot",
+        "//yacl/kernel/algorithms:iknp_ote",
+        "//yacl/link:test_util",
+        "//yacl/utils:circuit_executor",
+        "//yacl/kernel:ot_kernel",
+        "//yacl/kernel/type:ot_store_utils",
+    ],
+)
+
 cc_binary(
     name = "test_split",
     srcs = ["test_split.cc"],
@@ -179,6 +233,8 @@ cc_binary(
         ":mitccrh",
         ":garbler",
         ":evaluator",
+        ":aes_128_garbler",
+        ":aes_128_evaluator",
         "//yacl/base:byte_container_view",
         "//yacl/base:dynamic_bitset",
         "//yacl/crypto/rand",

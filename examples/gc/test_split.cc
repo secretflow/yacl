@@ -6,8 +6,8 @@
 
 // #include "absl/std::strings/escaping.h"
 #include "absl/types/span.h"
-#include "examples/gc/evaluator.h"
-#include "examples/gc/garbler.h"
+#include "examples/gc/aes_128_evaluator.h"
+#include "examples/gc/aes_128_garbler.h"
 #include "fmt/format.h"
 #include "yacl/kernel/ot_kernel.h"
 #include "yacl/kernel/type/ot_store_utils.h"
@@ -22,16 +22,12 @@ using uint128_t = __uint128_t;
 std::shared_ptr<yacl::io::BFCircuit> circ_;
 
 
-inline uint128_t Aes128(uint128_t k, uint128_t m) {
-  yacl::crypto::SymmetricCrypto enc(
-      yacl::crypto::SymmetricCrypto::CryptoType::AES128_ECB, k);
-  return enc.Encrypt(m);
-}
+
 
 int main() {
   // 初始化
-  Garbler* garbler = new Garbler();
-  Evaluator* evaluator = new Evaluator();
+  GarblerAES* garbler = new GarblerAES();
+  EvaluatorAES* evaluator = new EvaluatorAES();
 
   std::future<void> thread1 = std::async([&] { garbler->setup(); });
   std::future<void> thread2 = std::async([&] { evaluator->setup(); });
@@ -42,7 +38,7 @@ int main() {
   // 电路读取
   std::string pth =
       fmt::format("{0}/yacl/io/circuit/data/{1}.txt",
-                  std::filesystem::current_path().string(), "adder64");
+                  std::filesystem::current_path().string(), "aes_128");
   yacl::io::CircuitReader reader(pth);
   reader.ReadMeta();
   reader.ReadAllGates();

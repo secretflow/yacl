@@ -144,6 +144,10 @@ class BuiltinBFCircuit {
                        std::filesystem::current_path().string());
   }
 
+  static std::string Sha256Path() {
+    return fmt::format("{}/sha256.txt", CircDataDir);
+  }
+  static std::vector<uint8_t> PrepareSha256Input(ByteContainerView input);
   // NOTE: sha256 needs two inputs, a 512 bit buffer, and a 256 bit previous
   // digest value
   //

@@ -1,4 +1,4 @@
-
+  
 #include <algorithm>
 #include <future>
 #include <type_traits>
@@ -266,11 +266,13 @@ int main(int argc, char* argv[]) {
     std::cout << "sendInput1" << std::endl;
 
   } else {
+    
     yacl::Buffer r = lctx->Recv(0, "garbleInput1");
 
     const uint128_t* buffer_data = r.data<const uint128_t>();
     memcpy(wires_.data(), buffer_data, sizeof(uint128_t) * 64);
     std::cout << "recvInput1" << std::endl;
+    
   }
   if (FLAGS_rank == 0) {
     lctx->Send(1, yacl::ByteContainerView(&input, sizeof(uint64_t)), "Input1");
@@ -285,24 +287,24 @@ int main(int argc, char* argv[]) {
   }
 
   // ************混淆方进行发送*********
-  int num_ot = 64;
-  vector<array<uint128_t, 2>> send_blocks;
-  vector<uint128_t> recv_blocks(num_ot);
-  dynamic_bitset<uint64_t> choices(num_ot);
-  for (int i = 64; i < 128; i++) {
-    send_blocks.push_back({gb_value[i], gb_value[i] ^ delta});
-    choices.push_back(bi_val[i]);
-  }
+  // int num_ot = 64;
+  // vector<array<uint128_t, 2>> send_blocks;
+  // vector<uint128_t> recv_blocks(num_ot);
+  // dynamic_bitset<uint64_t> choices(num_ot);
+  // for (int i = 64; i < 128; i++) {
+  //   send_blocks.push_back({gb_value[i], gb_value[i] ^ delta});
+  //   choices.push_back(bi_val[i]);
+  // }
 
-  yacl::crypto::BaseOtSend(lctx, absl::MakeSpan(send_blocks));
-  yacl::crypto::BaseOtRecv(lctx, bi_val, absl::MakeSpan(recv_blocks));
+  // yacl::crypto::BaseOtSend(lctx, absl::MakeSpan(send_blocks));
+  // yacl::crypto::BaseOtRecv(lctx, bi_val, absl::MakeSpan(recv_blocks));
 
-  for (int i = 0; i < num_ot; i++) {
-    if (send_blocks[i][choices[i]] != recv_blocks[i]) {
-      cout << "**********OT错误************";
-      break;
-    }
-  }
+  // for (int i = 0; i < num_ot; i++) {
+  //   if (send_blocks[i][choices[i]] != recv_blocks[i]) {
+  //     cout << "**********OT错误************";
+  //     break;
+  //   }
+  // }
 
   if (operate != "neg64" && operate != "zero_equal") {
     // for (int i = circ_->niw[0]; i < circ_->niw[0] + circ_->niw[1]; i++) {
@@ -343,6 +345,7 @@ int main(int argc, char* argv[]) {
   }
   std::cout << std::endl;
 
+if(FLAGS_rank == 0){  
   for (int i = 0; i < circ_->gates.size(); i++) {
     auto gate = circ_->gates[i];
     switch (gate.op) {
@@ -381,12 +384,14 @@ int main(int argc, char* argv[]) {
         YACL_THROW("Unknown Gate Type: {}", (int)gate.op);
     }
   }
+  }
 
   // 发送混淆表
   if (FLAGS_rank == 0) {
     lctx->Send(
         1, yacl::ByteContainerView(table, sizeof(uint128_t) * 2 * circ_->ng),
         "table");
+        
     std::cout << "sendTable" << std::endl;
     // std::cout << "table0" << table[132][0];
 
@@ -400,12 +405,14 @@ int main(int argc, char* argv[]) {
         k++;
       }
     }
+    
 
     std::cout << "recvTable" << std::endl;
     // std::cout << "table0" << table[132][0];
   }
 
   // 计算方进行计算 按拓扑顺序进行计算
+if(FLAGS_rank == 1){  
   for (int i = 0; i < circ_->gates.size(); i++) {
     auto gate = circ_->gates[i];
     switch (gate.op) {
@@ -442,6 +449,7 @@ int main(int argc, char* argv[]) {
       default:
         YACL_THROW("Unknown Gate Type: {}", (int)gate.op);
     }
+  }
   }
 
   // 识别输出线路 进行DE操作
