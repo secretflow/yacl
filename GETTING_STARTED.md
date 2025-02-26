@@ -96,6 +96,19 @@ To test Yacl
 $ bazelisk test //yacl/...
 ```
 
+## Build docs
+
+```sh
+$ cd docs
+$ pip install -r requirements.txt
+
+# build English docs
+$ make clean && make html # html docs will be generated in _build/html
+
+# build Chinese docs
+$ make clean && make -e SPHINXOPTS="-D language='zh_CN'" html # html docs will be generated in _build/html
+```
+
 ## Setup compilation database for your lsp
 
 Language servers accept a `compile_commands.json` file input to help it with linting, jumping to definitions/references, and other functions. This file consists of an array of “command objects”, where each command object specifies one way a translation unit is compiled in the project. A lot of modern C/C++ build system can generate this file with simple steps, it's the same for bazel.

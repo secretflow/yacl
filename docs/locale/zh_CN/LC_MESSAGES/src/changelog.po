@@ -1,0 +1,231 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2022-2024 Ant Group Co., Ltd
+# This file is distributed under the same license as the YACL package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: YACL \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-02-26 10:06+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../../CHANGELOG.md:1
+msgid "Changelog"
+msgstr ""
+
+#: ../../../CHANGELOG.md:3
+msgid "All notable changes to this project will be documented in this file."
+msgstr ""
+
+#: ../../../CHANGELOG.md:5
+msgid "**2024-05-15**"
+msgstr ""
+
+#: ../../../CHANGELOG.md:6
+msgid "[Tag] release/0.4.5b0"
+msgstr ""
+
+#: ../../../CHANGELOG.md:7
+msgid ""
+"[Feature] Re-organize repo layout, add kernel folder for crypto protocols"
+" with links"
+msgstr ""
+
+#: ../../../CHANGELOG.md:8
+msgid "[Feature] Add ECC lib25519 implementation"
+msgstr ""
+
+#: ../../../CHANGELOG.md:9
+msgid "[Feature] Add ECC FourQ implementation"
+msgstr ""
+
+#: ../../../CHANGELOG.md:10
+msgid "[Feature] Unify f2k implementaion"
+msgstr ""
+
+#: ../../../CHANGELOG.md:11
+msgid "[Bugifx] Fix RandBits implementation"
+msgstr ""
+
+#: ../../../CHANGELOG.md:13
+msgid "**2024-02-01**"
+msgstr ""
+
+#: ../../../CHANGELOG.md:14
+msgid "[Tag] release/0.4.3"
+msgstr ""
+
+#: ../../../CHANGELOG.md:15
+msgid "[Feature] Add Silent Vole (malicious version)"
+msgstr ""
+
+#: ../../../CHANGELOG.md:16 ../../../CHANGELOG.md:23
+msgid "[Bugifx] Multiple bugfixes"
+msgstr ""
+
+#: ../../../CHANGELOG.md:18
+msgid "**2024-01-09**"
+msgstr ""
+
+#: ../../../CHANGELOG.md:19
+msgid "[YACL] v0.4.2"
+msgstr ""
+
+#: ../../../CHANGELOG.md:20
+msgid "[Dependency] Bump: Openssl 3.0.12 (experimental)"
+msgstr ""
+
+#: ../../../CHANGELOG.md:21
+msgid "[Feature] Add Softspoken OTe (malicious version)"
+msgstr ""
+
+#: ../../../CHANGELOG.md:22
+msgid ""
+"[API] Refactor entropy source, drbg, and rand; Refine traditional crypto "
+"APIs"
+msgstr ""
+
+#: ../../../CHANGELOG.md:25
+msgid "**2023-11-16**"
+msgstr ""
+
+#: ../../../CHANGELOG.md:26
+msgid "[YACL] v0.4.1.1"
+msgstr ""
+
+#: ../../../CHANGELOG.md:27
+msgid ""
+"[Feature] Init Global Security Parameters for Yacl [WIP: apply security "
+"parameter to all algorithms]"
+msgstr ""
+
+#: ../../../CHANGELOG.md:28
+msgid "[Feature] Add Softspoken OTe (semi-honest version)"
+msgstr ""
+
+#: ../../../CHANGELOG.md:29
+msgid "[Feature] Add Silent Vole [WIP: optimize MpVole and DualEncode]"
+msgstr ""
+
+#: ../../../CHANGELOG.md:31
+msgid "**2023-10-20**"
+msgstr ""
+
+#: ../../../CHANGELOG.md:32
+msgid "[YACL] v0.4.1"
+msgstr ""
+
+#: ../../../CHANGELOG.md:33
+msgid "[Feature] Add Sigma-type ZKP Protocols (An unified implementation)"
+msgstr ""
+
+#: ../../../CHANGELOG.md:34
+msgid "[Feature] Add ECC Pairing SPI and support to libmcl(ecc, pairing)"
+msgstr ""
+
+#: ../../../CHANGELOG.md:35
+msgid "[Feature] Add Multiplication for GF(2^64) and GF(2^128)"
+msgstr ""
+
+#: ../../../CHANGELOG.md:36
+msgid "[Bugfix] fix KOS OTe security flaws"
+msgstr ""
+
+#: ../../../CHANGELOG.md:37
+msgid "[Feature] Add AVX2 Matrix Transpose"
+msgstr ""
+
+#: ../../../CHANGELOG.md:39
+msgid "**2023-05-25**"
+msgstr ""
+
+#: ../../../CHANGELOG.md:40
+msgid "[YACL] v0.3.3"
+msgstr ""
+
+#: ../../../CHANGELOG.md:41
+msgid "[Feature] Add Ferret OTe"
+msgstr ""
+
+#: ../../../CHANGELOG.md:42
+msgid "[Feature] Add Gywz OTe (Correlated GGM Tree)"
+msgstr ""
+
+#: ../../../CHANGELOG.md:43
+msgid "[Feature] Add KOS OTe (warning: KOS still has potential security flaws)"
+msgstr ""
+
+#: ../../../CHANGELOG.md:45
+msgid "**2023-02-02**"
+msgstr ""
+
+#: ../../../CHANGELOG.md:46
+msgid "[YACL] v0.3.1"
+msgstr ""
+
+#: ../../../CHANGELOG.md:47
+msgid "[Feature] Add `dynamic_bitset` for manipulating bit vectors"
+msgstr ""
+
+#: ../../../CHANGELOG.md:48
+msgid "[API] RO now can accept multiple inputs"
+msgstr ""
+
+#: ../../../CHANGELOG.md:49
+msgid "[API] Add iknp cot api, improve iknp performance"
+msgstr ""
+
+#: ../../../CHANGELOG.md:50
+msgid "[Bugfix] Fix Several m1 related bugs"
+msgstr ""
+
+#: ../../../CHANGELOG.md:52
+msgid "**2022-12-08**"
+msgstr ""
+
+#: ../../../CHANGELOG.md:53
+msgid "[YACL] v0.3.0"
+msgstr ""
+
+#: ../../../CHANGELOG.md:54
+msgid "[Feature] Add random permutation and correlation-robust hash function"
+msgstr ""
+
+#: ../../../CHANGELOG.md:55
+msgid "[Feature] Add OT/OTe benchmark"
+msgstr ""
+
+#: ../../../CHANGELOG.md:56
+msgid "[API] Fix randomness implementation"
+msgstr ""
+
+#: ../../../CHANGELOG.md:57 ../../../CHANGELOG.md:63
+msgid "[API] Re-organize repo layout"
+msgstr ""
+
+#: ../../../CHANGELOG.md:58
+msgid "[Bugfix] Fix Random Oralce Usage"
+msgstr ""
+
+#: ../../../CHANGELOG.md:60
+msgid "**2022-12-01**"
+msgstr ""
+
+#: ../../../CHANGELOG.md:61
+msgid "[YACL] v0.2.0"
+msgstr ""
+
+#: ../../../CHANGELOG.md:62
+msgid "[API] Rename YASL to YACL"
+msgstr ""
+
