@@ -1,0 +1,70 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2022-2024 Ant Group Co., Ltd
+# This file is distributed under the same license as the YACL package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: YACL \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-02-26 10:06+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../src/develop/index.rst:2
+msgid "Develop"
+msgstr ""
+
+#: ../../src/develop/index.rst:4
+msgid ""
+"**For Traditioanl PKI:** Since there are so many existing time-proof, "
+"efficient, and standardized implementation of PKI algorithms, Yacl **does"
+" not re-implement** those algorithms. Instead, Yacl only provides a "
+"light-weighted and \"easy-to-use\" wrapper for the most popular "
+"industrial libraries (e.g. `OpenSSL <https://openssl.org/>`_, `TongSuo "
+"<https://github.com/Tongsuo-Project>`_, `LibSodium "
+"<https://doc.libsodium.org/>`_, etc.)"
+msgstr ""
+
+#: ../../src/develop/index.rst:6
+msgid ""
+"**For ECC (Elliptic-Curve Cryptography):** Yacl integrates many curve "
+"implementation from OpenSSL, you may use the code in the following to use"
+" any curve as you like. For more information about all supported curve "
+"names, see: `yacl/crypto/ecc/curve_meta.cc "
+"<https://github.com/secretflow/yacl/blob/main/yacl/crypto/ecc/curve_meta.cc>`_"
+msgstr ""
+
+#: ../../src/develop/index.rst:24
+msgid ""
+"**For Randomness** Yacl has also provide some easy-to-use randomness "
+"generation functions. Random functions usually start with **Secure** or "
+"**Fast**, secure random implementation uses the standardized ctr-drbg, "
+"and fast uses hash-drbg. It is always recommended to use "
+"**Secure**-Random functions."
+msgstr ""
+
+#: ../../src/develop/index.rst:37
+msgid ""
+"**For Secure Computation Protocols:** Yacl provides many secure "
+"computation primitives, such as OT, VOLE and so on. It is recommended to "
+"use the `yacl/kernel/...` api for general usage. For more advanced users,"
+" please use `yacl/algorithms/...`."
+msgstr ""
+
+#: ../../src/develop/index.rst:55
+msgid ""
+"**ECDH-PSI Example:** We also provide a step-to-step demo to demonstrate "
+"how to build an ECDH-PSI protocol from the tools that Yacl provides, and "
+"then bind the protocol implementation to JAVA and Python. See the "
+"following link for more detail."
+msgstr ""
+

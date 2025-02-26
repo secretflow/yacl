@@ -46,6 +46,7 @@ header: # <1>
     - "yacl/crypto/aes/aes_opt.h"
     - "yacl/io/circuit/data/**.txt"
     - "docs/requirements.txt"
+    - "docs/**/*.po"
     - "MODULE.bazel.lock"
     - "bazel/modules/"
 
