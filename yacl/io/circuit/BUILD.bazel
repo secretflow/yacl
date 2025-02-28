@@ -26,6 +26,7 @@ yacl_cc_library(
     srcs = ["bristol_fashion.cc"],
     hdrs = ["bristol_fashion.h"],
     deps = [
+        "//yacl/base:byte_container_view",
         "//yacl/io/stream:file_io",
         "//yacl/link:context",
     ],

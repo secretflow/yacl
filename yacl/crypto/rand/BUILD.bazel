@@ -27,6 +27,7 @@ yacl_cc_library(
         "//yacl/base:int128",
         "//yacl/crypto/rand/drbg",
         "//yacl/crypto/tools:prg",
+        "//yacl/math/mpint:mpint",
     ],
 )
 

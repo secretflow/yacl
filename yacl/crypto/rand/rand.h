@@ -27,7 +27,7 @@
 #include "yacl/crypto/openssl_wrappers.h"
 #include "yacl/crypto/rand/drbg/drbg.h"
 #include "yacl/secparam.h"
-
+#include "yacl/math/mpint/mp_int.h"
 namespace yacl::crypto {
 
 // -------------------------
@@ -113,6 +113,7 @@ template <typename T = dynamic_bitset<uint128_t>,
 inline T FastRandBits(uint64_t len) {
   return RandBits<T>(len, true);
 }
+
 
 // Generate rand bits in a secure but slow way
 template <typename T = dynamic_bitset<uint128_t>,

@@ -23,9 +23,12 @@
 
 #include "spdlog/spdlog.h"
 
+#include "yacl/base/byte_container_view.h"
 #include "yacl/base/exception.h"
 #include "yacl/io/stream/file_io.h"
 #include "yacl/io/stream/interface.h"
+
+
 
 namespace yacl::io {
 
@@ -145,7 +148,8 @@ class BuiltinBFCircuit {
   }
 
   static std::string Sha256Path() {
-    return fmt::format("{}/sha256.txt", CircDataDir);
+    return fmt::format("{}/yacl/io/circuit/data/sha256.txt",
+                       std::filesystem::current_path().string());
   }
   static std::vector<uint8_t> PrepareSha256Input(ByteContainerView input);
   // NOTE: sha256 needs two inputs, a 512 bit buffer, and a 256 bit previous
