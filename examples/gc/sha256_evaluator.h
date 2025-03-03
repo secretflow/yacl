@@ -97,14 +97,7 @@ class EvaluatorSHA256 {
     gb_value.resize(circ_.nw);
     wires_.resize(circ_.nw);
 
-    //输入位数有关
-    // yacl::dynamic_bitset<uint128_t> bi_val;
     
-    // //输入位数有关
-    // input = yacl::crypto::FastRandU128();
-    // std::cout << "input of evaluator:" << input << std::endl;
-    // bi_val.append(input);  // 直接转换为二进制  输入线路在前64位
-    // 接收garbler混淆值
     yacl::Buffer r = lctx->Recv(0, "garbleInput1");
 
     const uint128_t* buffer_data = r.data<const uint128_t>();
@@ -113,20 +106,7 @@ class EvaluatorSHA256 {
 
     std::cout << "recvInput1" << std::endl;
 
-    // 对evaluator自己的输入值进行混淆
-    // r = lctx->Recv(0, "garbleInput2");
-    // buffer_data = r.data<const uint128_t>();
-    // for (int i = 0; i < circ_.niw[1]; i++) {
-    //   wires_[i + circ_.niw[0]] =
-    //       buffer_data[i] ^ (select_mask[bi_val[i]] & delta);
-          
-    // }
-    // std::cout << "recvInput2" << std::endl;
-
-    // onLineOT();
-
-    //输入位数有关
-    // lctx->Send(0, yacl::ByteContainerView(&input, sizeof(uint128_t)), "Input1");
+    
   }
   void recvTable() {
 
@@ -214,10 +194,7 @@ class EvaluatorSHA256 {
         yacl::ByteContainerView(wires_.data() + start, sizeof(uint128_t) * 256),
         "output");
     std::cout << "sendOutput" << std::endl;
-    // for(int i = start; i < index; i++){
-    //     cout << wires_[i]<<" ";
-    //   }
-    //   cout << endl;
+   
   }
   void onLineOT(){
     // vector<uint8_t> choices(96);

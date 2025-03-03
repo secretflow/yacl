@@ -35,7 +35,6 @@ using OtMsgPair = std::array<OtMsg, 2>;
 using OtChoices = dynamic_bitset<uint128_t>;
 }
 
-
 uint128_t all_one_uint128_t_ = ~static_cast<__uint128_t>(0);
 uint128_t select_mask_[2] = {0, all_one_uint128_t_};
 
@@ -44,8 +43,6 @@ inline uint128_t Aes128(uint128_t k, uint128_t m) {
                               k);
   return enc.Encrypt(m);
 }
-
-
 
 class GarblerSHA256 {
  public:
@@ -81,7 +78,6 @@ class GarblerSHA256 {
       const auto host = fmt::format("127.0.0.1:{}", 10086 + rank);
       ctx_desc.parties.push_back({id, host});
     }
-
     
     lctx = yacl::link::FactoryBrpc().CreateContext(ctx_desc,
                                                    0);  
@@ -117,9 +113,7 @@ class GarblerSHA256 {
 
     //输入位数有关
     message = crypto::FastRandBytes(crypto::RandLtN(32));
-    auto in_buf = io::BuiltinBFCircuit::PrepareSha256Input(message); //是不是直接可以当成ByteContainerView???先试试
-    // cout << "size" << in_buf.size() << endl;
-    // sha256_result = vector<uint8_t>(32);
+    auto in_buf = io::BuiltinBFCircuit::PrepareSha256Input(message); 
     auto sha256_result = crypto::Sha256Hash().Update(message).CumulativeHash();
     for(int i = 0; i < 32; i++){
       cout <<int(sha256_result[i]) << " ";
@@ -129,21 +123,6 @@ class GarblerSHA256 {
     dynamic_bitset<uint8_t> bi_val;
     bi_val.resize(circ_.nw);
     std::memcpy(bi_val.data(), in_buf.data(), in_buf.size());
-    for(int i = 0; i < 768; i++){
-      
-    wires_[i] = bi_val[i];
-    // cout << bi_val[i] << " ";
-    // cout << wires_[i] <<" ";
-    
-  }
-  // cout << endl;
-  // for(int i = 0; i < 768; i++){
-  //   cout << wires_[i] <<" ";
-  // }
-  // cout << endl;
-  // cout << endl;
-    // yacl::dynamic_bitset<uint128_t> bi_val;
-    // bi_val.append(input);  // 直接转换为二进制  输入线路在前64位
 
     // 混淆过程
     int num_of_input_wires = 0;
@@ -153,51 +132,17 @@ class GarblerSHA256 {
     
     random_uint128_t(gb_value.data(), num_of_input_wires);
 
-  
-    // 前64位 直接置换  garbler
-
     for(int i = 0; i < 768; i++){
       
-        wires_[i] = gb_value[i] ^ (select_mask_[bool(wires_[i])] & delta);
+        wires_[i] = gb_value[i] ^ (select_mask_[bi_val[i]] & delta);
       
     }
 
-    // for (int i = 0; i < circ_.niw[0]; i++) {
-    //   wires_[i] = gb_value[i] ^ (select_mask_[bi_val[i]] & delta);
-    // }
-
     lctx->Send(1,
                yacl::ByteContainerView(wires_.data(), sizeof(uint128_t) * num_ot),
                "garbleInput1");
 
     std::cout << "sendInput1" << std::endl;
-
-
-
-    //输送到wires
-    std::memcpy(gb_value.data(), in_buf.data(), in_buf.size());
-
-
-    lctx->Send(1,
-               yacl::ByteContainerView(wires_.data(), sizeof(uint128_t) * num_ot),
-               "garbleInput1");
-
-    std::cout << "sendInput1" << std::endl;
-
-    // lctx->Send(
-    //     1,
-    //     yacl::ByteContainerView(gb_value.data() + 64, sizeof(uint128_t) * 64),
-    //     "garbleInput2");
-    // std::cout << "sendInput2" << std::endl;
-
-    // onlineOT();
-
-    // yacl::Buffer r = lctx->Recv(1, "Input1");
-
-    // //输入位数有关
-    // const uint128_t* buffer_data = r.data<const uint128_t>();
-    // input_EV = *buffer_data;
-    
     
   }
 
@@ -294,10 +239,7 @@ class GarblerSHA256 {
 
     memcpy(wires_.data() + start, r.data(), sizeof(uint128_t) * 256);
     std::cout << "recvOutput" << std::endl;
-    // for(int i = start; i < index; i++){
-    //   cout << wires_[i]<<" ";
-    // }
-    // cout << endl;
+    
     const auto out_size = 32;
     std::vector<uint8_t> out(out_size);
 
@@ -318,18 +260,7 @@ class GarblerSHA256 {
       cout <<int(out[i]) << " ";
     }
     cout << endl;
-    // for(int i = 0; i < 32; i++){
-    //   cout <<int(sha256_result[i]) << " ";
-    // }
-    // cout << endl;
-
-    // decode
-
-    // 线路有关  输出位数
-    // std::vector<uint128_t> result(1);
-    // finalize(absl::MakeSpan(result));
-    // std::cout << "MPC结果：" << ReverseBytes(result[0])  << std::endl;
-    // std::cout << "明文结果：" << Aes128(ReverseBytes(input), ReverseBytes(input_EV)) << std::endl;  //待修改
+    
   }
 
 
