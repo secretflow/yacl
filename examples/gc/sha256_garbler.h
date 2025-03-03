@@ -46,19 +46,7 @@ inline uint128_t Aes128(uint128_t k, uint128_t m) {
 }
 
 
-template <typename T = uint128_t,
-          std::enable_if_t<std::is_integral_v<T>, int> = 0>
-inline T RandLtN(T n) {
-  // see: nist-sp800-90A, Appendix A.5.3
-  // efficiency: constant-round
-  auto required_size =
-      sizeof(T) + (YACL_MODULE_SECPARAM_S_UINT("rand") + 7) / 8;
-  auto rand_bytes = SecureRandBytes(required_size);
-  math::MPInt r;
-  r.FromMagBytes(rand_bytes, Endian::little);
-  math::MPInt::Mod(r, math::MPInt(n), &r);
-  return r.Get<T>();
-}
+
 class GarblerSHA256 {
  public:
   std::shared_ptr<yacl::link::Context> lctx;
@@ -71,72 +59,18 @@ class GarblerSHA256 {
   std::vector<uint128_t> gb_value;
   yacl::io::BFCircuit circ_;
   //根据电路改
-  uint128_t table[36663][2];
+  uint128_t table[135073][2];
 
   //输入数据类型需要修改
   uint128_t input;
   uint128_t input_EV;
-
+  vector<uint8_t> message;
     //num_ot根据输入改
-  const int num_ot = 128;
-  yacl::crypto::OtSendStore ot_send =  OtSendStore(num_ot, yacl::crypto::OtStoreType::Normal);
+  const int num_ot = 768;
+  yacl::crypto::OtSendStore ot_send =  yacl::crypto::OtSendStore(num_ot, yacl::crypto::OtStoreType::Normal);
 
 
-  constexpr std::array<uint8_t, 32> GetSha256InitialHashValues() {
-    return {0x19, 0xcd, 0xe0, 0x5b, 0xab, 0xd9, 0x83, 0x1f, 0x8c, 0x68, 0x05,
-            0x9b, 0x7f, 0x52, 0x0e, 0x51, 0x3a, 0xf5, 0x4f, 0xa5, 0x72, 0xf3,
-            0x6e, 0x3c, 0x85, 0xae, 0x67, 0xbb, 0x67, 0xe6, 0x09, 0x6a};
-  }
-  std::vector<uint8_t> PrepareSha256Input(
-    ByteContainerView input) {
-  constexpr size_t kFixPadSize = 1;                 // in bytes
-  constexpr size_t kMsgLenSize = sizeof(uint64_t);  // in bytes
-  constexpr size_t kMsgBlockSize = 64;              // in bytes
-  const auto kInitSha256Bytes = GetSha256InitialHashValues();
-  
-  uint64_t input_size = input.size();  // in bytes
-  uint64_t zero_padding_size =
-      (input_size + kFixPadSize + kMsgLenSize) % kMsgBlockSize == 0
-          ? 0
-          : kMsgBlockSize -
-                (input_size + kFixPadSize + kMsgLenSize) % kMsgBlockSize;
-  uint64_t message_size =
-      input_size + kFixPadSize + zero_padding_size + kMsgLenSize;
-  uint64_t result_size = message_size + kInitSha256Bytes.size();
-  
-  // TODO: support arbitrary large input
-  YACL_ENFORCE(message_size == kMsgBlockSize);
-  
-  // Declare the result byte-vector
-  size_t offset = 0;
-  std::vector<uint8_t> result(result_size);
-  
-  // the next 64 bits should be the byte length of input message
-  uint64_t input_bitnum = input_size * 8;  // in bits
-  std::memcpy(result.data() + offset, &input_bitnum, sizeof(input_bitnum));
-  offset += sizeof(uint64_t);
-  
-  // zero padding (result vector has zero initialization)
-  // ... should doing nothing ...
-  offset += zero_padding_size;
-  
-  // additional padding bit-'1' (as a mark)
-  result[offset] = 0x80;
-  offset += kFixPadSize;
-  
-  // original input message
-  auto input_reverse = std::vector<uint8_t>(input.begin(), input.end());
-  std::reverse(input_reverse.begin(), input_reverse.end());
-  std::memcpy(result.data() + offset, input_reverse.data(), input_size);
-  offset += input_size;
-  
-  // initial hash values
-  std::memcpy(result.data() + offset, kInitSha256Bytes.data(),
-              kInitSha256Bytes.size());
-  // offset += kInitSha256Bytes.size();
-  
-  return result;
-  }
+
   void setup() {
     // 通信环境初始化
     size_t world_size = 2;
@@ -182,43 +116,81 @@ class GarblerSHA256 {
     wires_.resize(circ_.nw);
 
     //输入位数有关
-    auto message = crypto::FastRandBytes(crypto::RandLtN(32));
-  auto in_buf = io::BuiltinBFCircuit::PrepareSha256Input(message);
-
-    // input = yacl::crypto::FastRandU128();
-    // std::cout << "input of garbler:" << input << std::endl;
-
-    // //输入位数有关
+    message = crypto::FastRandBytes(crypto::RandLtN(32));
+    auto in_buf = io::BuiltinBFCircuit::PrepareSha256Input(message); //是不是直接可以当成ByteContainerView???先试试
+    // cout << "size" << in_buf.size() << endl;
+    // sha256_result = vector<uint8_t>(32);
+    auto sha256_result = crypto::Sha256Hash().Update(message).CumulativeHash();
+    for(int i = 0; i < 32; i++){
+      cout <<int(sha256_result[i]) << " ";
+    }
+    cout << endl;
+    
+    dynamic_bitset<uint8_t> bi_val;
+    bi_val.resize(circ_.nw);
+    std::memcpy(bi_val.data(), in_buf.data(), in_buf.size());
+    for(int i = 0; i < 768; i++){
+      
+    wires_[i] = bi_val[i];
+    // cout << bi_val[i] << " ";
+    // cout << wires_[i] <<" ";
+    
+  }
+  // cout << endl;
+  // for(int i = 0; i < 768; i++){
+  //   cout << wires_[i] <<" ";
+  // }
+  // cout << endl;
+  // cout << endl;
     // yacl::dynamic_bitset<uint128_t> bi_val;
     // bi_val.append(input);  // 直接转换为二进制  输入线路在前64位
 
-    // // 混淆过程
-    // int num_of_input_wires = 0;
-    // for (size_t i = 0; i < circ_.niv; ++i) {
-    //   num_of_input_wires += circ_.niw[i];
-    // }
+    // 混淆过程
+    int num_of_input_wires = 0;
+    for (size_t i = 0; i < circ_.niv; ++i) {
+      num_of_input_wires += circ_.niw[i];
+    }
     
-    // random_uint128_t(gb_value.data(), num_of_input_wires);
+    random_uint128_t(gb_value.data(), num_of_input_wires);
 
   
-    // // 前64位 直接置换  garbler
+    // 前64位 直接置换  garbler
+
+    for(int i = 0; i < 768; i++){
+      
+        wires_[i] = gb_value[i] ^ (select_mask_[bool(wires_[i])] & delta);
+      
+    }
+
     // for (int i = 0; i < circ_.niw[0]; i++) {
     //   wires_[i] = gb_value[i] ^ (select_mask_[bi_val[i]] & delta);
     // }
 
-    // lctx->Send(1,
-    //            yacl::ByteContainerView(wires_.data(), sizeof(uint128_t) * num_ot),
-    //            "garbleInput1");
+    lctx->Send(1,
+               yacl::ByteContainerView(wires_.data(), sizeof(uint128_t) * num_ot),
+               "garbleInput1");
 
-    // std::cout << "sendInput1" << std::endl;
+    std::cout << "sendInput1" << std::endl;
 
-    // // lctx->Send(
-    // //     1,
-    // //     yacl::ByteContainerView(gb_value.data() + 64, sizeof(uint128_t) * 64),
-    // //     "garbleInput2");
-    // // std::cout << "sendInput2" << std::endl;
 
-    // // onlineOT();
+
+    //输送到wires
+    std::memcpy(gb_value.data(), in_buf.data(), in_buf.size());
+
+
+    lctx->Send(1,
+               yacl::ByteContainerView(wires_.data(), sizeof(uint128_t) * num_ot),
+               "garbleInput1");
+
+    std::cout << "sendInput1" << std::endl;
+
+    // lctx->Send(
+    //     1,
+    //     yacl::ByteContainerView(gb_value.data() + 64, sizeof(uint128_t) * 64),
+    //     "garbleInput2");
+    // std::cout << "sendInput2" << std::endl;
+
+    // onlineOT();
 
     // yacl::Buffer r = lctx->Recv(1, "Input1");
 
@@ -318,16 +290,44 @@ class GarblerSHA256 {
     int start = index - circ_.now[0];
 
     yacl::Buffer r = lctx->Recv(1, "output");
-    const uint128_t* buffer_data = r.data<const uint128_t>();
+    // vector<uint8_t> out(96);
 
-    memcpy(wires_.data() + start, buffer_data, sizeof(uint128_t) * num_ot);
+    memcpy(wires_.data() + start, r.data(), sizeof(uint128_t) * 256);
     std::cout << "recvOutput" << std::endl;
+    // for(int i = start; i < index; i++){
+    //   cout << wires_[i]<<" ";
+    // }
+    // cout << endl;
+    const auto out_size = 32;
+    std::vector<uint8_t> out(out_size);
+
+    for (size_t i = 0; i < out_size; ++i) {
+      dynamic_bitset<uint8_t> result(8);
+      for (size_t j = 0; j < 8; ++j) {
+        result[j] = getLSB(wires_[index - 8 + j]) ^ getLSB(gb_value[index - 8 + j]);
+      }
+      out[out_size - i - 1] = *(static_cast<uint8_t*>(result.data()));
+      index -= 8;
+    }
+    std::reverse(out.begin(), out.end());
+
+    auto sha256_result = crypto::Sha256Hash().Update(message).CumulativeHash();
+    
+    if(sha256_result.size() == out.size() && std::equal(out.begin(), out.end(), sha256_result.begin())) cout<<"YES!!!"<<endl;
+    for(int i = 0; i < 32; i++){
+      cout <<int(out[i]) << " ";
+    }
+    cout << endl;
+    // for(int i = 0; i < 32; i++){
+    //   cout <<int(sha256_result[i]) << " ";
+    // }
+    // cout << endl;
 
     // decode
 
     // 线路有关  输出位数
-    std::vector<uint128_t> result(1);
-    finalize(absl::MakeSpan(result));
+    // std::vector<uint128_t> result(1);
+    // finalize(absl::MakeSpan(result));
     // std::cout << "MPC结果：" << ReverseBytes(result[0])  << std::endl;
     // std::cout << "明文结果：" << Aes128(ReverseBytes(input), ReverseBytes(input_EV)) << std::endl;  //待修改
   }
