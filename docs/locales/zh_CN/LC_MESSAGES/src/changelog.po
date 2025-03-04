@@ -1,0 +1,231 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2022-2024 Ant Group Co., Ltd
+# This file is distributed under the same license as the YACL package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: YACL \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-03-04 00:46+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../../CHANGELOG.md:1
+msgid "Changelog"
+msgstr "更新日志"
+
+#: ../../../CHANGELOG.md:3
+msgid "All notable changes to this project will be documented in this file."
+msgstr "本项目的所有重要变更将记录在此文件中。"
+
+#: ../../../CHANGELOG.md:5
+msgid "**2024-05-15**"
+msgstr "**2024-05-15**"
+
+#: ../../../CHANGELOG.md:6
+msgid "[Tag] release/0.4.5b0"
+msgstr "[标签] release/0.4.5b0"
+
+#: ../../../CHANGELOG.md:7
+msgid ""
+"[Feature] Re-organize repo layout, add kernel folder for crypto protocols"
+" with links"
+msgstr "[功能] 重新组织仓库结构，添加用于加密协议的 kernel 文件夹并附带链接"
+
+#: ../../../CHANGELOG.md:8
+msgid "[Feature] Add ECC lib25519 implementation"
+msgstr "[功能] 添加 ECC lib25519 实现"
+
+#: ../../../CHANGELOG.md:9
+msgid "[Feature] Add ECC FourQ implementation"
+msgstr "[功能] 添加 ECC FourQ 实现"
+
+#: ../../../CHANGELOG.md:10
+msgid "[Feature] Unify f2k implementaion"
+msgstr "[功能] 统一 f2k 实现"
+
+#: ../../../CHANGELOG.md:11
+msgid "[Bugifx] Fix RandBits implementation"
+msgstr "[修复] 修复 RandBits 实现"
+
+#: ../../../CHANGELOG.md:13
+msgid "**2024-02-01**"
+msgstr "**2024-02-01**"
+
+#: ../../../CHANGELOG.md:14
+msgid "[Tag] release/0.4.3"
+msgstr "[标签] release/0.4.3"
+
+#: ../../../CHANGELOG.md:15
+msgid "[Feature] Add Silent Vole (malicious version)"
+msgstr "[功能] 添加 Silent Vole（恶意版本）"
+
+#: ../../../CHANGELOG.md:16 ../../../CHANGELOG.md:23
+msgid "[Bugifx] Multiple bugfixes"
+msgstr "[修复] 多个错误修复"
+
+#: ../../../CHANGELOG.md:18
+msgid "**2024-01-09**"
+msgstr "**2024-01-09**"
+
+#: ../../../CHANGELOG.md:19
+msgid "[YACL] v0.4.2"
+msgstr "[YACL] v0.4.2"
+
+#: ../../../CHANGELOG.md:20
+msgid "[Dependency] Bump: Openssl 3.0.12 (experimental)"
+msgstr "[依赖] 升级：Openssl 3.0.12（实验性）"
+
+#: ../../../CHANGELOG.md:21
+msgid "[Feature] Add Softspoken OTe (malicious version)"
+msgstr "[功能] 添加 Softspoken OTe（恶意版本）"
+
+#: ../../../CHANGELOG.md:22
+msgid ""
+"[API] Refactor entropy source, drbg, and rand; Refine traditional crypto "
+"APIs"
+msgstr "[API] 重构熵源、drbg 和随机数生成器；优化传统加密 APIs"
+
+#: ../../../CHANGELOG.md:25
+msgid "**2023-11-16**"
+msgstr "**2023-11-16**"
+
+#: ../../../CHANGELOG.md:26
+msgid "[YACL] v0.4.1.1"
+msgstr "[YACL] v0.4.1.1"
+
+#: ../../../CHANGELOG.md:27
+msgid ""
+"[Feature] Init Global Security Parameters for Yacl [WIP: apply security "
+"parameter to all algorithms]"
+msgstr "[功能] 初始化 Yacl 的全局安全参数 [进行中：将安全参数应用于所有算法]"
+
+#: ../../../CHANGELOG.md:28
+msgid "[Feature] Add Softspoken OTe (semi-honest version)"
+msgstr "[功能] 添加 Softspoken OTe（半诚实版本）"
+
+#: ../../../CHANGELOG.md:29
+msgid "[Feature] Add Silent Vole [WIP: optimize MpVole and DualEncode]"
+msgstr "[功能] 添加 Silent Vole [进行中：优化 MpVole 和 DualEncode]"
+
+#: ../../../CHANGELOG.md:31
+msgid "**2023-10-20**"
+msgstr "**2023-10-20**"
+
+#: ../../../CHANGELOG.md:32
+msgid "[YACL] v0.4.1"
+msgstr "[YACL] v0.4.1"
+
+#: ../../../CHANGELOG.md:33
+msgid "[Feature] Add Sigma-type ZKP Protocols (An unified implementation)"
+msgstr "[功能] 添加 Sigma 类型 ZKP 协议（统一实现）"
+
+#: ../../../CHANGELOG.md:34
+msgid "[Feature] Add ECC Pairing SPI and support to libmcl(ecc, pairing)"
+msgstr "[功能] 添加 ECC 配对 SPI 并支持 libmcl（ecc，pairing）"
+
+#: ../../../CHANGELOG.md:35
+msgid "[Feature] Add Multiplication for GF(2^64) and GF(2^128)"
+msgstr "[功能] 添加 GF(2^64) 和 GF(2^128) 的乘法运算"
+
+#: ../../../CHANGELOG.md:36
+msgid "[Bugfix] fix KOS OTe security flaws"
+msgstr "[修复] 修复 KOS OTe 的安全漏洞"
+
+#: ../../../CHANGELOG.md:37
+msgid "[Feature] Add AVX2 Matrix Transpose"
+msgstr "[功能] 添加 AVX2 矩阵转置"
+
+#: ../../../CHANGELOG.md:39
+msgid "**2023-05-25**"
+msgstr "**2023-05-25**"
+
+#: ../../../CHANGELOG.md:40
+msgid "[YACL] v0.3.3"
+msgstr "[YACL] v0.3.3"
+
+#: ../../../CHANGELOG.md:41
+msgid "[Feature] Add Ferret OTe"
+msgstr "[功能] 添加 Ferret OTe"
+
+#: ../../../CHANGELOG.md:42
+msgid "[Feature] Add Gywz OTe (Correlated GGM Tree)"
+msgstr "[功能] 添加 Gywz OTe（相关 GGM 树）"
+
+#: ../../../CHANGELOG.md:43
+msgid "[Feature] Add KOS OTe (warning: KOS still has potential security flaws)"
+msgstr "[功能] 添加 KOS OTe（警告：KOS 仍存在潜在安全漏洞）"
+
+#: ../../../CHANGELOG.md:45
+msgid "**2023-02-02**"
+msgstr "**2023-02-02**"
+
+#: ../../../CHANGELOG.md:46
+msgid "[YACL] v0.3.1"
+msgstr "[YACL] v0.3.1"
+
+#: ../../../CHANGELOG.md:47
+msgid "[Feature] Add `dynamic_bitset` for manipulating bit vectors"
+msgstr "[功能] 添加 `dynamic_bitset` 用于操作位向量"
+
+#: ../../../CHANGELOG.md:48
+msgid "[API] RO now can accept multiple inputs"
+msgstr "[API] RO 现在可以接受多个输入"
+
+#: ../../../CHANGELOG.md:49
+msgid "[API] Add iknp cot api, improve iknp performance"
+msgstr "[API] 添加 iknp cot api，优化 iknp 性能"
+
+#: ../../../CHANGELOG.md:50
+msgid "[Bugfix] Fix Several m1 related bugs"
+msgstr "[修复] 修复多个与 m1 相关的错误"
+
+#: ../../../CHANGELOG.md:52
+msgid "**2022-12-08**"
+msgstr "**2022-12-08**"
+
+#: ../../../CHANGELOG.md:53
+msgid "[YACL] v0.3.0"
+msgstr "[YACL] v0.3.0"
+
+#: ../../../CHANGELOG.md:54
+msgid "[Feature] Add random permutation and correlation-robust hash function"
+msgstr "[功能] 添加随机排列和相关鲁棒哈希函数"
+
+#: ../../../CHANGELOG.md:55
+msgid "[Feature] Add OT/OTe benchmark"
+msgstr "[功能] 添加 OT/OTe 基准测试"
+
+#: ../../../CHANGELOG.md:56
+msgid "[API] Fix randomness implementation"
+msgstr "[API] 修复随机数实现"
+
+#: ../../../CHANGELOG.md:57 ../../../CHANGELOG.md:63
+msgid "[API] Re-organize repo layout"
+msgstr "[API] 重新组织仓库结构"
+
+#: ../../../CHANGELOG.md:58
+msgid "[Bugfix] Fix Random Oralce Usage"
+msgstr "[修复] 修复随机预言机使用问题"
+
+#: ../../../CHANGELOG.md:60
+msgid "**2022-12-01**"
+msgstr "**2022-12-01**"
+
+#: ../../../CHANGELOG.md:61
+msgid "[YACL] v0.2.0"
+msgstr "[YACL] v0.2.0"
+
+#: ../../../CHANGELOG.md:62
+msgid "[API] Rename YASL to YACL"
+msgstr "[API] 将 YASL 重命名为 YACL"
+

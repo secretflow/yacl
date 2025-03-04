@@ -45,7 +45,7 @@ author = 'YACL authors'
 # Usually you set "language" from the command line for these cases.
 language = 'zh_CN'
 
-locale_dirs = ['locale/']
+locale_dirs = ['locales/']
 gettext_compact = False  # optional.
 gettext_uuid = False  # optional.
 # gettext_location = False
