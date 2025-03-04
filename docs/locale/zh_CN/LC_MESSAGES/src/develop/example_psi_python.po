@@ -1,0 +1,50 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2022-2024 Ant Group Co., Ltd
+# This file is distributed under the same license as the YACL package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: YACL \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-02-26 10:06+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../src/develop/example_psi_python.rst:2
+msgid "Example: Bind PSI to Python"
+msgstr ""
+
+#: ../../src/develop/example_psi_python.rst:4
+msgid ""
+"This is an example of how to use Yacl's ECC api and link to build up a "
+"`PSI (Private Set Intersection) "
+"<https://en.wikipedia.org/wiki/Private_set_intersection>`_ protocol, and "
+"provide a python language binding using `pybind11 "
+"<https://github.com/pybind/pybind11>`_. The code of this example is "
+"avaliable on `Github "
+"<https://github.com/secretflow/yacl/tree/main/examples/psi/python>`_."
+msgstr ""
+
+#: ../../src/develop/example_psi_python.rst:7
+msgid ""
+"This example is merely designed for demonstration only, please do not use"
+" this example in production."
+msgstr ""
+
+#: ../../src/develop/example_psi_python.rst:10
+msgid "Step 1: Implement"
+msgstr ""
+
+#: ../../src/develop/example_psi_python.rst:22
+msgid "Step 2: Build and Test"
+msgstr ""
+
