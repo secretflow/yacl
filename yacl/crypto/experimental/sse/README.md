@@ -23,8 +23,8 @@ This paper proposes a highly scalable searchable symmetric encryption (SSE) sche
 
 ## Test
 
-1. To test tset:`bazel test //yacl/examples/sse/tset_test`
-2. To test sse:`bazel test //yacl/examples/sse/sse_test`
+1. To test tset:`bazel test yacl/crypto/experimental/sse/tset_test`
+2. To test sse:`bazel test yacl/crypto/experimental/sse/sse_test`
 
 ## Data Set
 
