@@ -106,7 +106,8 @@ std::string TSet::TSetSetup(
 
         yacl::crypto::Sha256Hash sha256;
         std::vector<uint8_t> K;
-        size_t num_sha256 = (beta_si.size() + SHA256_BLOCK_ALIGN) / SHA256_BLOCK_SIZE;
+        size_t num_sha256 =
+            (beta_si.size() + SHA256_BLOCK_ALIGN) / SHA256_BLOCK_SIZE;
         for (size_t n = 0; n < num_sha256; ++n) {
           sha256.Reset();
           std::vector<uint8_t> hash_part =
@@ -171,7 +172,8 @@ std::vector<std::pair<std::vector<uint8_t>, std::string>> TSet::TSetRetrieve(
     int j = 0;
     for (; j < s_; ++j) {
       if (B[j].label == L) {
-        size_t num_sha256 = (B[j].value.size() + SHA256_BLOCK_ALIGN) / SHA256_BLOCK_SIZE;
+        size_t num_sha256 =
+            (B[j].value.size() + SHA256_BLOCK_ALIGN) / SHA256_BLOCK_SIZE;
         for (size_t n = 0; n < num_sha256; ++n) {
           sha256.Reset();
           std::vector<uint8_t> hash_part =
@@ -247,11 +249,13 @@ std::vector<uint8_t> TSet::Pack(
 std::pair<std::vector<uint8_t>, std::string> TSet::UnPack(
     const std::vector<uint8_t>& packed_data) {
   // 1. extract the first part (9 bytes)
-  std::vector<uint8_t> first(packed_data.begin(), packed_data.begin() + FIRST_PART_SIZE);
+  std::vector<uint8_t> first(packed_data.begin(),
+                             packed_data.begin() + FIRST_PART_SIZE);
 
   // 2. extract the length of the second part (4 bytes)
   uint32_t second_length = 0;
-  std::memcpy(&second_length, packed_data.data() + FIRST_PART_SIZE, LENGTH_SIZE);
+  std::memcpy(&second_length, packed_data.data() + FIRST_PART_SIZE,
+              LENGTH_SIZE);
 
   // 3. extract the second part (a string)
   std::string second(packed_data.begin() + SECOND_PART_OFFSET,

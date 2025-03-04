@@ -28,8 +28,8 @@
 
 #include "yacl/crypto/block_cipher/symmetric_crypto.h"
 #include "yacl/crypto/ecc/openssl/openssl_group.h"
-#include "yacl/crypto/rand/rand.h"
 #include "yacl/crypto/experimental/sse/tset.h"
+#include "yacl/crypto/rand/rand.h"
 #include "yacl/io/rw/csv_reader.h"
 #include "yacl/io/stream/file_io.h"
 #include "yacl/math/mpint/mp_int.h"

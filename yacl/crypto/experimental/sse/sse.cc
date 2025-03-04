@@ -249,8 +249,9 @@ bool Sse::IsInXSet(const std::unique_ptr<yacl::crypto::EcGroup>& ec_group,
 }
 
 void Sse::Initialize() {
-  std::string filename = fmt::format("{}/yacl/crypto/experimental/sse/data/test_data.csv",
-                                     std::filesystem::current_path().string());
+  std::string filename =
+      fmt::format("{}/yacl/crypto/experimental/sse/data/test_data.csv",
+                  std::filesystem::current_path().string());
   auto [keywords, keyValuePairs, reverseIndex] = ProcessAndSaveCSV(filename);
   keywords_ = keywords;
   keyValuePairs_ = keyValuePairs;
