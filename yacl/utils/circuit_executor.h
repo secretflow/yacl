@@ -68,7 +68,9 @@
 
 #pragma once
 
+#include <cstdint>
 #include <memory>
+#include <vector>
 
 #include "yacl/base/dynamic_bitset.h"
 #include "yacl/io/circuit/bristol_fashion.h"
@@ -77,27 +79,43 @@ namespace yacl {
 
 // plaintext protocol that executes everything without link
 
-template <typename T = uint64_t>
 class PlainExecutor {
  public:
+  using BlockType = uint8_t;
+
   // Constructor
   explicit PlainExecutor() = default;
 
   // Load circuit from file (local operation)
   void LoadCircuitFile(const std::string &path);
 
-  // Setup the input wire (local operation)
+  ///
+  /// Load inputs functions: Setup the input wire (local operation)
+  ///
+  // general setup function, just copies the memory to internal wires_
+  void SetupInputs(ByteContainerView bytes);
+
+  // fast path for circuit with "small" bits (e.g. <= 128)
+  template <typename T = uint64_t>
   void SetupInputs(absl::Span<T> inputs);
 
   // Execute the circuit
   void Exec();
 
-  // Finalize and get the result
+  ///
+  /// Get results functions: Finalize and get the result
+  ///
+  //
+  // general finalize, get result from wires_
+  std::vector<uint8_t> Finalize();
+
+  // fast path for circuit with "small" bits (e.g. <= 128)
+  template <typename T = uint64_t>
   void Finalize(absl::Span<T> outputs);
 
  private:
   // NOTE: please make sure you use the correct order of wires
-  dynamic_bitset<T> wires_;              // shares
+  dynamic_bitset<BlockType> wires_;      // shares
   std::shared_ptr<io::BFCircuit> circ_;  // bristol fashion circuit
 };
 

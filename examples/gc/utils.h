@@ -1,7 +1,7 @@
 #include <bits/stdc++.h>
 #include <emmintrin.h>
 #include <openssl/sha.h>
-
+#include "yacl/math/mpint/mp_int.h"
 #include <cstdint>
 #include <cstring>
 #include <iostream>
@@ -30,3 +30,4 @@ inline void int_to_bool(bool* data, T input, int len) {
 
 // get the Least Significant Bit of uint128_t
 inline bool getLSB(const uint128_t& x) { return (x & 1) == 1; }
+

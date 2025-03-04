@@ -49,7 +49,7 @@ yacl_cc_library(
     hdrs = ["mcl_util.h"],
     deps = [
         "//yacl/math/mpint",
-        "@com_github_herumi_mcl//:mcl",
+        "@mcl",
     ],
 )
 

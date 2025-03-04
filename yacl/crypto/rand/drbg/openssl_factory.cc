@@ -20,7 +20,6 @@
 #include <vector>
 
 #include "yacl/base/exception.h"
-#include "yacl/crypto/ossl-provider/helper.h"
 #include "yacl/secparam.h"
 
 namespace yacl::crypto {
@@ -65,8 +64,10 @@ OpensslDrbg::OpensslDrbg(std::string type,
 
   // load openssl provider
   auto libctx = openssl::UniqueLib(OSSL_LIB_CTX_new());
-  auto prov = openssl::UniqueProv(
-      OSSL_PROVIDER_load(libctx.get(), GetProviderPath().c_str()));
+  // NOTE: set ENV "OPENSSL_MODULES" to the directory where "libprov_shared.so"
+  // is located.
+  auto prov =
+      openssl::UniqueProv(OSSL_PROVIDER_load(libctx.get(), "libprov_shared"));
 
   if (prov != nullptr) {
     // fetch provider's entropy_source algorithm
@@ -80,7 +81,7 @@ OpensslDrbg::OpensslDrbg(std::string type,
     // instantiate the es_ctx
     OSSL_RET_1(EVP_RAND_instantiate(es_ctx.get(), 128, 0, nullptr, 0, nullptr));
   } else {
-    SPDLOG_WARN(
+    SPDLOG_DEBUG(
         "Yacl has been configured to use Yacl's entropy source, but unable "
         "to find one. Fallback to use openssl's default entropy srouce");
   }
@@ -127,4 +128,7 @@ void OpensslDrbg::ReSeed() {
                                  /* prediction resistance flag */ 1, nullptr,
                                  0) > 0);
 }
+
+REGISTER_DRBG_LIBRARY("OpenSSL", 100, OpensslDrbg::Check, OpensslDrbg::Create);
+
 }  // namespace yacl::crypto

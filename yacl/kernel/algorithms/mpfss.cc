@@ -23,8 +23,8 @@
 #include "yacl/crypto/tools/crhash.h"
 #include "yacl/kernel/algorithms/gywz_ote.h"
 #include "yacl/kernel/algorithms/sgrr_ote.h"
-#include "yacl/math/f2k/f2k.h"
 #include "yacl/math/gadget.h"
+#include "yacl/math/galois_field/gf_intrinsic.h"
 
 namespace yacl::crypto {
 

@@ -14,13 +14,13 @@
 
 #pragma once
 
-#include "examples/zkp/sigma_config.h"
-#include "examples/zkp/sigma_owh.h"
+#include "zkp/sigma_config.h"
+#include "zkp/sigma_owh.h"
 
 namespace examples::zkp {
 
 using namespace yacl::crypto;
-using yacl::math::MPInt;
+using namespace yacl::math;
 
 // We abide an unifying view to implment the common Sigma-type zero-knowledge
 // proof (ZKP) schemes, in which we view the ZKP schemes as proof of knowledge

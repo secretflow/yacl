@@ -37,7 +37,7 @@ int rdseed64_step(uint64_t *out) {
 
 }  // namespace
 
-Buffer RdSeedEntropySource::GetEntropy(uint32_t bits_of_entropy) noexcept {
+Buffer RdSeedEntropySource::GetEntropy(uint32_t bits_of_entropy) {
   // required bits_of_entropy should > 0
   if (bits_of_entropy == 0) {
     return {};
@@ -54,7 +54,7 @@ Buffer RdSeedEntropySource::GetEntropy(uint32_t bits_of_entropy) noexcept {
     // output bitstring length (in bytes) would be (ceil(n/0.6) + 7 / 8)
 
     uint32_t num_bytes = ((bits_of_entropy * 5 + 2) / 3 + 7) / 8;
-    Buffer out(num_bytes);
+    std::vector<uint8_t> out(num_bytes);
 
     // Batched Random Entropy Generation
     size_t batch_size = sizeof(uint64_t);
@@ -77,11 +77,10 @@ Buffer RdSeedEntropySource::GetEntropy(uint32_t bits_of_entropy) noexcept {
         // [retry forever ... ] Maybe add loops / pauses in the future
       }
 
-      std::memcpy(static_cast<char *>(out.data()) + current_pos, &temp_rand,
-                  current_batch_size);
+      std::memcpy(out.data() + current_pos, &temp_rand, current_batch_size);
     }
 
-    return out;
+    return {out.data(), out.size()};
   } else if (std::strcmp(cpu_features::GetX86Info().vendor,
                          CPU_FEATURES_VENDOR_AUTHENTIC_AMD) == 0) {
     // from amd's report, section 7
@@ -91,7 +90,7 @@ Buffer RdSeedEntropySource::GetEntropy(uint32_t bits_of_entropy) noexcept {
     // The assessed entropy from the noise source is approx. min(Hr, Hc, HI) =
     // 0.3 bits per 128-bit rdseed output.
     uint32_t num_bytes = ((bits_of_entropy * 10 + 2) / 3 + 7) / 8;
-    Buffer out(num_bytes);
+    std::vector<uint8_t> out(num_bytes);
 
     // Batched Random Entropy Generation
     size_t batch_size = sizeof(uint64_t);
@@ -114,11 +113,10 @@ Buffer RdSeedEntropySource::GetEntropy(uint32_t bits_of_entropy) noexcept {
         // [retry forever ... ] Maybe add loops / pauses in the future
       }
 
-      std::memcpy(static_cast<char *>(out.data()) + current_pos, &temp_rand,
-                  current_batch_size);
+      std::memcpy(out.data() + current_pos, &temp_rand, current_batch_size);
     }
 
-    return out;
+    return {out.data(), out.size()};
   } else {
     SPDLOG_WARN(
         "Unconfigured CPU verndors, continue gracefully without generating "

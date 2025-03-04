@@ -19,7 +19,6 @@
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/dynamic_bitset.h"
-#include "yacl/crypto/ossl-provider/helper.h"
 #include "yacl/crypto/rand/entropy_source/entropy_source.h"
 #include "yacl/math/gadget.h"
 
@@ -67,6 +66,13 @@ void FillRand(char *buf, size_t len, bool fast_mode) {
 // ---------------------
 // Other Implementations
 // ---------------------
+//
+uint32_t RandU32(bool fast_mode) {
+  uint32_t rand32 = 0;
+  FillRand(reinterpret_cast<char *>(&rand32), sizeof(uint32_t), fast_mode);
+  return rand32;
+}
+
 uint64_t RandU64(bool fast_mode) {
   uint64_t rand64 = 0;
   FillRand(reinterpret_cast<char *>(&rand64), sizeof(uint64_t), fast_mode);
@@ -111,7 +117,7 @@ std::vector<uint8_t> SecureRandBytes(uint64_t len) {
   return RandBytes(len, false);
 }
 
-#define IMPL_RANDBIT_DYNAMIC_BIT_TYPE(T)                                      \
+#define SPECIFY_RANDBIT_TEMPLATE(T)                                           \
   template <>                                                                 \
   dynamic_bitset<T> RandBits<dynamic_bitset<T>>(uint64_t len,                 \
                                                 bool fast_mode) {             \
@@ -133,9 +139,11 @@ std::vector<uint8_t> SecureRandBytes(uint64_t len) {
     return out;                                                               \
   }
 
-IMPL_RANDBIT_DYNAMIC_BIT_TYPE(uint128_t);
-IMPL_RANDBIT_DYNAMIC_BIT_TYPE(uint64_t);
-IMPL_RANDBIT_DYNAMIC_BIT_TYPE(uint32_t);
-IMPL_RANDBIT_DYNAMIC_BIT_TYPE(uint16_t);
+SPECIFY_RANDBIT_TEMPLATE(uint128_t);
+SPECIFY_RANDBIT_TEMPLATE(uint64_t);
+SPECIFY_RANDBIT_TEMPLATE(uint32_t);
+SPECIFY_RANDBIT_TEMPLATE(uint16_t);
+
+#undef SPECIFY_RANDBIT_TEMPLATE
 
 }  // namespace yacl::crypto

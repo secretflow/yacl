@@ -23,7 +23,7 @@
 #ifdef __x86_64
 #include <immintrin.h>
 
-#include "cpu_features/cpuinfo_x86.h"
+#include "cpuinfo_x86.h"
 
 namespace yacl::crypto {
 
@@ -65,9 +65,9 @@ class RdSeedEntropySource : public EntropySource {
             absl::AsciiStrToLower(type) == "auto");
   }
 
-  Buffer GetEntropy(uint32_t bits_of_entropy) noexcept override;
+  Buffer GetEntropy(uint32_t bits_of_entropy) override;
 
-  std::string Name() override { return "Rdseed entropy source"; }
+  std::string Name() override { return "rdseed entropy source"; }
 };
 
 }  // namespace yacl::crypto

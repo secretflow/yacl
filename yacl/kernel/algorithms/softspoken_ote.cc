@@ -25,7 +25,7 @@
 #include "yacl/base/exception.h"
 #include "yacl/crypto/tools/common.h"
 #include "yacl/kernel/type/ot_store_utils.h"
-#include "yacl/math/f2k/f2k.h"
+#include "yacl/math/galois_field/gf_intrinsic.h"
 #include "yacl/utils/matrix_utils.h"
 #include "yacl/utils/serialize.h"
 
@@ -727,7 +727,7 @@ void SoftspokenOtExtSender::Send(
     CheckMsg<uint128_t> check_msgs;
     for (size_t i = 0; i < all_batch_num; ++i) {
       for (size_t k = 0; k < kKappa; ++k) {
-        check_msgs.t[k] ^= ClMul64(
+        check_msgs.t[k] ^= math::Gf64ClMul(
             absl::MakeSpan(rand_samples.data() + i * 2, 2),
             absl::MakeSpan(reinterpret_cast<uint64_t*>(allV[i].data() + k), 2));
       }
@@ -736,7 +736,7 @@ void SoftspokenOtExtSender::Send(
     CheckMsg msgs;
     std::array<uint64_t, kKappa> check_vals;
     for (size_t k = 0; k < kKappa; ++k) {
-      check_vals[k] = Reduce64(check_msgs.t[k]);
+      check_vals[k] = math::Gf64Reduce(check_msgs.t[k]);
     }
 
     msgs.Unpack(ctx->Recv(ctx->NextRank(), fmt::format("MAL-SS-CHECK-FINAL")));
@@ -850,7 +850,7 @@ void SoftspokenOtExtSender::Send(const std::shared_ptr<link::Context>& ctx,
     CheckMsg<uint128_t> check_msgs;
     for (size_t i = 0; i < all_batch_num; ++i) {
       for (size_t k = 0; k < kKappa; ++k) {
-        check_msgs.t[k] ^= ClMul64(
+        check_msgs.t[k] ^= math::Gf64ClMul(
             absl::MakeSpan(rand_samples.data() + i * 2, 2),
             absl::MakeSpan(reinterpret_cast<uint64_t*>(allV[i].data() + k), 2));
       }
@@ -859,7 +859,7 @@ void SoftspokenOtExtSender::Send(const std::shared_ptr<link::Context>& ctx,
     CheckMsg msgs;
     std::array<uint64_t, kKappa> check_vals;
     for (size_t k = 0; k < kKappa; ++k) {
-      check_vals[k] = Reduce64(check_msgs.t[k]);
+      check_vals[k] = math::Gf64Reduce(check_msgs.t[k]);
     }
 
     msgs.Unpack(ctx->Recv(ctx->NextRank(), fmt::format("MAL-SS-CHECK-FINAL")));
@@ -965,20 +965,20 @@ void SoftspokenOtExtReceiver::Recv(const std::shared_ptr<link::Context>& ctx,
     CheckMsg<uint128_t> check_msgs;
     auto choice_span = absl::MakeSpan(
         reinterpret_cast<uint64_t*>(choice_ext.data()), all_batch_num * 2);
-    check_msgs.x ^= ClMul64(absl::MakeSpan(rand_samples), choice_span);
+    check_msgs.x ^= math::Gf64ClMul(absl::MakeSpan(rand_samples), choice_span);
 
     for (size_t i = 0; i < all_batch_num; ++i) {
       for (size_t k = 0; k < kKappa; ++k) {
-        check_msgs.t[k] ^= ClMul64(
+        check_msgs.t[k] ^= math::Gf64ClMul(
             absl::MakeSpan(rand_samples.data() + i * 2, 2),
             absl::MakeSpan(reinterpret_cast<uint64_t*>(allW[i].data() + k), 2));
       }
     }
 
     CheckMsg msgs;
-    msgs.x = Reduce64(check_msgs.x);
+    msgs.x = math::Gf64Reduce(check_msgs.x);
     for (size_t k = 0; k < kKappa; ++k) {
-      msgs.t[k] = Reduce64(check_msgs.t[k]);
+      msgs.t[k] = math::Gf64Reduce(check_msgs.t[k]);
     }
     auto buf = msgs.Pack();
     ctx->SendAsync(ctx->NextRank(), buf, fmt::format("MAL-SS-CHECK-FINAL"));
@@ -1087,20 +1087,20 @@ void SoftspokenOtExtReceiver::Recv(const std::shared_ptr<link::Context>& ctx,
     CheckMsg<uint128_t> check_msgs;
     auto choice_span = absl::MakeSpan(
         reinterpret_cast<uint64_t*>(choice_ext.data()), all_batch_num * 2);
-    check_msgs.x ^= ClMul64(absl::MakeSpan(rand_samples), choice_span);
+    check_msgs.x ^= math::Gf64ClMul(absl::MakeSpan(rand_samples), choice_span);
 
     for (size_t i = 0; i < all_batch_num; ++i) {
       for (size_t k = 0; k < kKappa; ++k) {
-        check_msgs.t[k] ^= ClMul64(
+        check_msgs.t[k] ^= math::Gf64ClMul(
             absl::MakeSpan(rand_samples.data() + i * 2, 2),
             absl::MakeSpan(reinterpret_cast<uint64_t*>(allW[i].data() + k), 2));
       }
     }
 
     CheckMsg msgs;
-    msgs.x = Reduce64(check_msgs.x);
+    msgs.x = math::Gf64Reduce(check_msgs.x);
     for (size_t k = 0; k < kKappa; ++k) {
-      msgs.t[k] = Reduce64(check_msgs.t[k]);
+      msgs.t[k] = math::Gf64Reduce(check_msgs.t[k]);
     }
     auto buf = msgs.Pack();
     ctx->SendAsync(ctx->NextRank(), buf, fmt::format("MAL-SS-CHECK-FINAL"));

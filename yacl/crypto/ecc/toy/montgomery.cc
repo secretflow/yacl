@@ -74,6 +74,7 @@ EcPoint ToyXGroup::Mul(const EcPoint &point, const MPInt &k) const {
   auto z_3 = x_2;
   int8_t swap = 0;
 
+  YACL_ENFORCE(params_.p.BitCount() > 0);
   for (int t = params_.p.BitCount() - 1; t >= 0; --t) {
     int8_t k_t = scalar[t];
     swap ^= k_t;

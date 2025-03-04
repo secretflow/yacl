@@ -17,11 +17,22 @@ load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
 package(default_visibility = ["//visibility:public"])
 
 yacl_cc_library(
+    name = "ge2n",
+    srcs = ["ge2n.h"],
+    deps = [
+        "//yacl/base:exception",
+        "//yacl/base:int128",
+    ],
+)
+
+yacl_cc_library(
     name = "dpf",
     srcs = ["dpf.cc"],
     hdrs = ["dpf.h"],
     deps = [
+        ":ge2n",
         "//yacl/base:int128",
+        "//yacl/crypto/rand",
         "//yacl/crypto/tools:prg",
         "//yacl/link",
     ],
@@ -32,5 +43,46 @@ yacl_cc_test(
     srcs = ["dpf_test.cc"],
     deps = [
         ":dpf",
+    ],
+)
+
+yacl_cc_library(
+    name = "dcf",
+    srcs = ["dcf.cc"],
+    hdrs = ["dcf.h"],
+    deps = [
+        ":ge2n",
+        "//yacl/base:int128",
+        "//yacl/crypto/rand",
+        "//yacl/crypto/tools:prg",
+        "//yacl/link",
+    ],
+)
+
+yacl_cc_test(
+    name = "dcf_test",
+    srcs = ["dcf_test.cc"],
+    deps = [
+        ":dcf",
+    ],
+)
+
+yacl_cc_library(
+    name = "pprf",
+    srcs = ["pprf.cc"],
+    hdrs = ["pprf.h"],
+    deps = [
+        ":ge2n",
+        "//yacl/base:int128",
+        "//yacl/crypto/tools:prg",
+    ],
+)
+
+yacl_cc_test(
+    name = "pprf_test",
+    srcs = ["pprf_test.cc"],
+    deps = [
+        ":pprf",
+        "//yacl/crypto/rand",
     ],
 )

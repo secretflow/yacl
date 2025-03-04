@@ -308,4 +308,7 @@ Buffer Sm4Drbg::Generate(size_t len, ByteContainerView additional_input) {
 }
 
 }  // namespace internal
+
+REGISTER_DRBG_LIBRARY("NativeImpl", 100, NativeDrbg::Check, NativeDrbg::Create);
+
 }  // namespace yacl::crypto

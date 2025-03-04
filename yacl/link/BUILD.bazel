@@ -35,7 +35,7 @@ yacl_cc_library(
     }),
     deps = [
         "//yacl/base:exception",
-        "@com_google_absl//absl/strings",
+        "@abseil-cpp//absl/strings",
     ],
 )
 
@@ -93,6 +93,7 @@ yacl_cc_test(
         ":context",
         ":factory",
         ":link",
+        "//yacl/crypto:key_utils",
     ],
 )
 
@@ -127,7 +128,7 @@ yacl_cc_library(
         "//yacl/base:buffer",
         "//yacl/link:context",
         "//yacl/link:factory",
-        "@com_github_fmtlib_fmt//:fmtlib",
+        "@fmt",
     ],
 )
 

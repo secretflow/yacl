@@ -30,7 +30,7 @@ yacl_cc_library(
     deps = [
         "//yacl/crypto/ecc:spi",
         "//yacl/crypto/hash:ssl_hash",
-        "@com_github_microsoft_FourQlib//:FourQlib",
+        "@fourqlib//:FourQlib",
     ],
 )
 

@@ -31,7 +31,7 @@ yacl_cc_library(
         "//yacl/math/mpint",
         "//yacl/utils:parallel",
         "//yacl/utils/spi/sketch",
-        "@com_google_absl//absl/types:span",
+        "@abseil-cpp//absl/types:span",
     ],
 )
 
@@ -88,6 +88,9 @@ yacl_cc_library(
     ],
     hdrs = ["intel_factory.h"],
     copts = AES_COPT_FLAGS,
+    target_compatible_with = [
+        "@platforms//cpu:x86_64",
+    ],
     visibility = ["//yacl/math/galois_field:__pkg__"],  # grant visibility to main target
     deps = [
         ":spi",
@@ -95,7 +98,7 @@ yacl_cc_library(
         "//yacl/base:exception",
         "//yacl/base:int128",
         "//yacl/crypto/rand",
-        "@com_google_absl//absl/types:span",
+        "@abseil-cpp//absl/types:span",
     ],
     alwayslink = 1,
 )

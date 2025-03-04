@@ -13,7 +13,16 @@
 // limitations under the License.
 
 #include "yacl/utils/circuit_executor.h"
-// using namespace std;
+
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
+#include <numeric>
+
+#include "yacl/base/exception.h"
+#include "yacl/io/circuit/bristol_fashion.h"
+
 namespace yacl {
 
 namespace {
@@ -25,46 +34,34 @@ class PlaintextCore {
 };
 }  // namespace
 
-template <typename T>
-void PlainExecutor<T>::LoadCircuitFile(const std::string& path) {
+void PlainExecutor::LoadCircuitFile(const std::string& path) {
   io::CircuitReader reader(path);
   reader.ReadAll();
   circ_ = reader.StealCirc();
 }
 
-std::string dynamic_bitset_to_string(const dynamic_bitset<>& bits) {
-  std::string str(bits.size(), '0');  // 创建一个与位集大小相同的字符串
-  for (size_t i = 0; i < bits.size(); ++i) {
-    if (bits[i]) {
-      str[bits.size() - 1 - i] = '1';  // 反向填充字符串
-    }
-  }
-  return str;
-}
-
-template <typename T>
-void PlainExecutor<T>::SetupInputs(
-    absl::Span<T> inputs) {  // Span方便指针的使用
+void PlainExecutor::SetupInputs(ByteContainerView bytes) {
+  YACL_ENFORCE(std::accumulate(circ_->niw.cbegin(), circ_->niw.cend(),
+                               static_cast<io::BFCircuit::GateWireType>(0)) ==
+                   bytes.size() * 8,
+               "mismatch input size and input wire size.");
   wires_.resize(circ_->nw);
-  for (auto input : inputs) {
-    wires_.append(input);
-  }
+
+  std::memcpy(wires_.data(), bytes.data(), bytes.size());
 }
 
 template <typename T>
-void PlainExecutor<T>::Exec() {
-  // wires_.resize(circ_->nw);
-  // for (int i = 2; i < 514; i++) {
-  //   wires_[i - 2] = wires_[i];
-  // }
-  // std::cout << "线路输入：";
+void PlainExecutor::SetupInputs(absl::Span<T> inputs) {
+  YACL_ENFORCE(inputs.size() == circ_->niv);
 
-  // for (int i = 0; i < 768; i++) {
-  //   std::cout << wires_[i];
-  // }
-  // std::cout << std::endl;
-  // // cout << dynamic_bitset_to_string(wires_) << endl;
-  // cout << endl;
+  dynamic_bitset<BlockType> input_wires;
+  input_wires.resize(sizeof(T) * 8 * inputs.size());
+  std::memcpy(input_wires.data(), inputs.data(), inputs.size() * sizeof(T));
+  wires_.append(input_wires);
+  wires_.resize(circ_->nw);
+}
+
+void PlainExecutor::Exec() {
   // Evaluate all gates, sequentially
   for (const auto& gate : circ_->gates) {
     switch (gate.op) {
@@ -86,7 +83,7 @@ void PlainExecutor<T>::Exec() {
         break;
       }
       case io::BFCircuit::Op::EQ: {
-        wires_.set(gate.ow[0], gate.iw[0]);
+        wires_.set(gate.ow[0], (gate.iw[0] != 0U));
         break;
       }
       case io::BFCircuit::Op::EQW: {
@@ -104,47 +101,34 @@ void PlainExecutor<T>::Exec() {
   }
 }
 
-// template <typename T>
-// void PlainExecutor<T>::Finalize(absl::Span<T> outputs) {
-//   YACL_ENFORCE(outputs.size() >= circ_->nov);
+std::vector<uint8_t> PlainExecutor::Finalize() {
+  // Count the total number of output wires (a.k.a. output bits)
+  size_t total_out_bitnum = 0;
+  for (size_t i = 0; i < circ_->nov; ++i) {
+    total_out_bitnum += circ_->now[i];
+  }
 
-//   size_t index = wires_.size();
-//   for (size_t i = 0; i < circ_->nov; ++i) {
-//     dynamic_bitset<T> result(circ_->now[i]);
-//     for (size_t j = 0; j < circ_->now[i]; ++j) {
-//       result[j] = wires_[index - circ_->now[i] +
-//                          j];  // 得到的是逆序的二进制值 对应的混淆电路计算为
-//                               // LSB ^ d  输出线路在后xx位
-//     }
-//     outputs[circ_->nov - i - 1] = *(uint8_t*)result.data();
-//     // outputs[circ_->nov - i - 1] = *(uint128_t*)result.data();
-//     index -= circ_->now[i];
-//   }
-// }
+  const auto out_size = (total_out_bitnum + 7) / 8;
+  std::vector<uint8_t> out(out_size);
 
-// template <typename T>
-// void PlainExecutor<T>::Finalize(absl::Span<T> outputs) {
-//   // YACL_ENFORCE(outputs.size() >= circ_->nov);
-
-//   size_t index = wires_.size();
-
-//   for (size_t i = 0; i < 32; ++i) {
-//     dynamic_bitset<T> result(8);
-//     for (size_t j = 0; j < 8; ++j) {
-//       result[j] =
-//           wires_[index - 8 + j];  // 得到的是逆序的二进制值
-//           对应的混淆电路计算为
-//                                   // LSB ^ d  输出线路在后xx位
-//     }
-//     outputs[32 - i - 1] = *(uint8_t*)result.data();
-//     // outputs[circ_->nov - i - 1] = *(uint128_t*)result.data();
-//     index -= 8;
-//   }
-// }
+  size_t index = wires_.size();
+  for (size_t i = 0; i < out_size; ++i) {
+    dynamic_bitset<BlockType> result(8);
+    for (size_t j = 0; j < 8; ++j) {
+      result[j] = wires_[index - 8 + j];
+    }
+    out[out_size - i - 1] = *(static_cast<uint8_t*>(result.data()));
+    index -= 8;
+  }
+  std::reverse(out.begin(), out.end());
+  return out;
+}
 
 template <typename T>
-void PlainExecutor<T>::Finalize(absl::Span<T> outputs) {
+void PlainExecutor::Finalize(absl::Span<T> outputs) {
   YACL_ENFORCE(outputs.size() >= circ_->nov);
+  YACL_ENFORCE(std::all_of(circ_->now.begin(), circ_->now.end(),
+                           [](const auto n) { return n <= sizeof(T) * 8; }));
 
   size_t index = wires_.size();
   for (size_t i = 0; i < circ_->nov; ++i) {
@@ -152,13 +136,17 @@ void PlainExecutor<T>::Finalize(absl::Span<T> outputs) {
     for (size_t j = 0; j < circ_->now[i]; ++j) {
       result[j] = wires_[index - circ_->now[i] + j];
     }
-    outputs[circ_->nov - i - 1] = *(uint128_t*)result.data();
+    outputs[circ_->nov - i - 1] = *result.data();
     index -= circ_->now[i];
   }
 }
 
-template class PlainExecutor<uint8_t>;
-template class PlainExecutor<uint128_t>;
-// template class PlainExecutor<Buffer>;
+template void PlainExecutor::SetupInputs<>(absl::Span<uint64_t> inputs);
+
+template void PlainExecutor::SetupInputs<>(absl::Span<uint128_t> inputs);
+
+template void PlainExecutor::Finalize<>(absl::Span<uint64_t> outputs);
+
+template void PlainExecutor::Finalize<>(absl::Span<uint128_t> outputs);
 
 }  // namespace yacl

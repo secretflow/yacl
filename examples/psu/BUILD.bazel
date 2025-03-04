@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:yacl.bzl", "AES_COPT_FLAGS", "yacl_cc_library", "yacl_cc_test")
+load("@yacl//bazel:yacl.bzl", "AES_COPT_FLAGS", "yacl_cc_library", "yacl_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -26,16 +26,16 @@ yacl_cc_library(
     ],
     copts = AES_COPT_FLAGS,
     deps = [
-        "//yacl/base:exception",
-        "//yacl/base:int128",
-        "//yacl/crypto/hash:hash_utils",
-        "//yacl/crypto/rand",
-        "//yacl/kernel/algorithms:base_ot",
-        "//yacl/kernel/algorithms:kkrt_ote",
-        "//yacl/kernel/algorithms:softspoken_ote",
-        "//yacl/link",
-        "//yacl/math/f2k",
-        "@com_google_absl//absl/types:span",
+        "@abseil-cpp//absl/types:span",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/base:int128",
+        "@yacl//yacl/crypto/hash:hash_utils",
+        "@yacl//yacl/crypto/rand",
+        "@yacl//yacl/kernel/algorithms:base_ot",
+        "@yacl//yacl/kernel/algorithms:kkrt_ote",
+        "@yacl//yacl/kernel/algorithms:softspoken_ote",
+        "@yacl//yacl/link",
+        "@yacl//yacl/math/galois_field:gf_intrinsic",
     ],
 )
 

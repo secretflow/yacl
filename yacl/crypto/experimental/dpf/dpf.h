@@ -27,65 +27,61 @@
 
 #include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
+#include "yacl/crypto/experimental/dpf/ge2n.h"
 
 /* submodules */
+#include "yacl/crypto/rand/rand.h"
 #include "yacl/crypto/tools/prg.h"
+#include "yacl/secparam.h"
+
+YACL_MODULE_DECLARE("dpf", SecParam::C::k128, SecParam::S::INF);
 
 namespace yacl::crypto {
 
-// Implementation of Distributed Point Function (DPF)
-// title : Function Secret Sharing: Improvements and Extensions
-// eprint: https://eprint.iacr.org/2018/707
+// Distributed Point Function (DPF)
 //
-// Assume we have a function F(*), where F(alpha)=beta, F(*!=alpha)=0.
-// DPF splits the finction into two parts F1 and F2, and ensures F1(alpha)=r,
-// F2(alpha)=-r+beta, and F1(*!=alpha)=r, F2(*!=alpha)=-r
+// For more details, please see: https://eprint.iacr.org/2018/707
 //
-// alpha : arbitrary length mapping input
-// beta  : 128bit mapping output
-// Note: result is A-share
-
-using DpfInStore = uint128_t;   // the input room
-using DpfOutStore = uint128_t;  // the secret sharing room
-
-struct DpfCW {
- public:
-  DpfCW() = default;
-  DpfCW(uint128_t seed, uint8_t t_store) : seed_(seed), t_store_(t_store) {}
-
-  bool GetTLeft() const { return t_store_ & 1; }
-  bool GetTRight() const { return (t_store_ >> 1) & 1; }
-
-  uint128_t GetSeed() const { return seed_; }
-  uint8_t GetTStore() const { return t_store_; }
-
-  void SetTLeft(bool t_left) { t_store_ = (GetTRight() << 1) + t_left; }
-  void SetTRight(bool t_right) { t_store_ = (t_right << 1) + GetTLeft(); }
-  void SetSeed(uint128_t seed) { seed_ = seed; }
-
- private:
-  uint128_t seed_ = 0;   // this level's seed, default = 0
-  uint8_t t_store_ = 0;  // 1st bit=> t_left, 2nd bit=> t_right
-};
-
 class DpfKey {
  public:
-  bool enable_evalall = false;           // full domain eval
-  std::vector<DpfCW> cws_vec;            // correlated words for each level
-  std::vector<DpfOutStore> last_cw_vec;  // the final correlation word
+  // internal type definition
+  class CW {
+   public:
+    CW() = default;
+    CW(uint128_t seed, uint8_t t_store) : seed_(seed), t_store_(t_store) {}
+
+    uint8_t GetLT() const { return t_store_ & 1; }
+    uint8_t GetRT() const { return (t_store_ >> 1) & 1; }
+
+    uint128_t GetSeed() const { return seed_; }
+    uint8_t GetTStore() const { return t_store_; }
+
+    void SetLT(uint8_t t_left) {
+      YACL_ENFORCE(t_left == 0 || t_left == 1);
+      t_store_ = (GetRT() << 1) + t_left;
+    }
+
+    void SetRT(uint8_t t_right) {
+      YACL_ENFORCE(t_right == 0 || t_right == 1);
+      t_store_ = (t_right << 1) + GetLT();
+    }
+
+    void SetSeed(uint128_t seed) { seed_ = seed; }
+
+   private:
+    uint128_t seed_ = 0;   // this level's seed, default = 0
+    uint8_t t_store_ = 0;  // 1st bit=> t_left, 2nd bit=> t_right
+  };
+
+  bool enable_evalall = false;         // full domain eval
+  std::vector<CW> cws_vec;             // correlated words for each level
+  std::vector<uint128_t> last_cw_vec;  // the final correlation word
 
   // empty constructor
   DpfKey() = default;
 
-  DpfKey(bool rank, const uint128_t mseed) : rank_(rank), mseed_(mseed) {}
-
-  DpfKey(bool rank, size_t in_bitnum, size_t ss_bitnum, uint32_t sec_param,
-         const uint128_t mseed)
-      : rank_(rank),
-        in_bitnum_(in_bitnum),
-        ss_bitnum_(ss_bitnum),
-        sec_param_(sec_param),
-        mseed_(mseed) {}
+  explicit DpfKey(bool rank, const uint128_t mseed = SecureRandSeed())
+      : rank_(rank), mseed_(mseed) {}
 
   void EnableEvalAll() { enable_evalall = true; }
   void DisableFullEval() { enable_evalall = false; }
@@ -96,100 +92,40 @@ class DpfKey {
   uint128_t GetSeed() const { return mseed_; }
   void SetSeed(uint128_t seed) { mseed_ = seed; }
 
-  size_t GetInBitNum() const { return in_bitnum_; }
-  size_t GetSsBitNum() const { return ss_bitnum_; }
-
-  uint32_t GetSecParam() const { return sec_param_; }
-
-  Buffer Serialize() const;
-  void Deserialize(ByteContainerView s);
-
  private:
-  bool rank_{};            // only support two parties (0/1), compulsory param
-  size_t in_bitnum_ = 64;  // bit number (for point), default = 64
-  size_t ss_bitnum_ = 64;  // bit number (for output value), default = 64
-  uint32_t sec_param_ = 128;  // we assume 128 bit security (fixed)
-  uint128_t mseed_ = 0;       // the master seed (the default is not secure)
+  bool rank_{};          // only support two parties (0/1), compulsory param
+  uint128_t mseed_ = 0;  // the master seed
 };
 
-class DpfContext {
- public:
-  // constructors
-  DpfContext() = default;
+// ----------------------------------------------------------------------------
+// Core Functions of DPF
+// ----------------------------------------------------------------------------
+// NOTE: Supported (M, N) parameter pairs are:
+// - (M = {8, 16, 32, 64}, N = {8, 16, 32, 64, 128})
+//
+// TODO maybe type traits
+// template <size_t M, size_t N>
+// struct IsSupportedDpfType {
+//   static constexpr std::array<size_t, 4> m_set = {8, 16, 32, 64};
+//   static constexpr std::array<size_t, 5> n_set = {8, 16, 32, 64, 128};
+//   static constexpr bool value = []() constexpr {
+//     return std::find(std::begin(m_set), std::end(m_set), M) !=
+//                std::end(m_set) &&
+//            std::find(std::begin(n_set), std::end(m_set), N) !=
+//            std::end(n_set);
+//     ;
+//   };
+// };
 
-  explicit DpfContext(size_t in_bitnum) : in_bitnum_(in_bitnum) {}
+template <size_t /* input bit num */ M, size_t /* output bit num */ N>
+void DpfKeyGen(DpfKey* first_key, DpfKey* second_key, const GE2n<M>& alpha,
+               const GE2n<N>& beta, uint128_t first_mk, uint128_t second_mk,
+               bool enable_evalall = false);
 
-  DpfContext(size_t in_bitnum, size_t ss_bitnum)
-      : in_bitnum_(in_bitnum), ss_bitnum_(ss_bitnum) {}
+template <size_t /* input bit num */ M, size_t /* output bit num */ N>
+void DpfEval(const DpfKey& key, const GE2n<M>& in, GE2n<N>* out);
 
-  void SetInBitNum(size_t in_bitnum) {
-    YACL_ENFORCE(in_bitnum <= 64);
-    in_bitnum_ = in_bitnum;
-  }
-  size_t GetInBitNum() const { return in_bitnum_; }
+template <size_t /* input bit num */ M, size_t /* output bit num */ N>
+void DpfEvalAll(DpfKey* key, absl::Span<GE2n<N>> out);
 
-  void SetSsBitNum(size_t ss_bitnum) {
-    YACL_ENFORCE(ss_bitnum <= 64);
-    ss_bitnum_ = ss_bitnum;
-  }
-  size_t GetSsBitNum() const { return ss_bitnum_; }
-
-  // --------------------------------------
-  // Original key generation and evaluation
-  // --------------------------------------
-  std::pair<DpfKey, DpfKey> Gen(DpfInStore alpha, DpfOutStore beta,
-                                uint128_t first_mk, uint128_t second_mk,
-                                bool enable_evalall = false) {
-    DpfKey k0;
-    DpfKey k1;
-    Gen(k0, k1, alpha, beta, first_mk, second_mk, enable_evalall);
-    return {std::move(k0), std::move(k1)};
-  }
-
-  void Gen(DpfKey& first_key, DpfKey& second_key, DpfInStore alpha,
-           DpfOutStore beta, uint128_t first_mk, uint128_t second_mk,
-           bool enable_evalall = false);
-
-  DpfOutStore Eval(DpfKey& key, DpfInStore input);
-
-  std::vector<DpfOutStore> EvalAll(DpfKey& key);
-
-  DpfOutStore GetSsMask() const {
-    YACL_ENFORCE(ss_bitnum_ <= 64);
-    if (ss_bitnum_ == 64) {
-      return 0xFFFFFFFFFFFFFFFF;
-    }
-    return (static_cast<uint64_t>(1) << ss_bitnum_) - 1;
-  }
-
-  DpfOutStore TruncateSs(DpfOutStore input) const {
-    YACL_ENFORCE(ss_bitnum_ <= 64);
-    return input & GetSsMask();
-  }
-
-  DpfOutStore ReverseSs(DpfOutStore input) const {
-    YACL_ENFORCE(ss_bitnum_ <= 64);
-    return TruncateSs(GetSsMask() - TruncateSs(input) + 1);
-  }
-
- private:
-  void Traverse(DpfKey& key, std::vector<DpfOutStore>& result,
-                size_t current_level, uint64_t current_pos,
-                uint128_t seed_working, bool t_working, size_t term_level);
-
-  // Note that for the case of sec_param = 128 and ss_bitnum = 64, we
-  // always have term_level = in_bitnum
-  size_t GetTerminateLevel(bool enable_evalall) const {
-    if (!enable_evalall) {
-      return in_bitnum_;
-    }
-    size_t n = in_bitnum_;
-    size_t x = ceil(n - log(sec_param_ / ss_bitnum_));
-    return std::min(n, x);
-  }
-
-  size_t in_bitnum_ = 64;
-  size_t ss_bitnum_ = 64;
-  uint32_t sec_param_ = 128;  // we assume 128 bit security (fixed)
-};
 }  // namespace yacl::crypto

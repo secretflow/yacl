@@ -81,6 +81,4 @@ class SpiArgs : private std::map<std::string, SpiArg> {
   std::string ToString() const;
 };
 
-inline auto format_as(const SpiArgs &arg) { return arg.ToString(); }
-
 }  // namespace yacl

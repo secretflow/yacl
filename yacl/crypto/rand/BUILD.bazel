@@ -27,7 +27,7 @@ yacl_cc_library(
         "//yacl/base:int128",
         "//yacl/crypto/rand/drbg",
         "//yacl/crypto/tools:prg",
-        "//yacl/math/mpint:mpint",
+        "//yacl/math/mpint",
     ],
 )
 
@@ -44,6 +44,6 @@ yacl_cc_binary(
     srcs = ["rand_bench.cc"],
     deps = [
         ":rand",
-        "@com_github_google_benchmark//:benchmark_main",
+        "@google_benchmark//:benchmark_main",
     ],
 )

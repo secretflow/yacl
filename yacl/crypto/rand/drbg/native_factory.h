@@ -142,6 +142,4 @@ class NativeDrbg : public Drbg {
   std::unique_ptr<internal::Sm4Drbg> drbg_impl_;
 };
 
-REGISTER_DRBG_LIBRARY("NativeImpl", 100, NativeDrbg::Check, NativeDrbg::Create);
-
 }  // namespace yacl::crypto

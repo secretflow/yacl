@@ -81,7 +81,9 @@ std::unique_ptr<GaloisField> MclFieldFactory::Create(
           new MclField<mcl::Fp6T<mcl::FpT<mcl::FpTag, 512>>, 6>(mod));
     case 12:
       return std::unique_ptr<GaloisField>(
-          new MclField<mcl::Fp12T<mcl::FpT<mcl::FpTag, 512>>, 12>(mod));
+          new MclField<mcl::Fp12T<mcl::FpT<mcl::FpTag, 512>,
+                                  mcl::FpT<mcl::bn::local::FrTag, 512>>,
+                       12>(mod));
     default:
       YACL_THROW("Not supported Field by {}", kMclLib);
   }

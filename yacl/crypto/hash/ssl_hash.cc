@@ -37,7 +37,7 @@ SslHash& SslHash::Reset() {
   int res = 0;
   const auto md = openssl::FetchEvpMd(ToString(hash_algo_));
   res = EVP_DigestInit_ex(context_.get(), md.get(), nullptr);
-  OSSL_RET_1(res, "EVP_DigestInit_ex failed.");
+  OSSL_RET_1(res);
 
   return *this;
 }

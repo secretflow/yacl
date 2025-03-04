@@ -99,7 +99,9 @@ std::string ReceiverLoopBrpc::Start(const std::string& host,
         ssl_opts->verify.verify_depth;
     options.mutable_ssl_options()->verify.ca_file_path =
         ssl_opts->verify.ca_file_path;
+    options.mutable_ssl_options()->ciphers = ssl_opts->ciphers;
   }
+
   if (server_.Start(host.data(), &options) != 0) {
     YACL_THROW_IO_ERROR("brpc server failed start");
   }

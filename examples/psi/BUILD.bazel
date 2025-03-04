@@ -1,4 +1,4 @@
-# Copyright 2024 zhangwfjh
+# Copyright 2024 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,26 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:yacl.bzl", "AES_COPT_FLAGS", "yacl_cc_library", "yacl_cc_test")
-
 package(default_visibility = ["//visibility:public"])
 
-yacl_cc_library(
-    name = "ecdh_psi",
-    srcs = [
-        "ecdh_psi.cc",
-    ],
-    hdrs = [
-        "ecdh_psi.h",
-    ],
-    deps = [
-        "//yacl/crypto/ecc",
-        "//yacl/link",
-    ],
-)
-
-yacl_cc_test(
-    name = "ecdh_psi_test",
-    srcs = ["ecdh_psi_test.cc"],
-    deps = [":ecdh_psi"],
+filegroup(
+    name = "psi_data",
+    srcs = glob(["data/*"]),
 )

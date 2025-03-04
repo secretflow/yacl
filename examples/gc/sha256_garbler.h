@@ -106,7 +106,7 @@ class GarblerSHA256 {
   }
 
   // 包扩 输入值生成和混淆，garbler混淆值的发送
-  void inputProcess(yacl::io::BFCircuit param_circ_) {
+  vector<uint8_t> inputProcess(yacl::io::BFCircuit param_circ_) {
     circ_ = param_circ_;
     gb_value.resize(circ_.nw);
     wires_.resize(circ_.nw);
@@ -143,6 +143,8 @@ class GarblerSHA256 {
                "garbleInput1");
 
     std::cout << "sendInput1" << std::endl;
+
+    return sha256_result;
     
   }
 
@@ -229,7 +231,7 @@ class GarblerSHA256 {
                "table");
     std::cout << "sendTable" << std::endl;
   }
-  void decode() {
+  vector<uint8_t>  decode() {
     // 现接收计算结果
     size_t index = wires_.size();
     int start = index - circ_.now[0];
@@ -256,10 +258,13 @@ class GarblerSHA256 {
     auto sha256_result = crypto::Sha256Hash().Update(message).CumulativeHash();
     
     if(sha256_result.size() == out.size() && std::equal(out.begin(), out.end(), sha256_result.begin())) cout<<"YES!!!"<<endl;
-    for(int i = 0; i < 32; i++){
-      cout <<int(out[i]) << " ";
-    }
-    cout << endl;
+    
+    return out;
+    
+    // for(int i = 0; i < 32; i++){
+    //   cout <<int(out[i]) << " ";
+    // }
+    // cout << endl;
     
   }
 

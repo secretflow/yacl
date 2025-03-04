@@ -16,13 +16,13 @@ Supported platforms:
 
 - [base](yacl/base/): some basic types and utils in yacl.
 - [crypto](yacl/crypto/): **crypto algorithms** without [link](yacl/link/).
-- [kernel](yacl/kernel/): **crypto kernel** that includes [link](yacl/link/) with multi-thread support, i.e. OT, DPF.
+- [kernel](yacl/kernel/): **crypto kernel** that includes [link](yacl/link/) with (WIP) multi-thread support, i.e. OT, DPF.
 - [io](yacl/io/): a simple streaming-based io library.
 - [link](yacl/link/): a simple rpc-based MPI framework, providing the [SPMD](https://en.wikipedia.org/wiki/SPMD) parallel programming capability.
 
 ## Prerequisites
 
-- **bazel**: [.bazelversion](.bazelversion) file describes the recommended version of bazel. We recommend to use the official [bazelisk](https://github.com/bazelbuild/bazelisk?tab=readme-ov-file#installation) to manage bazel version.
+- **bazel**: [.bazeliskrc](.bazeliskrc) sets the recommended version of bazel. We recommend to use the official [bazelisk](https://github.com/bazelbuild/bazelisk?tab=readme-ov-file#installation) to manage bazel version.
 - **gcc >= 10.3**
 - **[cmake](https://cmake.org/getting-started/)**
 - **[ninja/ninja-build](https://ninja-build.org/)**
@@ -30,7 +30,7 @@ Supported platforms:
 
 ## Getting Started
 
-Yacl uses the [bazel](https://bazel.build/) build system, you may use the following codes to build and test yacl modules. For more guidelines about how to **do crypto research on Yacl**, **use Yacl's shipped crypto tools**, or **integrate Yacl into your system**, please check the [Getting Started Guide](GETTING_STARTED.md).
+Yacl uses the [bazel](https://bazel.build/) build system, you may use the following codes to build and test yacl modules. For more guidelines about **how to develop on yacl**, please check the [Getting Started Guide](GETTING_STARTED.md).
 
 ## License
 

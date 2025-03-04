@@ -11,6 +11,15 @@
  */
 
 using block = __uint128_t;
+
+
+inline uint128_t Sigma(uint128_t x) {
+  auto _x = _mm_loadu_si128(reinterpret_cast<__m128i*>(&x));
+  auto exchange = _mm_shuffle_epi32(_x, 0b01001110);
+  auto left = _mm_unpackhi_epi64(_x, _mm_setzero_si128());
+  return reinterpret_cast<uint128_t>(_mm_xor_si128(exchange, left));
+}
+
 template <int BatchSize = 8>
 class MITCCRH {
  public:

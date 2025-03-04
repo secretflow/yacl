@@ -31,7 +31,7 @@ yacl_cc_library(
         "//yacl/utils:thread_pool",
     ] + select({
         "@platforms//cpu:aarch64": [
-            "@com_github_dltcollab_sse2neon//:sse2neon",
+            "@sse2neon",
         ],
         "//conditions:default": [],
     }),
@@ -57,7 +57,7 @@ yacl_cc_library(
         "//yacl/utils:thread_pool",
     ] + select({
         "@platforms//cpu:aarch64": [
-            "@com_github_dltcollab_sse2neon//:sse2neon",
+            "@sse2neon",
         ],
         "//conditions:default": [],
     }),
@@ -83,7 +83,7 @@ yacl_cc_library(
         "//yacl/utils:thread_pool",
     ] + select({
         "@platforms//cpu:aarch64": [
-            "@com_github_dltcollab_sse2neon//:sse2neon",
+            "@sse2neon",
         ],
         "//conditions:default": [],
     }),
@@ -110,6 +110,6 @@ yacl_cc_binary(
         ":silver_code",
         "//yacl/base:aligned_vector",
         "//yacl/crypto/rand",
-        "@com_github_google_benchmark//:benchmark_main",
+        "@google_benchmark//:benchmark_main",
     ],
 )

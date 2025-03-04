@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:yacl.bzl", "yacl_cc_binary", "yacl_cc_library", "yacl_cc_test")
+load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -25,17 +25,16 @@ yacl_cc_library(
     name = "bristol_fashion",
     srcs = ["bristol_fashion.cc"],
     hdrs = ["bristol_fashion.h"],
+    data = [":circuit_data"],
     deps = [
         "//yacl/base:byte_container_view",
         "//yacl/io/stream:file_io",
-        "//yacl/link:context",
     ],
 )
 
 yacl_cc_test(
     name = "bristol_fashion_test",
     srcs = ["bristol_fashion_test.cc"],
-    data = [":circuit_data"],
     deps = [
         ":bristol_fashion",
     ],

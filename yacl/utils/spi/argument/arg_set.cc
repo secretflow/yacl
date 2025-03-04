@@ -14,6 +14,8 @@
 
 #include "yacl/utils/spi/argument/arg_set.h"
 
+#include "fmt/ranges.h"
+
 // formatter to format SpiArgs values
 template <>
 struct fmt::formatter<std::map<std::string, yacl::SpiArg>::value_type> {

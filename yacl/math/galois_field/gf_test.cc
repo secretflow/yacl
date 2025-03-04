@@ -42,6 +42,7 @@ TEST(ExtensionFieldTest, Works) {
   EXPECT_TRUE(gf->GetExtensionDegree() == 2);
 }
 
+#ifdef __x86_64__
 TEST(BinaryTest, Works) {
   // Note that: kPrimeField implmentation requires ArgDegree
   auto gf = GaloisFieldFactory::Instance().Create(kBinaryField, ArgDegree = 64);
@@ -50,5 +51,6 @@ TEST(BinaryTest, Works) {
   EXPECT_EQ(gf->GetFieldName(), kBinaryField);
   EXPECT_TRUE(gf->GetExtensionDegree() == 64);
 }
+#endif
 
 }  // namespace yacl::math

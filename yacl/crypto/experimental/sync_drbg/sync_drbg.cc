@@ -82,13 +82,32 @@ SyncDrbg::SyncDrbg(ByteContainerView nonce, ByteContainerView personal_string) {
 
   // default seeded using yacl's entropy source
   auto es = EntropySourceFactory::Instance().Create("auto");
-  Buffer seed = es->GetEntropy(kSeedByteLen);
+
+  // For intel chips:
+  // The assessed entropy from the noise source is min(Hr, Hc, HI) = 0.6 bits
+  // of entropy per bit of data. Therefore, to acquire n bits of entropy, the
+  // output bitstring length (in bytes) would be (ceil(n/0.6) + 7 / 8)
+  //
+  // For amd chips:
+  // The assessed entropy from the noise source is approx. min(Hr, Hc, HI) =
+  // 0.3 bits per 128-bit rdseed output.
+  //
+  // Therefore it's sufficient for us to request (entropy_bits / 0.3) random
+  // bits in both cases.
+  //
+  // For more detailed info, please see:
+  // + yacl/crypto/rand/entropy_source/rdseed_factory.cc
+  //
+  // In this case, we assume kSeedByteLen = entropy_bits
+  //
+  uint32_t num_bytes = ((kSeedByteLen * 8 * 10 + 2) / 3 + 7) / 8;
+  Buffer seed = es->GetEntropy(num_bytes);
 
   // instantiate drbg context
   const EVP_MD* md = EVP_sha256(); /* use sha256 */
   ctx_ = HashDrbgCtx(hash_drbg_ctx_new());
   YACL_ENFORCE(hash_drbg_instantiate(md, (unsigned char*)seed.data(),
-                                     kSeedByteLen, (unsigned char*)nonce.data(),
+                                     seed.size(), (unsigned char*)nonce.data(),
                                      nonce.size(),
                                      (unsigned char*)personal_string.data(),
                                      personal_string.size(), ctx_.get()) == 0);

@@ -22,8 +22,8 @@
 #include "yacl/crypto/tools/common.h"
 #include "yacl/kernel/algorithms/mpfss.h"
 #include "yacl/kernel/type/ot_store_utils.h"
-#include "yacl/math/f2k/f2k_utils.h"
 #include "yacl/math/gadget.h"
+#include "yacl/math/galois_field/gf_intrinsic.h"
 #include "yacl/secparam.h"
 
 YACL_MODULE_DECLARE("mp_vole", SecParam::C::INF, SecParam::S::INF);

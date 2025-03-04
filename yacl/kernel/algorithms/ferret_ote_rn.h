@@ -20,7 +20,7 @@
 
 #include "yacl/crypto/hash/hash_utils.h"
 #include "yacl/crypto/tools/common.h"
-#include "yacl/math/f2k/f2k_utils.h"
+#include "yacl/math/galois_field/gf_intrinsic.h"
 #include "yacl/secparam.h"
 
 /* submodules */
@@ -48,6 +48,7 @@ inline void MpCotRNSend(const std::shared_ptr<link::Context>& ctx,
   const uint64_t batch_size = spcot_size;
   const uint64_t batch_num = math::DivCeil(full_size, batch_size);
   YACL_ENFORCE(batch_num <= idx_num);
+  YACL_ENFORCE(batch_num >= 1);
 
   const uint64_t last_size = full_size - (batch_num - 1) * batch_size;
   const uint64_t batch_length = math::Log2Ceil(batch_size);
@@ -89,7 +90,7 @@ inline void MpCotRNSend(const std::shared_ptr<link::Context>& ctx,
     for (size_t i = 0; i < 128; ++i) {
       check_cot_data[i] = check_cot.GetBlock(i, choices[i]);
     }
-    auto diff = PackGf128(absl::MakeSpan(check_cot_data));
+    auto diff = math::Gf128Pack(absl::MakeSpan(check_cot_data));
     uhash = uhash ^ diff;
 
     auto hash = Blake3(SerializeUint128(uhash));
@@ -106,6 +107,7 @@ inline void MpCotRNRecv(const std::shared_ptr<link::Context>& ctx,
   const uint64_t batch_size = spcot_size;
   const uint64_t batch_num = math::DivCeil(full_size, batch_size);
   YACL_ENFORCE(batch_num <= idx_num);
+  YACL_ENFORCE(batch_num >= 1);
 
   const uint64_t last_size = full_size - (batch_num - 1) * batch_size;
   const uint64_t batch_length = math::Log2Ceil(batch_size);
@@ -142,7 +144,7 @@ inline void MpCotRNRecv(const std::shared_ptr<link::Context>& ctx,
     uint128_t choices = check_cot.CopyBitBuf().data()[0];
 
     auto check_cot_data = check_cot.CopyBlkBuf();
-    auto diff = PackGf128(absl::MakeSpan(check_cot_data));
+    auto diff = math::Gf128Pack(absl::MakeSpan(check_cot_data));
     uhash = uhash ^ diff;
 
     // find punctured indexes

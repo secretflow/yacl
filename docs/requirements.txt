@@ -1,0 +1,14 @@
+sphinx
+sphinx-intl
+sphinx-copybutton
+sphinx-togglebutton
+sphinx-inline-tabs
+sphinxcontrib-htmlhelp
+sphinxcontrib-applehelp
+
+# HACK see: https://github.com/CrossNox/m2r2/issues/68#issuecomment-2145795360
+docutils>=0.18.1,<0.21
+myst-parser==4.0.0
+
+# theme
+pydata-sphinx-theme
