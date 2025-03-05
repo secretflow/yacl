@@ -29,12 +29,12 @@ void TSet::Initialize() {
     }
   }
 
-  const size_t LABEL_SIZE = lambda_ / 8;
-  const size_t VALUE_SIZE = lambda_ / 4 + 1;
+  const size_t LabelSize = lambda_ / 8;
+  const size_t ValueSize = lambda_ / 4 + 1;
   for (int i = 0; i < b_; ++i) {
     for (int j = 0; j < s_; ++j) {
-      tset_[i][j].label.resize(LABEL_SIZE, 0);
-      tset_[i][j].value.resize(VALUE_SIZE, 0);
+      tset_[i][j].label.resize(LabelSize, 0);
+      tset_[i][j].value.resize(ValueSize, 0);
     }
   }
 }
@@ -47,10 +47,10 @@ std::string TSet::TSetSetup(
   bool restart_required = true;
   std::string Kt;
 
-  constexpr size_t HASH_BASE = 256;
-  constexpr size_t SHA256_BLOCK_SIZE = 32;
-  constexpr size_t SHA256_BLOCK_ALIGN = 31;
-  const size_t LABEL_SIZE = lambda_ / 8;
+  constexpr size_t kHashBase = 256;
+  constexpr size_t kSha256BlockSize = 32;
+  constexpr size_t kSha256BlockAlign = 31;
+  const size_t LabelSize = lambda_ / 8;
 
   while (restart_required) {
     restart_required = false;
@@ -80,10 +80,10 @@ std::string TSet::TSetSetup(
         std::vector<uint8_t> hash = sm3.Update(mac_str).CumulativeHash();
         size_t hash_value = 0;
         for (size_t i = 0; i < hash.size(); ++i) {
-          hash_value = (hash_value * HASH_BASE + hash[i]) % b_;
+          hash_value = (hash_value * kHashBase + hash[i]) % b_;
         }
         size_t b = (hash_value % b_);
-        std::vector<uint8_t> L(hash.begin(), hash.begin() + LABEL_SIZE);
+        std::vector<uint8_t> L(hash.begin(), hash.begin() + LabelSize);
         if (free_[b].empty()) {
           restart_required = true;
           break;
@@ -107,7 +107,7 @@ std::string TSet::TSetSetup(
         yacl::crypto::Sha256Hash sha256;
         std::vector<uint8_t> K;
         size_t num_sha256 =
-            (beta_si.size() + SHA256_BLOCK_ALIGN) / SHA256_BLOCK_SIZE;
+            (beta_si.size() + kSha256BlockAlign) / kSha256BlockSize;
         for (size_t n = 0; n < num_sha256; ++n) {
           sha256.Reset();
           std::vector<uint8_t> hash_part =
@@ -143,11 +143,11 @@ std::vector<std::pair<std::vector<uint8_t>, std::string>> TSet::TSetRetrieve(
   std::vector<std::pair<std::vector<uint8_t>, std::string>> t;
   uint8_t beta = 1;
   size_t i = 1;
-  constexpr size_t HASH_BASE = 256;
-  constexpr size_t SHA256_BLOCK_SIZE = 32;
-  constexpr size_t SHA256_BLOCK_ALIGN = 31;
-  constexpr int MAX_ITERATIONS = 100;
-  const size_t LABEL_SIZE = lambda_ / 8;
+  constexpr size_t kHashBase = 256;
+  constexpr size_t kSha256BlockSize = 32;
+  constexpr size_t kSha256BlockAlign = 31;
+  constexpr int kMaxIterations = 100;
+  const size_t LabelSize = lambda_ / 8;
 
   while (beta == 1) {
     hmac_F_Tset.Reset();
@@ -160,10 +160,10 @@ std::vector<std::pair<std::vector<uint8_t>, std::string>> TSet::TSetRetrieve(
     std::vector<uint8_t> hash = sm3.Update(mac_str).CumulativeHash();
     size_t hash_value = 0;
     for (size_t i = 0; i < hash.size(); ++i) {
-      hash_value = (hash_value * HASH_BASE + hash[i]) % b_;
+      hash_value = (hash_value * kHashBase + hash[i]) % b_;
     }
     size_t b = (hash_value % b_);
-    std::vector<uint8_t> L(hash.begin(), hash.begin() + LABEL_SIZE);
+    std::vector<uint8_t> L(hash.begin(), hash.begin() + LabelSize);
 
     yacl::crypto::Sha256Hash sha256;
     std::vector<uint8_t> K;
@@ -173,7 +173,7 @@ std::vector<std::pair<std::vector<uint8_t>, std::string>> TSet::TSetRetrieve(
     for (; j < s_; ++j) {
       if (B[j].label == L) {
         size_t num_sha256 =
-            (B[j].value.size() + SHA256_BLOCK_ALIGN) / SHA256_BLOCK_SIZE;
+            (B[j].value.size() + kSha256BlockAlign) / kSha256BlockSize;
         for (size_t n = 0; n < num_sha256; ++n) {
           sha256.Reset();
           std::vector<uint8_t> hash_part =
@@ -193,7 +193,7 @@ std::vector<std::pair<std::vector<uint8_t>, std::string>> TSet::TSetRetrieve(
       }
     }
     ++i;
-    if (i > MAX_ITERATIONS) {
+    if (i > kMaxIterations) {
       break;
     }
   }
@@ -212,17 +212,17 @@ std::string TSet::VectorToString(const std::vector<uint8_t>& vec) {
 // ! private functions
 std::string TSet::Uint128ToString(uint128_t value) {
   std::string result;
-  constexpr int DECIMAL_BASE = 10;
+  constexpr int kDecimalBase = 10;
   while (value > 0) {
-    result.insert(result.begin(), '0' + (value % DECIMAL_BASE));
-    value /= DECIMAL_BASE;
+    result.insert(result.begin(), '0' + (value % kDecimalBase));
+    value /= kDecimalBase;
   }
   return result.empty() ? "0" : result;
 }
 
-constexpr size_t FIRST_PART_SIZE = 9;
-constexpr size_t LENGTH_SIZE = 4;
-constexpr size_t SECOND_PART_OFFSET = FIRST_PART_SIZE + LENGTH_SIZE;
+constexpr size_t kFirstPartSize = 9;
+constexpr size_t kLengthSize = 4;
+constexpr size_t kSecondPartOffset = kFirstPartSize + kLengthSize;
 
 std::vector<uint8_t> TSet::Pack(
     const std::pair<std::vector<uint8_t>, std::string>& data) {
@@ -236,9 +236,9 @@ std::vector<uint8_t> TSet::Pack(
 
   // 2. add the length of the second part (4 bytes)
   uint32_t second_length = static_cast<uint32_t>(second.size());
-  uint8_t length_bytes[LENGTH_SIZE];
-  std::memcpy(length_bytes, &second_length, LENGTH_SIZE);
-  result.insert(result.end(), length_bytes, length_bytes + LENGTH_SIZE);
+  uint8_t length_bytes[kLengthSize];
+  std::memcpy(length_bytes, &second_length, kLengthSize);
+  result.insert(result.end(), length_bytes, length_bytes + kLengthSize);
 
   // 3. add the second part (a string)
   result.insert(result.end(), second.begin(), second.end());
@@ -250,16 +250,15 @@ std::pair<std::vector<uint8_t>, std::string> TSet::UnPack(
     const std::vector<uint8_t>& packed_data) {
   // 1. extract the first part (9 bytes)
   std::vector<uint8_t> first(packed_data.begin(),
-                             packed_data.begin() + FIRST_PART_SIZE);
+                             packed_data.begin() + kFirstPartSize);
 
   // 2. extract the length of the second part (4 bytes)
   uint32_t second_length = 0;
-  std::memcpy(&second_length, packed_data.data() + FIRST_PART_SIZE,
-              LENGTH_SIZE);
+  std::memcpy(&second_length, packed_data.data() + kFirstPartSize, kLengthSize);
 
   // 3. extract the second part (a string)
-  std::string second(packed_data.begin() + SECOND_PART_OFFSET,
-                     packed_data.begin() + SECOND_PART_OFFSET + second_length);
+  std::string second(packed_data.begin() + kSecondPartOffset,
+                     packed_data.begin() + kSecondPartOffset + second_length);
 
   return {first, second};
 }
