@@ -32,10 +32,10 @@ using uint128_t = __uint128_t;
 using OtMsg = uint128_t;
 using OtMsgPair = std::array<OtMsg, 2>;
 using OtChoices = dynamic_bitset<uint128_t>;
+
 }
 
-uint128_t all_one_uint128_t = ~static_cast<__uint128_t>(0);
-uint128_t select_mask[2] = {0, all_one_uint128_t};
+
 
 class EvaluatorSHA256 {
  public:
@@ -52,10 +52,11 @@ class EvaluatorSHA256 {
   //根据电路改
   uint128_t table[135073][2];
   uint128_t input;
-  const int num_ot = 768;
+   int num_ot = 768;
 
   yacl::crypto::OtRecvStore ot_recv = OtRecvStore(num_ot, yacl::crypto::OtStoreType::Normal);
-
+  uint128_t all_one_uint128_t = ~static_cast<__uint128_t>(0);
+  uint128_t select_mask[2] = {0, all_one_uint128_t};
   void setup() {
     // 通信环境初始化
     size_t world_size = 2;
@@ -113,7 +114,7 @@ class EvaluatorSHA256 {
     yacl::Buffer r = lctx->Recv(0, "table");
     const uint128_t* buffer_data = r.data<const uint128_t>();
     int k = 0;
-    for (int i = 0; i < circ_.ng; i++) {
+    for (size_t i = 0; i < circ_.ng; i++) {
       for (int j = 0; j < 2; j++) {
         table[i][j] = buffer_data[k];
         k++;
@@ -148,7 +149,7 @@ class EvaluatorSHA256 {
   }
 
   void EV() {
-    for (int i = 0; i < circ_.gates.size(); i++) {
+    for (size_t i = 0; i < circ_.gates.size(); i++) {
       auto gate = circ_.gates[i];
       switch (gate.op) {
         case yacl::io::BFCircuit::Op::XOR: {
@@ -212,7 +213,7 @@ class EvaluatorSHA256 {
     auto buf = lctx->Recv(lctx->NextRank(), "");
     std::vector<OtMsgPair> batch_recv(num_ot);
     std::memcpy(batch_recv.data(), buf.data(), buf.size());
-    for (uint32_t j = 0; j < num_ot; ++j) {
+    for (int j = 0; j < num_ot; ++j) {
       auto idx = num_ot + j;
       wires_[idx] = batch_recv[j][choices[j]] ^ ot_recv.GetBlock(j);
     }

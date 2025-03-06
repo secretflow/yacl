@@ -1,4 +1,4 @@
-load("//bazel:yacl.bzl", "OMP_CFLAGS", "OMP_DEPS", "OMP_LINKFLAGS", "yacl_cc_binary", "yacl_cc_library", "yacl_cc_test")
+load("@yacl//bazel:yacl.bzl", "yacl_cc_binary", "yacl_cc_library", "yacl_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 cc_library(
@@ -17,13 +17,6 @@ cc_library(
         "//yacl/crypto/tools:crhash",
     ],
 )
-
-
-
-
-
-
-
 
 
 cc_library(
@@ -215,6 +208,7 @@ cc_binary(
         ":evaluator",
         ":sha256_garbler",
         ":sha256_evaluator",
+        "aes_128_garbler",
         ":aes_128_evaluator",
         "//yacl/base:byte_container_view",
         "//yacl/base:dynamic_bitset",
@@ -231,7 +225,7 @@ cc_binary(
     ],
 )
 
-cc_binary(
+yacl_cc_test(
     name = "gc_test",
     srcs = ["gc_test.cc"],
     copts = [
@@ -247,6 +241,8 @@ cc_binary(
         ":sha256_garbler",
         ":sha256_evaluator",
         ":aes_128_evaluator",
+        "aes_128_garbler",
+        "//yacl/crypto/block_cipher:symmetric_crypto",
         "//yacl/base:byte_container_view",
         "//yacl/base:dynamic_bitset",
         "//yacl/crypto/rand",

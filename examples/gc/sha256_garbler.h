@@ -33,16 +33,12 @@ using uint128_t = __uint128_t;
 using OtMsg = uint128_t;
 using OtMsgPair = std::array<OtMsg, 2>;
 using OtChoices = dynamic_bitset<uint128_t>;
+
 }
 
-uint128_t all_one_uint128_t_ = ~static_cast<__uint128_t>(0);
-uint128_t select_mask_[2] = {0, all_one_uint128_t_};
 
-inline uint128_t Aes128(uint128_t k, uint128_t m) {
-  crypto::SymmetricCrypto enc(crypto::SymmetricCrypto::CryptoType::AES128_ECB,
-                              k);
-  return enc.Encrypt(m);
-}
+
+
 
 class GarblerSHA256 {
  public:
@@ -63,7 +59,10 @@ class GarblerSHA256 {
   uint128_t input_EV;
   vector<uint8_t> message;
     //num_ot根据输入改
-  const int num_ot = 768;
+  int num_ot = 768;
+uint128_t all_one_uint128_t_ = ~static_cast<__uint128_t>(0);
+uint128_t select_mask_[2] = {0, all_one_uint128_t_};
+
   yacl::crypto::OtSendStore ot_send =  yacl::crypto::OtSendStore(num_ot, yacl::crypto::OtStoreType::Normal);
 
 
@@ -185,7 +184,7 @@ class GarblerSHA256 {
   }
   void GB() {
 
-    for (int i = 0; i < circ_.gates.size(); i++) {
+    for (size_t i = 0; i < circ_.gates.size(); i++) {
       auto gate = circ_.gates[i];
       switch (gate.op) {
         case yacl::io::BFCircuit::Op::XOR: {
@@ -304,7 +303,7 @@ class GarblerSHA256 {
 
     std::vector<OtMsgPair> batch_send(num_ot);
 
-    for (uint32_t j = 0; j < num_ot; ++j) {
+    for (int j = 0; j < num_ot; ++j) {
       auto idx = num_ot + j;
       if (!masked_choices[j]) {
         batch_send[j][0] = ot_send.GetBlock(j, 0) ^ gb_value[idx];

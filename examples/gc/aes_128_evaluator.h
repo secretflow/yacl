@@ -32,10 +32,10 @@ using uint128_t = __uint128_t;
 using OtMsg = uint128_t;
 using OtMsgPair = std::array<OtMsg, 2>;
 using OtChoices = dynamic_bitset<uint128_t>;
+
 }
 
-uint128_t all_one_uint128_t = ~static_cast<__uint128_t>(0);
-uint128_t select_mask[2] = {0, all_one_uint128_t};
+
 
 class EvaluatorAES {
  public:
@@ -52,7 +52,9 @@ class EvaluatorAES {
   //根据电路改
   uint128_t table[36663][2];
   uint128_t input;
-  const int num_ot = 128;
+  int num_ot = 128;
+  uint128_t all_one_uint128_t = ~static_cast<__uint128_t>(0);
+uint128_t select_mask[2] = {0, all_one_uint128_t};
 
   yacl::crypto::OtRecvStore ot_recv = OtRecvStore(num_ot, yacl::crypto::OtStoreType::Normal);
 
@@ -92,7 +94,7 @@ class EvaluatorAES {
     mitccrh.setS(start_point);
   }
 
-  void inputProcess(yacl::io::BFCircuit param_circ_) {
+  uint128_t inputProcess(yacl::io::BFCircuit param_circ_) {
     circ_ = param_circ_;
     gb_value.resize(circ_.nw);
     wires_.resize(circ_.nw);
@@ -127,13 +129,15 @@ class EvaluatorAES {
 
     //输入位数有关
     lctx->Send(0, yacl::ByteContainerView(&input, sizeof(uint128_t)), "Input1");
+  
+    return input;
   }
   void recvTable() {
 
     yacl::Buffer r = lctx->Recv(0, "table");
     const uint128_t* buffer_data = r.data<const uint128_t>();
     int k = 0;
-    for (int i = 0; i < circ_.ng; i++) {
+    for (size_t i = 0; i < circ_.ng; i++) {
       for (int j = 0; j < 2; j++) {
         table[i][j] = buffer_data[k];
         k++;
@@ -168,7 +172,7 @@ class EvaluatorAES {
   }
 
   void EV() {
-    for (int i = 0; i < circ_.gates.size(); i++) {
+    for (size_t i = 0; i < circ_.gates.size(); i++) {
       auto gate = circ_.gates[i];
       switch (gate.op) {
         case yacl::io::BFCircuit::Op::XOR: {
@@ -229,7 +233,7 @@ class EvaluatorAES {
     auto buf = lctx->Recv(lctx->NextRank(), "");
     std::vector<OtMsgPair> batch_recv(num_ot);
     std::memcpy(batch_recv.data(), buf.data(), buf.size());
-    for (uint32_t j = 0; j < num_ot; ++j) {
+    for (int j = 0; j < num_ot; ++j) {
       auto idx = num_ot + j;
       wires_[idx] = batch_recv[j][choices[j]] ^ ot_recv.GetBlock(j);
     }

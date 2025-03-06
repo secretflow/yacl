@@ -30,11 +30,11 @@ using uint128_t = __uint128_t;
 using OtMsg = uint128_t;
 using OtMsgPair = std::array<OtMsg, 2>;
 using OtChoices = dynamic_bitset<uint128_t>;
+
 }
 
 
-uint128_t all_one_uint128_t_ = ~static_cast<__uint128_t>(0);
-uint128_t select_mask_[2] = {0, all_one_uint128_t_};
+
 
 inline uint128_t Aes128(uint128_t k, uint128_t m) {
   crypto::SymmetricCrypto enc(crypto::SymmetricCrypto::CryptoType::AES128_ECB,
@@ -71,7 +71,9 @@ class GarblerAES {
   uint128_t input_EV;
 
     //num_ot根据输入改
-  const int num_ot = 128;
+  int num_ot = 128;
+  uint128_t all_one_uint128_t_ = ~static_cast<__uint128_t>(0);
+uint128_t select_mask_[2] = {0, all_one_uint128_t_};
   yacl::crypto::OtSendStore ot_send =  OtSendStore(num_ot, yacl::crypto::OtStoreType::Normal);
 
 
@@ -116,7 +118,7 @@ class GarblerAES {
   }
 
   // 包扩 输入值生成和混淆，garbler混淆值的发送
-  void inputProcess(yacl::io::BFCircuit param_circ_) {
+  uint128_t inputProcess(yacl::io::BFCircuit param_circ_) {
     circ_ = param_circ_;
     gb_value.resize(circ_.nw);
     wires_.resize(circ_.nw);
@@ -139,7 +141,7 @@ class GarblerAES {
 
   
     // 前64位 直接置换  garbler
-    for (int i = 0; i < circ_.niw[0]; i++) {
+    for (size_t i = 0; i < circ_.niw[0]; i++) {
       wires_[i] = gb_value[i] ^ (select_mask_[bi_val[i]] & delta);
     }
 
@@ -163,7 +165,7 @@ class GarblerAES {
     const uint128_t* buffer_data = r.data<const uint128_t>();
     input_EV = *buffer_data;
     
-    
+    return input;
   }
 
   uint128_t GBAND(uint128_t LA0, uint128_t A1, uint128_t LB0, uint128_t B1,
@@ -203,7 +205,7 @@ class GarblerAES {
   }
   void GB() {
 
-    for (int i = 0; i < circ_.gates.size(); i++) {
+    for (size_t i = 0; i < circ_.gates.size(); i++) {
       auto gate = circ_.gates[i];
       switch (gate.op) {
         case yacl::io::BFCircuit::Op::XOR: {
@@ -249,7 +251,7 @@ class GarblerAES {
                "table");
     std::cout << "sendTable" << std::endl;
   }
-  void decode() {
+  uint128_t decode() {
     // 现接收计算结果
     size_t index = wires_.size();
     int start = index - circ_.now[0];
@@ -267,6 +269,7 @@ class GarblerAES {
     finalize(absl::MakeSpan(result));
     std::cout << "MPC结果：" << ReverseBytes(result[0])  << std::endl;
     std::cout << "明文结果：" << Aes128(ReverseBytes(input), ReverseBytes(input_EV)) << std::endl;  //待修改
+    return result[0];
   }
 
 
@@ -305,7 +308,7 @@ class GarblerAES {
 
     std::vector<OtMsgPair> batch_send(num_ot);
 
-    for (uint32_t j = 0; j < num_ot; ++j) {
+    for (int j = 0; j < num_ot; ++j) {
       auto idx = num_ot + j;
       if (!masked_choices[j]) {
         batch_send[j][0] = ot_send.GetBlock(j, 0) ^ gb_value[idx];
