@@ -41,8 +41,8 @@ yacl_cc_library(
     hdrs = ["sse.h"],
     deps = [
         "//yacl/crypto/ecc/openssl",
-        "//yacl/crypto/rand",
         "//yacl/crypto/experimental/sse:tset",
+        "//yacl/crypto/rand",
         "//yacl/io/rw:csv_reader",
         "//yacl/io/stream:file_io",
         "//yacl/math/mpint",
