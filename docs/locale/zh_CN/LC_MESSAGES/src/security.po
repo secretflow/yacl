@@ -21,7 +21,7 @@ msgstr ""
 
 #: ../../../SECURITY.md:1
 msgid "Security"
-msgstr ""
+msgstr "安全性"
 
 #: ../../../SECURITY.md:3
 msgid ""
@@ -30,28 +30,32 @@ msgid ""
 "vulnerability](https://security.alipay.com/announcement.htm?id=1), please"
 " report it to us as described below."
 msgstr ""
+"如果您认为您在任一 SecretFlow 仓库中发现了一个符合 [SecretFlow 安全漏洞定义](https://security.alipay.com/announcement.htm?id=1) 的安全漏洞，请按照以下方式向我们报告。"
 
 #: ../../../SECURITY.md:6
 msgid "Reporting Security Issues"
-msgstr ""
+msgstr "报告安全问题"
 
 #: ../../../SECURITY.md:8
 msgid ""
 "**Please do not report security vulnerabilities through public GitHub "
 "issues.**"
 msgstr ""
+"**请不要通过公开的 GitHub issues 报告安全漏洞。**"
 
 #: ../../../SECURITY.md:10
 msgid ""
 "Instead, please report them to the ANT GROUP SECURITY Response Center at "
 "[https://security.alipay.com/](https://security.alipay.com/)."
 msgstr ""
+"请将其报告至 ANT GROUP 安全响应中心：[https://security.alipay.com/](https://security.alipay.com/)。"
 
 #: ../../../SECURITY.md:12
 msgid ""
 "If you prefer to submit without logging in, send email to "
 "[antsrc@alipay.com](mailto:antsrc@alipay.com)."
 msgstr ""
+"如果您希望在不登录的情况下提交报告，请发送邮件至 [antsrc@alipay.com](mailto:antsrc@alipay.com)。"
 
 #: ../../../SECURITY.md:14
 msgid ""
@@ -60,6 +64,7 @@ msgid ""
 "message. Additional information can be found at "
 "[https://security.alipay.com/](https://security.alipay.com/)."
 msgstr ""
+"您应在 48 小时内收到回复。如果因某些原因未收到，请通过邮件跟进以确保我们已收到您的原始消息。更多信息请访问 [https://security.alipay.com/](https://security.alipay.com/)。"
 
 #: ../../../SECURITY.md:17
 msgid ""
@@ -67,46 +72,47 @@ msgid ""
 " provide) to help us better understand the nature and scope of the "
 "possible issue:"
 msgstr ""
+"请尽可能提供以下列出的所需信息，以帮助我们更好地理解问题的性质和范围："
 
 #: ../../../SECURITY.md:19
 msgid ""
 "Type of issue (e.g. buffer overflow, SQL injection, cross-site scripting,"
 " etc.)"
-msgstr ""
+msgstr "问题类型（例如：缓冲区溢出、SQL 注入、跨站脚本攻击等）"
 
 #: ../../../SECURITY.md:20
 msgid "Full paths of source file(s) related to the manifestation of the issue"
-msgstr ""
+msgstr "与问题表现相关的源文件完整路径"
 
 #: ../../../SECURITY.md:21
 msgid "The location of the affected source code (tag/branch/commit or direct URL)"
-msgstr ""
+msgstr "受影响源代码的位置（tag/branch/commit 或直接 URL）"
 
 #: ../../../SECURITY.md:22
 msgid "Any special configuration required to reproduce the issue"
-msgstr ""
+msgstr "重现问题所需的任何特殊配置"
 
 #: ../../../SECURITY.md:23
 msgid "Step-by-step instructions to reproduce the issue"
-msgstr ""
+msgstr "重现问题的分步说明"
 
 #: ../../../SECURITY.md:24
 msgid "Proof-of-concept or exploit code (if possible)"
-msgstr ""
+msgstr "概念验证或利用代码（如果可能）"
 
 #: ../../../SECURITY.md:25
 msgid "Impact of the issue, including how an attacker might exploit the issue"
-msgstr ""
+msgstr "问题的影响，包括攻击者可能如何利用该问题"
 
 #: ../../../SECURITY.md:27
 msgid "This information will help us triage your report more quickly."
-msgstr ""
+msgstr "这些信息将帮助我们更快地处理您的报告。"
 
 #: ../../../SECURITY.md:29
 msgid "Preferred Languages"
-msgstr ""
+msgstr "首选语言"
 
 #: ../../../SECURITY.md:31
 msgid "We prefer all communications to be in Chinese or English."
-msgstr ""
+msgstr "我们希望所有沟通使用中文或英文。"
 
