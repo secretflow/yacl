@@ -33,7 +33,7 @@ msgid ""
 "<https://github.com/Tongsuo-Project>`_, `LibSodium "
 "<https://doc.libsodium.org/>`_, etc.)"
 msgstr ""
-"**对于传统 PKI：** 由于已有许多经过时间验证、高效且标准化的 PKI 算法实现，Yacl **并未重新实现**这些算法。相反，Yacl 仅为最流行的工业库（例如 `OpenSSL <https://openssl.org/>`_、`TongSuo <https://github.com/Tongsuo-Project>`_、`LibSodium <https://doc.libsodium.org/>`_ 等）提供了一个轻量级且“易于使用”的封装。"
+"**对于传统 PKI：** 由于已有许多经过时间验证、高效且标准化的 PKI 算法实现，Yacl **并未重新实现** 这些算法。相反，Yacl 仅为最流行的工业库（例如 `OpenSSL <https://openssl.org/>`_、`TongSuo <https://github.com/Tongsuo-Project>`_、`LibSodium <https://doc.libsodium.org/>`_ 等）提供了一个轻量级且“易于使用”的封装。"
 
 #: ../../src/develop/index.rst:6
 msgid ""
