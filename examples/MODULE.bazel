@@ -12,9 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-###############################################################################
-# Bazel now uses Bzlmod by default to manage external dependencies.
-# Please consider migrating your external dependencies from WORKSPACE to MODULE.bazel.
-#
-# For more details, please check https://github.com/bazelbuild/bazel/issues/18958
-###############################################################################
+module(
+    name = "yacl-examples",
+)
+
+bazel_dep(name = "yacl")
+local_path_override(
+    module_name = "yacl",
+    path = "../",
+)
+
+bazel_dep(name = "pybind11_bazel", version = "2.13.6")
+bazel_dep(name = "rules_jni", version = "0.10.3")
+bazel_dep(name = "rules_python", version = "0.16.2")
+bazel_dep(name = "spdlog", version = "1.14.1")
+bazel_dep(name = "abseil-cpp", version = "20240722.0")
+
+# test
+bazel_dep(name = "googletest", version = "1.15.2", dev_dependency = True)
