@@ -9,15 +9,13 @@
 首先，进入项目目录并构建示例：
 
 ```bash
-cd yacl
+cd examples
 
 bazel build --linkopt=-ldl //...
 
-bazel build --linkopt=-ldl //examples/hesm2:sm2_example
+bazel build --linkopt=-ldl //hesm2:sm2_example
 
-cd bazel-bin/examples/hesm2
-
-./sm2_example
+./bazel-bin/hesm2/sm2_example
 ```
 
 **注：** 第一次使用需要生成预计算表，请等待几分钟。
