@@ -61,7 +61,7 @@ Besides the two files, you also need to write a `BUILD.bazel` file to tell `baze
 Step 2: Write and Run Tests
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Also, we recommend all users to write unit tests for implementations. In oder to run the following tests, you can ``cd examples && bazel test //psi/cpp:ecdh_psi_test``.
+Also, we recommend all users to write unit tests for implementations. In order to run the following tests, you can ``cd examples && bazel test //psi/cpp:ecdh_psi_test``.
 
 .. literalinclude:: ../../../examples/psi/cpp/ecdh_psi_test.cc
   :language: cpp
