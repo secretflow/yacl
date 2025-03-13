@@ -48,7 +48,7 @@ msgid ""
 "Instead, please report them to the ANT GROUP SECURITY Response Center at "
 "[https://security.alipay.com/](https://security.alipay.com/)."
 msgstr ""
-"请将其报告至 ANT GROUP 安全响应中心：[https://security.alipay.com/](https://security.alipay.com/)。"
+"您可以将其报告给蚂蚁集团安全应急响应中心：[https://security.alipay.com/](https://security.alipay.com/)。"
 
 #: ../../../SECURITY.md:12
 msgid ""
@@ -64,7 +64,7 @@ msgid ""
 "message. Additional information can be found at "
 "[https://security.alipay.com/](https://security.alipay.com/)."
 msgstr ""
-"您应在 48 小时内收到回复。如果因某些原因未收到，请通过邮件跟进以确保我们已收到您的原始消息。更多信息请访问 [https://security.alipay.com/](https://security.alipay.com/)。"
+"您应该会在 48 小时内收到回复。如果因某些原因未收到，请通过邮件跟进以确保我们已收到您的原始消息。更多信息请访问 [https://security.alipay.com/](https://security.alipay.com/)。"
 
 #: ../../../SECURITY.md:17
 msgid ""
@@ -98,7 +98,7 @@ msgstr "重现问题的分步说明"
 
 #: ../../../SECURITY.md:24
 msgid "Proof-of-concept or exploit code (if possible)"
-msgstr "概念验证或利用代码（如果可能）"
+msgstr "概念验证或攻击代码（如果可能）"
 
 #: ../../../SECURITY.md:25
 msgid "Impact of the issue, including how an attacker might exploit the issue"
