@@ -21,7 +21,7 @@ msgstr ""
 
 #: ../../src/develop/index.rst:2
 msgid "Develop"
-msgstr ""
+msgstr "开发"
 
 #: ../../src/develop/index.rst:4
 msgid ""
@@ -33,6 +33,7 @@ msgid ""
 "<https://github.com/Tongsuo-Project>`_, `LibSodium "
 "<https://doc.libsodium.org/>`_, etc.)"
 msgstr ""
+"**对于传统 PKI：** 由于已有许多经过时间验证、高效且标准化的 PKI 算法实现，Yacl **并未重新实现** 这些算法。相反，Yacl 仅为最流行的工业库（例如 `OpenSSL <https://openssl.org/>`_、`TongSuo <https://github.com/Tongsuo-Project>`_、`LibSodium <https://doc.libsodium.org/>`_ 等）提供了一个轻量级且“易于使用”的封装。"
 
 #: ../../src/develop/index.rst:6
 msgid ""
@@ -42,6 +43,8 @@ msgid ""
 "names, see: `yacl/crypto/ecc/curve_meta.cc "
 "<https://github.com/secretflow/yacl/blob/main/yacl/crypto/ecc/curve_meta.cc>`_"
 msgstr ""
+"**对于 ECC（椭圆曲线加密）：** Yacl 集成了许多来自 OpenSSL 的曲线实现，您可以使用以下代码来选择任意曲线。有关所有支持的曲线名称的更多信息，请参阅：`yacl/crypto/ecc/curve_meta.cc "
+"<https://github.com/secretflow/yacl/blob/main/yacl/crypto/ecc/curve_meta.cc>`_"
 
 #: ../../src/develop/index.rst:24
 msgid ""
@@ -51,6 +54,7 @@ msgid ""
 "and fast uses hash-drbg. It is always recommended to use "
 "**Secure**-Random functions."
 msgstr ""
+"**对于随机数生成** Yacl 还提供了一些易于使用的随机数生成函数。随机函数通常以 **Secure** 或 **Fast** 开头，安全随机数实现使用标准化的 ctr-drbg，而快速随机数使用 hash-drbg。建议始终使用 **Secure**-Random 函数。"
 
 #: ../../src/develop/index.rst:37
 msgid ""
@@ -59,6 +63,7 @@ msgid ""
 "use the `yacl/kernel/...` api for general usage. For more advanced users,"
 " please use `yacl/algorithms/...`."
 msgstr ""
+"**对于安全计算协议：** Yacl 提供了许多安全计算原语，例如 OT、VOLE 等。建议普通用户使用 `yacl/kernel/...` 接口。对于更高级的用户，请使用 `yacl/algorithms/...`。"
 
 #: ../../src/develop/index.rst:55
 msgid ""
@@ -67,4 +72,5 @@ msgid ""
 "then bind the protocol implementation to JAVA and Python. See the "
 "following link for more detail."
 msgstr ""
+"**ECDH-PSI 示例：** 我们还提供了一个逐步演示，展示如何利用 Yacl 提供的工具构建 ECDH-PSI 协议，并将协议实现绑定到 JAVA 和 Python。详情请参阅以下链接。"
 

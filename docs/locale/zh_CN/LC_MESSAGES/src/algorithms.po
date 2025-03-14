@@ -21,17 +21,17 @@ msgstr ""
 
 #: ../../../ALGORITHMS.md:1
 msgid "Algorithm List"
-msgstr ""
+msgstr "算法列表"
 
 #: ../../../ALGORITHMS.md:3
 msgid ""
 "In this part, we provide a comprehensive list of the algorithms that yacl"
 " implements."
-msgstr ""
+msgstr "本节中，我们提供了 yacl 实现的算法完整列表。"
 
 #: ../../../ALGORITHMS.md:5
 msgid "**Oblivious Transfer and Extensions**"
-msgstr ""
+msgstr "**不经意传输及其扩展**"
 
 #: ../../../ALGORITHMS.md:7
 msgid ""
@@ -90,7 +90,7 @@ msgstr ""
 
 #: ../../../ALGORITHMS.md:39
 msgid "**Vector Oblivious Linear Evaluation (over Field 2k)**"
-msgstr ""
+msgstr "**向量不经意线性评估（在域 2k 上）**"
 
 #: ../../../ALGORITHMS.md:41
 msgid ""
@@ -132,7 +132,7 @@ msgstr ""
 
 #: ../../../ALGORITHMS.md:61
 msgid "**Codes**"
-msgstr ""
+msgstr "**编码**"
 
 #: ../../../ALGORITHMS.md:67
 msgid ""
@@ -143,7 +143,7 @@ msgstr ""
 
 #: ../../../ALGORITHMS.md:75
 msgid "**Distributed Point Functions**"
-msgstr ""
+msgstr "**分布式点函数**"
 
 #: ../../../ALGORITHMS.md:77
 msgid ""
@@ -154,7 +154,7 @@ msgstr ""
 
 #: ../../../ALGORITHMS.md:81
 msgid "**Correlation-Robust Hash (CrHash)**"
-msgstr ""
+msgstr "**相关性鲁棒哈希 (CrHash)**"
 
 #: ../../../ALGORITHMS.md:83 ../../../ALGORITHMS.md:89
 msgid ""
@@ -165,5 +165,4 @@ msgstr ""
 
 #: ../../../ALGORITHMS.md:87
 msgid "**Circular Correlation-Robust Hash (CCR Hash)**"
-msgstr ""
-
+msgstr "**循环相关性鲁棒哈希 (CCR Hash)**"
