@@ -30,7 +30,7 @@ msgid ""
 "vulnerability](https://security.alipay.com/announcement.htm?id=1), please"
 " report it to us as described below."
 msgstr ""
-"如果您认为您在任一 SecretFlow 仓库中发现了一个符合 [SecretFlow 安全漏洞定义](https://security.alipay.com/announcement.htm?id=1) 的安全漏洞，请按照以下方式向我们报告。"
+"如果您认为自己在任何 SecretFlow 仓库中发现了一个符合 `SecretFlow 安全漏洞定义 <https://security.alipay.com/announcement.htm?id=1>`_ 的安全漏洞，请按照以下描述向我们报告。"
 
 #: ../../../SECURITY.md:6
 msgid "Reporting Security Issues"
@@ -48,14 +48,13 @@ msgid ""
 "Instead, please report them to the ANT GROUP SECURITY Response Center at "
 "[https://security.alipay.com/](https://security.alipay.com/)."
 msgstr ""
-"您可以将其报告给蚂蚁集团安全应急响应中心：[https://security.alipay.com/](https://security.alipay.com/)。"
-
+"您可以将其报告给 `蚂蚁集团安全应急响应中心 <https://security.alipay.com/>`_ 。"
 #: ../../../SECURITY.md:12
 msgid ""
 "If you prefer to submit without logging in, send email to "
 "[antsrc@alipay.com](mailto:antsrc@alipay.com)."
 msgstr ""
-"如果您希望在不登录的情况下提交报告，请发送邮件至 [antsrc@alipay.com](mailto:antsrc@alipay.com)。"
+"如果您希望在不登录的情况下提交报告，请发送邮件至 `antsrc@alipay.com <antsrc@alipay.com>`_ 。"
 
 #: ../../../SECURITY.md:14
 msgid ""
@@ -64,7 +63,7 @@ msgid ""
 "message. Additional information can be found at "
 "[https://security.alipay.com/](https://security.alipay.com/)."
 msgstr ""
-"您应该会在 48 小时内收到回复。如果因某些原因未收到，请通过邮件跟进以确保我们已收到您的原始消息。更多信息请访问 [https://security.alipay.com/](https://security.alipay.com/)。"
+"您应该会在 48 小时内收到回复。如果因某些原因未收到，请通过邮件跟进以确保我们已收到您的原始消息。更多信息请访问 `https://security.alipay.com/ <https://security.alipay.com/>`_ 。"
 
 #: ../../../SECURITY.md:17
 msgid ""
