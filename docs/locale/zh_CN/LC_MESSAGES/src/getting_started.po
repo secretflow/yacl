@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: YACL \n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2025-03-11 10:28+0800\n"
+"POT-Creation-Date: 2025-03-11 11:30+0800\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: zh_CN\n"
@@ -50,7 +50,7 @@ msgid ""
 msgstr ""
 
 #: ../../../GETTING_STARTED.md:11
-msgid "[gcc >= 10.3](https://gcc.gnu.org/)"
+msgid "[gcc >= 10.3, g++ >= 10.3](https://gcc.gnu.org/)"
 msgstr ""
 
 #: ../../../GETTING_STARTED.md:12
@@ -169,4 +169,7 @@ msgid ""
 "[cpplint](https://marketplace.visualstudio.com/items?itemName=mine.cpplint):"
 " code style check tool extension for cpplint (requires `cpplint` binary)"
 msgstr ""
+
+#~ msgid "[gcc >= 10.3, g++ >= 10.3](https://gcc.gnu.org/)"
+#~ msgstr ""
 
