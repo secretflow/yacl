@@ -170,6 +170,6 @@ msgid ""
 " code style check tool extension for cpplint (requires `cpplint` binary)"
 msgstr ""
 
-#~ msgid "[gcc >= 10.3](https://gcc.gnu.org/)"
+#~ msgid "[gcc >= 10., g++ >= 10.3](https://gcc.gnu.org/)"
 #~ msgstr ""
 
