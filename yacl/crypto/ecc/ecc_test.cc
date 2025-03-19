@@ -12,15 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <mutex>
 #include <random>
 
+#include "absl/strings/escaping.h"
 #include "fmt/ranges.h"
 #include "gtest/gtest.h"
 
+#include "yacl/crypto/ecc/curve_meta.h"
+#include "yacl/crypto/ecc/ec_point.h"
 #include "yacl/crypto/ecc/ecc_spi.h"
+#include "yacl/crypto/ecc/hash_to_curve/p256.h"
+#include "yacl/crypto/ecc/openssl/openssl_group.h"
 #include "yacl/utils/parallel.h"
 #include "yacl/utils/spi/spi_factory.h"
 
@@ -448,6 +454,25 @@ TEST(AliasNameTest, AliasWorks) {
         }
       }
     }
+  }
+}
+
+TEST(HashToCurveTest, P256_XMD_SHA_256_SSWU_NU_) {
+  // rfc9380 J.1.1. P256_XMD:SHA-256_SSWU_NU_
+  std::vector<std::string> rfc_9380_test_msgs = {"", "abc", "abcdef0123456789"};
+
+  std::vector<std::string> rfc_9380_test_px = {
+      "03f871caad25ea3b59c16cf87c1894902f7e7b2c822c3d3f73596c5ace8ddd14d1",
+      "02fc3f5d734e8dce41ddac49f47dd2b8a57257522a865c124ed02b92b5237befa4",
+      "03f164c6674a02207e414c257ce759d35eddc7f55be6d7f415e2cc177e5d8faa84"};
+  char kRFC9380P256NuDst[] = "QUUX-V01-CS02-with-P256_XMD:SHA-256_SSWU_NU_";
+
+  for (size_t i = 0; i < rfc_9380_test_msgs.size(); ++i) {
+    std::vector<uint8_t> px =
+        EncodeToCurveP256(rfc_9380_test_msgs[i], kRFC9380P256NuDst);
+    EXPECT_EQ(rfc_9380_test_px[i],
+              absl::BytesToHexString(absl::string_view(
+                  reinterpret_cast<char *>(px.data()), px.size())));
   }
 }
 

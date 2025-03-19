@@ -1,0 +1,37 @@
+load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+config_setting(
+    name = "linux_x64",
+    constraint_values = [
+        "@platforms//os:linux",
+        "@platforms//cpu:x86_64",
+    ],
+)
+
+yacl_cc_library(
+    name = "hash_to_curve",
+    deps = select({
+        ":linux_x64": [
+            ":p256",
+        ],
+        "//conditions:default": [],
+    }),
+)
+
+yacl_cc_library(
+    name = "p256",
+    srcs = [
+        "p256.cc",
+    ],
+    hdrs = [
+        "p256.h",
+    ],
+    deps = [
+        "//yacl/base:exception",
+        "@abseil-cpp//absl/strings",
+        "//yacl/math/mpint",
+        "//yacl/crypto/hash:hash_utils",
+    ],
+)
