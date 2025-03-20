@@ -22,6 +22,7 @@
 
 #include "yacl/base/buffer.h"
 #include "yacl/base/exception.h"
+#include "yacl/crypto/ecc/ec_point.h"
 #include "yacl/crypto/hash/ssl_hash.h"
 #include "yacl/math/mpint/mp_int.h"
 #include "yacl/utils/spi/type_traits.h"
@@ -340,25 +341,28 @@ std::pair<yacl::math::MPInt, yacl::math::MPInt> MapToCurveSSWU(
   yacl::math::MPInt::InvertMod(tv4, kMpp256, &r);
   yacl::math::MPInt::MulMod(x, r, kMpp256, &x);  // 25. x = x / tv4
 
+  // crypto::AffinePoint p(x, y);
+  // return p;
   return std::make_pair(x, y);
 }
 
-std::vector<uint8_t> CompressP256(const yacl::math::MPInt &x,
-                                  const yacl::math::MPInt &y) {
-  std::vector<uint8_t> p(1 + kEccKeySize);
-  if (y.IsEven()) {
-    p[0] = '\x02';
-  } else {
-    p[0] = '\x03';
-  }
-  yacl::Buffer xbuf = x.ToMagBytes(yacl::Endian::big);
-  std::memcpy(p.data() + 1, xbuf.data(), xbuf.size());
-  return p;
-}
+// std::vector<uint8_t> CompressP256(const yacl::math::MPInt &x,
+//                                   const yacl::math::MPInt &y) {
+//   std::vector<uint8_t> p(1 + kEccKeySize);
+//   if (y.IsEven()) {
+//     p[0] = '\x02';
+//   } else {
+//     p[0] = '\x03';
+//   }
+//   yacl::Buffer xbuf = x.ToMagBytes(yacl::Endian::big);
+//   std::memcpy(p.data() + 1, xbuf.data(), xbuf.size());
+//   return p;
+// }
 
 // P256_XMD:SHA-256_SSWU_NU_
-std::vector<uint8_t> EncodeToCurveP256(yacl::ByteContainerView buffer,
-                                       const std::string &dst) {
+// std::vector<uint8_t> EncodeToCurveP256(yacl::ByteContainerView buffer,
+crypto::EcPoint EncodeToCurveP256(yacl::ByteContainerView buffer,
+                                  const std::string &dst) {
   YACL_ENFORCE((dst.size() >= 16) && (dst.size() <= 255),
                "domain separation tag length: {} not in 16B-255B", dst.size());
 
@@ -367,8 +371,11 @@ std::vector<uint8_t> EncodeToCurveP256(yacl::ByteContainerView buffer,
   yacl::math::MPInt qy;
 
   std::tie(qx, qy) = MapToCurveSSWU(u[0]);
+  // crypto::EcPoint p = MapToCurveSSWU(u[0]);
+  crypto::AffinePoint p(qx, qy);
+
   // Do not need to clear cofactor when h_eff = 1
-  std::vector<uint8_t> p = CompressP256(qx, qy);
+  // std::vector<uint8_t> p = CompressP256(qx, qy);
   return p;
 }
 

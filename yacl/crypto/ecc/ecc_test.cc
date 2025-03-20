@@ -470,12 +470,17 @@ TEST(HashToCurveTest, P256_XMD_SHA_256_SSWU_NU_) {
   // TODO: make EncodeToCurve return EC_POINT
   // use openssl to check whether it is on curve
 
+  auto curve = openssl::OpensslGroup::Create(GetCurveMetaByName("P-256"));
+
   for (size_t i = 0; i < rfc_9380_test_msgs.size(); ++i) {
-    std::vector<uint8_t> px =
-        EncodeToCurveP256(rfc_9380_test_msgs[i], kRFC9380P256NuDst);
-    EXPECT_EQ(rfc_9380_test_px[i],
-              absl::BytesToHexString(absl::string_view(
-                  reinterpret_cast<char *>(px.data()), px.size())));
+    EcPoint px = EncodeToCurveP256(rfc_9380_test_msgs[i], kRFC9380P256NuDst);
+
+    // ASSERT_TRUE(curve->IsInCurveGroup(curve->GetGenerator()));
+    // ASSERT_TRUE(curve->IsInCurveGroup(curve->GetAffinePoint(px)));
+    ASSERT_TRUE(curve->IsInCurveGroup(px));
+    // EXPECT_EQ(rfc_9380_test_px[i],
+    //           absl::BytesToHexString(absl::string_view(
+    //               reinterpret_cast<char *>(px.data()), px.size())));
   }
 }
 

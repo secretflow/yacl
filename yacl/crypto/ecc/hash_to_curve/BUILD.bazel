@@ -47,5 +47,6 @@ yacl_cc_library(
         "@abseil-cpp//absl/strings",
         "//yacl/math/mpint",
         "//yacl/crypto/hash:hash_utils",
+        "//yacl/crypto/ecc:ec_point",
     ],
 )
