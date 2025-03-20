@@ -467,20 +467,13 @@ TEST(HashToCurveTest, P256_XMD_SHA_256_SSWU_NU_) {
       "03f164c6674a02207e414c257ce759d35eddc7f55be6d7f415e2cc177e5d8faa84"};
   char kRFC9380P256NuDst[] = "QUUX-V01-CS02-with-P256_XMD:SHA-256_SSWU_NU_";
 
-  // TODO: make EncodeToCurve return EC_POINT
-  // use openssl to check whether it is on curve
-
   auto curve = openssl::OpensslGroup::Create(GetCurveMetaByName("P-256"));
 
   for (size_t i = 0; i < rfc_9380_test_msgs.size(); ++i) {
     EcPoint px = EncodeToCurveP256(rfc_9380_test_msgs[i], kRFC9380P256NuDst);
+    auto p = curve->CopyPoint(px);
 
-    // ASSERT_TRUE(curve->IsInCurveGroup(curve->GetGenerator()));
-    // ASSERT_TRUE(curve->IsInCurveGroup(curve->GetAffinePoint(px)));
-    ASSERT_TRUE(curve->IsInCurveGroup(px));
-    // EXPECT_EQ(rfc_9380_test_px[i],
-    //           absl::BytesToHexString(absl::string_view(
-    //               reinterpret_cast<char *>(px.data()), px.size())));
+    ASSERT_TRUE(curve->IsInCurveGroup(p));
   }
 }
 
