@@ -17,11 +17,13 @@
 #include <string>
 
 #include "yacl/base/byte_container_view.h"
+#include "yacl/crypto/ecc/ec_point.h"
 
 namespace yacl {
 
 // EncodeToCurve for P-256
-std::vector<uint8_t> EncodeToCurveP256(yacl::ByteContainerView buffer,
-                                       const std::string &dst);
+// std::vector<uint8_t> EncodeToCurveP256(yacl::ByteContainerView buffer,
+crypto::EcPoint EncodeToCurveP256(yacl::ByteContainerView buffer,
+                                  const std::string &dst);
 
 }  // namespace yacl
