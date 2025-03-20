@@ -467,6 +467,9 @@ TEST(HashToCurveTest, P256_XMD_SHA_256_SSWU_NU_) {
       "03f164c6674a02207e414c257ce759d35eddc7f55be6d7f415e2cc177e5d8faa84"};
   char kRFC9380P256NuDst[] = "QUUX-V01-CS02-with-P256_XMD:SHA-256_SSWU_NU_";
 
+  // TODO: make EncodeToCurve return EC_POINT
+  // use openssl to check whether it is on curve
+
   for (size_t i = 0; i < rfc_9380_test_msgs.size(); ++i) {
     std::vector<uint8_t> px =
         EncodeToCurveP256(rfc_9380_test_msgs[i], kRFC9380P256NuDst);

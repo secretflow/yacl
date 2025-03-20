@@ -1,9 +1,24 @@
+// Copyright 2023 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "yacl/crypto/ecc/hash_to_curve/p256.h"
 
 #include <array>
 #include <cstdint>
 #include <cstring>
 #include <utility>
+#include <vector>
 
 #include "yacl/base/buffer.h"
 #include "yacl/base/exception.h"
@@ -11,6 +26,7 @@
 #include "yacl/math/mpint/mp_int.h"
 #include "yacl/utils/spi/type_traits.h"
 
+namespace yacl {
 // Curve Parameters
 constexpr int kEccKeySize = 32;
 
@@ -40,8 +56,9 @@ constexpr std::array<uint8_t, 32> c1_bytes = {
     0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x40, 0x00, 0x00, 0x00, 0xc0, 0xff, 0xff, 0xff, 0x3f};
 
-yacl::math::MPInt DeserializeMPInt(yacl::ByteContainerView buffer,
-                                   yacl::Endian endian = yacl::Endian::native) {
+inline yacl::math::MPInt DeserializeMPInt(
+    yacl::ByteContainerView buffer,
+    yacl::Endian endian = yacl::Endian::native) {
   YACL_ENFORCE(buffer.size() == kEccKeySize);
   yacl::math::MPInt mp;
 
@@ -50,14 +67,15 @@ yacl::math::MPInt DeserializeMPInt(yacl::ByteContainerView buffer,
   return mp;
 }
 
-void MPIntToBytesWithPad(unsigned char *buf, size_t buf_len,
-                         const yacl::math::MPInt &mp) {
-  YACL_ENFORCE(buf_len == kEccKeySize);
+inline void MPIntToBytesWithPad(std::vector<uint8_t> &buf,
+                                const yacl::math::MPInt &mp) {
+  YACL_ENFORCE(buf.size() == kEccKeySize);
   yacl::Buffer mpbuf = mp.ToMagBytes(yacl::Endian::big);
-  YACL_ENFORCE((size_t)(mpbuf.size()) <= buf_len, "{},{}", mpbuf.size(),
-               buf_len);
+  YACL_ENFORCE((size_t)(mpbuf.size()) <= buf.size(), "{},{}", mpbuf.size(),
+               buf.size());
 
-  std::memcpy(buf + (kEccKeySize - mpbuf.size()), mpbuf.data(), mpbuf.size());
+  std::memcpy(buf.data() + (kEccKeySize - mpbuf.size()), mpbuf.data(),
+              mpbuf.size());
 }
 
 const yacl::math::MPInt kMp1(1);
@@ -144,7 +162,7 @@ std::vector<uint8_t> ExpandMessageXmd(yacl::ByteContainerView msg,
   std::vector<uint8_t> b_i(b_0.size());
   std::memcpy(b_i.data(), b_1.data(), b_1.size());
 
-  for (size_t i = 2; i <= ell; i++) {
+  for (size_t i = 2; i <= ell; ++i) {
     for (size_t j = 0; j < b_i.size(); ++j) {
       b_i[j] = b_i[j] ^ b_0[j];
     }
@@ -183,7 +201,7 @@ std::vector<std::vector<uint8_t>> HashToField(yacl::ByteContainerView msg,
     yacl::math::MPInt e_jp = e_j.Mod(kMpp256);
 
     ret[i].resize(kEccKeySize);
-    MPIntToBytesWithPad(ret[i].data(), kEccKeySize, e_jp);
+    MPIntToBytesWithPad(ret[i], e_jp);
   }
 
   return ret;
@@ -353,3 +371,5 @@ std::vector<uint8_t> EncodeToCurveP256(yacl::ByteContainerView buffer,
   std::vector<uint8_t> p = CompressP256(qx, qy);
   return p;
 }
+
+}  // namespace yacl
