@@ -44,6 +44,7 @@ yacl_cc_library(
         "//yacl/base:byte_container_view",
         "//yacl/math/mpint",
         "//yacl/utils/spi",
+        "//yacl/crypto/ecc/hash_to_curve",
     ],
 )
 
