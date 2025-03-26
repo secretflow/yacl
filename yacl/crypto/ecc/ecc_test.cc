@@ -25,7 +25,10 @@
 #include "yacl/crypto/ecc/curve_meta.h"
 #include "yacl/crypto/ecc/ec_point.h"
 #include "yacl/crypto/ecc/ecc_spi.h"
+#include "yacl/crypto/ecc/hash_to_curve/curve25519.h"
 #include "yacl/crypto/ecc/hash_to_curve/p256.h"
+#include "yacl/crypto/ecc/hash_to_curve/p384.h"
+#include "yacl/crypto/ecc/hash_to_curve/p521.h"
 #include "yacl/crypto/ecc/openssl/openssl_group.h"
 #include "yacl/utils/parallel.h"
 #include "yacl/utils/spi/spi_factory.h"
@@ -476,5 +479,61 @@ TEST(HashToCurveTest, P256_XMD_SHA_256_SSWU_NU_) {
     ASSERT_TRUE(curve->IsInCurveGroup(p));
   }
 }
+
+TEST(HashToCurveTest, P384_XMD_SHA_384_SSWU_NU_) {
+  // rfc9380 J.1.1. P384_XMD:SHA-384_SSWU_NU_
+  std::vector<std::string> rfc_9380_test_msgs = {"", "abc", "abcdef0123456789"};
+
+  char kRFC9380P256NuDst[] = "QUUX-V01-CS02-with-P384_XMD:SHA-384_SSWU_NU_";
+
+  auto curve = openssl::OpensslGroup::Create(GetCurveMetaByName("P-384"));
+
+  for (size_t i = 0; i < rfc_9380_test_msgs.size(); ++i) {
+    EcPoint px = EncodeToCurveP384(rfc_9380_test_msgs[i], kRFC9380P256NuDst);
+    auto p = curve->CopyPoint(px);
+
+    ASSERT_TRUE(curve->IsInCurveGroup(p));
+  }
+}
+
+TEST(HashToCurveTest, P521_XMD_SHA_512_SSWU_NU_) {
+  // rfc9380 J.1.1. P521_XMD:SHA-512_SSWU_NU_
+  std::vector<std::string> rfc_9380_test_msgs = {"", "abc", "abcdef0123456789"};
+
+  char kRFC9380P256NuDst[] = "QUUX-V01-CS02-with-P521_XMD:SHA-512_SSWU_NU_";
+
+  auto curve = openssl::OpensslGroup::Create(GetCurveMetaByName("P-521"));
+
+  for (size_t i = 0; i < rfc_9380_test_msgs.size(); ++i) {
+    EcPoint px = EncodeToCurveP521(rfc_9380_test_msgs[i], kRFC9380P256NuDst);
+    auto p = curve->CopyPoint(px);
+
+    ASSERT_TRUE(curve->IsInCurveGroup(p));
+  }
+}
+
+// TEST(HashToCurveTest, curve25519_XMD_SHA_512_ELL2_RO_) {
+//   // rfc9380 J.1.1. P521_XMD:SHA-512_SSWU_NU_
+//   std::vector<std::string> rfc_9380_test_msgs = {"", "abc",
+//   "abcdef0123456789"};
+//
+//   std::vector<std::string> rfc_9380_test_px = {
+//       "2de3780abb67e861289f5749d16d3e217ffa722192d16bbd9d1bfb9d112b98c0",
+//       "2b4419f1f2d48f5872de692b0aca72cc7b0a60915dd70bde432e826b6abc526d",
+//       "68ca1ea5a6acf4e9956daa101709b1eee6c1bb0df1de3b90d4602382a104c036"};
+//
+//   std::vector<std::string> rfc_9380_test_py = {
+//       "3b5dc2a498941a1033d176567d457845637554a2fe7a3507d21abd1c1bd6e878",
+//       "1b8235f255a268f0a6fa8763e97eb3d22d149343d495da1160eff9703f2d07dd",
+//       "2a375b656207123d10766e68b938b1812a4a6625ff83cb8d5e86f58a4be08353"};
+//
+//   char kRFC9380P256NuDst[] =
+//       "QUUX-V01-CS02-with-curve25519_XMD:SHA-512_ELL2_RO_";
+//
+//   for (size_t i = 0; i < rfc_9380_test_msgs.size(); ++i) {
+//     EcPoint p =
+//         EncodeToCurveCurve25519(rfc_9380_test_msgs[i], kRFC9380P256NuDst);
+//   }
+// }
 
 }  // namespace yacl::crypto::test

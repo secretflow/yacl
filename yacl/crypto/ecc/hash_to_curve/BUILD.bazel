@@ -29,6 +29,9 @@ yacl_cc_library(
     deps = select({
         ":linux_x64": [
             ":p256",
+            ":p384",
+            ":p521",
+            ":curve25519",
         ],
         "//conditions:default": [],
     }),
@@ -41,6 +44,57 @@ yacl_cc_library(
     ],
     hdrs = [
         "p256.h",
+    ],
+    deps = [
+        "//yacl/base:exception",
+        "@abseil-cpp//absl/strings",
+        "//yacl/math/mpint",
+        "//yacl/crypto/hash:hash_utils",
+        "//yacl/crypto/ecc:ec_point",
+    ],
+)
+
+yacl_cc_library(
+    name = "p384",
+    srcs = [
+        "p384.cc",
+    ],
+    hdrs = [
+        "p384.h",
+    ],
+    deps = [
+        "//yacl/base:exception",
+        "@abseil-cpp//absl/strings",
+        "//yacl/math/mpint",
+        "//yacl/crypto/hash:hash_utils",
+        "//yacl/crypto/ecc:ec_point",
+    ],
+)
+
+yacl_cc_library(
+    name = "p521",
+    srcs = [
+        "p521.cc",
+    ],
+    hdrs = [
+        "p521.h",
+    ],
+    deps = [
+        "//yacl/base:exception",
+        "@abseil-cpp//absl/strings",
+        "//yacl/math/mpint",
+        "//yacl/crypto/hash:hash_utils",
+        "//yacl/crypto/ecc:ec_point",
+    ],
+)
+
+yacl_cc_library(
+    name = "curve25519",
+    srcs = [
+        "curve25519.cc",
+    ],
+    hdrs = [
+        "curve25519.h",
     ],
     deps = [
         "//yacl/base:exception",
