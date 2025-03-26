@@ -11,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 #pragma once
 
 #include <string>
@@ -21,8 +20,8 @@
 
 namespace yacl {
 
-// EncodeToCurve for P-256
-crypto::EcPoint EncodeToCurveP256(yacl::ByteContainerView buffer,
-                                  const std::string &dst);
+// EncodeToCurve for Curve25519
+crypto::EcPoint EncodeToCurveCurve25519(yacl::ByteContainerView buffer,
+                                        const std::string &dst);
 
 }  // namespace yacl

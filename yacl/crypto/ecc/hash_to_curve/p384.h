@@ -21,8 +21,8 @@
 
 namespace yacl {
 
-// EncodeToCurve for P-256
-crypto::EcPoint EncodeToCurveP256(yacl::ByteContainerView buffer,
+// EncodeToCurve for P-384
+crypto::EcPoint EncodeToCurveP384(yacl::ByteContainerView buffer,
                                   const std::string &dst);
 
 }  // namespace yacl
