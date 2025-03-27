@@ -26,6 +26,9 @@ config_setting(
 
 yacl_cc_library(
     name = "hash_to_curve",
+    hdrs = [
+        "hash_to_curve.h"
+    ],
     deps = select({
         ":linux_x64": [
             ":p256",
