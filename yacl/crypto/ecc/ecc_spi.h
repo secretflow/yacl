@@ -87,6 +87,9 @@ enum class HashToCurveStrategy {
   // Warning: The output of this strategy is not uniformly distributed on the
   // elliptic curve G.
   EncodeToCurve,  // Not implemented, do not choose me
+  SHA256_SSWU_NU_,
+  SHA384_SSWU_NU_,
+  SHA512_SSWU_NU_,
 
   // This strategy is a collection of the following methods, and SPI will
   // automatically select the applicable method according to different curves:

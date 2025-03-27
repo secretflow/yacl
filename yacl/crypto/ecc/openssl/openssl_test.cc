@@ -16,7 +16,10 @@
 
 #include "gtest/gtest.h"
 
+#include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/crypto/ecc/hash_to_curve/p256.h"
+#include "yacl/crypto/ecc/hash_to_curve/p384.h"
+#include "yacl/crypto/ecc/hash_to_curve/p521.h"
 #include "yacl/crypto/ecc/openssl/openssl_group.h"
 #include "yacl/utils/parallel.h"
 #include "yacl/utils/spi/spi_factory.h"
@@ -93,7 +96,6 @@ TEST(OpensslTest, HashToCurveWorks) {
 
 TEST(OpensslTest, P256HashToCurveWorks) {
   auto curve = OpensslGroup::Create(GetCurveMetaByName("P-256"));
-  char kRFC9380P256NuDst[] = "QUUX-V01-CS02-with-P256_XMD:SHA-256_SSWU_NU_";
   auto is_unique = [&](EcPoint q) {
     auto p = curve->CopyPoint(q);
     ASSERT_TRUE(curve->IsInCurveGroup(p));
@@ -104,7 +106,42 @@ TEST(OpensslTest, P256HashToCurveWorks) {
     v.emplace_back(std::move(p));
   };
   for (int i = 0; i < 1000; ++i) {
-    is_unique(EncodeToCurveP256(fmt::format("id{}", i), kRFC9380P256NuDst));
+    is_unique(curve->HashToCurve(HashToCurveStrategy::SHA256_SSWU_NU_,
+                                 fmt::format("id{}", i)));
+  }
+}
+
+TEST(OpensslTest, P384HashToCurveWorks) {
+  auto curve = OpensslGroup::Create(GetCurveMetaByName("P-384"));
+  char kRFC9380P384NuDst[] = "QUUX-V01-CS02-with-P384_XMD:SHA-384_SSWU_NU_";
+  auto is_unique = [&](EcPoint q) {
+    auto p = curve->CopyPoint(q);
+    ASSERT_TRUE(curve->IsInCurveGroup(p));
+    static std::vector<EcPoint> v;
+    for (const auto &item : v) {
+      ASSERT_FALSE(curve->PointEqual(item, p));
+    }
+    v.emplace_back(std::move(p));
+  };
+  for (int i = 0; i < 1000; ++i) {
+    is_unique(EncodeToCurveP384(fmt::format("id{}", i), kRFC9380P384NuDst));
+  }
+}
+
+TEST(OpensslTest, P521HashToCurveWorks) {
+  auto curve = OpensslGroup::Create(GetCurveMetaByName("P-521"));
+  char kRFC9380P521NuDst[] = "QUUX-V01-CS02-with-P521_XMD:SHA-512_SSWU_NU_";
+  auto is_unique = [&](EcPoint q) {
+    auto p = curve->CopyPoint(q);
+    ASSERT_TRUE(curve->IsInCurveGroup(p));
+    static std::vector<EcPoint> v;
+    for (const auto &item : v) {
+      ASSERT_FALSE(curve->PointEqual(item, p));
+    }
+    v.emplace_back(std::move(p));
+  };
+  for (int i = 0; i < 1000; ++i) {
+    is_unique(EncodeToCurveP521(fmt::format("id{}", i), kRFC9380P521NuDst));
     // Same as above
     // is_unique(curve->HashToCurve(HashToCurveStrategy::TryAndIncrement_BLAKE3,
     //                              fmt::format("id{}", i)));
