@@ -2,7 +2,7 @@
 #include <stdio.h>
 
 #include "utils.h"
-
+#include "yacl/base/int128.h"
 #include "yacl/crypto/aes/aes_opt.h"
 #include "yacl/crypto/tools/crhash.h"
 /*
@@ -38,7 +38,7 @@ class MITCCRH {
 
   void renew_ks() {
     for (int i = 0; i < BatchSize; ++i)
-      keys[i] = start_point ^ make_uint128_t(gid++, 0);
+      keys[i] = start_point ^ yacl::MakeUint128(gid++, (uint64_t)0);
     yacl::crypto::AES_opt_key_schedule<BatchSize>(keys, scheduled_key);
     key_used = 0;
   }

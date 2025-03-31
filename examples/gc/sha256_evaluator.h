@@ -1,41 +1,21 @@
 #pragma once
-#include <algorithm>
-#include <future>
-#include <type_traits>
+
 #include <vector>
 
-#include "absl/types/span.h"
 #include "examples/gc/mitccrh.h"
 #include "fmt/format.h"
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/dynamic_bitset.h"
-#include "yacl/base/exception.h"
+#include "yacl/base/int128.h"
 #include "yacl/crypto/rand/rand.h"
 #include "yacl/io/circuit/bristol_fashion.h"
-#include "yacl/io/stream/file_io.h"
-#include "yacl/kernel/algorithms/base_ot.h"
-#include "yacl/kernel/algorithms/iknp_ote.h"
-#include "yacl/kernel/type/ot_store_utils.h"
 #include "yacl/link/context.h"
 #include "yacl/link/factory.h"
 #include "yacl/link/test_util.h"
-#include "yacl/utils/circuit_executor.h"
-#include "yacl/kernel/ot_kernel.h"
-#include "yacl/kernel/type/ot_store_utils.h"
-
 using namespace std;
 using namespace yacl;
 using namespace yacl::crypto;
-namespace {
-using uint128_t = __uint128_t;
-using OtMsg = uint128_t;
-using OtMsgPair = std::array<OtMsg, 2>;
-using OtChoices = dynamic_bitset<uint128_t>;
-
-}
-
-
 
 class EvaluatorSHA256 {
  public:
@@ -48,13 +28,12 @@ class EvaluatorSHA256 {
   std::vector<uint128_t> gb_value;
   yacl::io::BFCircuit circ_;
   std::shared_ptr<yacl::link::Context> lctx;
-  
-  //根据电路改
+
+  // 根据电路改
   uint128_t table[135073][2];
   uint128_t input;
-   int num_ot = 768;
+  int num_ot = 768;
 
-  yacl::crypto::OtRecvStore ot_recv = OtRecvStore(num_ot, yacl::crypto::OtStoreType::Normal);
   uint128_t all_one_uint128_t = ~static_cast<__uint128_t>(0);
   uint128_t select_mask[2] = {0, all_one_uint128_t};
   void setup() {
@@ -68,15 +47,8 @@ class EvaluatorSHA256 {
       ctx_desc.parties.push_back({id, host});
     }
 
-    lctx = yacl::link::FactoryBrpc().CreateContext(ctx_desc,
-                                                   1);  
+    lctx = yacl::link::FactoryBrpc().CreateContext(ctx_desc, 1);
     lctx->ConnectToMesh();
-
-    //OT off-line
-    const auto ext_algorithm = yacl::crypto::OtKernel::ExtAlgorithm::SoftSpoken;
-    yacl::crypto::OtKernel kernel1(yacl::crypto::OtKernel::Role::Receiver, ext_algorithm);
-    kernel1.init(lctx);
-    kernel1.eval_rot(lctx, num_ot, &ot_recv);
 
     uint128_t tmp[3];
     // delta, inv_constant, start_point 接收
@@ -98,7 +70,6 @@ class EvaluatorSHA256 {
     gb_value.resize(circ_.nw);
     wires_.resize(circ_.nw);
 
-    
     yacl::Buffer r = lctx->Recv(0, "garbleInput1");
 
     const uint128_t* buffer_data = r.data<const uint128_t>();
@@ -106,11 +77,8 @@ class EvaluatorSHA256 {
     memcpy(wires_.data(), buffer_data, sizeof(uint128_t) * num_ot);
 
     std::cout << "recvInput1" << std::endl;
-
-    
   }
   void recvTable() {
-
     yacl::Buffer r = lctx->Recv(0, "table");
     const uint128_t* buffer_data = r.data<const uint128_t>();
     int k = 0;
@@ -122,10 +90,9 @@ class EvaluatorSHA256 {
     }
 
     std::cout << "recvTable" << std::endl;
-
   }
 
-  //未检查
+  // 未检查
   uint128_t EVAND(uint128_t A, uint128_t B, const uint128_t* table_item,
                   MITCCRH<8>* mitccrh_pointer) {
     uint128_t HA, HB, W;
@@ -195,27 +162,5 @@ class EvaluatorSHA256 {
         yacl::ByteContainerView(wires_.data() + start, sizeof(uint128_t) * 256),
         "output");
     std::cout << "sendOutput" << std::endl;
-   
-  }
-  void onLineOT(){
-    // vector<uint8_t> choices(96);
-
-
-    yacl::dynamic_bitset<uint128_t> choices;
-    choices.append(input);
-
-    yacl::dynamic_bitset<uint128_t> ot = ot_recv.CopyBitBuf();
-    ot.resize(choices.size());
-
-    yacl::dynamic_bitset<uint128_t> masked_choices = ot ^ choices;
-    lctx->Send(0, yacl::ByteContainerView(masked_choices.data(), sizeof(uint128_t)), "masked_choice");
-
-    auto buf = lctx->Recv(lctx->NextRank(), "");
-    std::vector<OtMsgPair> batch_recv(num_ot);
-    std::memcpy(batch_recv.data(), buf.data(), buf.size());
-    for (int j = 0; j < num_ot; ++j) {
-      auto idx = num_ot + j;
-      wires_[idx] = batch_recv[j][choices[j]] ^ ot_recv.GetBlock(j);
-    }
   }
 };

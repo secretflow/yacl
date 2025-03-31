@@ -1,41 +1,30 @@
 #pragma once
-#include <algorithm>
-#include <future>
-#include <type_traits>
 #include <vector>
 
-#include "absl/types/span.h"
 #include "examples/gc/mitccrh.h"
 #include "fmt/format.h"
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/dynamic_bitset.h"
-#include "yacl/base/exception.h"
+#include "yacl/base/int128.h"
 #include "yacl/crypto/rand/rand.h"
 #include "yacl/io/circuit/bristol_fashion.h"
-#include "yacl/io/stream/file_io.h"
 #include "yacl/kernel/algorithms/base_ot.h"
 #include "yacl/kernel/algorithms/iknp_ote.h"
+#include "yacl/kernel/ot_kernel.h"
 #include "yacl/kernel/type/ot_store_utils.h"
 #include "yacl/link/context.h"
 #include "yacl/link/factory.h"
-#include "yacl/link/test_util.h"
-#include "yacl/utils/circuit_executor.h"
-#include "yacl/kernel/ot_kernel.h"
-#include "yacl/kernel/type/ot_store_utils.h"
-
 using namespace std;
 using namespace yacl;
 using namespace yacl::crypto;
 namespace {
-using uint128_t = __uint128_t;
+
 using OtMsg = uint128_t;
 using OtMsgPair = std::array<OtMsg, 2>;
 using OtChoices = dynamic_bitset<uint128_t>;
 
-}
-
-
+}  // namespace
 
 class EvaluatorAES {
  public:
@@ -48,15 +37,16 @@ class EvaluatorAES {
   std::vector<uint128_t> gb_value;
   yacl::io::BFCircuit circ_;
   std::shared_ptr<yacl::link::Context> lctx;
-  
-  //根据电路改
+
+  // 根据电路改
   uint128_t table[36663][2];
   uint128_t input;
   int num_ot = 128;
   uint128_t all_one_uint128_t = ~static_cast<__uint128_t>(0);
-uint128_t select_mask[2] = {0, all_one_uint128_t};
+  uint128_t select_mask[2] = {0, all_one_uint128_t};
 
-  yacl::crypto::OtRecvStore ot_recv = OtRecvStore(num_ot, yacl::crypto::OtStoreType::Normal);
+  yacl::crypto::OtRecvStore ot_recv =
+      OtRecvStore(num_ot, yacl::crypto::OtStoreType::Normal);
 
   void setup() {
     // 通信环境初始化
@@ -65,17 +55,17 @@ uint128_t select_mask[2] = {0, all_one_uint128_t};
 
     for (size_t rank = 0; rank < world_size; rank++) {
       const auto id = fmt::format("id-{}", rank);
-      const auto host = fmt::format("127.0.0.1:{}", 10086 + rank);
+      const auto host = fmt::format("127.0.0.1:{}", 10010 + rank);
       ctx_desc.parties.push_back({id, host});
     }
 
-    lctx = yacl::link::FactoryBrpc().CreateContext(ctx_desc,
-                                                   1);  
+    lctx = yacl::link::FactoryBrpc().CreateContext(ctx_desc, 1);
     lctx->ConnectToMesh();
 
-    //OT off-line
+    // OT off-line
     const auto ext_algorithm = yacl::crypto::OtKernel::ExtAlgorithm::SoftSpoken;
-    yacl::crypto::OtKernel kernel1(yacl::crypto::OtKernel::Role::Receiver, ext_algorithm);
+    yacl::crypto::OtKernel kernel1(yacl::crypto::OtKernel::Role::Receiver,
+                                   ext_algorithm);
     kernel1.init(lctx);
     kernel1.eval_rot(lctx, num_ot, &ot_recv);
 
@@ -99,10 +89,10 @@ uint128_t select_mask[2] = {0, all_one_uint128_t};
     gb_value.resize(circ_.nw);
     wires_.resize(circ_.nw);
 
-    //输入位数有关
+    // 输入位数有关
     yacl::dynamic_bitset<uint128_t> bi_val;
-    
-    //输入位数有关
+
+    // 输入位数有关
     input = yacl::crypto::FastRandU128();
     std::cout << "input of evaluator:" << input << std::endl;
     bi_val.append(input);  // 直接转换为二进制  输入线路在前64位
@@ -121,19 +111,18 @@ uint128_t select_mask[2] = {0, all_one_uint128_t};
     // for (int i = 0; i < circ_.niw[1]; i++) {
     //   wires_[i + circ_.niw[0]] =
     //       buffer_data[i] ^ (select_mask[bi_val[i]] & delta);
-          
+
     // }
     // std::cout << "recvInput2" << std::endl;
 
     // onLineOT();
 
-    //输入位数有关
+    // 输入位数有关
     lctx->Send(0, yacl::ByteContainerView(&input, sizeof(uint128_t)), "Input1");
-  
+
     return input;
   }
   void recvTable() {
-
     yacl::Buffer r = lctx->Recv(0, "table");
     const uint128_t* buffer_data = r.data<const uint128_t>();
     int k = 0;
@@ -145,10 +134,9 @@ uint128_t select_mask[2] = {0, all_one_uint128_t};
     }
 
     std::cout << "recvTable" << std::endl;
-
   }
 
-  //未检查
+  // 未检查
   uint128_t EVAND(uint128_t A, uint128_t B, const uint128_t* table_item,
                   MITCCRH<8>* mitccrh_pointer) {
     uint128_t HA, HB, W;
@@ -213,14 +201,13 @@ uint128_t select_mask[2] = {0, all_one_uint128_t};
   void sendOutput() {
     size_t index = wires_.size();
     int start = index - circ_.now[0];
-    lctx->Send(
-        0,
-        yacl::ByteContainerView(wires_.data() + start, sizeof(uint128_t) * num_ot),
-        "output");
+    lctx->Send(0,
+               yacl::ByteContainerView(wires_.data() + start,
+                                       sizeof(uint128_t) * num_ot),
+               "output");
     std::cout << "sendOutput" << std::endl;
   }
-  void onLineOT(){
-
+  void onLineOT() {
     yacl::dynamic_bitset<uint128_t> choices;
     choices.append(input);
 
@@ -228,7 +215,9 @@ uint128_t select_mask[2] = {0, all_one_uint128_t};
     ot.resize(choices.size());
 
     yacl::dynamic_bitset<uint128_t> masked_choices = ot ^ choices;
-    lctx->Send(0, yacl::ByteContainerView(masked_choices.data(), sizeof(uint128_t)), "masked_choice");
+    lctx->Send(
+        0, yacl::ByteContainerView(masked_choices.data(), sizeof(uint128_t)),
+        "masked_choice");
 
     auto buf = lctx->Recv(lctx->NextRank(), "");
     std::vector<OtMsgPair> batch_recv(num_ot);

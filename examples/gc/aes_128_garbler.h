@@ -1,7 +1,5 @@
 #pragma once
-#include <algorithm>
-#include <future>
-#include <type_traits>
+
 #include <vector>
 
 #include "absl/types/span.h"
@@ -10,29 +8,18 @@
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/dynamic_bitset.h"
-#include "yacl/base/exception.h"
+#include "yacl/base/int128.h"
 #include "yacl/crypto/rand/rand.h"
 #include "yacl/io/circuit/bristol_fashion.h"
-#include "yacl/io/stream/file_io.h"
 #include "yacl/kernel/algorithms/base_ot.h"
 #include "yacl/kernel/algorithms/iknp_ote.h"
+#include "yacl/kernel/ot_kernel.h"
 #include "yacl/kernel/type/ot_store_utils.h"
 #include "yacl/link/context.h"
 #include "yacl/link/factory.h"
-#include "yacl/link/test_util.h"
-#include "yacl/utils/circuit_executor.h"
-#include "yacl/kernel/ot_kernel.h"
-#include "yacl/kernel/type/ot_store_utils.h"
+
 using namespace std;
 using namespace yacl;
-namespace {
-using uint128_t = __uint128_t;
-using OtMsg = uint128_t;
-using OtMsgPair = std::array<OtMsg, 2>;
-using OtChoices = dynamic_bitset<uint128_t>;
-
-}
-
 
 
 
@@ -42,7 +29,7 @@ inline uint128_t Aes128(uint128_t k, uint128_t m) {
   return enc.Encrypt(m);
 }
 
-    uint128_t ReverseBytes(uint128_t x) {
+uint128_t ReverseBytes(uint128_t x) {
   auto byte_view = ByteContainerView(&x, sizeof(x));
   uint128_t ret = 0;
   auto buf = std::vector<uint8_t>(sizeof(ret));
@@ -63,21 +50,19 @@ class GarblerAES {
   std::vector<uint128_t> wires_;
   std::vector<uint128_t> gb_value;
   yacl::io::BFCircuit circ_;
-  //根据电路改
+  // 根据电路改
   uint128_t table[36663][2];
 
-  //输入数据类型需要修改
+  // 输入数据类型需要修改
   uint128_t input;
   uint128_t input_EV;
 
-    //num_ot根据输入改
+  // num_ot根据输入改
   int num_ot = 128;
   uint128_t all_one_uint128_t_ = ~static_cast<__uint128_t>(0);
-uint128_t select_mask_[2] = {0, all_one_uint128_t_};
-  yacl::crypto::OtSendStore ot_send =  OtSendStore(num_ot, yacl::crypto::OtStoreType::Normal);
-
-
-
+  uint128_t select_mask_[2] = {0, all_one_uint128_t_};
+  yacl::crypto::OtSendStore ot_send =
+      OtSendStore(num_ot, yacl::crypto::OtStoreType::Normal);
 
   void setup() {
     // 通信环境初始化
@@ -86,25 +71,34 @@ uint128_t select_mask_[2] = {0, all_one_uint128_t_};
 
     for (size_t rank = 0; rank < world_size; rank++) {
       const auto id = fmt::format("id-{}", rank);
-      const auto host = fmt::format("127.0.0.1:{}", 10086 + rank);
+      const auto host = fmt::format("127.0.0.1:{}", 10010 + rank);
       ctx_desc.parties.push_back({id, host});
     }
 
-    
-    lctx = yacl::link::FactoryBrpc().CreateContext(ctx_desc,
-                                                   0);  
+    lctx = yacl::link::FactoryBrpc().CreateContext(ctx_desc, 0);
     lctx->ConnectToMesh();
 
-    //OT off-line
+    // OT off-line
     const auto ext_algorithm = yacl::crypto::OtKernel::ExtAlgorithm::SoftSpoken;
-    yacl::crypto::OtKernel kernel0(yacl::crypto::OtKernel::Role::Sender, ext_algorithm);
+    yacl::crypto::OtKernel kernel0(yacl::crypto::OtKernel::Role::Sender,
+                                   ext_algorithm);
     kernel0.init(lctx);
     kernel0.eval_rot(lctx, num_ot, &ot_send);
 
     // delta, inv_constant, start_point 初始化并发送给evaluator
     uint128_t tmp[3];
 
-    random_uint128_t(tmp, 3);
+    // random_uint128_t(tmp, 3);
+    for(int i = 0; i < 3; i++){
+      std::random_device rd;
+      std::mt19937_64 eng(rd());
+      std::uniform_int_distribution<uint64_t> distr;
+
+      uint64_t high = distr(eng);
+      uint64_t low = distr(eng);
+
+      tmp[i] = MakeUint128(high, low);
+    }
     tmp[0] = tmp[0] | 1;
     lctx->Send(1, yacl::ByteContainerView(tmp, sizeof(uint128_t) * 3), "tmp");
     std::cout << "tmpSend" << std::endl;
@@ -123,11 +117,11 @@ uint128_t select_mask_[2] = {0, all_one_uint128_t_};
     gb_value.resize(circ_.nw);
     wires_.resize(circ_.nw);
 
-    //输入位数有关
+    // 输入位数有关
     input = yacl::crypto::FastRandU128();
     std::cout << "input of garbler:" << input << std::endl;
 
-    //输入位数有关
+    // 输入位数有关
     yacl::dynamic_bitset<uint128_t> bi_val;
     bi_val.append(input);  // 直接转换为二进制  输入线路在前64位
 
@@ -136,40 +130,43 @@ uint128_t select_mask_[2] = {0, all_one_uint128_t_};
     for (size_t i = 0; i < circ_.niv; ++i) {
       num_of_input_wires += circ_.niw[i];
     }
-    
-    random_uint128_t(gb_value.data(), num_of_input_wires);
 
-  
+    // random_uint128_t(gb_value.data(), num_of_input_wires);
+    for(int i = 0; i < num_of_input_wires; i++){
+      std::random_device rd;
+      std::mt19937_64 eng(rd());
+      std::uniform_int_distribution<uint64_t> distr;
+
+      uint64_t high = distr(eng);
+      uint64_t low = distr(eng);
+
+      gb_value[i] = MakeUint128(high, low);
+    }
+
     // 前64位 直接置换  garbler
     for (size_t i = 0; i < circ_.niw[0]; i++) {
       wires_[i] = gb_value[i] ^ (select_mask_[bi_val[i]] & delta);
     }
 
-    lctx->Send(1,
-               yacl::ByteContainerView(wires_.data(), sizeof(uint128_t) * num_ot),
-               "garbleInput1");
+    lctx->Send(
+        1, yacl::ByteContainerView(wires_.data(), sizeof(uint128_t) * num_ot),
+        "garbleInput1");
 
     std::cout << "sendInput1" << std::endl;
-
-    // lctx->Send(
-    //     1,
-    //     yacl::ByteContainerView(gb_value.data() + 64, sizeof(uint128_t) * 64),
-    //     "garbleInput2");
-    // std::cout << "sendInput2" << std::endl;
 
     // onlineOT();
 
     yacl::Buffer r = lctx->Recv(1, "Input1");
 
-    //输入位数有关
+    // 输入位数有关
     const uint128_t* buffer_data = r.data<const uint128_t>();
     input_EV = *buffer_data;
-    
+
     return input;
   }
 
   uint128_t GBAND(uint128_t LA0, uint128_t A1, uint128_t LB0, uint128_t B1,
-                   uint128_t* table_item, MITCCRH<8>* mitccrh_pointer) {
+                  uint128_t* table_item, MITCCRH<8>* mitccrh_pointer) {
     bool pa = getLSB(LA0);
     bool pb = getLSB(LB0);
 
@@ -201,10 +198,8 @@ uint128_t select_mask_[2] = {0, all_one_uint128_t_};
     W0 = W0 ^ HLB0;
     W0 = W0 ^ (select_mask_[pb] & tmp);
     return W0;
-
   }
   void GB() {
-
     for (size_t i = 0; i < circ_.gates.size(); i++) {
       auto gate = circ_.gates[i];
       switch (gate.op) {
@@ -217,8 +212,8 @@ uint128_t select_mask_[2] = {0, all_one_uint128_t_};
         case yacl::io::BFCircuit::Op::AND: {
           const auto& iw0 = gb_value.operator[](gate.iw[0]);
           const auto& iw1 = gb_value.operator[](gate.iw[1]);
-          gb_value[gate.ow[0]] = GBAND(iw0, iw0 ^ delta, iw1, iw1 ^ delta,
-                                        table[i], &mitccrh);
+          gb_value[gate.ow[0]] =
+              GBAND(iw0, iw0 ^ delta, iw1, iw1 ^ delta, table[i], &mitccrh);
           break;
         }
         case yacl::io::BFCircuit::Op::INV: {
@@ -267,21 +262,16 @@ uint128_t select_mask_[2] = {0, all_one_uint128_t_};
     // 线路有关  输出位数
     std::vector<uint128_t> result(1);
     finalize(absl::MakeSpan(result));
-    std::cout << "MPC结果：" << ReverseBytes(result[0])  << std::endl;
-    std::cout << "明文结果：" << Aes128(ReverseBytes(input), ReverseBytes(input_EV)) << std::endl;  //待修改
+    std::cout << "MPC结果：" << ReverseBytes(result[0]) << std::endl;
+    std::cout << "明文结果："
+              << Aes128(ReverseBytes(input), ReverseBytes(input_EV))
+              << std::endl;  // 待修改
     return result[0];
   }
 
-
-  /********
-   * 
-   * 
-   * 可能有bug
-   * 
-   * **********/
   template <typename T>
-  void finalize(absl::Span<T> outputs) { 
-  // YACL_ENFORCE(outputs.size() >= circ_->nov);
+  void finalize(absl::Span<T> outputs) {
+    // YACL_ENFORCE(outputs.size() >= circ_->nov);
 
     size_t index = wires_.size();
 
@@ -291,16 +281,15 @@ uint128_t select_mask_[2] = {0, all_one_uint128_t_};
         int wire_index = index - circ_.now[i] + j;
         result[j] = getLSB(wires_[wire_index]) ^
                     getLSB(gb_value[wire_index]);  // 得到的是逆序的二进制值
-                                                  // 对应的混淆电路计算为LSB ^ d
-                                                  // 输出线路在后xx位
+                                                   // 对应的混淆电路计算为LSB ^
+                                                   // d 输出线路在后xx位
       }
-    
+
       outputs[circ_.nov - i - 1] = *(T*)result.data();
       index -= circ_.now[i];
     }
   }
-  void onlineOT(){
-
+  void onlineOT() {
     auto buf = lctx->Recv(1, "masked_choice");
 
     dynamic_bitset<uint128_t> masked_choices(num_ot);
@@ -324,5 +313,4 @@ uint128_t select_mask_[2] = {0, all_one_uint128_t_};
         ByteContainerView(batch_send.data(), sizeof(uint128_t) * num_ot * 2),
         "");
   }
-
 };
