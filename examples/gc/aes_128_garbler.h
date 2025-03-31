@@ -1,3 +1,17 @@
+// Copyright 2024 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 
 #include <vector>
@@ -20,8 +34,6 @@
 
 using namespace std;
 using namespace yacl;
-
-
 
 inline uint128_t Aes128(uint128_t k, uint128_t m) {
   crypto::SymmetricCrypto enc(crypto::SymmetricCrypto::CryptoType::AES128_ECB,
@@ -50,14 +62,12 @@ class GarblerAES {
   std::vector<uint128_t> wires_;
   std::vector<uint128_t> gb_value;
   yacl::io::BFCircuit circ_;
-  // 根据电路改
+
   uint128_t table[36663][2];
 
-  // 输入数据类型需要修改
   uint128_t input;
   uint128_t input_EV;
 
-  // num_ot根据输入改
   int num_ot = 128;
   uint128_t all_one_uint128_t_ = ~static_cast<__uint128_t>(0);
   uint128_t select_mask_[2] = {0, all_one_uint128_t_};
@@ -65,7 +75,6 @@ class GarblerAES {
       OtSendStore(num_ot, yacl::crypto::OtStoreType::Normal);
 
   void setup() {
-    // 通信环境初始化
     size_t world_size = 2;
     yacl::link::ContextDesc ctx_desc;
 
@@ -85,11 +94,10 @@ class GarblerAES {
     kernel0.init(lctx);
     kernel0.eval_rot(lctx, num_ot, &ot_send);
 
-    // delta, inv_constant, start_point 初始化并发送给evaluator
+    // delta, inv_constant, start_point
     uint128_t tmp[3];
 
-    // random_uint128_t(tmp, 3);
-    for(int i = 0; i < 3; i++){
+    for (int i = 0; i < 3; i++) {
       std::random_device rd;
       std::mt19937_64 eng(rd());
       std::uniform_int_distribution<uint64_t> distr;
@@ -107,32 +115,26 @@ class GarblerAES {
     inv_constant = tmp[1] ^ delta;
     start_point = tmp[2];
 
-    // 秘钥生成
     mitccrh.setS(start_point);
   }
 
-  // 包扩 输入值生成和混淆，garbler混淆值的发送
   uint128_t inputProcess(yacl::io::BFCircuit param_circ_) {
     circ_ = param_circ_;
     gb_value.resize(circ_.nw);
     wires_.resize(circ_.nw);
 
-    // 输入位数有关
     input = yacl::crypto::FastRandU128();
     std::cout << "input of garbler:" << input << std::endl;
 
-    // 输入位数有关
     yacl::dynamic_bitset<uint128_t> bi_val;
-    bi_val.append(input);  // 直接转换为二进制  输入线路在前64位
+    bi_val.append(input);
 
-    // 混淆过程
     int num_of_input_wires = 0;
     for (size_t i = 0; i < circ_.niv; ++i) {
       num_of_input_wires += circ_.niw[i];
     }
 
-    // random_uint128_t(gb_value.data(), num_of_input_wires);
-    for(int i = 0; i < num_of_input_wires; i++){
+    for (int i = 0; i < num_of_input_wires; i++) {
       std::random_device rd;
       std::mt19937_64 eng(rd());
       std::uniform_int_distribution<uint64_t> distr;
@@ -143,7 +145,6 @@ class GarblerAES {
       gb_value[i] = MakeUint128(high, low);
     }
 
-    // 前64位 直接置换  garbler
     for (size_t i = 0; i < circ_.niw[0]; i++) {
       wires_[i] = gb_value[i] ^ (select_mask_[bi_val[i]] & delta);
     }
@@ -158,7 +159,6 @@ class GarblerAES {
 
     yacl::Buffer r = lctx->Recv(1, "Input1");
 
-    // 输入位数有关
     const uint128_t* buffer_data = r.data<const uint128_t>();
     input_EV = *buffer_data;
 
@@ -204,7 +204,7 @@ class GarblerAES {
       auto gate = circ_.gates[i];
       switch (gate.op) {
         case yacl::io::BFCircuit::Op::XOR: {
-          const auto& iw0 = gb_value.operator[](gate.iw[0]);  // 取到具体值
+          const auto& iw0 = gb_value.operator[](gate.iw[0]);
           const auto& iw1 = gb_value.operator[](gate.iw[1]);
           gb_value[gate.ow[0]] = iw0 ^ iw1;
           break;
@@ -247,7 +247,6 @@ class GarblerAES {
     std::cout << "sendTable" << std::endl;
   }
   uint128_t decode() {
-    // 现接收计算结果
     size_t index = wires_.size();
     int start = index - circ_.now[0];
 
@@ -258,31 +257,24 @@ class GarblerAES {
     std::cout << "recvOutput" << std::endl;
 
     // decode
-
-    // 线路有关  输出位数
     std::vector<uint128_t> result(1);
     finalize(absl::MakeSpan(result));
     std::cout << "MPC结果：" << ReverseBytes(result[0]) << std::endl;
     std::cout << "明文结果："
               << Aes128(ReverseBytes(input), ReverseBytes(input_EV))
-              << std::endl;  // 待修改
+              << std::endl;
     return result[0];
   }
 
   template <typename T>
   void finalize(absl::Span<T> outputs) {
-    // YACL_ENFORCE(outputs.size() >= circ_->nov);
-
     size_t index = wires_.size();
 
     for (size_t i = 0; i < circ_.nov; ++i) {
       yacl::dynamic_bitset<T> result(circ_.now[i]);
       for (size_t j = 0; j < circ_.now[i]; ++j) {
         int wire_index = index - circ_.now[i] + j;
-        result[j] = getLSB(wires_[wire_index]) ^
-                    getLSB(gb_value[wire_index]);  // 得到的是逆序的二进制值
-                                                   // 对应的混淆电路计算为LSB ^
-                                                   // d 输出线路在后xx位
+        result[j] = getLSB(wires_[wire_index]) ^ getLSB(gb_value[wire_index]);
       }
 
       outputs[circ_.nov - i - 1] = *(T*)result.data();

@@ -1,4 +1,16 @@
-
+// Copyright 2024 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <vector>
 
@@ -32,7 +44,7 @@ uint128_t ReverseBytes(uint128_t x) {
 
 TEST(GCTest, SHA256Test) {
   std::shared_ptr<yacl::io::BFCircuit> circ_;
-  // 初始化
+
   GarblerSHA256* garbler = new GarblerSHA256();
   EvaluatorSHA256* evaluator = new EvaluatorSHA256();
 
@@ -41,17 +53,13 @@ TEST(GCTest, SHA256Test) {
   thread1.get();
   thread2.get();
 
-  // 电路读取
   std::string pth =
       fmt::format("{0}/yacl/io/circuit/data/{1}.txt",
                   std::filesystem::current_path().string(), "sha256");
   yacl::io::CircuitReader reader(pth);
   reader.ReadMeta();
   reader.ReadAllGates();
-  circ_ = reader.StealCirc();  // 指针
-
-  // 输入处理
-  // garbler->inputProcess(*circ_);
+  circ_ = reader.StealCirc();
 
   vector<uint8_t> sha256_result;
   thread1 = std::async([&] { sha256_result = garbler->inputProcess(*circ_); });
@@ -59,16 +67,13 @@ TEST(GCTest, SHA256Test) {
   thread1.get();
   thread2.get();
 
-  // 混淆方对整个电路进行混淆, 并将混淆表发送给evaluator
   garbler->GB();
   garbler->sendTable();
 
   evaluator->recvTable();
 
-  // // 计算方进行计算 按拓扑顺序进行计算
   evaluator->EV();
 
-  // // // evaluator发送计算结果 garbler进行DE操作
   evaluator->sendOutput();
 
   vector<uint8_t> gc_result = garbler->decode();
@@ -80,7 +85,7 @@ TEST(GCTest, SHA256Test) {
 
 TEST(GCTest, AESTest) {
   std::shared_ptr<yacl::io::BFCircuit> circ_;
-  // 初始化
+
   GarblerAES* garbler = new GarblerAES();
   EvaluatorAES* evaluator = new EvaluatorAES();
 
@@ -89,17 +94,13 @@ TEST(GCTest, AESTest) {
   thread1.get();
   thread2.get();
 
-  // 电路读取
   std::string pth =
       fmt::format("{0}/yacl/io/circuit/data/{1}.txt",
                   std::filesystem::current_path().string(), "aes_128");
   yacl::io::CircuitReader reader(pth);
   reader.ReadMeta();
   reader.ReadAllGates();
-  circ_ = reader.StealCirc();  // 指针
-
-  // 输入处理
-  // garbler->inputProcess(*circ_);
+  circ_ = reader.StealCirc();
 
   uint128_t key;
   uint128_t message;
@@ -114,16 +115,13 @@ TEST(GCTest, AESTest) {
   thread1.get();
   thread2.get();
 
-  // 混淆方对整个电路进行混淆, 并将混淆表发送给evaluator
   garbler->GB();
   garbler->sendTable();
 
   evaluator->recvTable();
 
-  // // 计算方进行计算 按拓扑顺序进行计算
   evaluator->EV();
 
-  // // // evaluator发送计算结果 garbler进行DE操作
   evaluator->sendOutput();
 
   uint128_t gc_result = garbler->decode();

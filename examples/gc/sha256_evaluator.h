@@ -1,3 +1,17 @@
+// Copyright 2024 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 
 #include <vector>
@@ -29,7 +43,6 @@ class EvaluatorSHA256 {
   yacl::io::BFCircuit circ_;
   std::shared_ptr<yacl::link::Context> lctx;
 
-  // 根据电路改
   uint128_t table[135073][2];
   uint128_t input;
   int num_ot = 768;
@@ -37,7 +50,6 @@ class EvaluatorSHA256 {
   uint128_t all_one_uint128_t = ~static_cast<__uint128_t>(0);
   uint128_t select_mask[2] = {0, all_one_uint128_t};
   void setup() {
-    // 通信环境初始化
     size_t world_size = 2;
     yacl::link::ContextDesc ctx_desc;
 
@@ -50,8 +62,8 @@ class EvaluatorSHA256 {
     lctx = yacl::link::FactoryBrpc().CreateContext(ctx_desc, 1);
     lctx->ConnectToMesh();
 
+    // delta, inv_constant, start_point
     uint128_t tmp[3];
-    // delta, inv_constant, start_point 接收
     yacl::Buffer r = lctx->Recv(0, "tmp");
     const uint128_t* buffer_data = r.data<const uint128_t>();
     memcpy(tmp, buffer_data, sizeof(uint128_t) * 3);
@@ -61,7 +73,6 @@ class EvaluatorSHA256 {
     inv_constant = tmp[1];
     start_point = tmp[2];
 
-    // 秘钥生成
     mitccrh.setS(start_point);
   }
 
@@ -92,7 +103,6 @@ class EvaluatorSHA256 {
     std::cout << "recvTable" << std::endl;
   }
 
-  // 未检查
   uint128_t EVAND(uint128_t A, uint128_t B, const uint128_t* table_item,
                   MITCCRH<8>* mitccrh_pointer) {
     uint128_t HA, HB, W;
@@ -120,7 +130,7 @@ class EvaluatorSHA256 {
       auto gate = circ_.gates[i];
       switch (gate.op) {
         case yacl::io::BFCircuit::Op::XOR: {
-          const auto& iw0 = wires_.operator[](gate.iw[0]);  // 取到具体值
+          const auto& iw0 = wires_.operator[](gate.iw[0]);
           const auto& iw1 = wires_.operator[](gate.iw[1]);
           wires_[gate.ow[0]] = iw0 ^ iw1;
           break;

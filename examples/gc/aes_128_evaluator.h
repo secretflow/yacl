@@ -1,3 +1,17 @@
+// Copyright 2024 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 #include <vector>
 
@@ -38,7 +52,6 @@ class EvaluatorAES {
   yacl::io::BFCircuit circ_;
   std::shared_ptr<yacl::link::Context> lctx;
 
-  // 根据电路改
   uint128_t table[36663][2];
   uint128_t input;
   int num_ot = 128;
@@ -49,7 +62,6 @@ class EvaluatorAES {
       OtRecvStore(num_ot, yacl::crypto::OtStoreType::Normal);
 
   void setup() {
-    // 通信环境初始化
     size_t world_size = 2;
     yacl::link::ContextDesc ctx_desc;
 
@@ -69,8 +81,9 @@ class EvaluatorAES {
     kernel1.init(lctx);
     kernel1.eval_rot(lctx, num_ot, &ot_recv);
 
+    // delta, inv_constant, start_point
     uint128_t tmp[3];
-    // delta, inv_constant, start_point 接收
+
     yacl::Buffer r = lctx->Recv(0, "tmp");
     const uint128_t* buffer_data = r.data<const uint128_t>();
     memcpy(tmp, buffer_data, sizeof(uint128_t) * 3);
@@ -80,7 +93,6 @@ class EvaluatorAES {
     inv_constant = tmp[1];
     start_point = tmp[2];
 
-    // 秘钥生成
     mitccrh.setS(start_point);
   }
 
@@ -89,14 +101,12 @@ class EvaluatorAES {
     gb_value.resize(circ_.nw);
     wires_.resize(circ_.nw);
 
-    // 输入位数有关
     yacl::dynamic_bitset<uint128_t> bi_val;
 
-    // 输入位数有关
     input = yacl::crypto::FastRandU128();
     std::cout << "input of evaluator:" << input << std::endl;
-    bi_val.append(input);  // 直接转换为二进制  输入线路在前64位
-    // 接收garbler混淆值
+    bi_val.append(input);
+
     yacl::Buffer r = lctx->Recv(0, "garbleInput1");
 
     const uint128_t* buffer_data = r.data<const uint128_t>();
@@ -105,19 +115,6 @@ class EvaluatorAES {
 
     std::cout << "recvInput1" << std::endl;
 
-    // 对evaluator自己的输入值进行混淆
-    // r = lctx->Recv(0, "garbleInput2");
-    // buffer_data = r.data<const uint128_t>();
-    // for (int i = 0; i < circ_.niw[1]; i++) {
-    //   wires_[i + circ_.niw[0]] =
-    //       buffer_data[i] ^ (select_mask[bi_val[i]] & delta);
-
-    // }
-    // std::cout << "recvInput2" << std::endl;
-
-    // onLineOT();
-
-    // 输入位数有关
     lctx->Send(0, yacl::ByteContainerView(&input, sizeof(uint128_t)), "Input1");
 
     return input;
@@ -136,7 +133,6 @@ class EvaluatorAES {
     std::cout << "recvTable" << std::endl;
   }
 
-  // 未检查
   uint128_t EVAND(uint128_t A, uint128_t B, const uint128_t* table_item,
                   MITCCRH<8>* mitccrh_pointer) {
     uint128_t HA, HB, W;
@@ -164,7 +160,7 @@ class EvaluatorAES {
       auto gate = circ_.gates[i];
       switch (gate.op) {
         case yacl::io::BFCircuit::Op::XOR: {
-          const auto& iw0 = wires_.operator[](gate.iw[0]);  // 取到具体值
+          const auto& iw0 = wires_.operator[](gate.iw[0]);
           const auto& iw1 = wires_.operator[](gate.iw[1]);
           wires_[gate.ow[0]] = iw0 ^ iw1;
           break;

@@ -1,3 +1,17 @@
+// Copyright 2024 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 
 #include <vector>
@@ -18,10 +32,6 @@
 
 using namespace std;
 using namespace yacl;
-// bazel test //examples/gc:gc_test
-
-
-
 
 class GarblerSHA256 {
  public:
@@ -34,14 +44,13 @@ class GarblerSHA256 {
   std::vector<uint128_t> wires_;
   std::vector<uint128_t> gb_value;
   yacl::io::BFCircuit circ_;
-  // 根据电路改
+
   uint128_t table[135073][2];
 
-  // 输入数据类型需要修改
   uint128_t input;
   uint128_t input_EV;
   vector<uint8_t> message;
-  // num_ot根据输入改
+
   int num_ot = 768;
   uint128_t all_one_uint128_t_ = ~static_cast<__uint128_t>(0);
   uint128_t select_mask_[2] = {0, all_one_uint128_t_};
@@ -50,7 +59,6 @@ class GarblerSHA256 {
       yacl::crypto::OtSendStore(num_ot, yacl::crypto::OtStoreType::Normal);
 
   void setup() {
-    // 通信环境初始化
     size_t world_size = 2;
     yacl::link::ContextDesc ctx_desc;
 
@@ -63,11 +71,10 @@ class GarblerSHA256 {
     lctx = yacl::link::FactoryBrpc().CreateContext(ctx_desc, 0);
     lctx->ConnectToMesh();
 
-    // delta, inv_constant, start_point 初始化并发送给evaluator
+    // delta, inv_constant, start_point
     uint128_t tmp[3];
 
-    // random_uint128_t(tmp, 3);
-    for(int i = 0; i < 3; i++){
+    for (int i = 0; i < 3; i++) {
       std::random_device rd;
       std::mt19937_64 eng(rd());
       std::uniform_int_distribution<uint64_t> distr;
@@ -85,17 +92,14 @@ class GarblerSHA256 {
     inv_constant = tmp[1] ^ delta;
     start_point = tmp[2];
 
-    // 秘钥生成
     mitccrh.setS(start_point);
   }
 
-  // 包扩 输入值生成和混淆，garbler混淆值的发送
   vector<uint8_t> inputProcess(yacl::io::BFCircuit param_circ_) {
     circ_ = param_circ_;
     gb_value.resize(circ_.nw);
     wires_.resize(circ_.nw);
 
-    // 输入位数有关
     message = crypto::FastRandBytes(crypto::RandLtN(32));
     auto in_buf = io::BuiltinBFCircuit::PrepareSha256Input(message);
     auto sha256_result = crypto::Sha256Hash().Update(message).CumulativeHash();
@@ -108,14 +112,12 @@ class GarblerSHA256 {
     bi_val.resize(circ_.nw);
     std::memcpy(bi_val.data(), in_buf.data(), in_buf.size());
 
-    // 混淆过程
     int num_of_input_wires = 0;
     for (size_t i = 0; i < circ_.niv; ++i) {
       num_of_input_wires += circ_.niw[i];
     }
 
-    // random_uint128_t(gb_value.data(), num_of_input_wires);
-    for(int i = 0; i < num_of_input_wires; i++){
+    for (int i = 0; i < num_of_input_wires; i++) {
       std::random_device rd;
       std::mt19937_64 eng(rd());
       std::uniform_int_distribution<uint64_t> distr;
@@ -178,7 +180,7 @@ class GarblerSHA256 {
       auto gate = circ_.gates[i];
       switch (gate.op) {
         case yacl::io::BFCircuit::Op::XOR: {
-          const auto& iw0 = gb_value.operator[](gate.iw[0]);  // 取到具体值
+          const auto& iw0 = gb_value.operator[](gate.iw[0]);
           const auto& iw1 = gb_value.operator[](gate.iw[1]);
           gb_value[gate.ow[0]] = iw0 ^ iw1;
           break;
@@ -221,12 +223,10 @@ class GarblerSHA256 {
     std::cout << "sendTable" << std::endl;
   }
   vector<uint8_t> decode() {
-    // 现接收计算结果
     size_t index = wires_.size();
     int start = index - circ_.now[0];
 
     yacl::Buffer r = lctx->Recv(1, "output");
-    // vector<uint8_t> out(96);
 
     memcpy(wires_.data() + start, r.data(), sizeof(uint128_t) * 256);
     std::cout << "recvOutput" << std::endl;
@@ -256,18 +256,13 @@ class GarblerSHA256 {
 
   template <typename T>
   void finalize(absl::Span<T> outputs) {
-    // YACL_ENFORCE(outputs.size() >= circ_->nov);
-
     size_t index = wires_.size();
 
     for (size_t i = 0; i < circ_.nov; ++i) {
       yacl::dynamic_bitset<T> result(circ_.now[i]);
       for (size_t j = 0; j < circ_.now[i]; ++j) {
         int wire_index = index - circ_.now[i] + j;
-        result[j] = getLSB(wires_[wire_index]) ^
-                    getLSB(gb_value[wire_index]);  // 得到的是逆序的二进制值
-                                                   // 对应的混淆电路计算为LSB ^
-                                                   // d 输出线路在后xx位
+        result[j] = getLSB(wires_[wire_index]) ^ getLSB(gb_value[wire_index]);
       }
 
       outputs[circ_.nov - i - 1] = *(T*)result.data();

@@ -1,7 +1,23 @@
+// Copyright 2024 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
+
 #include <stdio.h>
 
 #include "utils.h"
+
 #include "yacl/base/int128.h"
 #include "yacl/crypto/aes/aes_opt.h"
 #include "yacl/crypto/tools/crhash.h"
@@ -11,7 +27,6 @@
  */
 
 using block = __uint128_t;
-
 
 inline uint128_t Sigma(uint128_t x) {
   auto _x = _mm_loadu_si128(reinterpret_cast<__m128i*>(&x));
@@ -45,8 +60,6 @@ class MITCCRH {
 
   template <int K, int H>
   void hash_cir(block* blks) {
-    /********因为Sigma函数这里在编译指令里加了--copt=-fpermissive**************
-     */
     for (int i = 0; i < K * H; ++i) blks[i] = Sigma(blks[i]);
     hash<K, H>(blks);
   }
