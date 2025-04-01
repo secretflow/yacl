@@ -54,8 +54,8 @@ class InnerProductProofTest : public ::testing::Test {
 
   void SetUp() override {
     // 使用与sigma相同的方式创建曲线
-    curve_ = EcGroupFactory::Instance().Create("secp256k1", 
-                                              yacl::ArgLib = "openssl");
+    curve_ = EcGroupFactory::Instance().Create(kIpaEcName, 
+                                              yacl::ArgLib = kIpaEcLib);
   }
 
   void TestInnerProductProof(size_t size) {
