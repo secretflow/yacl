@@ -132,4 +132,37 @@ TEST_F(InnerProductProofTest, TestSize8) {
   TestInnerProductProof(8);
 }
 
+TEST_F(InnerProductProofTest, TestSize32) {
+  TestInnerProductProof(32);
+}
+
+TEST_F(InnerProductProofTest, TestSize64) {
+  TestInnerProductProof(64);
+}
+
+// 测试固定的向量内积计算
+TEST_F(InnerProductProofTest, InnerProductCalculation) {
+  std::vector<MPInt> a = {MPInt(1), MPInt(2), MPInt(3), MPInt(4)};
+  std::vector<MPInt> b = {MPInt(2), MPInt(3), MPInt(4), MPInt(5)};
+
+  ASSERT_EQ(a.size(), b.size());
+  size_t n = a.size();
+
+  MPInt calculated_c;
+  MPInt temp;
+  MPInt::MulMod(a[0], b[0], curve_->GetOrder(), &temp);
+  calculated_c = temp;
+  for (size_t i = 1; i < n; ++i) {
+    MPInt::MulMod(a[i], b[i], curve_->GetOrder(), &temp);
+    MPInt::AddMod(calculated_c, temp, curve_->GetOrder(), &calculated_c);
+  }
+
+  MPInt expected_c;
+  expected_c.Set(40); // 1*2 + 2*3 + 3*4 + 4*5 = 2 + 6 + 12 + 20 = 40
+  // 确保结果在模范围内
+  expected_c = expected_c.Mod(curve_->GetOrder());
+
+  ASSERT_EQ(calculated_c, expected_c);
+}
+
 }  // namespace examples::zkp
