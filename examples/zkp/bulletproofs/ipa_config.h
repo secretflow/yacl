@@ -16,7 +16,6 @@
 
 #include <vector>
 #include "yacl/crypto/ecc/ec_point.h"
-#include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/math/mpint/mp_int.h"
 #include "yacl/crypto/hash/hash_utils.h"
 

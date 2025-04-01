@@ -1,16 +1,34 @@
+// Copyright 2023 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "gtest/gtest.h"
+
+// Core ECC and Proof classes
+#include "zkp/bulletproofs/ipa_config.h"
+#include "zkp/bulletproofs/inner_product_proof.h"
+
+// YACL dependencies needed for testing
 #include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/crypto/ecc/ec_point.h"
 #include "yacl/crypto/tools/ro.h"
 #include "yacl/math/mpint/mp_int.h"
-#include "yacl/math/mpint/mp_int_enforce.h"
-#include "yacl/base/byte_container_view.h"
-#include "yacl/base/exception.h"
-#include "yacl/utils/scope_guard.h"
-#include "yacl/crypto/rand/rand.h"
 #include "yacl/crypto/hash/hash_utils.h"
-#include "zkp/bulletproofs/ipa_config.h"
-#include "zkp/bulletproofs/inner_product_proof.h"
-#include "gtest/gtest.h"
+// #include "yacl/math/mpint/mp_int_enforce.h" // Likely unused directly
+// #include "yacl/base/byte_container_view.h"  // Likely unused directly
+// #include "yacl/base/exception.h"            // Likely unused directly
+// #include "yacl/utils/scope_guard.h"         // Likely unused directly
+// #include "yacl/crypto/rand/rand.h"          // MPInt::RandomLtN handles randomness
 
 namespace examples::zkp {
 
