@@ -2,10 +2,19 @@ load("@yacl//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
+# 统一编译选项
+COMMON_COPTS = [
+    "-Wno-unused-parameter",
+    "-Wno-sign-compare",
+    "-Wno-missing-field-initializers",
+    "-Wno-unused-variable",
+]
+
 yacl_cc_library(
     name = "ipa_config",
     srcs = ["ipa_config.cc"],
     hdrs = ["ipa_config.h"],
+    copts = COMMON_COPTS,
     deps = [
         "@yacl//yacl/crypto/ecc:ec_point",
         "@yacl//yacl/crypto/ecc:spi",
@@ -15,18 +24,13 @@ yacl_cc_library(
         "@yacl//yacl/utils:scope_guard",
         "@yacl//yacl/crypto/hash:hash_utils",
     ],
-    copts = [
-        "-Wno-unused-parameter",
-        "-Wno-sign-compare",
-        "-Wno-missing-field-initializers",
-        "-Wno-unused-variable",
-    ],
 )
 
 yacl_cc_library(
     name = "inner_product_proof",
     srcs = ["inner_product_proof.cc"],
     hdrs = ["inner_product_proof.h"],
+    copts = COMMON_COPTS,
     deps = [
         ":ipa_config",
         "@yacl//yacl/crypto:openssl_wrappers",
@@ -39,24 +43,18 @@ yacl_cc_library(
         "@yacl//yacl/base:exception",
         "@yacl//yacl/utils:scope_guard",
         "@yacl//yacl/crypto/rand:rand",
-    ],
-    copts = [
-        "-Wno-unused-parameter",
-        "-Wno-sign-compare",
-        "-Wno-missing-field-initializers",
-        "-Wno-unused-variable",
     ],
 )
 
 yacl_cc_test(
     name = "inner_product_proof_test",
     srcs = ["inner_product_proof_test.cc"],
+    copts = COMMON_COPTS,
     deps = [
         ":inner_product_proof",
         ":ipa_config",
         "@yacl//yacl/crypto:openssl_wrappers",
-        "@yacl//yacl/crypto/ecc:ec_point",
-        "@yacl//yacl/crypto/ecc:spi",
+        "@yacl//yacl/crypto/ecc",
         "@yacl//yacl/crypto/tools:ro",
         "@yacl//yacl/math/mpint:mpint",
         "@yacl//yacl/math/mpint:mp_int_enforce",
@@ -64,11 +62,5 @@ yacl_cc_test(
         "@yacl//yacl/base:exception",
         "@yacl//yacl/utils:scope_guard",
         "@yacl//yacl/crypto/rand:rand",
-    ],
-    copts = [
-        "-Wno-unused-parameter",
-        "-Wno-sign-compare",
-        "-Wno-missing-field-initializers",
-        "-Wno-unused-variable",
     ],
 )
