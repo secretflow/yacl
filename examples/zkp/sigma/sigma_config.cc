@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "zkp/sigma_config.h"
+#include "zkp/sigma/sigma_config.h"
 
 namespace examples::zkp {
 

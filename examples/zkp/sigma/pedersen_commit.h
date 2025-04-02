@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "zkp/sigma_owh.h"
+#include "zkp/sigma/sigma_owh.h"
 
 #include "yacl/crypto/hash/hash_utils.h"
 
