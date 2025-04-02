@@ -20,8 +20,11 @@
 
 namespace yacl {
 
+// HashToCurve for Curve25519
+crypto::EcPoint HashToCurveCurve25519(yacl::ByteContainerView buffer,
+                                      const std::string &dst);
+
 // EncodeToCurve for Curve25519
 crypto::EcPoint EncodeToCurveCurve25519(yacl::ByteContainerView buffer,
                                         const std::string &dst);
-
 }  // namespace yacl

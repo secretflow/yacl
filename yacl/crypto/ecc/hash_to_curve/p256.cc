@@ -23,6 +23,8 @@
 #include "yacl/base/buffer.h"
 #include "yacl/base/exception.h"
 #include "yacl/crypto/ecc/ec_point.h"
+#include "yacl/crypto/ecc/hash_to_curve/hash_to_curve_util.h"
+#include "yacl/crypto/hash/hash_interface.h"
 #include "yacl/crypto/hash/ssl_hash.h"
 #include "yacl/math/mpint/mp_int.h"
 #include "yacl/utils/spi/type_traits.h"
@@ -57,174 +59,18 @@ constexpr std::array<uint8_t, kP256KeySize> p256_c1_bytes = {
     0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x40, 0x00, 0x00, 0x00, 0xc0, 0xff, 0xff, 0xff, 0x3f};
 
-inline yacl::math::MPInt DeserializeMPIntP256(
-    yacl::ByteContainerView buffer,
-    yacl::Endian endian = yacl::Endian::native) {
-  YACL_ENFORCE(buffer.size() == kP256KeySize);
-  yacl::math::MPInt mp;
-
-  mp.FromMagBytes(buffer, endian);
-
-  return mp;
-}
-
-inline void MPIntToBytesWithPadP256(std::vector<uint8_t> &buf,
-                                    const yacl::math::MPInt &mp) {
-  YACL_ENFORCE(buf.size() == kP256KeySize);
-  yacl::Buffer mpbuf = mp.ToMagBytes(yacl::Endian::big);
-  YACL_ENFORCE((size_t)(mpbuf.size()) <= buf.size(), "{},{}", mpbuf.size(),
-               buf.size());
-
-  std::memcpy(buf.data() + (kP256KeySize - mpbuf.size()), mpbuf.data(),
-              mpbuf.size());
-}
-
-const yacl::math::MPInt kMp1(1);
-const yacl::math::MPInt kMp2(2);
 const yacl::math::MPInt kMpp256 =
-    DeserializeMPIntP256(p256_p_bytes, yacl::Endian::little);
+    DeserializeMPInt(p256_p_bytes, kP256KeySize, yacl::Endian::little);
 
 const yacl::math::MPInt kMpA =
-    DeserializeMPIntP256(p256_a_bytes, yacl::Endian::little);
+    DeserializeMPInt(p256_a_bytes, kP256KeySize, yacl::Endian::little);
 const yacl::math::MPInt kMpB =
-    DeserializeMPIntP256(p256_b_bytes, yacl::Endian::little);
+    DeserializeMPInt(p256_b_bytes, kP256KeySize, yacl::Endian::little);
 const yacl::math::MPInt kMpZ =
-    DeserializeMPIntP256(p256_z_bytes, yacl::Endian::little);
+    DeserializeMPInt(p256_z_bytes, kP256KeySize, yacl::Endian::little);
 
 const yacl::math::MPInt kMpC1 =
-    DeserializeMPIntP256(p256_c1_bytes, yacl::Endian::little);
-
-// rfc8017 4.1 I2OSP
-// I2OSP - Integer-to-Octet-String primitive
-// Input:
-//   x        nonnegative integer to be converted
-//   xlen     intended length of the resulting octet string
-// Output:
-//   X corresponding octet string of length xLen
-// Error : "integer too large"
-std::vector<uint8_t> I2OSP(size_t x, size_t xlen) {
-  YACL_ENFORCE(x < std::pow(256, xlen));
-
-  yacl::ByteContainerView xbytes(&x, xlen);
-
-  std::vector<uint8_t> ret(xlen);
-  std::memcpy(ret.data(), xbytes.data(), xlen);
-
-  if (xlen > 1) {
-    std::reverse(ret.begin(), ret.end());
-  }
-  return ret;
-}
-
-// RFC9380 5.3.1.  expand_message_xmd
-std::vector<uint8_t> ExpandMessageXmdP256(yacl::ByteContainerView msg,
-                                          yacl::ByteContainerView dst,
-                                          size_t len_in_bytes) {
-  // yacl::crypto::SslHash hash_sha512(yacl::crypto::HashAlgorithm::SHA512);
-  yacl::crypto::SslHash hash_sha256(yacl::crypto::HashAlgorithm::SHA256);
-  size_t b_in_bytes = hash_sha256.DigestSize();
-  size_t s_in_bytes = 64;
-
-  size_t ell = std::ceil(static_cast<double>(len_in_bytes) / b_in_bytes);
-
-  YACL_ENFORCE(ell <= 255);
-  YACL_ENFORCE(len_in_bytes <= 65535);
-  YACL_ENFORCE(dst.size() >= 16);
-  YACL_ENFORCE(dst.size() <= 255);
-
-  std::vector<uint8_t> dst_prime(dst.size());
-  std::memcpy(dst_prime.data(), dst.data(), dst_prime.size());
-  std::vector<uint8_t> dstlen_octet = I2OSP(dst.size(), 1);
-  dst_prime.insert(dst_prime.end(), dstlen_octet.begin(), dstlen_octet.end());
-
-  std::vector<uint8_t> z_pad(s_in_bytes);
-
-  std::vector<uint8_t> l_i_b_str = I2OSP(len_in_bytes, 2);
-
-  hash_sha256.Update(z_pad);
-  hash_sha256.Update(msg);
-  hash_sha256.Update(l_i_b_str);
-  std::vector<uint8_t> z1(1);
-  hash_sha256.Update(z1);
-  hash_sha256.Update(dst_prime);
-
-  std::vector<uint8_t> b_0 = hash_sha256.CumulativeHash();
-
-  hash_sha256.Reset();
-  // b_1 = H(b_0 || I2OSP(1, 1) || DST_prime)
-  hash_sha256.Update(b_0);
-  z1[0] = 1;
-  hash_sha256.Update(z1);
-  hash_sha256.Update(dst_prime);
-  std::vector<uint8_t> b_1 = hash_sha256.CumulativeHash();
-  hash_sha256.Reset();
-
-  std::vector<uint8_t> ret;
-
-  ret.insert(ret.end(), b_1.begin(), b_1.end());
-
-  std::vector<uint8_t> b_i(b_0.size());
-  std::memcpy(b_i.data(), b_1.data(), b_1.size());
-
-  for (size_t i = 2; i <= ell; ++i) {
-    for (size_t j = 0; j < b_i.size(); ++j) {
-      b_i[j] = b_i[j] ^ b_0[j];
-    }
-    hash_sha256.Update(b_i);
-    z1[0] = i;
-    hash_sha256.Update(z1);
-    hash_sha256.Update(dst_prime);
-    b_i = hash_sha256.CumulativeHash();
-    ret.insert(ret.end(), b_i.begin(), b_i.end());
-    hash_sha256.Reset();
-  }
-
-  ret.resize(len_in_bytes);
-  return ret;
-}
-
-// RFC9380 5.2.  hash_to_field Implementation
-std::vector<std::vector<uint8_t>> HashToFieldP256(yacl::ByteContainerView msg,
-                                                  size_t count,
-                                                  const std::string &dst) {
-  size_t L = std::ceil(static_cast<double>(256 + 128) / 8);
-
-  size_t len_in_bytes = count * L;
-
-  std::vector<uint8_t> uniform_bytes =
-      ExpandMessageXmdP256(msg, dst, len_in_bytes);
-
-  std::vector<std::vector<uint8_t>> ret(count);
-
-  for (size_t i = 0; i < count; ++i) {
-    size_t elm_offset = L * i;
-    absl::Span<uint8_t> data = absl::MakeSpan(&uniform_bytes[elm_offset], L);
-
-    yacl::math::MPInt e_j;
-    e_j.FromMagBytes(data, yacl::Endian::big);
-
-    yacl::math::MPInt e_jp = e_j.Mod(kMpp256);
-
-    ret[i].resize(kP256KeySize);
-    MPIntToBytesWithPadP256(ret[i], e_jp);
-  }
-
-  return ret;
-}
-
-bool IsSquare(const yacl::math::MPInt &v, const yacl::math::MPInt &mod) {
-  yacl::math::MPInt t1 = mod.SubMod(kMp1, mod);  // mod - 1
-  yacl::math::MPInt t2;
-  yacl::math::MPInt::InvertMod(kMp2, mod, &t2);  // inverse 2
-
-  yacl::math::MPInt t3 = t1.MulMod(t2, mod);  // (q-1)/2
-  yacl::math::MPInt t4 = v.PowMod(t3, mod);   // x^((q-1)/2)
-
-  if (t4.IsOne() || t4.IsZero()) {
-    return true;
-  }
-  return false;
-}
+    DeserializeMPInt(p256_c1_bytes, kP256KeySize, yacl::Endian::little);
 
 // RFC9380 I.1 sqrt for q = 3 (mod 4)
 yacl::math::MPInt P256Sqrt(const yacl::math::MPInt &x) {
@@ -253,19 +99,6 @@ std::pair<bool, yacl::math::MPInt> P256SqrtRatio(const yacl::math::MPInt &u,
     y = P256Sqrt(r);
   }
   return std::make_pair(b, y);
-}
-
-bool P256Sgn0(const yacl::math::MPInt &v) {
-  yacl::math::MPInt c;
-  yacl::math::MPInt d;
-  yacl::math::MPInt::Div(v, kMp2, &c, &d);
-
-  bool ret = 1;
-  if (d.IsZero()) {
-    ret = 0;
-  }
-
-  return ret;
 }
 
 std::pair<yacl::math::MPInt, yacl::math::MPInt> MapToCurveSSWUP256(
@@ -335,7 +168,7 @@ std::pair<yacl::math::MPInt, yacl::math::MPInt> MapToCurveSSWUP256(
     y = y1;   // 22. y = CMOV(y, y1, is_gx1_square)
   }
 
-  bool e1 = (P256Sgn0(u) == P256Sgn0(y));  // 23. e1 = sgn0(u) == sgn0(y)
+  bool e1 = (Sgn0(u) == Sgn0(y));  // 23. e1 = sgn0(u) == sgn0(y)
 
   if (!e1) {
     y = kMpp256.SubMod(y, kMpp256);
@@ -370,16 +203,15 @@ crypto::EcPoint EncodeToCurveP256(yacl::ByteContainerView buffer,
   YACL_ENFORCE((dst.size() >= 16) && (dst.size() <= 255),
                "domain separation tag length: {} not in 16B-255B", dst.size());
 
-  std::vector<std::vector<uint8_t>> u = HashToFieldP256(buffer, 1, dst);
+  std::vector<std::vector<uint8_t>> u = HashToField(
+      buffer, 1, 48, kP256KeySize, crypto::HashAlgorithm::SHA256, kMpp256, dst);
   yacl::math::MPInt qx;
   yacl::math::MPInt qy;
 
   std::tie(qx, qy) = MapToCurveSSWUP256(u[0]);
-  // crypto::EcPoint p = MapToCurveSSWU(u[0]);
   crypto::AffinePoint p(qx, qy);
 
   // Do not need to clear cofactor when h_eff = 1
-  // std::vector<uint8_t> p = CompressP256(qx, qy);
   return p;
 }
 

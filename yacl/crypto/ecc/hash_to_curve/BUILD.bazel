@@ -54,6 +54,7 @@ yacl_cc_library(
         "//yacl/math/mpint",
         "//yacl/crypto/hash:hash_utils",
         "//yacl/crypto/ecc:ec_point",
+        ":hash_to_curve_util",
     ],
 )
 
@@ -71,6 +72,7 @@ yacl_cc_library(
         "//yacl/math/mpint",
         "//yacl/crypto/hash:hash_utils",
         "//yacl/crypto/ecc:ec_point",
+        ":hash_to_curve_util",
     ],
 )
 
@@ -88,6 +90,7 @@ yacl_cc_library(
         "//yacl/math/mpint",
         "//yacl/crypto/hash:hash_utils",
         "//yacl/crypto/ecc:ec_point",
+        ":hash_to_curve_util",
     ],
 )
 
@@ -98,6 +101,24 @@ yacl_cc_library(
     ],
     hdrs = [
         "curve25519.h",
+    ],
+    deps = [
+        "//yacl/base:exception",
+        "@abseil-cpp//absl/strings",
+        "//yacl/math/mpint",
+        "//yacl/crypto/hash:hash_utils",
+        "//yacl/crypto/ecc:ec_point",
+        ":hash_to_curve_util",
+    ],
+)
+
+yacl_cc_library(
+    name = "hash_to_curve_util",
+    srcs = [
+        "hash_to_curve_util.cc",
+    ],
+    hdrs = [
+        "hash_to_curve_util.h",
     ],
     deps = [
         "//yacl/base:exception",
