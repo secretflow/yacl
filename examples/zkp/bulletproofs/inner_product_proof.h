@@ -14,24 +14,39 @@
 
 #pragma once
 
+#include <memory>
 #include <vector>
+
+#include "simple_transcript.h"
+
 #include "yacl/crypto/ecc/ec_point.h"
+#include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/crypto/tools/ro.h"
 #include "yacl/math/mpint/mp_int.h"
 
 namespace examples::zkp {
 
+// Helper function for multi-scalar multiplication (declaration)
+yacl::crypto::EcPoint VartimeMultiscalarMul(
+    const std::shared_ptr<yacl::crypto::EcGroup>& curve,
+    const std::vector<yacl::math::MPInt>& scalars,
+    const std::vector<yacl::crypto::EcPoint>& points);
+
+class SimpleTranscript;  // Forward declaration
+
 class InnerProductProof {
  public:
+  // Define enum for verification results
   enum class Error {
-    kOk,
-    kInvalidProof,
-    kInvalidInput,
+    kOk = 0,
+    kInvalidInput = 1,
+    kInvalidProof = 2,
   };
 
-  // 创建内积证明
+  // Static Create method
   static InnerProductProof Create(
-      yacl::crypto::RandomOracle* transcript,
+      const std::shared_ptr<yacl::crypto::EcGroup>& curve,
+      SimpleTranscript* transcript,  // Use SimpleTranscript*
       const yacl::crypto::EcPoint& Q,
       const std::vector<yacl::math::MPInt>& G_factors,
       const std::vector<yacl::math::MPInt>& H_factors,
@@ -40,19 +55,27 @@ class InnerProductProof {
       const std::vector<yacl::math::MPInt>& a_vec,
       const std::vector<yacl::math::MPInt>& b_vec);
 
-  // 验证内积证明
-  Error Verify(
-      size_t n,
-      yacl::crypto::RandomOracle* transcript,
-      const std::vector<yacl::math::MPInt>& G_factors,
-      const std::vector<yacl::math::MPInt>& H_factors,
-      const yacl::crypto::EcPoint& P,
-      const yacl::crypto::EcPoint& Q,
-      const std::vector<yacl::crypto::EcPoint>& G_vec,
-      const std::vector<yacl::crypto::EcPoint>& H_vec) const;
+  // Verify method
+  Error Verify(const std::shared_ptr<yacl::crypto::EcGroup>& curve,
+               size_t n,                      // Original size
+               SimpleTranscript* transcript,  // Use SimpleTranscript*
+               const std::vector<yacl::math::MPInt>& G_factors,
+               const std::vector<yacl::math::MPInt>& H_factors,
+               const yacl::crypto::EcPoint& P, const yacl::crypto::EcPoint& Q,
+               const std::vector<yacl::crypto::EcPoint>& G_vec,
+               const std::vector<yacl::crypto::EcPoint>& H_vec) const;
+
+  // 获取证明组件 (for serialization or debugging)
+  const std::vector<yacl::crypto::EcPoint>& GetLvec() const { return L_vec_; }
+  const std::vector<yacl::crypto::EcPoint>& GetRvec() const { return R_vec_; }
+  const yacl::math::MPInt& GetA() const { return a_; }
+  const yacl::math::MPInt& GetB() const { return b_; }
 
  private:
-  std::vector<yacl::math::MPInt> proof_;
+  std::vector<yacl::crypto::EcPoint> L_vec_;
+  std::vector<yacl::crypto::EcPoint> R_vec_;
+  yacl::math::MPInt a_;
+  yacl::math::MPInt b_;
 };
 
 }  // namespace examples::zkp

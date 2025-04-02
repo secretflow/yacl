@@ -15,17 +15,16 @@
 #include "zkp/bulletproofs/ipa_config.h"
 
 #include <unordered_map>
+
 #include "yacl/base/exception.h"
 
 // Include necessary types directly or ensure they are in ipa_config.h
-#include "yacl/crypto/hash/hash_utils.h" // For HashAlgorithm
-#include "yacl/crypto/ecc/ec_point.h"   // For PointOctetFormat
+#include "yacl/crypto/ecc/ec_point.h"     // For PointOctetFormat
+#include "yacl/crypto/hash/hash_utils.h"  // For HashAlgorithm
 
 namespace examples::zkp {
 
-bool IpaConfig::CheckValid() const {
-  return witness_count > 0;
-}
+bool IpaConfig::CheckValid() const { return witness_count > 0; }
 
 void IpaConfig::SetDynamicNumber(size_t dynamic_number) {
   witness_count = dynamic_number;
@@ -39,7 +38,7 @@ namespace {
 
 std::unordered_map<IpaType, IpaConfig> BuildConfigMap() {
   std::unordered_map<IpaType, IpaConfig> configs;
-  
+
   // Inner product proof
   configs[IpaType::InnerProduct] = IpaConfig{
       .type = IpaType::InnerProduct,
@@ -50,7 +49,7 @@ std::unordered_map<IpaType, IpaConfig> BuildConfigMap() {
       .hash_algo = yacl::crypto::HashAlgorithm::SHA256,
       .point_format = yacl::crypto::PointOctetFormat::Uncompressed,
   };
-  
+
   return configs;
 }
 

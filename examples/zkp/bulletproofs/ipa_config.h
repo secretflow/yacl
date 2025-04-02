@@ -1,10 +1,10 @@
-// Copyright 2024 Ant Group Co., Ltd.
+// Copyright 2023 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//   http://www.apache.org/licenses/LICENSE-2.0
+//     http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -14,16 +14,19 @@
 
 #pragma once
 
+#include <memory>
+#include <string>
 #include <vector>
+
 #include "yacl/crypto/ecc/ec_point.h"
-#include "yacl/math/mpint/mp_int.h"
 #include "yacl/crypto/hash/hash_utils.h"
+#include "yacl/math/mpint/mp_int.h"
 
 namespace examples::zkp {
 
-// 曲线常量定义
+// Constants for the curve used in inner product argument
 inline constexpr const char* kIpaEcName = "secp256k1";
-inline constexpr const char* kIpaEcLib = "OpenSSL";
+inline constexpr const char* kIpaEcLib = "openssl";
 
 // IPA类型枚举
 enum class IpaType {
@@ -36,14 +39,16 @@ enum class IpaType {
 
 // IPA配置类
 struct IpaConfig {
-  IpaType type;        // IPA proof type
-  size_t witness_count;  // number of witness (in group G)
+  IpaType type;                  // IPA proof type
+  size_t witness_count;          // number of witness (in group G)
   uint32_t num_rnd_witness = 0;  // 随机见证数量
   uint32_t num_generator = 0;    // 生成元数量
   uint32_t num_statement = 0;    // 声明数量
   bool dyn_size_flag = false;    // 是否具有动态属性
-  yacl::crypto::HashAlgorithm hash_algo = yacl::crypto::HashAlgorithm::SHA256;  // 哈希算法
-  yacl::crypto::PointOctetFormat point_format = yacl::crypto::PointOctetFormat::Uncompressed;  // 点格式
+  yacl::crypto::HashAlgorithm hash_algo =
+      yacl::crypto::HashAlgorithm::SHA256;  // 哈希算法
+  yacl::crypto::PointOctetFormat point_format =
+      yacl::crypto::PointOctetFormat::Uncompressed;  // 点格式
 
   bool CheckValid() const;
   void SetDynamicNumber(size_t dynamic_number);
@@ -85,4 +90,4 @@ struct ShortProof {
   IpaProof proof;
 };
 
-}  // namespace examples::zkp 
+}  // namespace examples::zkp
