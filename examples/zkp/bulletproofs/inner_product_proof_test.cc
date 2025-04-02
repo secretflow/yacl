@@ -53,19 +53,18 @@ MPInt InnerProduct(const std::vector<MPInt>& a, const std::vector<MPInt>& b,
 }  // namespace
 
 // 从inner_product_proof.cc复制这些实用函数
-MPInt ChallengeMPInt(examples::zkp::SimpleTranscript* transcript,
+MPInt ChallengeMPInt(examples::zkp::SimpleTranscript& transcript,
                      yacl::ByteContainerView label,
                      const yacl::math::MPInt& order) {
-  return transcript->Challenge(label, order);
+  return transcript.Challenge(label, order);
 }
 
-void AbsorbEcPoint(examples::zkp::SimpleTranscript* transcript,
+void AbsorbEcPoint(examples::zkp::SimpleTranscript& transcript,
                    const std::shared_ptr<yacl::crypto::EcGroup>& curve,
                    yacl::ByteContainerView label,
                    const yacl::crypto::EcPoint& point) {
-  // 使用SerializePoint序列化点
   yacl::Buffer bytes = curve->SerializePoint(point);
-  transcript->Absorb(label, bytes);
+  transcript.Absorb(label, bytes);
 }
 
 // 主测试类
@@ -192,7 +191,7 @@ class InnerProductProofTest : public ::testing::Test {
 
     // Create proof
     auto proof = examples::zkp::InnerProductProof::Create(
-        curve_, &transcript, Q, G_factors, H_factors, g, h, a, b);
+        curve_, transcript, Q, G_factors, H_factors, g, h, a, b);
 
     // 重新计算Create方法使用的P值
     std::vector<MPInt> create_scalars;

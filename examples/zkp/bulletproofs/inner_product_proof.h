@@ -46,7 +46,7 @@ class InnerProductProof {
   // Static Create method
   static InnerProductProof Create(
       const std::shared_ptr<yacl::crypto::EcGroup>& curve,
-      SimpleTranscript* transcript,  // Use SimpleTranscript*
+      SimpleTranscript& transcript,  // Changed from pointer to reference
       const yacl::crypto::EcPoint& Q,
       const std::vector<yacl::math::MPInt>& G_factors,
       const std::vector<yacl::math::MPInt>& H_factors,
@@ -57,8 +57,8 @@ class InnerProductProof {
 
   // Verify method
   Error Verify(const std::shared_ptr<yacl::crypto::EcGroup>& curve,
-               size_t n,                      // Original size
-               SimpleTranscript* transcript,  // Use SimpleTranscript*
+               size_t n_in,                      // Original size
+               SimpleTranscript& transcript,  // Changed from pointer to reference
                const std::vector<yacl::math::MPInt>& G_factors,
                const std::vector<yacl::math::MPInt>& H_factors,
                const yacl::crypto::EcPoint& P, const yacl::crypto::EcPoint& Q,

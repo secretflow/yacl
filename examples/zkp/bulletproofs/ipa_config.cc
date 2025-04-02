@@ -62,9 +62,8 @@ IpaConfig GetInnerProduct(size_t witness_count) {
   return config;
 }
 
-void SetDynamicNumber(IpaConfig* config, size_t dynamic_number) {
-  YACL_ENFORCE(config != nullptr, "Config cannot be null");
-  config->SetDynamicNumber(dynamic_number);
+void SetDynamicNumber(IpaConfig& config, size_t dynamic_number) {
+  config.SetDynamicNumber(dynamic_number);
 }
 
 }  // namespace examples::zkp

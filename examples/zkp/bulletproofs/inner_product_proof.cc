@@ -72,17 +72,17 @@ yacl::crypto::EcPoint VartimeMultiscalarMul(
 }
 
 // Helper to absorb EcPoint using SimpleTranscript
-void AbsorbEcPoint(SimpleTranscript* transcript,
+void AbsorbEcPoint(SimpleTranscript& transcript,
                    const std::shared_ptr<EcGroup>& curve,
                    const yacl::ByteContainerView label, const EcPoint& point) {
   yacl::Buffer bytes = curve->SerializePoint(point);
-  transcript->Absorb(label, bytes);
+  transcript.Absorb(label, bytes);
 }
 
 // Helper to get challenge MPInt using SimpleTranscript
-MPInt ChallengeMPInt(SimpleTranscript* transcript,
+MPInt ChallengeMPInt(SimpleTranscript& transcript,
                      const yacl::ByteContainerView label, const MPInt& order) {
-  return transcript->Challenge(label, order);
+  return transcript.Challenge(label, order);
 }
 
 // Calculates the s vector explicitly from challenges
@@ -109,7 +109,7 @@ std::vector<MPInt> CalculateSVector(const std::vector<MPInt>& challenges,
 
 // --- InnerProductProof::Create --- //
 InnerProductProof InnerProductProof::Create(
-    const std::shared_ptr<EcGroup>& curve, SimpleTranscript* transcript,
+    const std::shared_ptr<EcGroup>& curve, SimpleTranscript& transcript,
     const EcPoint& Q, const std::vector<MPInt>& G_factors_in,
     const std::vector<MPInt>& H_factors_in,
     const std::vector<EcPoint>& G_vec_in, const std::vector<EcPoint>& H_vec_in,
@@ -118,7 +118,7 @@ InnerProductProof InnerProductProof::Create(
   YACL_ENFORCE(curve != nullptr, "Create: Curve cannot be null");
   const MPInt& order = curve->GetOrder();
 
-  transcript->Absorb(yacl::ByteContainerView("dom-sep"),
+  transcript.Absorb(yacl::ByteContainerView("dom-sep"),
                      yacl::ByteContainerView("inner-product"));
 
   std::vector<EcPoint> G_vec = G_vec_in;
@@ -284,14 +284,14 @@ InnerProductProof InnerProductProof::Create(
 // --- InnerProductProof::Verify --- //
 InnerProductProof::Error InnerProductProof::Verify(
     const std::shared_ptr<EcGroup>& curve, size_t n_in,
-    SimpleTranscript* transcript, const std::vector<MPInt>& G_factors,
+    SimpleTranscript& transcript, const std::vector<MPInt>& G_factors,
     const std::vector<MPInt>& H_factors, const EcPoint& P, const EcPoint& Q,
     const std::vector<EcPoint>& G_vec_in,
     const std::vector<EcPoint>& H_vec_in) const {
   YACL_ENFORCE(curve != nullptr, "Verify: Curve cannot be null");
   const MPInt& order = curve->GetOrder();
 
-  transcript->Absorb(yacl::ByteContainerView("dom-sep"),
+  transcript.Absorb(yacl::ByteContainerView("dom-sep"),
                      yacl::ByteContainerView("inner-product"));
 
   size_t lg_n = L_vec_.size();
