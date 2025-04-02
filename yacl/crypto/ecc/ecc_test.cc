@@ -528,7 +528,7 @@ TEST(HashToCurveTest, P521_XMD_SHA_512_SSWU_NU_) {
 //       "2a375b656207123d10766e68b938b1812a4a6625ff83cb8d5e86f58a4be08353"};
 //
 //   char kRFC9380P256NuDst[] =
-//       "QUUX-V01-CS02-with-curve25519_XMD:SHA-512_ELL2_RO_";
+//       "QUUX-V01-CS02-with-curve25519_XMD:SHA-512_ELL2_NU_";
 //
 //   for (size_t i = 0; i < rfc_9380_test_msgs.size(); ++i) {
 //     EcPoint p =
