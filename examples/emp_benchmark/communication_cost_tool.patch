@@ -1,0 +1,33 @@
+diff --git a/emp-tool/io/net_io_channel.h b/emp-tool/io/net_io_channel.h
+index 6566564..c049d16 100644
+--- a/emp-tool/io/net_io_channel.h
++++ b/emp-tool/io/net_io_channel.h
+@@ -28,6 +28,10 @@ class NetIO: public IOChannel<NetIO> { public:
+ 	bool has_sent = false;
+ 	string addr;
+ 	int port;
++  int send_rounds = 0;
++  int recv_rounds = 0;
++  int send_bytes = 0;
++  int recv_bytes = 0;
+ 	NetIO(const char * address, int port, bool quiet = false) {
+ 		if (port <0 || port > 65535) {
+ 			throw std::runtime_error("Invalid port number!");
+@@ -128,6 +132,8 @@ class NetIO: public IOChannel<NetIO> { public:
+ 				error("net_send_data\n");
+ 		}
+ 		has_sent = true;
++    send_rounds += 1;
++    send_bytes += len;
+ 	}
+ 
+ 	void recv_data_internal(void  * data, size_t len) {
+@@ -142,6 +148,8 @@ class NetIO: public IOChannel<NetIO> { public:
+ 			else
+ 				error("net_recv_data\n");
+ 		}
++    recv_rounds += 1;
++    recv_bytes += len;
+ 	}
+ };
+ 
