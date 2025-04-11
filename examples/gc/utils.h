@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <bits/stdc++.h>
-#include <emmintrin.h>
-#include <openssl/sha.h>
-
-#include <cstdint>
-#include <cstring>
-#include <iostream>
-#include <memory>
-#include <random>
-
-#include "yacl/math/mpint/mp_int.h"
-
-using uint128_t = __uint128_t;
+#include "yacl/base/byte_container_view.h"
+#include "yacl/base/int128.h"
 
 // get the Least Significant Bit of uint128_t
 inline bool getLSB(const uint128_t& x) { return (x & 1) == 1; }
+
+uint128_t ReverseBytes(uint128_t x) {
+  auto byte_view = yacl::ByteContainerView(&x, sizeof(x));
+  uint128_t ret = 0;
+  auto buf = std::vector<uint8_t>(sizeof(ret));
+  for (size_t i = 0; i < byte_view.size(); ++i) {
+    buf[byte_view.size() - i - 1] = byte_view[i];
+  }
+  std::memcpy(&ret, buf.data(), buf.size());
+  return ret;
+}

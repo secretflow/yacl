@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@yacl//bazel:yacl.bzl", "yacl_cc_binary", "yacl_cc_library", "yacl_cc_test")
+load("@yacl//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -21,23 +21,19 @@ yacl_cc_library(
     hdrs = [
         "mitccrh.h",
     ],
-    copts = [
-        "-mavx",
-        "-maes",
-        "-mpclmul",
-    ],
     deps = [
         ":utils",
-        "//yacl/base:int128",
         "//yacl/crypto/aes:aes_opt",
-        "//yacl/crypto/tools:crhash",
     ],
 )
 
 yacl_cc_library(
     name = "utils",
     hdrs = ["utils.h"],
-    deps = ["//yacl/math/mpint:mpint",],
+    deps = [
+        "//yacl/base:byte_container_view",
+        "//yacl/base:int128",
+    ],
 )
 
 yacl_cc_library(
@@ -45,22 +41,11 @@ yacl_cc_library(
     hdrs = [
         "aes_128_garbler.h",
     ],
-    copts = [
-        "-mavx",
-        "-maes",
-        "-mpclmul",
-    ],
     deps = [
         ":mitccrh",
         "//yacl/base:byte_container_view",
-        "//yacl/base:dynamic_bitset",
-        "//yacl/base:int128",
-        "//yacl/crypto/rand",
         "//yacl/io/circuit:bristol_fashion",
-        "//yacl/kernel/algorithms:base_ot",
-        "//yacl/kernel/algorithms:iknp_ote",
         "//yacl/kernel:ot_kernel",
-        "//yacl/kernel/type:ot_store_utils",
     ],
 )
 
@@ -69,18 +54,9 @@ yacl_cc_library(
     hdrs = [
         "sha256_garbler.h",
     ],
-    copts = [
-        "-mavx",
-        "-maes",
-        "-mpclmul",
-    ],
     deps = [
         ":mitccrh",
-        "//yacl/base:int128",
-        "//yacl/crypto/block_cipher:symmetric_crypto",
         "//yacl/base:byte_container_view",
-        "//yacl/base:dynamic_bitset",
-        "//yacl/crypto/rand",
         "//yacl/io/circuit:bristol_fashion",
     ],
 )
@@ -90,17 +66,9 @@ yacl_cc_library(
     hdrs = [
         "sha256_evaluator.h",
     ],
-    copts = [
-        "-mavx",
-        "-maes",
-        "-mpclmul",
-    ],
     deps = [
         ":mitccrh",
-        "//yacl/base:int128",
         "//yacl/base:byte_container_view",
-        "//yacl/base:dynamic_bitset",
-        "//yacl/crypto/rand",
         "//yacl/io/circuit:bristol_fashion",
     ],
 )
@@ -110,22 +78,11 @@ yacl_cc_library(
     hdrs = [
         "aes_128_evaluator.h",
     ],
-    copts = [
-        "-mavx",
-        "-maes",
-        "-mpclmul",
-    ],
     deps = [
         ":mitccrh",
-        "//yacl/base:int128",
         "//yacl/base:byte_container_view",
-        "//yacl/base:dynamic_bitset",
-        "//yacl/crypto/rand",
         "//yacl/io/circuit:bristol_fashion",
-        "//yacl/kernel/algorithms:base_ot",
-        "//yacl/kernel/algorithms:iknp_ote",
         "//yacl/kernel:ot_kernel",
-        "//yacl/kernel/type:ot_store_utils",
     ],
 )
 
@@ -139,10 +96,9 @@ yacl_cc_test(
     ],
     data = ["//yacl/io/circuit:circuit_data"],
     deps = [
-        ":sha256_garbler",
-        ":sha256_evaluator",
         ":aes_128_evaluator",
         ":aes_128_garbler",
-        "//yacl/crypto/block_cipher:symmetric_crypto",
+        ":sha256_evaluator",
+        ":sha256_garbler",
     ],
 )

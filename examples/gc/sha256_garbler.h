@@ -19,11 +19,11 @@
 #include "absl/types/span.h"
 #include "examples/gc/mitccrh.h"
 #include "fmt/format.h"
+#include "spdlog/spdlog.h"
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/dynamic_bitset.h"
 #include "yacl/base/int128.h"
-#include "yacl/crypto/block_cipher/symmetric_crypto.h"
 #include "yacl/crypto/hash/ssl_hash.h"
 #include "yacl/crypto/rand/rand.h"
 #include "yacl/io/circuit/bristol_fashion.h"
@@ -86,7 +86,7 @@ class GarblerSHA256 {
     }
     tmp[0] = tmp[0] | 1;
     lctx->Send(1, yacl::ByteContainerView(tmp, sizeof(uint128_t) * 3), "tmp");
-    std::cout << "tmpSend" << std::endl;
+    SPDLOG_INFO("tmpSend");
 
     delta = tmp[0];
     inv_constant = tmp[1] ^ delta;
@@ -103,10 +103,11 @@ class GarblerSHA256 {
     message = crypto::FastRandBytes(crypto::RandLtN(32));
     auto in_buf = io::BuiltinBFCircuit::PrepareSha256Input(message);
     auto sha256_result = crypto::Sha256Hash().Update(message).CumulativeHash();
+
+    SPDLOG_DEBUG("inputProcess");
     for (int i = 0; i < 32; i++) {
-      cout << int(sha256_result[i]) << " ";
+      SPDLOG_DEBUG("{}", int(sha256_result[i]));
     }
-    cout << endl;
 
     dynamic_bitset<uint8_t> bi_val;
     bi_val.resize(circ_.nw);
@@ -136,7 +137,7 @@ class GarblerSHA256 {
         1, yacl::ByteContainerView(wires_.data(), sizeof(uint128_t) * num_ot),
         "garbleInput1");
 
-    std::cout << "sendInput1" << std::endl;
+    SPDLOG_INFO("sendInput1");
 
     return sha256_result;
   }
@@ -220,8 +221,9 @@ class GarblerSHA256 {
     lctx->Send(1,
                yacl::ByteContainerView(table, sizeof(uint128_t) * 2 * circ_.ng),
                "table");
-    std::cout << "sendTable" << std::endl;
+    SPDLOG_INFO("sendTable");
   }
+
   vector<uint8_t> decode() {
     size_t index = wires_.size();
     int start = index - circ_.now[0];
@@ -229,7 +231,7 @@ class GarblerSHA256 {
     yacl::Buffer r = lctx->Recv(1, "output");
 
     memcpy(wires_.data() + start, r.data(), sizeof(uint128_t) * 256);
-    std::cout << "recvOutput" << std::endl;
+    SPDLOG_INFO("recvOutput");
 
     const auto out_size = 32;
     std::vector<uint8_t> out(out_size);
@@ -247,9 +249,8 @@ class GarblerSHA256 {
 
     auto sha256_result = crypto::Sha256Hash().Update(message).CumulativeHash();
 
-    if (sha256_result.size() == out.size() &&
-        std::equal(out.begin(), out.end(), sha256_result.begin()))
-      cout << "YES!!!" << endl;
+    YACL_ENFORCE(sha256_result.size() == out.size() &&
+                 std::equal(out.begin(), out.end(), sha256_result.begin()));
 
     return out;
   }

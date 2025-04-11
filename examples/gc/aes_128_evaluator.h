@@ -17,21 +17,21 @@
 
 #include "examples/gc/mitccrh.h"
 #include "fmt/format.h"
+#include "spdlog/spdlog.h"
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/dynamic_bitset.h"
 #include "yacl/base/int128.h"
 #include "yacl/crypto/rand/rand.h"
 #include "yacl/io/circuit/bristol_fashion.h"
-#include "yacl/kernel/algorithms/base_ot.h"
-#include "yacl/kernel/algorithms/iknp_ote.h"
 #include "yacl/kernel/ot_kernel.h"
-#include "yacl/kernel/type/ot_store_utils.h"
 #include "yacl/link/context.h"
 #include "yacl/link/factory.h"
+
 using namespace std;
 using namespace yacl;
 using namespace yacl::crypto;
+
 namespace {
 
 using OtMsg = uint128_t;
@@ -55,7 +55,7 @@ class EvaluatorAES {
   uint128_t table[36663][2];
   uint128_t input;
   int num_ot = 128;
-  uint128_t all_one_uint128_t = ~static_cast<__uint128_t>(0);
+  uint128_t all_one_uint128_t = ~static_cast<uint128_t>(0);
   uint128_t select_mask[2] = {0, all_one_uint128_t};
 
   yacl::crypto::OtRecvStore ot_recv =
@@ -87,7 +87,7 @@ class EvaluatorAES {
     yacl::Buffer r = lctx->Recv(0, "tmp");
     const uint128_t* buffer_data = r.data<const uint128_t>();
     memcpy(tmp, buffer_data, sizeof(uint128_t) * 3);
-    std::cout << "tmpRecv" << std::endl;
+    SPDLOG_INFO("tmpRecv");
 
     delta = tmp[0];
     inv_constant = tmp[1];
@@ -104,7 +104,7 @@ class EvaluatorAES {
     yacl::dynamic_bitset<uint128_t> bi_val;
 
     input = yacl::crypto::FastRandU128();
-    std::cout << "input of evaluator:" << input << std::endl;
+    SPDLOG_INFO("input of evaluator: {}", input);
     bi_val.append(input);
 
     yacl::Buffer r = lctx->Recv(0, "garbleInput1");
@@ -113,7 +113,7 @@ class EvaluatorAES {
 
     memcpy(wires_.data(), buffer_data, sizeof(uint128_t) * num_ot);
 
-    std::cout << "recvInput1" << std::endl;
+    SPDLOG_INFO("recvInput1");
 
     lctx->Send(0, yacl::ByteContainerView(&input, sizeof(uint128_t)), "Input1");
 
@@ -130,7 +130,7 @@ class EvaluatorAES {
       }
     }
 
-    std::cout << "recvTable" << std::endl;
+    SPDLOG_INFO("recvTable");
   }
 
   uint128_t EVAND(uint128_t A, uint128_t B, const uint128_t* table_item,
@@ -201,7 +201,7 @@ class EvaluatorAES {
                yacl::ByteContainerView(wires_.data() + start,
                                        sizeof(uint128_t) * num_ot),
                "output");
-    std::cout << "sendOutput" << std::endl;
+    SPDLOG_INFO("sendOutput");
   }
   void onLineOT() {
     yacl::dynamic_bitset<uint128_t> choices;

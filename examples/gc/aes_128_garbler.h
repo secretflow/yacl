@@ -19,16 +19,14 @@
 #include "absl/types/span.h"
 #include "examples/gc/mitccrh.h"
 #include "fmt/format.h"
+#include "spdlog/spdlog.h"
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/dynamic_bitset.h"
 #include "yacl/base/int128.h"
 #include "yacl/crypto/rand/rand.h"
 #include "yacl/io/circuit/bristol_fashion.h"
-#include "yacl/kernel/algorithms/base_ot.h"
-#include "yacl/kernel/algorithms/iknp_ote.h"
 #include "yacl/kernel/ot_kernel.h"
-#include "yacl/kernel/type/ot_store_utils.h"
 #include "yacl/link/context.h"
 #include "yacl/link/factory.h"
 
@@ -41,16 +39,6 @@ inline uint128_t Aes128(uint128_t k, uint128_t m) {
   return enc.Encrypt(m);
 }
 
-uint128_t ReverseBytes(uint128_t x) {
-  auto byte_view = ByteContainerView(&x, sizeof(x));
-  uint128_t ret = 0;
-  auto buf = std::vector<uint8_t>(sizeof(ret));
-  for (size_t i = 0; i < byte_view.size(); ++i) {
-    buf[byte_view.size() - i - 1] = byte_view[i];
-  }
-  std::memcpy(&ret, buf.data(), buf.size());
-  return ret;
-}
 class GarblerAES {
  public:
   std::shared_ptr<yacl::link::Context> lctx;
@@ -109,7 +97,7 @@ class GarblerAES {
     }
     tmp[0] = tmp[0] | 1;
     lctx->Send(1, yacl::ByteContainerView(tmp, sizeof(uint128_t) * 3), "tmp");
-    std::cout << "tmpSend" << std::endl;
+    SPDLOG_INFO("tmpSend");
 
     delta = tmp[0];
     inv_constant = tmp[1] ^ delta;
@@ -124,7 +112,7 @@ class GarblerAES {
     wires_.resize(circ_.nw);
 
     input = yacl::crypto::FastRandU128();
-    std::cout << "input of garbler:" << input << std::endl;
+    SPDLOG_INFO("input of garbler: {}", input);
 
     yacl::dynamic_bitset<uint128_t> bi_val;
     bi_val.append(input);
@@ -153,7 +141,7 @@ class GarblerAES {
         1, yacl::ByteContainerView(wires_.data(), sizeof(uint128_t) * num_ot),
         "garbleInput1");
 
-    std::cout << "sendInput1" << std::endl;
+    SPDLOG_INFO("sendInput1");
 
     // onlineOT();
 
@@ -244,7 +232,7 @@ class GarblerAES {
     lctx->Send(1,
                yacl::ByteContainerView(table, sizeof(uint128_t) * 2 * circ_.ng),
                "table");
-    std::cout << "sendTable" << std::endl;
+    SPDLOG_INFO("sendTable");
   }
   uint128_t decode() {
     size_t index = wires_.size();
@@ -254,15 +242,14 @@ class GarblerAES {
     const uint128_t* buffer_data = r.data<const uint128_t>();
 
     memcpy(wires_.data() + start, buffer_data, sizeof(uint128_t) * num_ot);
-    std::cout << "recvOutput" << std::endl;
+    SPDLOG_INFO("recvOutput");
 
     // decode
     std::vector<uint128_t> result(1);
     finalize(absl::MakeSpan(result));
-    std::cout << "MPC结果：" << ReverseBytes(result[0]) << std::endl;
-    std::cout << "明文结果："
-              << Aes128(ReverseBytes(input), ReverseBytes(input_EV))
-              << std::endl;
+    SPDLOG_INFO("MPC结果：{}", ReverseBytes(result[0]));
+    SPDLOG_INFO("明文结果：{}",
+                Aes128(ReverseBytes(input), ReverseBytes(input_EV)));
     return result[0];
   }
 

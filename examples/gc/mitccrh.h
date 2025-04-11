@@ -14,13 +14,10 @@
 
 #pragma once
 
-#include <stdio.h>
-
 #include "utils.h"
 
-#include "yacl/base/int128.h"
 #include "yacl/crypto/aes/aes_opt.h"
-#include "yacl/crypto/tools/crhash.h"
+
 /*
  * [REF] Implementation of "Better Concrete Security for Half-Gates Garbling (in
  * the Multi-Instance Setting)" https://eprint.iacr.org/2019/1168.pdf

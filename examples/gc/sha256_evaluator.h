@@ -18,15 +18,14 @@
 
 #include "examples/gc/mitccrh.h"
 #include "fmt/format.h"
+#include "spdlog/spdlog.h"
 
 #include "yacl/base/byte_container_view.h"
-#include "yacl/base/dynamic_bitset.h"
 #include "yacl/base/int128.h"
-#include "yacl/crypto/rand/rand.h"
 #include "yacl/io/circuit/bristol_fashion.h"
 #include "yacl/link/context.h"
 #include "yacl/link/factory.h"
-#include "yacl/link/test_util.h"
+
 using namespace std;
 using namespace yacl;
 using namespace yacl::crypto;
@@ -67,7 +66,7 @@ class EvaluatorSHA256 {
     yacl::Buffer r = lctx->Recv(0, "tmp");
     const uint128_t* buffer_data = r.data<const uint128_t>();
     memcpy(tmp, buffer_data, sizeof(uint128_t) * 3);
-    std::cout << "tmpRecv" << std::endl;
+    SPDLOG_INFO("tmpRecv");
 
     delta = tmp[0];
     inv_constant = tmp[1];
@@ -87,7 +86,7 @@ class EvaluatorSHA256 {
 
     memcpy(wires_.data(), buffer_data, sizeof(uint128_t) * num_ot);
 
-    std::cout << "recvInput1" << std::endl;
+    SPDLOG_INFO("recvInput1");
   }
   void recvTable() {
     yacl::Buffer r = lctx->Recv(0, "table");
@@ -100,7 +99,7 @@ class EvaluatorSHA256 {
       }
     }
 
-    std::cout << "recvTable" << std::endl;
+    SPDLOG_INFO("recvTable");
   }
 
   uint128_t EVAND(uint128_t A, uint128_t B, const uint128_t* table_item,
@@ -171,6 +170,6 @@ class EvaluatorSHA256 {
         0,
         yacl::ByteContainerView(wires_.data() + start, sizeof(uint128_t) * 256),
         "output");
-    std::cout << "sendOutput" << std::endl;
+    SPDLOG_INFO("sendOutput");
   }
 };

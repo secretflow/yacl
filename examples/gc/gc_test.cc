@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <filesystem>
+#include <future>
 #include <vector>
 
 #include "examples/gc/aes_128_evaluator.h"
@@ -29,17 +31,6 @@ inline uint128_t Aes128(uint128_t k, uint128_t m) {
   crypto::SymmetricCrypto enc(crypto::SymmetricCrypto::CryptoType::AES128_ECB,
                               k);
   return enc.Encrypt(m);
-}
-
-uint128_t ReverseBytes(uint128_t x) {
-  auto byte_view = ByteContainerView(&x, sizeof(x));
-  uint128_t ret = 0;
-  auto buf = std::vector<uint8_t>(sizeof(ret));
-  for (size_t i = 0; i < byte_view.size(); ++i) {
-    buf[byte_view.size() - i - 1] = byte_view[i];
-  }
-  std::memcpy(&ret, buf.data(), buf.size());
-  return ret;
 }
 
 TEST(GCTest, SHA256Test) {
