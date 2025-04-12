@@ -19,7 +19,7 @@ msgstr ""
 
 #: ../../src/research/index.rst:2
 msgid "Research"
-msgstr ""
+msgstr "研究"
 
 #: ../../src/research/index.rst:4
 msgid ""
@@ -27,6 +27,7 @@ msgid ""
 " (or early-career) cryptography researchers have been constantly finding "
 "it difficult to demonstrate their new ideas, or run emperical benchmarks."
 msgstr ""
+"YACL 也面向密码学研究人员设计。我们注意到，初级（或处于职业生涯早期）的密码学研究人员一直在努力展示他们的新想法，或运行实证基准测试。"
 
 #: ../../src/research/index.rst:6
 msgid ""
@@ -34,6 +35,7 @@ msgid ""
 " Section <../develop/index.html>`_. Yacl has provided the following tools"
 " for cryptographic researchers."
 msgstr ""
+"尽管在 `开发部分 <../develop/index.html>`_ 中介绍了 **椭圆曲线密码学、随机数和安全计算** 。YACL 仍为密码学研究人员提供了以下工具。"
 
 #: ../../src/research/index.rst:10
 msgid ""
@@ -41,20 +43,21 @@ msgid ""
 " do not hesitation to contact us for security issues, bugs, pull "
 "requests, or requiring new features ."
 msgstr ""
+"YACL 致力于长期支持密码学研究，请随时与我们联系，报告安全问题、漏洞、提交拉取请求或提出新功能需求。"
 
 #: ../../src/research/index.rst:12
 msgid "**yacl/math:** Yacl provides ``MPInt`` type for big number operations."
-msgstr ""
+msgstr "**yacl/math:** YACL 提供 ``MPInt`` 类型用于大数运算。"
 
 #: ../../src/research/index.rst:32
 msgid ""
 "**yacl/crypto/tools:** Yacl also provides some theoretical tools such as "
 "Random Oralce, Random Permutation, etc."
-msgstr ""
+msgstr "**yacl/crypto/tools:** YACL 还提供了一些理论工具，例如随机预言机、随机置换等。"
 
 #: ../../src/research/index.rst:51
 msgid ""
 "**yacl/crypto/experimental:** Yacl puts experimental cryptography "
 "algorithms here."
-msgstr ""
+msgstr "**yacl/crypto/experimental:** YACL 在这里放置实验性的密码学算法。"
 
