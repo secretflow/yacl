@@ -19,7 +19,7 @@ msgstr ""
 
 #: ../../src/develop/example_psi.rst:2
 msgid "Example: Build a PSI Protocol"
-msgstr ""
+msgstr "示例：构建 PSI 协议"
 
 #: ../../src/develop/example_psi.rst:4
 msgid ""
@@ -29,16 +29,18 @@ msgid ""
 "code of this example is avaliable at `link "
 "<https://github.com/secretflow/yacl/tree/main/examples/psi/cpp>`_."
 msgstr ""
+"这是一个使用 YACL 的 ECC API 和链接来构建 `PSI(隐私集合求交) <https://en.wikipedia.org/wiki/Private_set_intersection>`_ 协议的示例。"
+"该示例代码可在 `链接 <https://github.com/secretflow/yacl/tree/main/examples/psi/cpp>`_ 中找到。"
 
 #: ../../src/develop/example_psi.rst:7
 msgid ""
 "This example is merely designed for demonstration only, please do not use"
 " this example in production."
-msgstr ""
+msgstr "此示例仅供演示使用，请勿在生产环境中使用。"
 
 #: ../../src/develop/example_psi.rst:10
 msgid "Step 1: Understand ECDH-PSI"
-msgstr ""
+msgstr "第1步：了解 ECDH-PSI"
 
 #: ../../src/develop/example_psi.rst:12
 msgid ""
@@ -47,14 +49,15 @@ msgid ""
 "and H() indicates a cryptographically secure (collision-free) hash "
 "function."
 msgstr ""
+"在开始之前，ECDH-PSI 协议的形式化设计如下，其中 lambda 表示计算安全参数，H() 表示一个密码学安全（无碰撞）的哈希函数。"
 
 #: ../../src/develop/example_psi.rst:-1
 msgid "Alternative text"
-msgstr ""
+msgstr "备选文本"
 
 #: ../../src/develop/example_psi.rst:23
 msgid "Step 2: Implement Protocol"
-msgstr ""
+msgstr "第2步：实现协议"
 
 #: ../../src/develop/example_psi.rst:25
 msgid ""
@@ -62,16 +65,18 @@ msgid ""
 "almost always a good idea to separate the definitions and implementations"
 " into ``*.h`` and ``*.cc`` files."
 msgstr ""
+"我们在以下代码中提供了实现。请注意，将定义和实现分别放入 ``*.h`` 和 ``*.cc`` 文件中通常是个好主意。"
 
 #: ../../src/develop/example_psi.rst:33
 msgid ""
 "Besides the two files, you also need to write a `BUILD.bazel` file to "
 "tell `bazel` how to compile your files together."
 msgstr ""
+"除了这两个文件，您还需要编写一个 ``BUILD.bazel`` 文件，以告诉 ``bazel`` 如何将您的文件编译在一起。"
 
 #: ../../src/develop/example_psi.rst:62
-msgid "Step 2: Write and Run Tests"
-msgstr ""
+msgid "Step 3: Write and Run Tests"
+msgstr "第3步：编写并运行测试"
 
 #: ../../src/develop/example_psi.rst:64
 msgid ""
@@ -79,10 +84,11 @@ msgid ""
 "oder to run the following tests, you can ``cd examples && bazel test "
 "//psi/cpp:ecdh_psi_test``."
 msgstr ""
+"此外，我们建议所有用户为实现编写单元测试。要运行以下测试，您可以 ``cd examples && bazel test //psi/cpp:ecdh_psi_test``。"
 
 #: ../../src/develop/example_psi.rst:70
-msgid "Step 3: Generate Executables and Run with CSV files"
-msgstr ""
+msgid "Step 4: Generate Executables and Run with CSV files"
+msgstr "第4步：生成可执行文件并使用 CSV 文件运行"
 
 #: ../../src/develop/example_psi.rst:72
 msgid ""
@@ -90,6 +96,7 @@ msgid ""
 " run the PSI protocols with their private data. We show an example "
 "``main.cc`` file in the below."
 msgstr ""
+"或者，您也可以为两个用户构建一个可执行文件，以便他们使用私有数据实际运行 PSI 协议。我们在下面展示了一个示例 ``main.cc`` 文件。"
 
 #: ../../src/develop/example_psi.rst:77
 msgid ""
@@ -97,20 +104,22 @@ msgid ""
 "The ``-c opt`` flag tells the bazel build system to build a release (or, "
 "optimized) version of the executable."
 msgstr ""
+"为了编译，请运行 ``bazel build //psi/cpp:ecdh_psi_main -c opt``。"
+"``-c opt`` 标志告诉 bazel 构建系统构建可执行文件的发布（或优化）版本。"
 
 #: ../../src/develop/example_psi.rst:79
 msgid "To run the exeutable, open two terminals in the same machine."
-msgstr ""
+msgstr "要运行可执行文件，请在同一台机器上打开两个终端。"
 
 #: ../../src/develop/example_psi.rst:83
 msgid "Please make sure your machine's 10086 and 10087 ports are avaliable."
-msgstr ""
+msgstr "请确保您机器的 10086 和 10087 端口可用。"
 
 #: ../../src/develop/example_psi.rst:85
 msgid "In the first terminal, at yacl's project root, run"
-msgstr ""
+msgstr "在第一个终端中，在 YACL 项目根目录下运行"
 
 #: ../../src/develop/example_psi.rst:92
 msgid "Then in the second terminal, at yacl's project root, run"
-msgstr ""
+msgstr "然后在第二个终端中，在 YACL 项目根目录下运行"
 

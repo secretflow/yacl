@@ -58,7 +58,7 @@ Besides the two files, you also need to write a `BUILD.bazel` file to tell `baze
         deps = [":ecdh_psi"],
     )
 
-Step 2: Write and Run Tests
+Step 3: Write and Run Tests
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Also, we recommend all users to write unit tests for implementations. In order to run the following tests, you can ``cd examples && bazel test //psi/cpp:ecdh_psi_test``.
@@ -66,7 +66,7 @@ Also, we recommend all users to write unit tests for implementations. In order t
 .. literalinclude:: ../../../examples/psi/cpp/ecdh_psi_test.cc
   :language: cpp
 
-Step 3: Generate Executables and Run with CSV files
+Step 4: Generate Executables and Run with CSV files
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Also, alternatively you can build an executable for two users to actually run the PSI protocols with their private data. We show an example ``main.cc`` file in the below.
