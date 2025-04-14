@@ -54,8 +54,8 @@ namespace yacl::crypto {
  */
 class TPRE {
  public:
-  TPRE(){};
-  ~TPRE(){};
+  TPRE() {};
+  ~TPRE() {};
 
   //   /// @brief Rename the re-encryption ciphertext set,  which contains
   //   capsule
