@@ -21,19 +21,19 @@ msgstr ""
 
 #: ../../../GETTING_STARTED.md:1
 msgid "Getting Started"
-msgstr ""
+msgstr "开始使用"
 
 #: ../../../GETTING_STARTED.md:3
 msgid "This document includes guidelines."
-msgstr ""
+msgstr "本文档包含指南。"
 
 #: ../../../GETTING_STARTED.md:5
 msgid "Prerequisites"
-msgstr ""
+msgstr "先决条件"
 
 #: ../../../GETTING_STARTED.md:7
 msgid "To build Yacl from source, you will need the following tools:"
-msgstr ""
+msgstr "从源代码构建 YACL，您需要以下工具："
 
 #: ../../../GETTING_STARTED.md:9
 msgid ""
@@ -41,6 +41,7 @@ msgid ""
 "[bazelisk](https://github.com/bazelbuild/bazelisk?tab=readme-ov-"
 "file#installation) to manage bazel version."
 msgstr ""
+"`bazel <https://bazel.build/>`_：我们建议使用官方的 `bazelisk <https://github.com/bazelbuild/bazelisk?tab=readme-ov-file#installation>`_ 来管理 bazel 版本。"
 
 #: ../../../GETTING_STARTED.md:10
 msgid ""
@@ -48,46 +49,47 @@ msgid ""
 "`USE_BAZEL_VERSION` to the specified version, which can be found in the "
 "`.bazeliskrc` file."
 msgstr ""
+"如果不使用 bazelisk，请将环境变量 ``USE_BAZEL_VERSION`` 设置为指定的版本，该版本可以在 ``.bazeliskrc`` 文件中找到。"
 
 #: ../../../GETTING_STARTED.md:11
 msgid "[gcc >= 10.3, g++ >= 10.3](https://gcc.gnu.org/)"
-msgstr ""
+msgstr " `gcc >= 10.3, g++ >= 10.3 <https://gcc.gnu.org/>`_ "
 
 #: ../../../GETTING_STARTED.md:12
 msgid "[cmake](https://cmake.org/)"
-msgstr ""
+msgstr " `cmake <https://cmake.org/>`_ "
 
 #: ../../../GETTING_STARTED.md:13
 msgid "[ninja/ninja-build](https://ninja-build.org/)"
-msgstr ""
+msgstr "`ninja/ninja-build <https://ninja-build.org/>`_"
 
 #: ../../../GETTING_STARTED.md:14
 msgid ""
 "**Perl 5 with core modules** (Required by "
 "[OpenSSL](https://github.com/openssl/openssl/blob/master/INSTALL.md#prerequisites))"
-msgstr ""
+msgstr " **Perl 5 with core modules **( `OpenSSL <https://github.com/openssl/openssl/blob/master/INSTALL.md#prerequisites>`_ 需要)"
 
 #: ../../../GETTING_STARTED.md:16
 msgid "Download and build"
-msgstr ""
+msgstr "下载并构建"
 
 #: ../../../GETTING_STARTED.md:18
 msgid ""
 "Please make sure you already have `git` installed on your system, then "
 "clone Yacl via the github link,"
-msgstr ""
+msgstr "请确保您已经在系统上安装 ``git``，然后通过 github 链接克隆 YACL，"
 
 #: ../../../GETTING_STARTED.md:24
 msgid "The building process of YACL is as following."
-msgstr ""
+msgstr "YACL 的构建过程如下。"
 
 #: ../../../GETTING_STARTED.md:26
 msgid "Ubuntu"
-msgstr ""
+msgstr "Ubuntu"
 
 #: ../../../GETTING_STARTED.md:28
 msgid "Download the dependencies"
-msgstr ""
+msgstr "下载依赖项"
 
 #: ../../../GETTING_STARTED.md:34
 msgid ""
@@ -97,6 +99,7 @@ msgid ""
 "download the newest `bazelisk` binary from its official [github release "
 "page](https://github.com/bazelbuild/bazelisk/releases)."
 msgstr ""
+"我们建议使用 ``bazelisk`` 来管理不同版本的 ``bazel``。在 Linux 上，您可以在我们的发布页面下载 Bazelisk 二进制文件并手动将其添加到 PATH 中，这在 macOS 和 Windows 上也适用。您可以从其官方 `github发布页面 <https://github.com/bazelbuild/bazelisk/releases>`_ 下载最新的 ``bazelisk`` 二进制文件。"
 
 #: ../../../GETTING_STARTED.md:36
 msgid ""
@@ -104,34 +107,35 @@ msgid ""
 "v1.20.0, you may change the tag `v1.20.0` to any latest version, or any "
 "version you prefer."
 msgstr ""
+"以下是从下载到设置 bazelisk v1.20.0 的例子，您可以将标签 ``v1.20.0`` 更改为任何最新版本，或您偏好的任何版本。"
 
 #: ../../../GETTING_STARTED.md:50 ../../../GETTING_STARTED.md:84
 msgid "To build Yacl, at yacl's root directory, run the following"
-msgstr ""
+msgstr "要在 YACL 的根目录下构建 YACL，请运行以下命令"
 
 #: ../../../GETTING_STARTED.md:59 ../../../GETTING_STARTED.md:93
 msgid "To test Yacl"
-msgstr ""
+msgstr "测试 YACL"
 
 #: ../../../GETTING_STARTED.md:65
 msgid "MacOS"
-msgstr ""
+msgstr "MacOS"
 
 #: ../../../GETTING_STARTED.md:67
 msgid "First you need to download XCode and [homebrew](https://brew.sh/),"
-msgstr ""
+msgstr "首先，您需要下载 XCode 和 `homebrew <https://brew.sh/>`_"
 
 #: ../../../GETTING_STARTED.md:77
 msgid "Then download the dependencies,"
-msgstr ""
+msgstr "然后下载依赖项，"
 
 #: ../../../GETTING_STARTED.md:99
 msgid "Build docs"
-msgstr ""
+msgstr "构建文档"
 
 #: ../../../GETTING_STARTED.md:112
 msgid "Setup compilation database for your lsp"
-msgstr ""
+msgstr "为您的 lsp 设置编译数据库"
 
 #: ../../../GETTING_STARTED.md:114
 msgid ""
@@ -142,20 +146,22 @@ msgid ""
 " lot of modern C/C++ build system can generate this file with simple "
 "steps, it's the same for bazel."
 msgstr ""
+"语言服务器接受一个 ``compile_commands.json`` 文件输入，以帮助进行代码检查、跳转到定义/引用以及其他功能。该文件由一个 “命令对象” 数组组成，每个命令对象指定项目中一个翻译单元的编译方式。许多现代 C/C++ 构建系统都可以通过简单步骤生成此文件，bazel 也不例外。"
 
 #: ../../../GETTING_STARTED.md:121
 msgid "(Optional) Recommended vscode extensions"
-msgstr ""
+msgstr "(可选) 推荐的 VSCode 扩展"
 
 #: ../../../GETTING_STARTED.md:123
 msgid "We recommend to use the following extensions for vscode users:"
-msgstr ""
+msgstr "我们推荐 VSCode 用户使用以下扩展："
 
 #: ../../../GETTING_STARTED.md:124
 msgid ""
 "[Bazel](https://marketplace.visualstudio.com/items?itemName=BazelBuild"
 ".vscode-bazel): Bazel BUILD integration"
 msgstr ""
+"`Bazel <https://marketplace.visualstudio.com/items?itemName=BazelBuild.vscode-bazel>`_：Bazel BUILD 集成 "
 
 #: ../../../GETTING_STARTED.md:125
 msgid ""
@@ -163,13 +169,15 @@ msgid ""
 "code-extensions.vscode-clangd): C/C++ completion, navigation, and "
 "insights"
 msgstr ""
+"`clangd <https://marketplace.visualstudio.com/items?itemName=llvm-vs-code-extensions.vscode-clangd>`_：C/C++ 补全、导航和洞察 "
 
 #: ../../../GETTING_STARTED.md:126
 msgid ""
 "[cpplint](https://marketplace.visualstudio.com/items?itemName=mine.cpplint):"
 " code style check tool extension for cpplint (requires `cpplint` binary)"
 msgstr ""
+"`cpplint <https://marketplace.visualstudio.com/items?itemName=mine.cpplint>`_：cpplint 代码风格检查工具扩展（需要 ``cpplint`` 二进制文件） "
 
 #~ msgid "[gcc >= 10.3, g++ >= 10.3](https://gcc.gnu.org/)"
-#~ msgstr ""
+#~ msgstr " `gcc >= 10.3, g++ >= 10.3 <https://gcc.gnu.org/>`_ "
 
