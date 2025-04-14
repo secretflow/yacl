@@ -36,7 +36,7 @@ class Polynomial {
    * @brief Destroy the Polynomial object
    *
    */
-  ~Polynomial(){};
+  ~Polynomial() {};
 
   /**
    * @brief Creates a random polynomial with the given zero_value, threshold,
