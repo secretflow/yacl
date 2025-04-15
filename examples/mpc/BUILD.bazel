@@ -1,0 +1,19 @@
+
+
+
+
+
+cc_binary(
+    name = "XOR_example",                   
+    srcs = ["XOR_example.cc"],              
+    deps = ["//yacl/crypto/aes:aes_opt",],     
+    copts = ["-mavx","-maes","-mpclmul"]
+)
+
+cc_binary(
+    name = "AND_example",                   
+    srcs = ["AND_example.cc"],              
+    deps = ["//yacl/crypto/aes:aes_opt",],      
+    copts = ["-mavx","-maes","-mpclmul"]
+)
+

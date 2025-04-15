@@ -24,6 +24,8 @@
 #include "yacl/io/stream/file_io.h"
 #include "yacl/io/stream/interface.h"
 
+
+
 namespace yacl::io {
 
 // Bristol Fashion Circuit
@@ -142,6 +144,7 @@ class BuiltinBFCircuit {
     return fmt::format("{}/aes_128.txt", CircDataDir);
   }
 
+  
   // NOTE: sha256 needs two inputs, a 512 bit buffer, and a 256 bit previous
   // digest value
   //
