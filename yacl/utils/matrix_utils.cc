@@ -26,7 +26,7 @@
 #include "yacl/base/block.h"
 
 #ifdef __x86_64
-#include "cpu_features/cpuinfo_x86.h"
+#include "cpuinfo_x86.h"
 #endif
 
 namespace yacl {

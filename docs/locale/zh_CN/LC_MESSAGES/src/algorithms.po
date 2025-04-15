@@ -1,0 +1,168 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) 2022-2024 Ant Group Co., Ltd
+# This file is distributed under the same license as the YACL package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2025.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: YACL \n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-02-26 10:06+0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: zh_CN\n"
+"Language-Team: zh_CN <LL@li.org>\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.17.0\n"
+
+#: ../../../ALGORITHMS.md:1
+msgid "Algorithm List"
+msgstr "算法列表"
+
+#: ../../../ALGORITHMS.md:3
+msgid ""
+"In this part, we provide a comprehensive list of the algorithms that yacl"
+" implements."
+msgstr "本节中，我们提供了 yacl 实现的算法完整列表。"
+
+#: ../../../ALGORITHMS.md:5
+msgid "**Oblivious Transfer and Extensions**"
+msgstr "**不经意传输及其扩展**"
+
+#: ../../../ALGORITHMS.md:7
+msgid ""
+"The Simplest Protocol for Oblivious Transfer\\ *Tung Chou, Claudio "
+"Orlandi*\\ LatinCrypt 2015, [CO15](https://eprint.iacr.org/2015/267)"
+msgstr ""
+
+#: ../../../ALGORITHMS.md:11
+msgid ""
+"Extending Oblivious Transfers Efficiently\\ *Yuval Ishai, Joe Kilian, "
+"Kobbi Nissim, Erez Petrank*\\ Crypto 2003, "
+"[IKNP03](https://www.iacr.org/archive/crypto2003/27290145/27290145.pdf)"
+msgstr ""
+
+#: ../../../ALGORITHMS.md:15
+msgid ""
+"Actively Secure OT Extension with Optimal Overhead\\ *Marcel Keller, "
+"Emmanuela Orsini, Peter Scholl*\\ Crypto 2015, "
+"[KOS15](https://eprint.iacr.org/2015/546)"
+msgstr ""
+
+#: ../../../ALGORITHMS.md:19
+msgid ""
+"Efficient Batched Oblivious PRF with Applications to Private Set "
+"Intersection\\ *Vladimir Kolesnikov, Ranjit Kumaresan, Mike Rosulek, Ni "
+"Trieu*\\ CCS 2016, [KKRT16](https://eprint.iacr.org/2016/799)"
+msgstr ""
+
+#: ../../../ALGORITHMS.md:23
+msgid ""
+"Distributed vector-OLE: Improved constructions and implementation\\ "
+"*Phillipp Schoppmann, Adrià Gascón, Leonie Reichert, Mariana Raykova*\\ "
+"CCS 2019, [SGRR19](https://eprint.iacr.org/2019/1084)"
+msgstr ""
+
+#: ../../../ALGORITHMS.md:27
+msgid ""
+"Half-Tree: Halving the Cost of Tree Expansion in COT and DPF\\ *Xiaojie "
+"Guo, Kang Yang, Xiao Wang, Wenhao Zhang, Xiang Xie, Jiang Zhang, Zheli "
+"Liu*\\ EUROCRYPT 2023, [GYWZ+23](https://eprint.iacr.org/2022/1431)"
+msgstr ""
+
+#: ../../../ALGORITHMS.md:31 ../../../ALGORITHMS.md:63
+msgid ""
+"Ferret: Fast Extension for coRRElated oT with small communication\\ *Kang"
+" Yang, Chenkai Weng, Xiao Lan, Jiang Zhang, Xiao Wang*\\ CCS'20, "
+"[YWLZ+20](https://eprint.iacr.org/2020/924)"
+msgstr ""
+
+#: ../../../ALGORITHMS.md:35
+msgid ""
+"SoftSpokenOT: Quieter OT Extension from Small-Field Silent VOLE in the "
+"Minicrypt Model\\ *Lawrence Roy*\\ Crypto 2022, "
+"[Roy22](https://www.iacr.org/cryptodb//data/paper.php?pubkey=32258)"
+msgstr ""
+
+#: ../../../ALGORITHMS.md:39
+msgid "**Vector Oblivious Linear Evaluation (over Field 2k)**"
+msgstr "**向量不经意线性评估（在域 2k 上）**"
+
+#: ../../../ALGORITHMS.md:41
+msgid ""
+"MASCOT: Faster Malicious Arithmetic Secure Computation with Oblivious "
+"Transfer\\ *Marcel Keller, Emmanuela Orsini*\\ CCS 2016, "
+"[KO16](https://eprint.iacr.org/2016/505)"
+msgstr ""
+
+#: ../../../ALGORITHMS.md:45
+msgid ""
+"Efficient Two-Round OT Extension and Silent Non-Interactive Secure "
+"Computation\\ *Elette Boyle, Geoffroy Couteau, Niv Gilboa, Yuval Ishai, "
+"Lisa Kohl, Peter Rindal, Peter Scholl*\\ CCS 2019, [BCGI+19 (with Peter "
+"Rindal)](https://eprint.iacr.org/2019/1159)"
+msgstr ""
+
+#: ../../../ALGORITHMS.md:49
+msgid ""
+"Efficient Two-Round OT Extension and Silent Non-Interactive Secure "
+"Computation\\ *Elette Boyle, Geoffroy Couteau, Niv Gilboa, Yuval Ishai, "
+"Lisa Kohl, Peter Rindal, Peter Scholl*\\ CCS 2019, "
+"[BCGI+19](https://eprint.iacr.org/2019/1159)"
+msgstr ""
+
+#: ../../../ALGORITHMS.md:53 ../../../ALGORITHMS.md:71
+msgid ""
+"Correlated Pseudorandomness from Expand-Accumulate Codes\\ *Elette Boyle,"
+" Geoffroy Couteau, Niv Gilboa, Yuval Ishai, Lisa Kohl, Nicolas Resch, "
+"Peter Scholl*\\ Crypto 2022, [BCG+22](https://eprint.iacr.org/2022/1014)"
+msgstr ""
+
+#: ../../../ALGORITHMS.md:57
+msgid ""
+"Wolverine: Fast, Scalable, and Communication-Efficient Zero-Knowledge "
+"Proofs for Boolean and Arithmetic Circuits\\ *Chenkai Weng, Kang Yang, "
+"Jonathan Katz, Xiao Wang* SP, 2021, "
+"[WYKW21](https://eprint.iacr.org/2020/925)"
+msgstr ""
+
+#: ../../../ALGORITHMS.md:61
+msgid "**Codes**"
+msgstr "**编码**"
+
+#: ../../../ALGORITHMS.md:67
+msgid ""
+"Silver: Silent VOLE and Oblivious Transfer from Hardness of Decoding "
+"Structured LDPC Codes\\ *Geoffroy Couteau, Peter Rindal, Srinivasan "
+"Raghuraman*\\ Crypto 2021, [CRR21](https://eprint.iacr.org/2021/1150)"
+msgstr ""
+
+#: ../../../ALGORITHMS.md:75
+msgid "**Distributed Point Functions**"
+msgstr "**分布式点函数**"
+
+#: ../../../ALGORITHMS.md:77
+msgid ""
+"Function secret sharing: improvements and extensions\\ *Elette Boyle, Niv"
+" Gilboa, Yuval Ishai*\\ CCS 2016, "
+"[BGI16](https://eprint.iacr.org/2018/707)"
+msgstr ""
+
+#: ../../../ALGORITHMS.md:81
+msgid "**Correlation-Robust Hash (CrHash)**"
+msgstr "**相关性鲁棒哈希 (CrHash)**"
+
+#: ../../../ALGORITHMS.md:83 ../../../ALGORITHMS.md:89
+msgid ""
+"Efficient and Secure Multiparty Computation from Fixed-Key Block "
+"Ciphers\\ *Chun Guo, Jonathan Katz, Xiao Wang, Yu Yu*\\ Preprint 2019, "
+"[GKWY19](https://eprint.iacr.org/2019/074)"
+msgstr ""
+
+#: ../../../ALGORITHMS.md:87
+msgid "**Circular Correlation-Robust Hash (CCR Hash)**"
+msgstr "**循环相关性鲁棒哈希 (CCR Hash)**"

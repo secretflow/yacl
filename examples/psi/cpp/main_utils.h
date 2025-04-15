@@ -51,7 +51,7 @@ inline std::vector<std::string> LoadCsv(const std::string& file_path) {
 }
 inline std::vector<std::string> LoadCsv(int rank) {
   YACL_ENFORCE(rank == 0 || rank == 1);
-  std::string file_path = fmt::format("{}/examples/psi/data_{}.csv",
+  std::string file_path = fmt::format("{}/psi/data/data_{}.csv",
                                       std::filesystem::current_path().string(),
                                       rank == 0 ? "a" : "b");
   return LoadCsv(file_path);

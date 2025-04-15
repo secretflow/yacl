@@ -36,6 +36,6 @@ yacl_cc_library(
     deps = [
         "//yacl/io/msgpack:buffer",
         "//yacl/io/msgpack:spec_traits",
-        "@com_github_msgpack_msgpack//:msgpack",
+        "@msgpack-c//:msgpack",
     ],
 )

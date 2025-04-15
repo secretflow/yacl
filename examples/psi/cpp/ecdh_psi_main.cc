@@ -153,7 +153,7 @@ int main(int argc, char* argv[]) {
   YACL_ENFORCE(FLAGS_rank == 0 || FLAGS_rank == 1, "Invalid Arguemnts: rank");
 
   std::string file_path =
-      FLAGS_path.empty() ? fmt::format("{}/examples/psi/data_{}.csv",
+      FLAGS_path.empty() ? fmt::format("{}/psi/data/data_{}.csv",
                                        std::filesystem::current_path().string(),
                                        FLAGS_rank == 0 ? "a" : "b")
                          : FLAGS_path;

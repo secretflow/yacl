@@ -180,7 +180,7 @@ std::vector<T> ExtractHashCoef(T seed,
       if (mask & index_plus_one) {
         coef = GfMul(coef, buff[i]);
       }
-      mask <<= 1;
+      mask <<= (uint64_t)1;
     }
     ret.push_back(coef);
   }

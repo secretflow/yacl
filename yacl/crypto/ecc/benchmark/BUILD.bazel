@@ -21,8 +21,8 @@ yacl_cc_binary(
     srcs = ["bench_ecc.cc"],
     deps = [
         "//yacl/crypto/ecc",
-        "@com_github_gflags_gflags//:gflags",
-        "@com_github_google_benchmark//:benchmark",
-        "@com_google_absl//absl/strings",
+        "@abseil-cpp//absl/strings",
+        "@gflags",
+        "@google_benchmark//:benchmark",
     ],
 )

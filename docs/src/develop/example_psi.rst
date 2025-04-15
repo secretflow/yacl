@@ -58,15 +58,15 @@ Besides the two files, you also need to write a `BUILD.bazel` file to tell `baze
         deps = [":ecdh_psi"],
     )
 
-Step 2: Write and Run Tests
+Step 3: Write and Run Tests
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Also, we recommend all users to write unit tests for implementations. In oder to run the following tests, you can ``bazel test //examples/psi/ecdh_psi_test``.
+Also, we recommend all users to write unit tests for implementations. In order to run the following tests, you can ``cd examples && bazel test //psi/cpp:ecdh_psi_test``.
 
 .. literalinclude:: ../../../examples/psi/cpp/ecdh_psi_test.cc
   :language: cpp
 
-Step 3: Generate Executables and Run with CSV files
+Step 4: Generate Executables and Run with CSV files
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Also, alternatively you can build an executable for two users to actually run the PSI protocols with their private data. We show an example ``main.cc`` file in the below.
@@ -74,7 +74,7 @@ Also, alternatively you can build an executable for two users to actually run th
 .. literalinclude:: ../../../examples/psi/cpp/ecdh_psi_main.cc
   :language: cpp
 
-In order to compile, run ``bazel build //examples/psi/ecdh_psi_main -c opt``. The ``-c opt`` flag tells the bazel build system to build a release (or, optimized) version of the executable.
+In order to compile, run ``bazel build //psi/cpp:ecdh_psi_main -c opt``. The ``-c opt`` flag tells the bazel build system to build a release (or, optimized) version of the executable.
 
 To run the exeutable, open two terminals in the same machine.
 
@@ -86,11 +86,11 @@ In the first terminal, at yacl's project root, run
 
 .. code:: bash
 
-    ./bazel-bin/examples/psi/ecdh_psi_main --rank=0
+    ./bazel-bin/psi/cpp/ecdh_psi_main --rank=0
 
 
 Then in the second terminal, at yacl's project root, run
 
 .. code:: bash
 
-    ./bazel-bin/examples/psi/ecdh_psi_main --rank=1
+    ./bazel-bin/psi/cpp/ecdh_psi_main --rank=1

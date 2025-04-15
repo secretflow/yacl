@@ -35,6 +35,6 @@ yacl_cc_test(
     srcs = ["buffer_test.cc"],
     deps = [
         ":buffer",
-        "@com_github_msgpack_msgpack//:msgpack",
+        "@msgpack-c//:msgpack",
     ],
 )

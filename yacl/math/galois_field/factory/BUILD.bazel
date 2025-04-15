@@ -31,7 +31,7 @@ yacl_cc_library(
         "//yacl/math/mpint",
         "//yacl/utils:parallel",
         "//yacl/utils/spi/sketch",
-        "@com_google_absl//absl/types:span",
+        "@abseil-cpp//absl/types:span",
     ],
 )
 
@@ -98,7 +98,7 @@ yacl_cc_library(
         "//yacl/base:exception",
         "//yacl/base:int128",
         "//yacl/crypto/rand",
-        "@com_google_absl//absl/types:span",
+        "@abseil-cpp//absl/types:span",
     ],
     alwayslink = 1,
 )

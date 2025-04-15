@@ -100,7 +100,7 @@ yacl_cc_test(
         "//yacl/crypto/ecc:spi",
         "//yacl/math/mpint",
         "//yacl/utils:scope_guard",
-        "@com_google_absl//absl/strings",
+        "@abseil-cpp//absl/strings",
     ],
 )
 
@@ -129,6 +129,6 @@ yacl_cc_test(
         ":tpre",
         "//yacl/crypto/ecc",
         "//yacl/crypto/ecc:spi",
-        "@com_google_absl//absl/strings",
+        "@abseil-cpp//absl/strings",
     ],
 )

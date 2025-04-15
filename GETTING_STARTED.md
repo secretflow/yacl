@@ -7,7 +7,8 @@ This document includes guidelines.
 To build Yacl from source, you will need the following tools:
 
 - [bazel](https://bazel.build/): We recommend to use the official [bazelisk](https://github.com/bazelbuild/bazelisk?tab=readme-ov-file#installation) to manage bazel version.
-- [gcc >= 10.3](https://gcc.gnu.org/)
+  - If not use bazelisk, please set the environment variable `USE_BAZEL_VERSION` to the specified version, which can be found in the `.bazeliskrc` file.
+- [gcc >= 10.3, g++ >= 10.3](https://gcc.gnu.org/)
 - [cmake](https://cmake.org/)
 - [ninja/ninja-build](https://ninja-build.org/)
 - **Perl 5 with core modules** (Required by [OpenSSL](https://github.com/openssl/openssl/blob/master/INSTALL.md#prerequisites))
@@ -27,7 +28,7 @@ The building process of YACL is as following.
 Download the dependencies
 
 ```sh
-$ sudo apt install gcc wget cmake ninja-build nasm automake libtool libomp-dev
+$ sudo apt install gcc g++ wget cmake ninja-build nasm automake libtool libomp-dev
 ```
 
 We recommend to use `bazelisk` to manage different versions of `bazel`. On Linux, You can download Bazelisk binary on our Releases page and add it to your PATH manually, which also works on macOS and Windows. You can download the newest `bazelisk` binary from its official [github release page](https://github.com/bazelbuild/bazelisk/releases).
@@ -37,28 +38,28 @@ The following is an example of downloading and setting up bazelisk v1.20.0, you 
 ```sh
 # If you use a x86 architecture cpu
 $ wget https://github.com/bazelbuild/bazelisk/releases/download/v1.20.0/bazelisk-linux-amd64
-$ mv bazelisk-linux-amd64 bazel && chmod +x bazel
-$ sudo mv bazel /usr/local/bin # you need sudo to do this
+$ mv bazelisk-linux-amd64 bazelisk && chmod +x bazelisk
+$ sudo mv bazelisk /usr/local/bin # you need sudo to do this
 
 # If you use an arm architecture cpu
 $ wget https://github.com/bazelbuild/bazelisk/releases/download/v1.20.0/bazelisk-linux-arm64
-$ mv bazelisk-linux-arm64 bazel && chmod +x bazel
-$ sudo mv bazel /usr/local/bin # you need sudo to do this
+$ mv bazelisk-linux-arm64 bazelisk && chmod +x bazelisk
+$ sudo mv bazelisk /usr/local/bin # you need sudo to do this
 ```
 
 To build Yacl, at yacl's root directory, run the following
 
 ```sh
-$ bazel build //yacl/...
-$ bazel build //yacl/... -c opt        # build as optimized mode
-$ bazel build //yacl/... -c dbg        # build as debug mode
-$ bazel build //yacl/... --config gm   # build with gm mode
+$ bazelisk build //yacl/...
+$ bazelisk build //yacl/... -c opt        # build as optimized mode
+$ bazelisk build //yacl/... -c dbg        # build as debug mode
+$ bazelisk build //yacl/... --config gm   # build with gm mode
 ```
 
 To test Yacl
 
 ```sh
-$ bazel test //yacl/...
+$ bazelisk test //yacl/...
 ```
 
 ### MacOS
@@ -83,16 +84,29 @@ $ brew install bazelisk cmake ninja nasm automake libtool libomp
 To build Yacl, at yacl's root directory, run the following
 
 ```sh
-$ bazel build //yacl/...
-$ bazel build //yacl/... -c opt        # build as optimized mode
-$ bazel build //yacl/... -c dbg        # build as debug mode
-$ bazel build //yacl/... --config gm   # build with gm mode
+$ bazelisk build //yacl/...
+$ bazelisk build //yacl/... -c opt        # build as optimized mode
+$ bazelisk build //yacl/... -c dbg        # build as debug mode
+$ bazelisk build //yacl/... --config gm   # build with gm mode
 ```
 
 To test Yacl
 
 ```sh
-$ bazel test //yacl/...
+$ bazelisk test //yacl/...
+```
+
+## Build docs
+
+```sh
+$ cd docs
+$ pip install -r requirements.txt
+
+# build English docs
+$ make clean && make html # html docs will be generated in _build/html
+
+# build Chinese docs
+$ make clean && make -e SPHINXOPTS="-D language='zh_CN'" html # html docs will be generated in _build/html
 ```
 
 ## Setup compilation database for your lsp
@@ -100,9 +114,8 @@ $ bazel test //yacl/...
 Language servers accept a `compile_commands.json` file input to help it with linting, jumping to definitions/references, and other functions. This file consists of an array of “command objects”, where each command object specifies one way a translation unit is compiled in the project. A lot of modern C/C++ build system can generate this file with simple steps, it's the same for bazel.
 
 ```sh
-$ sudo apt install curl
-$ cd /path/to/yacl/               # change to yacl path
-$ bash <(curl -s https://raw.githubusercontent.com/secretflow/devtools/9efb0bc93068a122864fdb661946695badacbe24/refresh_compile_commands.sh)
+$ git clone https://github.com/secretflow/devtools.git ../devtools
+$ python3 ../devtools/refresh-compile-command-bazel-module.py
 ```
 
 ## (Optional) Recommended vscode extensions

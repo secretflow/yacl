@@ -17,7 +17,7 @@
 #ifdef __x86_64__
 #include <immintrin.h>
 
-#include "cpu_features/cpuinfo_x86.h"
+#include "cpuinfo_x86.h"
 #endif
 
 namespace yacl {

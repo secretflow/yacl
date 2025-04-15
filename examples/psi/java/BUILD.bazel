@@ -67,7 +67,7 @@ cc_jni_library(
 
 # To generate a LibEcdhPsi_deploy.jar, simply call
 # ------------------------------------------------
-# bazel build //examples/psi/java:LibEcdhPsi_deploy.jar
+# bazel build //psi/java:LibEcdhPsi_deploy.jar
 #
 # Then the generated jar file should be located in bazel-out/...
 java_binary(

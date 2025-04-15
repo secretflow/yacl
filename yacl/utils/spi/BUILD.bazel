@@ -33,7 +33,7 @@ yacl_cc_library(
         "//yacl/base:exception",
         "//yacl/math/mpint",
         "//yacl/utils:parallel",
-        "@com_google_absl//absl/types:span",
+        "@abseil-cpp//absl/types:span",
     ],
 )
 

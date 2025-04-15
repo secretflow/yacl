@@ -20,19 +20,16 @@ namespace yacl::crypto {
 
 namespace {
 
-constexpr size_t kAesMacSize = 16;
-// constexpr size_t kSm4MacSize = 16;
-
 size_t GetMacSize(GcmCryptoSchema schema) {
   switch (schema) {
     case GcmCryptoSchema::AES128_GCM:
+      return kAes128GcmMacSize;
     case GcmCryptoSchema::AES256_GCM:
-      return kAesMacSize;
+      return kAes256GcmMacSize;
 #ifdef YACL_WITH_TONGSUO
     case GcmCryptoSchema::SM4_GCM:
-      return kAesMacSize;
+      return kSm4GcmMacSize;
 #endif
-
     default:
       YACL_THROW("Unknown crypto schema: {}", static_cast<int>(schema));
   }
@@ -44,7 +41,7 @@ void GcmCrypto::Encrypt(ByteContainerView plaintext, ByteContainerView aad,
                         absl::Span<uint8_t> ciphertext,
                         absl::Span<uint8_t> mac) const {
   YACL_ENFORCE_EQ(ciphertext.size(), plaintext.size());
-  YACL_ENFORCE_EQ(mac.size(), GetMacSize(schema_));
+  // YACL_ENFORCE_EQ(mac.size(), GetMacSize(schema_));
 
   // init openssl evp cipher context
   auto ctx = openssl::UniqueCipherCtx(EVP_CIPHER_CTX_new());
@@ -72,6 +69,9 @@ void GcmCrypto::Encrypt(ByteContainerView plaintext, ByteContainerView aad,
 
   // Note that get no output here as the data is always aligned for GCM.
   EVP_EncryptFinal_ex(ctx.get(), nullptr, &out_length);
+
+  YACL_ENFORCE(EVP_CIPHER_CTX_get_tag_length(ctx.get()) ==
+               (int)GetMacSize(schema_));
   OSSL_RET_1(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_GET_TAG,
                                  GetMacSize(schema_), mac.data()));
 }
@@ -80,7 +80,7 @@ void GcmCrypto::Decrypt(ByteContainerView ciphertext, ByteContainerView aad,
                         ByteContainerView mac,
                         absl::Span<uint8_t> plaintext) const {
   YACL_ENFORCE_EQ(ciphertext.size(), plaintext.size());
-  YACL_ENFORCE_EQ(mac.size(), GetMacSize(schema_));
+  // YACL_ENFORCE_EQ(mac.size(), GetMacSize(schema_));
 
   // init openssl evp cipher context
   auto ctx = openssl::UniqueCipherCtx(EVP_CIPHER_CTX_new());
@@ -105,6 +105,8 @@ void GcmCrypto::Decrypt(ByteContainerView ciphertext, ByteContainerView aad,
                                ciphertext.data(), ciphertext.size()));
   YACL_ENFORCE(out_length == (int)plaintext.size(),
                "Unexpcted decryption out length.");
+  YACL_ENFORCE(EVP_CIPHER_CTX_get_tag_length(ctx.get()) ==
+               (int)GetMacSize(schema_));
   OSSL_RET_1(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG,
                                  GetMacSize(schema_), (void*)mac.data()));
 

@@ -2,7 +2,7 @@ header: # <1>
   license:
     spdx-id: Apache-2.0 # <2>
     copyright-owner: Ant Group Co., Ltd. # <3>
-    copyright-year: '2024' # <25>
+    copyright-year: "2024" # <25>
     software-name: secretflow # <4>
 
     pattern: | # <6>
@@ -19,33 +19,36 @@ header: # <1>
       limitations under the License.
 
   paths: # <7>
-    - '**'
+    - "**"
 
   paths-ignore: # <8>
-    - '.circleci'
-    - '.github'
-    - '**/*.md'
-    - '**/*.json'
-    - '**/*.yaml'
-    - '**/*.yml'
-    - '**/*.patch'
-    - '**/*.lds'
-    - '**/*.csv'
-    - '**/*.rst'
-    - 'LICENSE'
-    - 'NOTICE'
-    - '.bazelversion'
-    - '.bazelignore'
-    - '.clang-format'
-    - '.clang-tidy'
-    - '.gitattributes'
-    - '.gitignore'
-    - '.gitmodules'
-    - 'yacl/base/dynamic_bitset.h' # MIT
-    - 'yacl/crypto/aes/aes_intrinsics.h'
-    - 'yacl/crypto/aes/aes_opt.h'
-    - 'yacl/io/circuit/data/**.txt'
-    - 'docs/requirements.txt'
+    - ".circleci"
+    - ".github"
+    - "**/*.md"
+    - "**/*.json"
+    - "**/*.yaml"
+    - "**/*.yml"
+    - "**/*.patch"
+    - "**/*.lds"
+    - "**/*.csv"
+    - "**/*.rst"
+    - "LICENSE"
+    - "NOTICE"
+    - ".bazeliskrc"
+    - ".bazelignore"
+    - ".clang-format"
+    - ".clang-tidy"
+    - ".gitattributes"
+    - ".gitignore"
+    - ".gitmodules"
+    - "yacl/base/dynamic_bitset.h" # MIT
+    - "yacl/crypto/aes/aes_intrinsics.h"
+    - "yacl/crypto/aes/aes_opt.h"
+    - "yacl/io/circuit/data/**.txt"
+    - "docs/requirements.txt"
+    - "docs/**/*.po"
+    - "MODULE.bazel.lock"
+    - "bazel/modules/"
 
   comment: never # <9>
 

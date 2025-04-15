@@ -29,8 +29,8 @@ yacl_cc_library(
         "//yacl/crypto/pke:rsa_enc",
         "//yacl/crypto/pke:sm2_enc",
         "//yacl/crypto/rand",
-        "@com_google_absl//absl/strings",
-        "@com_google_absl//absl/types:span",
+        "@abseil-cpp//absl/strings",
+        "@abseil-cpp//absl/types:span",
     ],
 )
 

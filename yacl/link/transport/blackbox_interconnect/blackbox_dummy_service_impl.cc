@@ -73,18 +73,18 @@ bool DummyBlackBoxServiceImpl::OnPush(brpc::Controller* cntl,
         "Header: x-ptp-target-node-id: {} is not configed", *target_node));
   } else {
     auto old_cntl = std::make_unique<brpc::Controller>();
-    old_cntl->http_request().Swap(cntl->http_request());
-    old_cntl->request_attachment().swap(cntl->request_attachment());
+    old_cntl->http_request() = cntl->http_request();
+    old_cntl->request_attachment() = cntl->request_attachment();
 
     bool success = false;
     for (uint32_t i = 0; i != invoke_max_retry_cnt_; ++i) {
       auto new_cntl = std::make_unique<brpc::Controller>();
-      new_cntl->http_request().Swap(old_cntl->http_request());
+      new_cntl->http_request() = old_cntl->http_request();
       new_cntl->ignore_eovercrowded();
       new_cntl->http_request().set_method(brpc::HTTP_METHOD_POST);
       new_cntl->http_request().uri() =
           node_id_to_ip_[*target_node] + "/v1/interconn/chan/invoke";
-      new_cntl->request_attachment().swap(old_cntl->request_attachment());
+      new_cntl->request_attachment() = old_cntl->request_attachment();
       SPDLOG_DEBUG("push: target_node {}, retry: {}",
                    new_cntl->request_attachment().to_string(), i);
       node_channels_[*target_node]->CallMethod(nullptr, new_cntl.get(), nullptr,
@@ -95,7 +95,6 @@ bool DummyBlackBoxServiceImpl::OnPush(brpc::Controller* cntl,
             "{}:{}/v1/interconn/chan/invoke",
             new_cntl->ErrorCode(), new_cntl->ErrorText(), *target_node,
             node_id_to_ip_[*target_node]);
-        new_cntl.swap(old_cntl);
         std::this_thread::sleep_for(
             std::chrono::milliseconds(invoke_retry_interval_ms_));
       } else {

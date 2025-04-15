@@ -40,7 +40,7 @@ yacl_cc_library(
         ],
         "//conditions:default": [],
     }),
-    deps = ["@com_github_herumi_mcl//:mcl"],
+    deps = ["@mcl"],
 )
 
 yacl_cc_library(

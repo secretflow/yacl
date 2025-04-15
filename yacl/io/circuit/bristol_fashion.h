@@ -14,15 +14,12 @@
 
 #pragma once
 
-#include <array>
 #include <cstdint>
-#include <filesystem>
 #include <memory>
 #include <string>
 #include <vector>
 
-#include "spdlog/spdlog.h"
-
+#include "yacl/base/byte_container_view.h"
 #include "yacl/base/exception.h"
 #include "yacl/io/stream/file_io.h"
 #include "yacl/io/stream/interface.h"
@@ -33,12 +30,17 @@ namespace yacl::io {
 // see: https://nigelsmart.github.io/MPC-Circuits/
 class BFCircuit {
  public:
-  uint32_t ng = 0;            // number of gates
-  uint32_t nw = 0;            // number of wires
-  uint32_t niv;               // number of input values
-  std::vector<uint32_t> niw;  // number of wires per each input values
-  uint32_t nov;               // number of output values
-  std::vector<uint32_t> now;  // number of wires per each output values
+  using GateNumType = uint32_t;
+  // now, assume small circuit only
+  using GateWireType = uint32_t;
+
+  GateNumType ng = 0;   // number of gates
+  GateWireType nw = 0;  // number of wires
+
+  uint32_t niv;                  // number of input values
+  std::vector<GateNumType> niw;  // number of wires per each input values
+  uint32_t nov;                  // number of output values
+  std::vector<GateNumType> now;  // number of wires per each output values
 
   // circuit oeprations
   enum class Op { XOR, AND, INV, EQ, EQW, MAND };
@@ -46,10 +48,10 @@ class BFCircuit {
   // Gate definition
   class Gate {
    public:
-    uint32_t niw = 0;          // numer of input wires
-    uint32_t now = 0;          // number of output wires
-    std::vector<uint32_t> iw;  // lists of input wires
-    std::vector<uint32_t> ow;  // lists of output wires
+    GateNumType niw = 0;           // numer of input wires
+    GateNumType now = 0;           // number of output wires
+    std::vector<GateWireType> iw;  // lists of input wires
+    std::vector<GateWireType> ow;  // lists of output wires
     Op op;
   };
 
@@ -101,39 +103,34 @@ class CircuitReader {
 
 class BuiltinBFCircuit {
  public:
+  static const std::string CircDataDir;
+
   static std::string Add64Path() {
-    return fmt::format("{}/yacl/io/circuit/data/adder64.txt",
-                       std::filesystem::current_path().string());
+    return fmt::format("{}/adder64.txt", CircDataDir);
   }
 
   static std::string Sub64Path() {
-    return fmt::format("{}/yacl/io/circuit/data/sub64.txt",
-                       std::filesystem::current_path().string());
+    return fmt::format("{}/sub64.txt", CircDataDir);
   }
 
   static std::string Neg64Path() {
-    return fmt::format("{}/yacl/io/circuit/data/neg64.txt",
-                       std::filesystem::current_path().string());
+    return fmt::format("{}/neg64.txt", CircDataDir);
   }
 
   static std::string Mul64Path() {
-    return fmt::format("{}/yacl/io/circuit/data/mult64.txt",
-                       std::filesystem::current_path().string());
+    return fmt::format("{}/mult64.txt", CircDataDir);
   }
 
   static std::string Div64Path() {
-    return fmt::format("{}/yacl/io/circuit/data/divide64.txt",
-                       std::filesystem::current_path().string());
+    return fmt::format("{}/divide64.txt", CircDataDir);
   }
 
   static std::string UDiv64Path() {
-    return fmt::format("{}/yacl/io/circuit/data/udivide64.txt",
-                       std::filesystem::current_path().string());
+    return fmt::format("{}/udivide64.txt", CircDataDir);
   }
 
   static std::string EqzPath() {
-    return fmt::format("{}/yacl/io/circuit/data/zero_equal.txt",
-                       std::filesystem::current_path().string());
+    return fmt::format("{}/zero_equal.txt", CircDataDir);
   }
 
   // NOTE: For AES-128 the wire orders are in the reverse order as used in
@@ -142,17 +139,26 @@ class BuiltinBFCircuit {
   //
   // see: https://nigelsmart.github.io/MPC-Circuits/
   static std::string Aes128Path() {
-    return fmt::format("{}/yacl/io/circuit/data/aes_128.txt",
-                       std::filesystem::current_path().string());
+    return fmt::format("{}/aes_128.txt", CircDataDir);
   }
 
   // NOTE: sha256 needs two inputs, a 512 bit buffer, and a 256 bit previous
   // digest value
   //
-  // static std::string Sha256Path() {
-  //   return fmt::format("{}/yacl/io/circuit/data/sha256.txt",
-  //                      std::filesystem::current_path().string());
-  // }
+  static std::string Sha256Path() {
+    return fmt::format("{}/sha256.txt", CircDataDir);
+  }
+
+  // Prepare (append & tweak) the input sha256 message before fed to the sha256
+  // bristol circuit.
+  //
+  // For more details, please check:
+  // https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.180-4.pdf
+  //
+  // NOTE since we are using dynamic_bitset for bristol format circuit
+  // representation, the actual bit operation here is slightly different from
+  // the standards.
+  static std::vector<uint8_t> PrepareSha256Input(ByteContainerView input);
 };
 
 }  // namespace yacl::io
