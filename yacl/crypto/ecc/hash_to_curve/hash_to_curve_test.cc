@@ -15,6 +15,7 @@
 #include "yacl/crypto/ecc/hash_to_curve/hash_to_curve.h"
 
 #include "gtest/gtest.h"
+#include "yacl/crypto/ecc/hash_to_curve/curve25519.h"
 
 namespace yacl::crypto::test {
 
@@ -95,6 +96,52 @@ TEST(HashToCurveTest, P521EncodeToCurveWorks) {
 
   for (size_t i = 0; i < rfc_9380_test_msgs.size(); ++i) {
     EcPoint px = EncodeToCurveP521(rfc_9380_test_msgs[i], kRFC9380P521NuDst);
+    auto p = std::get<AffinePoint>(px);
+    EXPECT_EQ(p.x.ToHexString(), rfc_9380_test_px[i]);
+    EXPECT_EQ(p.y.ToHexString(), rfc_9380_test_py[i]);
+  }
+}
+
+TEST(HashToCurveTest, Curve25519EncodeToCurveWorks) {
+  std::vector<std::string> rfc_9380_test_msgs = {"", "abc", "abcdef0123456789"};
+
+  std::vector<std::string> rfc_9380_test_px = {
+      "1BB913F0C9DAEFA0B3375378FFA534BDA5526C97391952A7789EB976EDFE4D08",
+      "7C22950B7D900FA866334262FCAEA47A441A578DF43B894B4625C9B450F9A026",
+      "31AD08A8B0DEEB2A4D8B0206CA25F567AB4E042746F792F4B7973F3AE2096C52"};
+
+  std::vector<std::string> rfc_9380_test_py = {
+      "4548368F4F983243E747B62A600840AE7C1DAB5C723991F85D3A9768479F3EC4",
+      "5547BC00E4C09685DCBC6CB6765288B386D8BDCB595FA5A6E3969E08097F0541",
+      "405070C28E78B4FA269427C82827261991B9718BD6C6E95D627D701A53C30DB1"};
+
+  char kRFC9380Curve25519NuDst[] = "QUUX-V01-CS02-with-curve25519_XMD:SHA-512_ELL2_NU_";
+
+  for (size_t i = 0; i < rfc_9380_test_msgs.size(); ++i) {
+    EcPoint px = EncodeToCurveCurve25519(rfc_9380_test_msgs[i], kRFC9380Curve25519NuDst);
+    auto p = std::get<AffinePoint>(px);
+    EXPECT_EQ(p.x.ToHexString(), rfc_9380_test_px[i]);
+    EXPECT_EQ(p.y.ToHexString(), rfc_9380_test_py[i]);
+  }
+}
+
+TEST(HashToCurveTest, Curve25519HashToCurveWorks) {
+  std::vector<std::string> rfc_9380_test_msgs = {"", "abc", "abcdef0123456789"};
+
+  std::vector<std::string> rfc_9380_test_px = {
+      "2DE3780ABB67E861289F5749D16D3E217FFA722192D16BBD9D1BFB9D112B98C0",
+      "2B4419F1F2D48F5872DE692B0ACA72CC7B0A60915DD70BDE432E826B6ABC526D",
+      "68CA1EA5A6ACF4E9956DAA101709B1EEE6C1BB0DF1DE3B90D4602382A104C036"};
+
+  std::vector<std::string> rfc_9380_test_py = {
+      "3B5DC2A498941A1033D176567D457845637554A2FE7A3507D21ABD1C1BD6E878",
+      "1B8235F255A268F0A6FA8763E97EB3D22D149343D495DA1160EFF9703F2D07DD",
+      "2A375B656207123D10766E68B938B1812A4A6625FF83CB8D5E86F58A4BE08353"};
+
+  char kRFC9380Curve25519RoDst[] = "QUUX-V01-CS02-with-curve25519_XMD:SHA-512_ELL2_RO_";
+
+  for (size_t i = 0; i < rfc_9380_test_msgs.size(); ++i) {
+    EcPoint px = HashToCurveCurve25519(rfc_9380_test_msgs[i], kRFC9380Curve25519RoDst);
     auto p = std::get<AffinePoint>(px);
     EXPECT_EQ(p.x.ToHexString(), rfc_9380_test_px[i]);
     EXPECT_EQ(p.y.ToHexString(), rfc_9380_test_py[i]);
