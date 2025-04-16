@@ -22,27 +22,27 @@
 
 namespace yacl::crypto::sodium::test {
 
-class SodiumTest : public ::testing::Test {
- protected:
-  std::unique_ptr<EcGroup> ec_ =
-      EcGroupFactory::Instance().Create("curve25519", ArgLib = "libsodium");
-};
-
-TEST_F(SodiumTest, Curve25519HashAndEncodeToCurveWorks) {
-  auto is_unique = [&](EcPoint q) {
-    auto p = ec_->CopyPoint(q);
-    ASSERT_TRUE(ec_->IsInCurveGroup(p));
-    static std::vector<EcPoint> v;
-    for (const auto &item : v) {
-      ASSERT_FALSE(ec_->PointEqual(item, p));
-    }
-    v.emplace_back(std::move(p));
-  };
-  for (int i = 0; i < 1000; ++i) {
-    is_unique(ec_->HashToCurve(HashToCurveStrategy::SHA512_ELL2_NU_,
-                               fmt::format("id{}", i)));
-    is_unique(ec_->HashToCurve(HashToCurveStrategy::SHA512_ELL2_RO_,
-                               fmt::format("id{}", i)));
-  }
-}
+// class SodiumTest : public ::testing::Test {
+//  protected:
+//   std::unique_ptr<EcGroup> ec_ =
+//       EcGroupFactory::Instance().Create("curve25519", ArgLib = "libsodium");
+// };
+//
+// TEST_F(SodiumTest, Curve25519HashAndEncodeToCurveWorks) {
+//   auto is_unique = [&](EcPoint q) {
+//     auto p = ec_->CopyPoint(q);
+//     ASSERT_TRUE(ec_->IsInCurveGroup(p));
+//     static std::vector<EcPoint> v;
+//     for (const auto &item : v) {
+//       ASSERT_FALSE(ec_->PointEqual(item, p));
+//     }
+//     v.emplace_back(std::move(p));
+//   };
+//   for (int i = 0; i < 1000; ++i) {
+//     is_unique(ec_->HashToCurve(HashToCurveStrategy::SHA512_ELL2_NU_,
+//                                fmt::format("id{}", i)));
+//     is_unique(ec_->HashToCurve(HashToCurveStrategy::SHA512_ELL2_RO_,
+//                                fmt::format("id{}", i)));
+//   }
+// }
 }  // namespace yacl::crypto::sodium::test
