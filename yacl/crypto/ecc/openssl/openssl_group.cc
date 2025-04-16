@@ -16,6 +16,7 @@
 
 #include <vector>
 
+#include "yacl/crypto/ecc/hash_to_curve/hash_to_curve.h"
 #include "yacl/crypto/hash/blake3.h"
 #include "yacl/crypto/hash/ssl_hash.h"
 #include "yacl/crypto/openssl_wrappers.h"
@@ -313,6 +314,21 @@ EcPoint OpensslGroup::HashToCurve(HashToCurveStrategy strategy,
     case HashToCurveStrategy::Autonomous:
       hash_algorithm = HashAlgorithm::BLAKE3;
       break;
+    case HashToCurveStrategy::SHA256_SSWU_NU_: {
+      const std::string dst = "QUUX-V01-CS02-with-P256_XMD:SHA-256_SSWU_NU_";
+      EcPoint p = EncodeToCurveP256(str, dst);
+      return p;
+    }
+    case HashToCurveStrategy::SHA384_SSWU_NU_: {
+      const std::string dst = "QUUX-V01-CS02-with-P384_XMD:SHA-384_SSWU_NU_";
+      EcPoint p = EncodeToCurveP384(str, dst);
+      return p;
+    }
+    case HashToCurveStrategy::SHA512_SSWU_NU_: {
+      const std::string dst = "QUUX-V01-CS02-with-P521_XMD:SHA-512_SSWU_NU_";
+      EcPoint p = EncodeToCurveP521(str, dst);
+      return p;
+    }
     default:
       YACL_THROW("Openssl only supports TryAndRehash strategy now. select={}",
                  (int)strategy);
