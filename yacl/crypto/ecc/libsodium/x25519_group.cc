@@ -16,6 +16,8 @@
 
 #include "sodium/crypto_scalarmult_curve25519.h"
 
+#include "yacl/crypto/ecc/ecc_spi.h"
+#include "yacl/crypto/ecc/hash_to_curve/curve25519.h"
 #include "yacl/crypto/hash/hash_utils.h"
 
 namespace yacl::crypto::sodium {
@@ -174,6 +176,18 @@ EcPoint X25519Group::HashToCurve(HashToCurveStrategy strategy,
     case HashToCurveStrategy::Autonomous:
     case HashToCurveStrategy::HashAsPointX_SHA2:
       return yacl::crypto::Sha256(input);
+    case HashToCurveStrategy::SHA512_ELL2_RO_: {
+      const std::string dst =
+          "QUUX-V01-CS02-with-curve25519_XMD:SHA-512_ELL2_RO_";
+      EcPoint p = HashToCurveCurve25519(input, dst);
+      return p;
+    }
+    case HashToCurveStrategy::SHA512_ELL2_NU_: {
+      const std::string dst =
+          "QUUX-V01-CS02-with-curve25519_XMD:SHA-512_ELL2_NU_";
+      EcPoint p = EncodeToCurveCurve25519(input, dst);
+      return p;
+    }
     default:
       YACL_THROW("hash to curve strategy {} not supported",
                  static_cast<int>(strategy));
