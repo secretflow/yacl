@@ -78,7 +78,7 @@ class ExAccCodeInterface : public LinearCodeInterface {
 template <size_t d = 7>
 class ExAccCode : public ExAccCodeInterface {
  public:
-  explicit ExAccCode(uint32_t n) : ExAccCode(n, 2 * n){};
+  explicit ExAccCode(uint32_t n) : ExAccCode(n, 2 * n) {};
 
   explicit ExAccCode(uint32_t n, uint32_t m) : n_(n), m_(m) {
     YACL_ENFORCE(m >= n);

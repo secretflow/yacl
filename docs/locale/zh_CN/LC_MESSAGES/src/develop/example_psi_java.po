@@ -21,7 +21,7 @@ msgstr ""
 
 #: ../../src/develop/example_psi_java.rst:2
 msgid "Example: Bind PSI to Java"
-msgstr ""
+msgstr "示例：将 PSI 绑定到 Java"
 
 #: ../../src/develop/example_psi_java.rst:4
 msgid ""
@@ -32,18 +32,20 @@ msgid ""
 "avaliable on `Github "
 "<https://github.com/secretflow/yacl/tree/main/examples/psi/java>`_."
 msgstr ""
+"这是一个使用 YACL 的 ECC API 和链接来构建 `PSI(隐私集合求交) <https://en.wikipedia.org/wiki/Private_set_intersection>`_ 协议的示例，"
+"并通过 JNI 提供 Java 语言绑定。该示例代码可在 `Github <https://github.com/secretflow/yacl/tree/main/examples/psi/java>`_ 上找到。"
 
 #: ../../src/develop/example_psi_java.rst:7
 msgid ""
 "This example is merely designed for demonstration only, please do not use"
 " this example in production."
-msgstr ""
+msgstr "此示例仅供演示使用，请勿在生产环境中使用。"
 
 #: ../../src/develop/example_psi_java.rst:10
 msgid "Step 1: Implement"
-msgstr ""
+msgstr "第1步：实现"
 
 #: ../../src/develop/example_psi_java.rst:19
 msgid "Step 2: Build and Test"
-msgstr ""
+msgstr "第2步：构建和测试"
 
