@@ -56,7 +56,7 @@ MPInt InnerProduct(const std::vector<MPInt>& a, const std::vector<MPInt>& b,
 MPInt ChallengeMPInt(examples::zkp::SimpleTranscript& transcript,
                      yacl::ByteContainerView label,
                      const yacl::math::MPInt& order) {
-  return transcript.Challenge(label, order);
+  return transcript.ChallengeMPInt(label, order);
 }
 
 void AbsorbEcPoint(examples::zkp::SimpleTranscript& transcript,
@@ -77,7 +77,7 @@ class InnerProductProofTest : public ::testing::Test {
     // 创建曲线
     using namespace yacl::crypto;
     using namespace yacl::crypto::openssl;
-    curve_ = OpensslGroup::Create(GetCurveMetaByName("secp256k1"));
+    curve_ = OpensslGroup::Create(GetCurveMetaByName(kIpaEcName));
     group_ = curve_;
   }
 

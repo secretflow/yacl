@@ -24,7 +24,6 @@
 #include "yacl/crypto/ecc/ec_point.h"
 #include "yacl/crypto/ecc/ecc_spi.h"  // Use main ECC header
 #include "yacl/crypto/hash/hash_utils.h"
-#include "yacl/crypto/tools/ro.h"
 #include "yacl/math/mpint/mp_int.h"
 #include "yacl/utils/spi/spi_factory.h"  // For EcGroup definition if not in ecc.h
 
@@ -82,7 +81,7 @@ void AbsorbEcPoint(SimpleTranscript& transcript,
 // Helper to get challenge MPInt using SimpleTranscript
 MPInt ChallengeMPInt(SimpleTranscript& transcript,
                      const yacl::ByteContainerView label, const MPInt& order) {
-  return transcript.Challenge(label, order);
+  return transcript.ChallengeMPInt(label, order);
 }
 
 // Calculates the s vector explicitly from challenges
@@ -109,11 +108,15 @@ std::vector<MPInt> CalculateSVector(const std::vector<MPInt>& challenges,
 
 // --- InnerProductProof::Create --- //
 InnerProductProof InnerProductProof::Create(
-    const std::shared_ptr<EcGroup>& curve, SimpleTranscript& transcript,
-    const EcPoint& Q, const std::vector<MPInt>& G_factors_in,
-    const std::vector<MPInt>& H_factors_in,
-    const std::vector<EcPoint>& G_vec_in, const std::vector<EcPoint>& H_vec_in,
-    const std::vector<MPInt>& a_vec_in, const std::vector<MPInt>& b_vec_in) {
+    const std::shared_ptr<EcGroup>& curve,
+    SimpleTranscript& transcript,
+    const EcPoint& Q,
+    const std::vector<MPInt>& G_factors,
+    const std::vector<MPInt>& H_factors,
+    const std::vector<EcPoint>& G_vec,
+    const std::vector<EcPoint>& H_vec,
+    const std::vector<MPInt>& a_vec,
+    const std::vector<MPInt>& b_vec) {
   InnerProductProof proof;
   YACL_ENFORCE(curve != nullptr, "Create: Curve cannot be null");
   const MPInt& order = curve->GetOrder();
@@ -121,17 +124,17 @@ InnerProductProof InnerProductProof::Create(
   transcript.Absorb(yacl::ByteContainerView("dom-sep"),
                      yacl::ByteContainerView("inner-product"));
 
-  std::vector<EcPoint> G_vec = G_vec_in;
-  std::vector<EcPoint> H_vec = H_vec_in;
-  std::vector<MPInt> a_vec = a_vec_in;
-  std::vector<MPInt> b_vec = b_vec_in;
-  std::vector<MPInt> g_factors = G_factors_in;
-  std::vector<MPInt> h_factors = H_factors_in;
+  std::vector<EcPoint> G_vec_in = G_vec;
+  std::vector<EcPoint> H_vec_in = H_vec;
+  std::vector<MPInt> a_vec_in = a_vec;
+  std::vector<MPInt> b_vec_in = b_vec;
+  std::vector<MPInt> g_factors = G_factors;
+  std::vector<MPInt> h_factors = H_factors;
 
-  size_t n = G_vec.size();
-  YACL_ENFORCE_EQ(n, H_vec.size(), "Create: H_vec size mismatch");
-  YACL_ENFORCE_EQ(n, a_vec.size(), "Create: a_vec size mismatch");
-  YACL_ENFORCE_EQ(n, b_vec.size(), "Create: b_vec size mismatch");
+  size_t n = G_vec_in.size();
+  YACL_ENFORCE_EQ(n, H_vec_in.size(), "Create: H_vec size mismatch");
+  YACL_ENFORCE_EQ(n, a_vec_in.size(), "Create: a_vec size mismatch");
+  YACL_ENFORCE_EQ(n, b_vec_in.size(), "Create: b_vec size mismatch");
   YACL_ENFORCE_EQ(n, g_factors.size(), "Create: g_factors size mismatch");
   YACL_ENFORCE_EQ(n, h_factors.size(), "Create: h_factors size mismatch");
 
@@ -142,21 +145,21 @@ InnerProductProof InnerProductProof::Create(
   YACL_ENFORCE_EQ((1 << lg_n), n,
                   "Create: Input vector size must be a power of 2");
 
-  proof.L_vec_.reserve(lg_n);
-  proof.R_vec_.reserve(lg_n);
+  proof.L_.reserve(lg_n);
+  proof.R_.reserve(lg_n);
 
   while (n > 1) {
     size_t n_half = n / 2;
 
     // Split the vectors
-    std::vector<MPInt> a_L(a_vec.begin(), a_vec.begin() + n_half);
-    std::vector<MPInt> a_R(a_vec.begin() + n_half, a_vec.end());
-    std::vector<MPInt> b_L(b_vec.begin(), b_vec.begin() + n_half);
-    std::vector<MPInt> b_R(b_vec.begin() + n_half, b_vec.end());
-    std::vector<EcPoint> G_L(G_vec.begin(), G_vec.begin() + n_half);
-    std::vector<EcPoint> G_R(G_vec.begin() + n_half, G_vec.end());
-    std::vector<EcPoint> H_L(H_vec.begin(), H_vec.begin() + n_half);
-    std::vector<EcPoint> H_R(H_vec.begin() + n_half, H_vec.end());
+    std::vector<MPInt> a_L(a_vec_in.begin(), a_vec_in.begin() + n_half);
+    std::vector<MPInt> a_R(a_vec_in.begin() + n_half, a_vec_in.end());
+    std::vector<MPInt> b_L(b_vec_in.begin(), b_vec_in.begin() + n_half);
+    std::vector<MPInt> b_R(b_vec_in.begin() + n_half, b_vec_in.end());
+    std::vector<EcPoint> G_L(G_vec_in.begin(), G_vec_in.begin() + n_half);
+    std::vector<EcPoint> G_R(G_vec_in.begin() + n_half, G_vec_in.end());
+    std::vector<EcPoint> H_L(H_vec_in.begin(), H_vec_in.begin() + n_half);
+    std::vector<EcPoint> H_R(H_vec_in.begin() + n_half, H_vec_in.end());
     std::vector<MPInt> g_factors_L(g_factors.begin(),
                                    g_factors.begin() + n_half);
     std::vector<MPInt> g_factors_R(g_factors.begin() + n_half, g_factors.end());
@@ -193,7 +196,7 @@ InnerProductProof InnerProductProof::Create(
     // Calculate L using multiscalar multiplication
     EcPoint L = VartimeMultiscalarMul(curve, scalars_L, points_L);
     L = curve->Add(L, curve->Mul(Q, cL));
-    proof.L_vec_.push_back(L);
+    proof.L_.push_back(L);
 
     // Calculate R = <a_R*g_factors_L, G_L> + <b_L*h_factors_R, H_R> + cR*Q
     std::vector<MPInt> scalars_R;
@@ -220,7 +223,7 @@ InnerProductProof InnerProductProof::Create(
     // Calculate R using multiscalar multiplication
     EcPoint R = VartimeMultiscalarMul(curve, scalars_R, points_R);
     R = curve->Add(R, curve->Mul(Q, cR));
-    proof.R_vec_.push_back(R);
+    proof.R_.push_back(R);
 
     // Add L and R to the transcript with proper domain labels
     AbsorbEcPoint(transcript, curve, yacl::ByteContainerView("L"), L);
@@ -231,10 +234,10 @@ InnerProductProof InnerProductProof::Create(
     MPInt u_inv = u.InvertMod(order);
 
     // Resize vectors for next round
-    a_vec.resize(n_half);
-    b_vec.resize(n_half);
-    G_vec.resize(n_half);
-    H_vec.resize(n_half);
+    a_vec_in.resize(n_half);
+    b_vec_in.resize(n_half);
+    G_vec_in.resize(n_half);
+    H_vec_in.resize(n_half);
     g_factors.resize(n_half);
     h_factors.resize(n_half);
 
@@ -244,19 +247,19 @@ InnerProductProof InnerProductProof::Create(
       MPInt aL_u, aR_u_inv;
       MPInt::MulMod(a_L[i], u, order, &aL_u);
       MPInt::MulMod(a_R[i], u_inv, order, &aR_u_inv);
-      MPInt::AddMod(aL_u, aR_u_inv, order, &a_vec[i]);
+      MPInt::AddMod(aL_u, aR_u_inv, order, &a_vec_in[i]);
 
       // b' = u^{-1}·b_L + u·b_R
       MPInt bL_u_inv, bR_u;
       MPInt::MulMod(b_L[i], u_inv, order, &bL_u_inv);
       MPInt::MulMod(b_R[i], u, order, &bR_u);
-      MPInt::AddMod(bL_u_inv, bR_u, order, &b_vec[i]);
+      MPInt::AddMod(bL_u_inv, bR_u, order, &b_vec_in[i]);
 
       // Calculate G' = u^{-1}·G_L + u·G_R
-      G_vec[i] = curve->Add(curve->Mul(G_L[i], u_inv), curve->Mul(G_R[i], u));
+      G_vec_in[i] = curve->Add(curve->Mul(G_L[i], u_inv), curve->Mul(G_R[i], u));
 
       // Calculate H' = u·H_L + u^{-1}·H_R
-      H_vec[i] = curve->Add(curve->Mul(H_L[i], u), curve->Mul(H_R[i], u_inv));
+      H_vec_in[i] = curve->Add(curve->Mul(H_L[i], u), curve->Mul(H_R[i], u_inv));
 
       // Update the factors
       MPInt gL_u_inv, gR_u;
@@ -273,28 +276,32 @@ InnerProductProof InnerProductProof::Create(
     n = n_half;
   }
 
-  YACL_ENFORCE_EQ(a_vec.size(), 1, "Create: final a_vec size != 1");
-  YACL_ENFORCE_EQ(b_vec.size(), 1, "Create: final b_vec size != 1");
-  proof.a_ = a_vec[0];
-  proof.b_ = b_vec[0];
+  YACL_ENFORCE_EQ(a_vec_in.size(), 1, "Create: final a_vec size != 1");
+  YACL_ENFORCE_EQ(b_vec_in.size(), 1, "Create: final b_vec size != 1");
+  proof.a_ = a_vec_in[0];
+  proof.b_ = b_vec_in[0];
 
   return proof;
 }
 
 // --- InnerProductProof::Verify --- //
 InnerProductProof::Error InnerProductProof::Verify(
-    const std::shared_ptr<EcGroup>& curve, size_t n_in,
-    SimpleTranscript& transcript, const std::vector<MPInt>& G_factors,
-    const std::vector<MPInt>& H_factors, const EcPoint& P, const EcPoint& Q,
-    const std::vector<EcPoint>& G_vec_in,
-    const std::vector<EcPoint>& H_vec_in) const {
+    const std::shared_ptr<EcGroup>& curve,
+    size_t n_in,
+    SimpleTranscript& transcript,
+    const std::vector<MPInt>& G_factors,
+    const std::vector<MPInt>& H_factors,
+    const EcPoint& P,
+    const EcPoint& Q,
+    const std::vector<EcPoint>& G_vec,
+    const std::vector<EcPoint>& H_vec) const {
   YACL_ENFORCE(curve != nullptr, "Verify: Curve cannot be null");
   const MPInt& order = curve->GetOrder();
 
   transcript.Absorb(yacl::ByteContainerView("dom-sep"),
                      yacl::ByteContainerView("inner-product"));
 
-  size_t lg_n = L_vec_.size();
+  size_t lg_n = L_.size();
   if (lg_n == 0) {
     YACL_THROW("Verify: Proof contains no L/R rounds (lg_n=0)");
   }
@@ -302,7 +309,7 @@ InnerProductProof::Error InnerProductProof::Verify(
   if (n > n_in) {
     YACL_THROW("Verify: Proof size n exceeds input size n_in");
   }
-  if (G_vec_in.size() < n || H_vec_in.size() < n || G_factors.size() < n ||
+  if (G_vec.size() < n || H_vec.size() < n || G_factors.size() < n ||
       H_factors.size() < n) {
     YACL_THROW("Verify: Input vector sizes too small for proof size n");
   }
@@ -312,8 +319,8 @@ InnerProductProof::Error InnerProductProof::Verify(
   std::vector<MPInt> challenges(lg_n);
 
   for (size_t i = 0; i < lg_n; ++i) {
-    AbsorbEcPoint(transcript, curve, yacl::ByteContainerView("L"), L_vec_[i]);
-    AbsorbEcPoint(transcript, curve, yacl::ByteContainerView("R"), R_vec_[i]);
+    AbsorbEcPoint(transcript, curve, yacl::ByteContainerView("L"), L_[i]);
+    AbsorbEcPoint(transcript, curve, yacl::ByteContainerView("R"), R_[i]);
 
     MPInt u = ChallengeMPInt(transcript, yacl::ByteContainerView("u"), order);
     challenges[i] = u;
@@ -325,8 +332,8 @@ InnerProductProof::Error InnerProductProof::Verify(
 
   EcPoint P_prime = P;
   for (size_t i = 0; i < lg_n; ++i) {
-    P_prime = curve->Add(P_prime, curve->Mul(L_vec_[i], u_sq[i]));
-    P_prime = curve->Add(P_prime, curve->Mul(R_vec_[i], u_inv_sq[i]));
+    P_prime = curve->Add(P_prime, curve->Mul(L_[i], u_sq[i]));
+    P_prime = curve->Add(P_prime, curve->Mul(R_[i], u_inv_sq[i]));
   }
 
   MPInt ab;
@@ -338,8 +345,8 @@ InnerProductProof::Error InnerProductProof::Verify(
     s_inv[i] = s[i].InvertMod(order);
   }
 
-  std::vector<EcPoint> G_vec_n(G_vec_in.begin(), G_vec_in.begin() + n);
-  std::vector<EcPoint> H_vec_n(H_vec_in.begin(), H_vec_in.begin() + n);
+  std::vector<EcPoint> G_vec_n(G_vec.begin(), G_vec.begin() + n);
+  std::vector<EcPoint> H_vec_n(H_vec.begin(), H_vec.begin() + n);
 
   std::vector<MPInt> final_scalars_1;
   std::vector<EcPoint> final_points_1;
@@ -395,8 +402,8 @@ InnerProductProof::Error InnerProductProof::Verify(
     MPInt::SubMod(zero, u_sq[i], order, &neg_u_sq);
     MPInt::SubMod(zero, u_inv_sq[i], order, &neg_u_inv_sq);
 
-    P_net = curve->Add(P_net, curve->Mul(L_vec_[i], neg_u_sq));
-    P_net = curve->Add(P_net, curve->Mul(R_vec_[i], neg_u_inv_sq));
+    P_net = curve->Add(P_net, curve->Mul(L_[i], neg_u_sq));
+    P_net = curve->Add(P_net, curve->Mul(R_[i], neg_u_inv_sq));
   }
   EcPoint ab_Q = curve->Mul(Q, ab);
 
@@ -410,6 +417,51 @@ InnerProductProof::Error InnerProductProof::Verify(
   }
 
   return success ? Error::kOk : Error::kInvalidProof;
+}
+
+// Add ComputeVerificationScalars implementation
+std::optional<IPPVerificationScalars> InnerProductProof::ComputeVerificationScalars(
+    const std::shared_ptr<EcGroup>& curve,
+    size_t n,
+    SimpleTranscript& transcript) const {
+  
+  YACL_ENFORCE(curve != nullptr, "ComputeVerificationScalars: Curve cannot be null");
+  const MPInt& order = curve->GetOrder();
+
+  // Calculate log2(n)
+  size_t lg_n = 0;
+  while ((1 << lg_n) < n) {
+    lg_n++;
+  }
+  YACL_ENFORCE_EQ((1 << lg_n), n,
+                  "ComputeVerificationScalars: Input size must be a power of 2");
+
+  // Initialize result structure
+  IPPVerificationScalars result;
+  result.challenges.reserve(lg_n);
+  result.challenges_inv.reserve(lg_n);
+
+  // Generate challenges
+  for (size_t i = 0; i < lg_n; ++i) {
+    // Generate challenge u_i
+    MPInt u_i = ChallengeMPInt(transcript, yacl::ByteContainerView("u"), order);
+    result.challenges.push_back(u_i);
+    
+    // Calculate inverse
+    MPInt u_i_inv = u_i.InvertMod(order);
+    result.challenges_inv.push_back(u_i_inv);
+  }
+
+  // Calculate s vector and its inverse
+  result.s = CalculateSVector(result.challenges, n, order);
+  result.s_inv.resize(n);
+  
+  // Calculate s_inv vector
+  for (size_t i = 0; i < n; ++i) {
+    result.s_inv[i] = result.s[i].InvertMod(order);
+  }
+
+  return result;
 }
 
 }  // namespace examples::zkp

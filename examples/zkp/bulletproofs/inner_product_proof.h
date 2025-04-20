@@ -16,12 +16,12 @@
 
 #include <memory>
 #include <vector>
+#include <optional>
 
 #include "simple_transcript.h"
 
 #include "yacl/crypto/ecc/ec_point.h"
 #include "yacl/crypto/ecc/ecc_spi.h"
-#include "yacl/crypto/tools/ro.h"
 #include "yacl/math/mpint/mp_int.h"
 
 namespace examples::zkp {
@@ -34,19 +34,28 @@ yacl::crypto::EcPoint VartimeMultiscalarMul(
 
 class SimpleTranscript;  // Forward declaration
 
+// Add IPPVerificationScalars structure
+struct IPPVerificationScalars {
+  std::vector<yacl::math::MPInt> challenges;     // u challenges
+  std::vector<yacl::math::MPInt> challenges_inv; // u_inv challenges
+  std::vector<yacl::math::MPInt> s;             // s vector derived from challenges
+  std::vector<yacl::math::MPInt> s_inv;         // s_inv vector
+};
+
 class InnerProductProof {
  public:
-  // Define enum for verification results
+  // Error enum for verification results
   enum class Error {
     kOk = 0,
-    kInvalidInput = 1,
-    kInvalidProof = 2,
+    kInvalidArgument,
+    kVerificationFailed,
+    kInvalidProof,
   };
 
-  // Static Create method
+  // Creates an inner product proof
   static InnerProductProof Create(
       const std::shared_ptr<yacl::crypto::EcGroup>& curve,
-      SimpleTranscript& transcript,  // Changed from pointer to reference
+      SimpleTranscript& transcript,
       const yacl::crypto::EcPoint& Q,
       const std::vector<yacl::math::MPInt>& G_factors,
       const std::vector<yacl::math::MPInt>& H_factors,
@@ -55,27 +64,41 @@ class InnerProductProof {
       const std::vector<yacl::math::MPInt>& a_vec,
       const std::vector<yacl::math::MPInt>& b_vec);
 
-  // Verify method
-  Error Verify(const std::shared_ptr<yacl::crypto::EcGroup>& curve,
-               size_t n_in,                      // Original size
-               SimpleTranscript& transcript,  // Changed from pointer to reference
-               const std::vector<yacl::math::MPInt>& G_factors,
-               const std::vector<yacl::math::MPInt>& H_factors,
-               const yacl::crypto::EcPoint& P, const yacl::crypto::EcPoint& Q,
-               const std::vector<yacl::crypto::EcPoint>& G_vec,
-               const std::vector<yacl::crypto::EcPoint>& H_vec) const;
+  // Verifies an inner product proof
+  Error Verify(
+      const std::shared_ptr<yacl::crypto::EcGroup>& curve,
+      size_t n_in,
+      SimpleTranscript& transcript,
+      const std::vector<yacl::math::MPInt>& G_factors,
+      const std::vector<yacl::math::MPInt>& H_factors,
+      const yacl::crypto::EcPoint& P,
+      const yacl::crypto::EcPoint& Q,
+      const std::vector<yacl::crypto::EcPoint>& G_vec,
+      const std::vector<yacl::crypto::EcPoint>& H_vec) const;
 
-  // 获取证明组件 (for serialization or debugging)
-  const std::vector<yacl::crypto::EcPoint>& GetLvec() const { return L_vec_; }
-  const std::vector<yacl::crypto::EcPoint>& GetRvec() const { return R_vec_; }
-  const yacl::math::MPInt& GetA() const { return a_; }
-  const yacl::math::MPInt& GetB() const { return b_; }
+  // Compute verification scalars
+  std::optional<IPPVerificationScalars> ComputeVerificationScalars(
+      const std::shared_ptr<yacl::crypto::EcGroup>& curve,
+      size_t n_in,
+      SimpleTranscript& transcript) const;
+
+  // Serialization
+  yacl::Buffer ToBytes() const;
+  static InnerProductProof FromBytes(
+      const std::shared_ptr<yacl::crypto::EcGroup>& curve,
+      const yacl::ByteContainerView& bytes);
+
+  // Get curve instance
+  const std::shared_ptr<yacl::crypto::EcGroup>& GetCurve() const { return curve_; }
 
  private:
-  std::vector<yacl::crypto::EcPoint> L_vec_;
-  std::vector<yacl::crypto::EcPoint> R_vec_;
+  // L and R values for each round
+  std::vector<yacl::crypto::EcPoint> L_;
+  std::vector<yacl::crypto::EcPoint> R_;
+  // Final a and b values
   yacl::math::MPInt a_;
   yacl::math::MPInt b_;
+  std::shared_ptr<yacl::crypto::EcGroup> curve_;
 };
 
 }  // namespace examples::zkp

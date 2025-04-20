@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+load("@rules_cc//cc:defs.bzl", "cc_library")
 load("@yacl//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
 
 package(default_visibility = ["//visibility:public"])
@@ -22,7 +23,37 @@ COMMON_COPTS = [
     "-Wno-sign-compare",
     "-Wno-missing-field-initializers",
     "-Wno-unused-variable",
+    "-Wno-missing-declarations",
 ]
+
+yacl_cc_library(
+    name = "simple_transcript",
+    srcs = ["simple_transcript.cc"],
+    hdrs = ["simple_transcript.h"],
+    copts = COMMON_COPTS,
+    deps = [
+        "@yacl//yacl/base:buffer",
+        "@yacl//yacl/base:byte_container_view",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/crypto/hash:hash_utils",
+        "@yacl//yacl/crypto/ecc:ecc",
+        "@yacl//yacl/crypto/ecc:ec_point",
+        "@yacl//yacl/math/mpint:mpint",
+    ],
+)
+
+yacl_cc_library(
+    name = "generators",
+    srcs = ["generators.cc"],
+    hdrs = ["generators.h"],
+    copts = COMMON_COPTS,
+    deps = [
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/crypto/ecc:ecc",
+        "@yacl//yacl/crypto/ecc:ec_point",
+        "@yacl//yacl/math/mpint:mpint",
+    ],
+)
 
 yacl_cc_library(
     name = "ipa_config",
@@ -43,22 +74,15 @@ yacl_cc_library(
 yacl_cc_library(
     name = "inner_product_proof",
     srcs = ["inner_product_proof.cc"],
-    hdrs = [
-        "inner_product_proof.h",
-        "simple_transcript.h",
-    ],
+    hdrs = ["inner_product_proof.h"],
     copts = COMMON_COPTS,
     deps = [
-        ":ipa_config",
+        ":simple_transcript",
         "@yacl//yacl/base:byte_container_view",
         "@yacl//yacl/base:exception",
-        "@yacl//yacl/crypto:openssl_wrappers",
-        "@yacl//yacl/crypto/ecc",
-        "@yacl//yacl/crypto/rand",
-        "@yacl//yacl/crypto/tools:ro",
-        "@yacl//yacl/math/mpint",
-        "@yacl//yacl/math/mpint:mp_int_enforce",
-        "@yacl//yacl/utils:scope_guard",
+        "@yacl//yacl/crypto/ecc:ecc",
+        "@yacl//yacl/crypto/ecc:ec_point",
+        "@yacl//yacl/math/mpint:mpint",
     ],
 )
 
@@ -80,3 +104,10 @@ yacl_cc_test(
         "@yacl//yacl/utils:scope_guard",
     ],
 )
+
+
+
+
+
+
+
