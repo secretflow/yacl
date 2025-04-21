@@ -35,6 +35,7 @@ yacl_cc_library(
     deps = [
         ":range_proof_config",
         "//zkp/bulletproofs:inner_product_proof",
+        "//zkp/bulletproofs:generators",
         "@yacl//yacl/base:exception",
         "@yacl//yacl/crypto/ecc:ecc",
         "@yacl//yacl/crypto/ecc:ec_point",

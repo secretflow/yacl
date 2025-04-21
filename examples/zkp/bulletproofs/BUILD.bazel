@@ -52,6 +52,7 @@ yacl_cc_library(
         "@yacl//yacl/crypto/ecc:ecc",
         "@yacl//yacl/crypto/ecc:ec_point",
         "@yacl//yacl/math/mpint:mpint",
+        "@yacl//yacl/crypto/hash:hash_utils",
     ],
 )
 

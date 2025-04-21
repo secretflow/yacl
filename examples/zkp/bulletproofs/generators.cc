@@ -2,6 +2,7 @@
 
 #include "yacl/base/exception.h"
 #include "yacl/crypto/hash/hash_utils.h"
+#include <string_view>
 
 namespace examples::zkp {
 
@@ -35,8 +36,9 @@ std::vector<yacl::crypto::EcPoint> GenerateGenerators(
     // Get hash output
     auto hash = hasher.CumulativeHash();
     
-    // Map hash to curve point
-    auto point = curve->HashToCurve(hash);
+    // Map hash to curve point using string_view
+    std::string_view hash_view(reinterpret_cast<const char*>(hash.data()), hash.size());
+    auto point = curve->HashToCurve(hash_view);
     generators.push_back(point);
   }
 

@@ -25,6 +25,11 @@ class RangeProof {
     kVerificationFailed,
   };
 
+  RangeProof() = default;
+  RangeProof(const RangeProof&) = delete;
+  RangeProof(RangeProof&&) = default;
+  RangeProof& operator=(RangeProof&&) = default;
+
   // Creates a range proof for multiple values
   static Error Create(
       const std::shared_ptr<yacl::crypto::EcGroup>& curve,
@@ -33,6 +38,7 @@ class RangeProof {
       const std::vector<yacl::crypto::EcPoint>& g_vec,
       const std::vector<yacl::crypto::EcPoint>& h_vec,
       const yacl::crypto::EcPoint& u,
+      size_t bit_size,
       RangeProof* proof);
 
   // Creates a single range proof for value in [0, 2^bit_size - 1]
@@ -69,23 +75,15 @@ class RangeProof {
       const std::shared_ptr<yacl::crypto::EcGroup>& curve,
       const yacl::ByteContainerView& bytes);
 
- private:
-  // Commitment to the bits of the value
-  yacl::crypto::EcPoint A_;
-  // Commitment to the blinding factors
-  yacl::crypto::EcPoint S_;
-  // Commitment to the t_1 coefficient of t(x)
-  yacl::crypto::EcPoint T1_;
-  // Commitment to the t_2 coefficient of t(x)
-  yacl::crypto::EcPoint T2_;
-  // Evaluation of t(x) at the challenge point x
-  yacl::math::MPInt t_x_;
-  // Blinding factor for t(x)
-  yacl::math::MPInt t_x_blinding_;
-  // Blinding factor for the inner product proof
-  yacl::math::MPInt e_blinding_;
-  // Inner product proof
-  InnerProductProof ipp_proof_;
+  // Members
+  yacl::crypto::EcPoint A_;            // Commitment A
+  yacl::crypto::EcPoint S_;            // Commitment S
+  yacl::crypto::EcPoint T1_;           // Commitment T1
+  yacl::crypto::EcPoint T2_;           // Commitment T2
+  yacl::math::MPInt t_x_;            // t(x) opening
+  yacl::math::MPInt t_x_blinding_;   // Blinding factor for t(x)
+  yacl::math::MPInt e_blinding_;   // Blinding factor for V
+  InnerProductProof ipp_proof_;        // Inner product proof
 };
 
 } // namespace examples::zkp 

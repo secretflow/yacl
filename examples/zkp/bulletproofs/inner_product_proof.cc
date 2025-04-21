@@ -119,10 +119,14 @@ InnerProductProof InnerProductProof::Create(
     const std::vector<MPInt>& b_vec) {
   InnerProductProof proof;
   YACL_ENFORCE(curve != nullptr, "Create: Curve cannot be null");
+  
+  // Set the curve first
+  proof.curve_ = curve;
+  
   const MPInt& order = curve->GetOrder();
 
   transcript.Absorb(yacl::ByteContainerView("dom-sep"),
-                     yacl::ByteContainerView("inner-product"));
+                   yacl::ByteContainerView("inner-product"));
 
   std::vector<EcPoint> G_vec_in = G_vec;
   std::vector<EcPoint> H_vec_in = H_vec;
@@ -462,6 +466,163 @@ std::optional<IPPVerificationScalars> InnerProductProof::ComputeVerificationScal
   }
 
   return result;
+}
+
+// Add ToBytes and FromBytes implementations
+yacl::Buffer InnerProductProof::ToBytes() const {
+  // Serialize all components of the proof
+  yacl::Buffer buffer;
+  
+  // Calculate total size - first we need sizes for all EcPoints in L_ and R_
+  size_t point_count = L_.size() + R_.size();
+  size_t point_size = 0;
+  
+  if (!L_.empty()) {
+    // Get serialized size of a point (assuming all points have same size when serialized)
+    auto sample_point_bytes = curve_->SerializePoint(L_[0]);
+    point_size = sample_point_bytes.size();
+  }
+  
+  // Size for a_ and b_ MPInt values
+  auto a_bytes = a_.ToMagBytes();
+  auto b_bytes = b_.ToMagBytes();
+  
+  // Calculate total size
+  size_t total_size = (point_count * point_size) + // L_ and R_ points
+                      a_bytes.size() + b_bytes.size() + // a_, b_ values
+                      (2 * sizeof(uint32_t)) + // number of L_ and R_ points
+                      (2 * sizeof(uint32_t)); // size of a_ and b_ bytes
+  
+  // Allocate buffer
+  buffer.resize(total_size);
+  uint8_t* buf_ptr = buffer.data<uint8_t>();
+  
+  // Write L_ and R_ sizes
+  size_t offset = 0;
+  uint32_t l_size = static_cast<uint32_t>(L_.size());
+  uint32_t r_size = static_cast<uint32_t>(R_.size());
+  
+  memcpy(buf_ptr + offset, &l_size, sizeof(uint32_t));
+  offset += sizeof(uint32_t);
+  memcpy(buf_ptr + offset, &r_size, sizeof(uint32_t));
+  offset += sizeof(uint32_t);
+  
+  // Write L_ points
+  for (const auto& point : L_) {
+    auto point_bytes = curve_->SerializePoint(point);
+    memcpy(buf_ptr + offset, point_bytes.data(), point_bytes.size());
+    offset += point_bytes.size();
+  }
+  
+  // Write R_ points
+  for (const auto& point : R_) {
+    auto point_bytes = curve_->SerializePoint(point);
+    memcpy(buf_ptr + offset, point_bytes.data(), point_bytes.size());
+    offset += point_bytes.size();
+  }
+  
+  // Write a_ and b_ values
+  uint32_t a_size = static_cast<uint32_t>(a_bytes.size());
+  memcpy(buf_ptr + offset, &a_size, sizeof(uint32_t));
+  offset += sizeof(uint32_t);
+  memcpy(buf_ptr + offset, a_bytes.data(), a_bytes.size());
+  offset += a_bytes.size();
+  
+  uint32_t b_size = static_cast<uint32_t>(b_bytes.size());
+  memcpy(buf_ptr + offset, &b_size, sizeof(uint32_t));
+  offset += sizeof(uint32_t);
+  memcpy(buf_ptr + offset, b_bytes.data(), b_bytes.size());
+  
+  return buffer;
+}
+
+InnerProductProof InnerProductProof::FromBytes(
+    const std::shared_ptr<yacl::crypto::EcGroup>& curve,
+    const yacl::ByteContainerView& bytes) {
+  YACL_ENFORCE(curve != nullptr, "FromBytes: Curve cannot be null");
+  
+  InnerProductProof proof;
+  proof.curve_ = curve;
+  
+  size_t offset = 0;
+  
+  // Read L_ and R_ sizes
+  YACL_ENFORCE(offset + 2 * sizeof(uint32_t) <= bytes.size(), 
+               "Invalid serialized format: buffer too small for L_/R_ sizes");
+  
+  uint32_t l_size, r_size;
+  memcpy(&l_size, bytes.data() + offset, sizeof(uint32_t));
+  offset += sizeof(uint32_t);
+  memcpy(&r_size, bytes.data() + offset, sizeof(uint32_t));
+  offset += sizeof(uint32_t);
+  
+  // Get the point size based on the curve
+  size_t point_size = 33;  // Default to 33 bytes for compressed points
+  
+  // Read L_ points
+  proof.L_.resize(l_size);
+  for (uint32_t i = 0; i < l_size; i++) {
+    YACL_ENFORCE(offset + point_size <= bytes.size(), 
+                 "Invalid serialized format: buffer too small for L_ points");
+    
+    yacl::ByteContainerView point_bytes(
+        bytes.data() + offset, 
+        point_size);
+    
+    proof.L_[i] = curve->DeserializePoint(point_bytes);
+    offset += point_size;
+  }
+  
+  // Read R_ points
+  proof.R_.resize(r_size);
+  for (uint32_t i = 0; i < r_size; i++) {
+    YACL_ENFORCE(offset + point_size <= bytes.size(), 
+                 "Invalid serialized format: buffer too small for R_ points");
+    
+    yacl::ByteContainerView point_bytes(
+        bytes.data() + offset, 
+        point_size);
+    
+    proof.R_[i] = curve->DeserializePoint(point_bytes);
+    offset += point_size;
+  }
+  
+  // Read a_ value
+  YACL_ENFORCE(offset + sizeof(uint32_t) <= bytes.size(), 
+               "Invalid serialized format: buffer too small for a_ size");
+  
+  uint32_t a_size;
+  memcpy(&a_size, bytes.data() + offset, sizeof(uint32_t));
+  offset += sizeof(uint32_t);
+  
+  YACL_ENFORCE(offset + a_size <= bytes.size(), 
+               "Invalid serialized format: buffer too small for a_ value");
+  
+  yacl::ByteContainerView a_bytes(
+      bytes.data() + offset, 
+      a_size);
+  
+  proof.a_.FromMagBytes(a_bytes);
+  offset += a_size;
+  
+  // Read b_ value
+  YACL_ENFORCE(offset + sizeof(uint32_t) <= bytes.size(), 
+               "Invalid serialized format: buffer too small for b_ size");
+  
+  uint32_t b_size;
+  memcpy(&b_size, bytes.data() + offset, sizeof(uint32_t));
+  offset += sizeof(uint32_t);
+  
+  YACL_ENFORCE(offset + b_size <= bytes.size(), 
+               "Invalid serialized format: buffer too small for b_ value");
+  
+  yacl::ByteContainerView b_bytes(
+      bytes.data() + offset, 
+      b_size);
+  
+  proof.b_.FromMagBytes(b_bytes);
+  
+  return proof;
 }
 
 }  // namespace examples::zkp
