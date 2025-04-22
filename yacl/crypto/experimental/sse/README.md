@@ -13,13 +13,13 @@ This paper proposes a highly scalable searchable symmetric encryption (SSE) sche
 ## Implemention
 
 1. **T-Set Instantiation**
-   - `tset.h`
-   - `tset.cc`
-   - `tset_test.cc`
+    - `tset.h`
+    - `tset.cc`
+    - `tset_test.cc`
 2. **OXT: Oblivious Cross-Tags Protocol**
-   - `sse.h`
-   - `sse.cc`
-   - Test:`sse_test.cc`
+    - `sse.h`
+    - `sse.cc`
+    - Test:`sse_test.cc`
 
 ## Test
 
@@ -30,11 +30,3 @@ This paper proposes a highly scalable searchable symmetric encryption (SSE) sche
 
 Census Income Dataset
 https://tianchi.aliyun.com/dataset/111479
-
-
-
-
-
-
-
-### 
