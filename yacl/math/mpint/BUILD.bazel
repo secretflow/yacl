@@ -40,6 +40,7 @@ yacl_cc_library(
         ":tommath_ext_types",
         "//yacl/base:byte_container_view",
         "//yacl/base:int128",
+        "//yacl/math:common",
         "@fmt",
         "@msgpack-c//:msgpack",
     ],
@@ -67,25 +68,6 @@ yacl_cc_library(
         "//yacl/utils:scope_guard",
         "//yacl/utils/spi:type_traits",
         "@libtommath",
-    ],
-)
-
-yacl_cc_library(
-    name = "montgomery_math",
-    srcs = ["montgomery_math.cc"],
-    hdrs = ["montgomery_math.h"],
-    deps = [
-        ":mpint",
-        "@libtommath",
-    ],
-)
-
-yacl_cc_test(
-    name = "montgomery_math_test",
-    srcs = ["montgomery_math_test.cc"],
-    deps = [
-        ":montgomery_math",
-        "@googletest//:gtest",
     ],
 )
 

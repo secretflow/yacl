@@ -42,8 +42,8 @@ enum class HashAlgorithm : int {
   BLAKE2B = 7,  // blake2 is disabled by tongsuo
 #endif
   BLAKE3 = 8,
-
-  SHAKE512 = 9,
+  SHAKE128 = 9,
+  SHAKE256 = 10,
 };
 
 // HashInterface defines an interface for hash functions.
@@ -107,8 +107,10 @@ inline const char *ToString(HashAlgorithm hash_algo) {
     case HashAlgorithm::BLAKE2B:
       return "blake2b-512";
 #endif
-    case HashAlgorithm::SHAKE512:
-      return "shake-512";
+    case HashAlgorithm::SHAKE128:
+      return "shake-128";
+    case HashAlgorithm::SHAKE256:
+      return "shake-256";
     default:
       YACL_THROW("Unsupported hash algo: {}", static_cast<int>(hash_algo));
   }

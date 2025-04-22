@@ -1,4 +1,4 @@
-// Copyright 2023 Ant Group Co., Ltd.
+// Copyright 2024 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,16 +14,13 @@
 
 #pragma once
 
-#include "yacl/utils/spi/argument/arg_k.h"
-#include "yacl/utils/spi/argument/arg_set.h"
+namespace yacl::math {
 
-// This is the entry file of argument package
-// If you want to use ARGUMENT, please include this file
+enum class PrimeType : int {
+  Normal = 0,    // p is prime
+  BBS = 1,       // p = 3 mod 4
+  Safe = 2,      // (p-1)/2 is prime, use FastSafe instead
+  FastSafe = 8,  // (p-1)/2 is prime
+};
 
-namespace yacl {
-
-// Global args define for all SPI..
-
-DEFINE_INLINE_ARG_string(Lib);  // define arg: ArgLib
-
-}  // namespace yacl
+}

@@ -1,4 +1,4 @@
-// Copyright 2023 Ant Group Co., Ltd.
+// Copyright 2024 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,10 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/utils/spi/argument/argument.h"
+#pragma once
 
-namespace yacl {
+#include <variant>
 
-DEFINE_ARG_string(Lib);
+#include "yacl/math/bigint/openssl/bignum.h"
+#include "yacl/math/mpint/mp_int.h"
 
-}  // namespace yacl
+#ifdef BIGNUM_WITH_GMP
+#include "yacl/math/bigint/gmp/gmp_int.h"
+#endif
+
+namespace yacl::math {
+
+using BigIntVar = std::variant<MPInt, openssl::BigNum
+#ifdef BIGNUM_WITH_GMP
+                               ,
+                               gmp::GMPInt
+#endif
+                               >;
+
+}  // namespace yacl::math

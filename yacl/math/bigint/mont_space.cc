@@ -1,4 +1,4 @@
-// Copyright 2023 Ant Group Co., Ltd.
+// Copyright 2024 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,36 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/math/mpint/montgomery_math.h"
+#include "yacl/math/bigint/mont_space.h"
+
+#include "absl/cleanup/cleanup.h"
 
 namespace yacl::math {
 
-MontgomerySpace::MontgomerySpace(const MPInt &mod) : identity_(0) {
-  // init identity_ to 0 to make sure memory is allocated
-  YACL_ENFORCE(!mod.IsNegative() && mod.IsOdd(),
+namespace {
+bool IsNegative(const BigIntVar& n) {
+  return std::visit([](const auto& a) { return a.IsNegative(); }, n);
+}
+
+bool IsOdd(const BigIntVar& n) {
+  return std::visit([](const auto& a) { return a.IsOdd(); }, n);
+}
+
+size_t BitCount(const BigIntVar& n) {
+  return std::visit([](const auto& a) { return a.BitCount(); }, n);
+}
+}  // namespace
+
+MontgomerySpace::MontgomerySpace(const BigIntVar& mod) {
+  YACL_ENFORCE(!IsNegative(mod) && IsOdd(mod),
                "modulus must be a positive odd number");
-  mod_ = mod;
-  MPINT_ENFORCE_OK(mp_montgomery_setup(&mod_.n_, &mp_));
-  MPINT_ENFORCE_OK(mp_montgomery_calc_normalization(&identity_.n_, &mod_.n_));
 }
 
-void MontgomerySpace::MapIntoMSpace(MPInt *x) const {
-  MPINT_ENFORCE_OK(mp_mulmod(&x->n_, &identity_.n_, &mod_.n_, &x->n_));
-}
-
-void MontgomerySpace::MapBackToZSpace(MPInt *x) const {
-  MPINT_ENFORCE_OK(mp_montgomery_reduce(&x->n_, &mod_.n_, mp_));
-}
-
-void MontgomerySpace::MulMod(const MPInt &a, const MPInt &b, MPInt *y) const {
-  MPINT_ENFORCE_OK(mp_mul(&a.n_, &b.n_, &y->n_));
-  MPINT_ENFORCE_OK(mp_montgomery_reduce(&y->n_, &mod_.n_, mp_));
-}
-
-void MontgomerySpace::MakeBaseTable(const MPInt &base, size_t unit_bits,
+void MontgomerySpace::MakeBaseTable(const BigIntVar& base, size_t unit_bits,
                                     size_t max_exp_bits,
-                                    BaseTable *out_table) const {
-  YACL_ENFORCE(!base.IsNegative(),
+                                    BaseTable* out_table) const {
+  YACL_ENFORCE(!IsNegative(base),
                "Cache table: base number must be zero or positive");
   YACL_ENFORCE(unit_bits > 0, "Cache table: unit_bits must > 0");
 
@@ -63,70 +62,79 @@ void MontgomerySpace::MakeBaseTable(const MPInt &base, size_t unit_bits,
   out_table->exp_max_bits = max_exp_stairs * out_table->exp_unit_bits;
   out_table->stair.reserve(max_exp_stairs * (out_table->exp_unit_expand - 1));
 
-  MPInt now;
+  BigIntVar now = base;
   // now = g * R mod m, i.e. g^1 in Montgomery form
-  MPINT_ENFORCE_OK(mp_mulmod(&base.n_, &identity_.n_, &mod_.n_, &now.n_));
+  MapIntoMSpace(now);
   for (size_t outer = 0; outer < max_exp_stairs; ++outer) {
-    MPInt level_base = now;
+    BigIntVar level_base = now;
     for (size_t inner = 0; inner < out_table->exp_unit_expand - 1; ++inner) {
       out_table->stair.push_back(now);
-      MulMod(now, level_base, &now);
+      now = MulMod(now, level_base);
     }
   }
 }
 
-void MontgomerySpace::PowMod(const BaseTable &base, const MPInt &e,
-                             MPInt *out) const {
-  YACL_ENFORCE(!e.IsNegative() && e.BitCount() <= base.exp_max_bits,
+BigIntVar MontgomerySpace::PowMod(const BaseTable& base,
+                                  const BigIntVar& e) const {
+  YACL_ENFORCE(!IsNegative(e) && BitCount(e) <= base.exp_max_bits,
                "exponent is too big, max_allowed={}, real_exp={}",
-               base.exp_max_bits, e.BitCount());
-  YACL_ENFORCE(&e != out,
-               "'e' and 'out' should not point to the same variable");
-
-  *out = identity_;
-  uint64_t level = 0;
-  mp_digit e_unit = 0;
+               base.exp_max_bits, BitCount(e));
+  auto [words, num_words, need_free] = GetWords(e);
+  size_t word_bits = GetWordBitSize();
+  // Captured structured bindings are a C++20 extension
+  const uint64_t* words_cpy = words;
+  bool free_cpy = need_free;
+  absl::Cleanup guard([words_cpy, free_cpy]() {
+    if (free_cpy) {
+      delete[] words_cpy;
+    }
+  });
+  BigIntVar r = Identity();
+  size_t level = 0;
+  uint64_t e_unit = 0;
   // Store unprocessed bits of the previous digit
   size_t unit_start_bits = 0;
-  for (int digit_idx = 0; digit_idx < e.n_.used; ++digit_idx) {
-    mp_digit digit = e.n_.dp[digit_idx];
+  for (size_t i = 0; i < num_words; ++i) {
+    uint64_t word = words[i];
     // Process the last digit remnant
     uint_fast16_t drop_bits = base.exp_unit_bits - unit_start_bits;
     if (unit_start_bits > 0) {
       // Take the low 'drop_bits' bits of digit
       // and add to the high bits of 'e_unit'
-      e_unit |= (digit << drop_bits) & base.exp_unit_mask;
-      digit >>= unit_start_bits;
+      e_unit |= (word << drop_bits) & base.exp_unit_mask;
+      word >>= unit_start_bits;
 
       if (e_unit > 0) {
-        MulMod(*out, base.stair[level + e_unit - 1], out);
+        r = MulMod(r, base.stair[level + e_unit - 1]);
       }
       level += (base.exp_unit_expand - 1);
     }
 
-    // continue processing the current digit
-    for (; unit_start_bits <= MP_DIGIT_BIT - base.exp_unit_bits;
+    // Continue processing the current digit
+    for (; unit_start_bits <= word_bits - base.exp_unit_bits;
          unit_start_bits += base.exp_unit_bits) {
-      e_unit = digit & base.exp_unit_mask;
-      digit >>= base.exp_unit_bits;
+      e_unit = word & base.exp_unit_mask;
+      word >>= base.exp_unit_bits;
 
       if (e_unit > 0) {
-        MulMod(*out, base.stair[level + e_unit - 1], out);
+        r = MulMod(r, base.stair[level + e_unit - 1]);
       }
 
       level += (base.exp_unit_expand - 1);
     }
 
-    unit_start_bits = unit_start_bits == MP_DIGIT_BIT
+    unit_start_bits = unit_start_bits == word_bits
                           ? 0
-                          : unit_start_bits + base.exp_unit_bits - MP_DIGIT_BIT;
-    e_unit = digit;
+                          : unit_start_bits + base.exp_unit_bits - word_bits;
+    e_unit = word;
   }
 
-  // process the last remaining
+  // Process the last remaining
   if (unit_start_bits > 0 && e_unit > 0) {
-    MulMod(*out, base.stair[level + e_unit - 1], out);
+    r = MulMod(r, base.stair[level + e_unit - 1]);
   }
+
+  return r;
 }
 
 }  // namespace yacl::math
