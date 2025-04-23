@@ -295,11 +295,27 @@ bool MPInt::operator<(const MPInt &other) const { return Compare(other) < 0; }
 bool MPInt::operator==(const MPInt &other) const { return Compare(other) == 0; }
 bool MPInt::operator!=(const MPInt &other) const { return Compare(other) != 0; }
 
+bool MPInt::operator>=(int64_t other) const { return Compare(other) >= 0; }
+bool MPInt::operator<=(int64_t other) const { return Compare(other) <= 0; }
+bool MPInt::operator>(int64_t other) const { return Compare(other) > 0; }
+bool MPInt::operator<(int64_t other) const { return Compare(other) < 0; }
+bool MPInt::operator==(int64_t other) const { return Compare(other) == 0; }
+bool MPInt::operator!=(int64_t other) const { return Compare(other) != 0; }
+
 int MPInt::Compare(const MPInt &other) const { return mp_cmp(&n_, &other.n_); }
+
+int MPInt::Compare(int64_t other) const {
+  if (other >= 0 && other <= static_cast<int64_t>(MP_MASK)) {
+    return mp_cmp_d(&n_, other);
+  }
+  return Compare(MPInt(other));
+}
 
 int MPInt::CompareAbs(const MPInt &other) const {
   return mp_cmp_mag(&n_, &other.n_);
 }
+
+int MPInt::CompareAbs(int64_t other) const { return CompareAbs(MPInt(other)); }
 
 MPInt MPInt::operator+(const MPInt &operand2) const {
   MPInt result;
@@ -320,8 +336,13 @@ MPInt MPInt::operator*(const MPInt &operand2) const {
 }
 
 MPInt MPInt::operator/(const MPInt &operand2) const {
+  YACL_ENFORCE(!operand2.IsZero(), "Division by zero");
   MPInt result;
-  Div(*this, operand2, &result, nullptr);
+  MPInt remainder;
+  Div(*this, operand2, &result, &remainder);
+  if (result.IsNegative() && !remainder.IsZero()) {
+    --result;  // Rounds quotient down towards −infinity
+  }
   return result;
 }
 
@@ -338,9 +359,69 @@ MPInt MPInt::operator>>(size_t operand2) const {
 }
 
 MPInt MPInt::operator%(const MPInt &operand2) const {
+  YACL_ENFORCE(!operand2.IsZero(), "Division by zero");
   MPInt result;
   Mod(*this, operand2, &result);
   return result;
+}
+
+MPInt MPInt::operator+(uint64_t operand2) const {
+  if (operand2 <= MP_MASK) {
+    MPInt result;
+    MPINT_ENFORCE_OK(mp_add_d(&n_, operand2, &result.n_));
+    return result;
+  } else {
+    return operator+(MPInt(operand2));
+  }
+}
+
+MPInt MPInt::operator-(uint64_t operand2) const {
+  if (operand2 <= MP_MASK) {
+    MPInt result;
+    MPINT_ENFORCE_OK(mp_sub_d(&n_, operand2, &result.n_));
+    return result;
+  } else {
+    return operator-(MPInt(operand2));
+  }
+}
+
+MPInt MPInt::operator*(uint64_t operand2) const {
+  if (operand2 <= MP_MASK) {
+    MPInt result;
+    MPINT_ENFORCE_OK(mp_mul_d(&n_, operand2, &result.n_));
+    return result;
+  } else {
+    return operator*(MPInt(operand2));
+  }
+}
+
+MPInt MPInt::operator/(uint64_t operand2) const {
+  if (operand2 <= MP_MASK) {
+    YACL_ENFORCE(operand2 != 0, "Division by zero");
+    MPInt result;
+    mp_digit remainder;
+    MPINT_ENFORCE_OK(mp_div_d(&n_, operand2, &result.n_, &remainder));
+    if (result.IsNegative() && remainder != 0) {
+      --result;  // Rounds quotient down towards −infinity
+    }
+    return result;
+  } else {
+    return operator/(MPInt(operand2));
+  }
+}
+
+mp_digit MPInt::operator%(uint64_t operand2) const {
+  if (operand2 <= MP_MASK) {
+    YACL_ENFORCE(operand2 != 0, "Division by zero");
+    mp_digit result;
+    MPINT_ENFORCE_OK(mp_mod_d(&n_, operand2, &result));
+    if (this->IsNegative() && result != 0) {
+      result = operand2 - result;
+    }
+    return result;
+  } else {
+    return operator%(MPInt(operand2)).Get<uint64_t>();
+  }
 }
 
 MPInt MPInt::operator-() const {
@@ -367,58 +448,131 @@ MPInt MPInt::operator^(const MPInt &operand2) const {
   return result;
 }
 
-MPInt MPInt::operator+=(const MPInt &operand2) {
+MPInt &MPInt::operator+=(const MPInt &operand2) {
   MPINT_ENFORCE_OK(mp_add(&n_, &operand2.n_, &n_));
   return *this;
 }
 
-MPInt MPInt::operator-=(const MPInt &operand2) {
+MPInt &MPInt::operator-=(const MPInt &operand2) {
   MPINT_ENFORCE_OK(mp_sub(&n_, &operand2.n_, &n_));
   return *this;
 }
 
-MPInt MPInt::operator*=(const MPInt &operand2) {
+MPInt &MPInt::operator*=(const MPInt &operand2) {
   MPINT_ENFORCE_OK(mp_mul(&n_, &operand2.n_, &n_));
   return *this;
 }
 
-MPInt MPInt::operator/=(const MPInt &operand2) {
-  MPINT_ENFORCE_OK(mp_div(&n_, &operand2.n_, &n_, nullptr));
+MPInt &MPInt::operator/=(const MPInt &operand2) {
+  YACL_ENFORCE(!operand2.IsZero(), "Division by zero");
+  MPInt remainder;
+  Div(*this, operand2, this, &remainder);
+  if (this->IsNegative() && !remainder.IsZero()) {
+    --(*this);  // Rounds quotient down towards −infinity
+  }
   return *this;
 }
 
-MPInt MPInt::operator%=(const MPInt &operand2) {
+MPInt &MPInt::operator%=(const MPInt &operand2) {
+  YACL_ENFORCE(!operand2.IsZero(), "Division by zero");
   MPINT_ENFORCE_OK(mp_mod(&n_, &operand2.n_, &n_));
   return *this;
 }
 
-MPInt MPInt::operator<<=(size_t operand2) {
+MPInt &MPInt::operator+=(uint64_t operand2) {
+  if (operand2 <= MP_MASK) {
+    MPINT_ENFORCE_OK(mp_add_d(&n_, operand2, &n_));
+  } else {
+    operator+=(MPInt(operand2));
+  }
+  return *this;
+}
+
+MPInt &MPInt::operator-=(uint64_t operand2) {
+  if (operand2 <= MP_MASK) {
+    MPINT_ENFORCE_OK(mp_sub_d(&n_, operand2, &n_));
+  } else {
+    operator-=(MPInt(operand2));
+  }
+  return *this;
+}
+
+MPInt &MPInt::operator*=(uint64_t operand2) {
+  if (operand2 <= MP_MASK) {
+    MPINT_ENFORCE_OK(mp_mul_d(&n_, operand2, &n_));
+  } else {
+    operator*=(MPInt(operand2));
+  }
+  return *this;
+}
+
+MPInt &MPInt::operator/=(uint64_t operand2) {
+  if (operand2 <= MP_MASK) {
+    YACL_ENFORCE(operand2 != 0, "Division by zero");
+    mp_digit remainder;
+    MPINT_ENFORCE_OK(mp_div_d(&n_, operand2, &n_, &remainder));
+    if (this->IsNegative() && remainder != 0) {
+      --(*this);  // Rounds quotient down towards −infinity
+    }
+  } else {
+    operator/=(MPInt(operand2));
+  }
+  return *this;
+}
+
+MPInt &MPInt::operator<<=(size_t operand2) {
   MPINT_ENFORCE_OK(mp_mul_2d(&this->n_, operand2, &this->n_));
   return *this;
 }
 
-MPInt MPInt::operator>>=(size_t operand2) {
+MPInt &MPInt::operator>>=(size_t operand2) {
   MPINT_ENFORCE_OK(mp_div_2d(&this->n_, operand2, &this->n_, nullptr));
   return *this;
 }
 
-MPInt MPInt::operator&=(const MPInt &operand2) {
+MPInt &MPInt::operator&=(const MPInt &operand2) {
   MPINT_ENFORCE_OK(mp_and(&n_, &operand2.n_, &n_));
   return *this;
 }
 
-MPInt MPInt::operator|=(const MPInt &operand2) {
+MPInt &MPInt::operator|=(const MPInt &operand2) {
   MPINT_ENFORCE_OK(mp_or(&n_, &operand2.n_, &n_));
   return *this;
 }
 
-MPInt MPInt::operator^=(const MPInt &operand2) {
+MPInt &MPInt::operator^=(const MPInt &operand2) {
   MPINT_ENFORCE_OK(mp_xor(&n_, &operand2.n_, &n_));
   return *this;
 }
 
 std::ostream &operator<<(std::ostream &os, const MPInt &an_int) {
   return os << an_int.ToString();
+}
+
+MPInt &MPInt::operator++() {
+  mpx_reserve(&n_, 1);
+  MPINT_ENFORCE_OK(mp_incr(&n_));
+  return *this;
+}
+
+MPInt MPInt::operator++(int) {
+  MPInt tmp(*this);
+  mpx_reserve(&n_, 1);
+  MPINT_ENFORCE_OK(mp_incr(&n_));
+  return tmp;
+}
+
+MPInt &MPInt::operator--() {
+  mpx_reserve(&n_, 1);
+  MPINT_ENFORCE_OK(mp_decr(&n_));
+  return *this;
+}
+
+MPInt MPInt::operator--(int) {
+  MPInt tmp(*this);
+  mpx_reserve(&n_, 1);
+  MPINT_ENFORCE_OK(mp_decr(&n_));
+  return tmp;
 }
 
 MPInt &MPInt::DecrOne() & {
@@ -540,8 +694,20 @@ void MPInt::Lcm(const MPInt &a, const MPInt &b, MPInt *c) {
   MPINT_ENFORCE_OK(mp_lcm(&a.n_, &b.n_, &c->n_));
 }
 
+MPInt MPInt::Lcm(const MPInt &a, const MPInt &b) {
+  MPInt r;
+  Lcm(a, b, &r);
+  return r;
+}
+
 void MPInt::Gcd(const MPInt &a, const MPInt &b, MPInt *c) {
   MPINT_ENFORCE_OK(mp_gcd(&a.n_, &b.n_, &c->n_));
+}
+
+MPInt MPInt::Gcd(const MPInt &a, const MPInt &b) {
+  MPInt r;
+  Gcd(a, b, &r);
+  return r;
 }
 
 /* a/b => cb + d == a */
@@ -575,6 +741,16 @@ MPInt MPInt::Mod(const yacl::math::MPInt &mod) const {
   return res;
 }
 
+void MPInt::Mod(const MPInt &a, mp_digit mod, mp_digit *c) {
+  MPINT_ENFORCE_OK(mp_mod_d(&a.n_, mod, c));
+}
+
+mp_digit MPInt::Mod(mp_digit mod) const {
+  mp_digit res;
+  Mod(*this, mod, &res);
+  return res;
+}
+
 void MPInt::RandomRoundDown(size_t bit_size, MPInt *r) {
   // floor (向下取整)
   mp_int *n = &r->n_;
@@ -602,6 +778,12 @@ void MPInt::RandomLtN(const MPInt &n, MPInt *r) {
   do {
     MPInt::RandomExactBits(n.BitCount(), r);
   } while (r->IsNegative() || r->Compare(n) >= 0);
+}
+
+MPInt MPInt::RandomLtN(const MPInt &n) {
+  MPInt r;
+  RandomLtN(n, &r);
+  return r;
 }
 
 void MPInt::RandPrimeOver(size_t bit_size, MPInt *out, PrimeType prime_type) {

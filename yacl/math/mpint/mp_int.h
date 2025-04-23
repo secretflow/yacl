@@ -23,17 +23,15 @@
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/int128.h"
+#include "yacl/math/common.h"
 #include "yacl/math/mpint/mp_int_enforce.h"
 #include "yacl/math/mpint/tommath_ext_features.h"
 
 namespace yacl::math {
 
-enum class PrimeType : int {
-  Normal = 0,    // p is prime
-  BBS = 1,       // p = 3 mod 4
-  Safe = 2,      // (p-1)/2 is prime, use FastSafe instead
-  FastSafe = 8,  // (p-1)/2 is prime
-};
+namespace tommath {
+class MPIntMontSpace;
+}
 
 /**
  * MPInt -- Multiple Precision Integer
@@ -141,12 +139,20 @@ class MPInt {
   bool operator==(const MPInt &other) const;
   bool operator!=(const MPInt &other) const;
 
+  bool operator>(int64_t other) const;
+  bool operator<(int64_t other) const;
+  bool operator>=(int64_t other) const;
+  bool operator<=(int64_t other) const;
+  bool operator==(int64_t other) const;
+  bool operator!=(int64_t other) const;
+
   // compare a to b
   // Returns:
   //  > 0:  this > other
   //  == 0: this == other
   //  < 0:  this < other
   [[nodiscard]] int Compare(const MPInt &other) const;
+  [[nodiscard]] int Compare(int64_t other) const;
 
   // compare a to b
   // Returns:
@@ -154,6 +160,7 @@ class MPInt {
   //  == 0: |this| == |other|
   //  < 0:  |this| < |other|
   [[nodiscard]] int CompareAbs(const MPInt &other) const;
+  [[nodiscard]] int CompareAbs(int64_t other) const;
 
   //================================//
   //           Operators            //
@@ -164,6 +171,13 @@ class MPInt {
   MPInt operator*(const MPInt &operand2) const;
   MPInt operator/(const MPInt &operand2) const;
   MPInt operator%(const MPInt &operand2) const;
+
+  MPInt operator+(uint64_t operand2) const;
+  MPInt operator-(uint64_t operand2) const;
+  MPInt operator*(uint64_t operand2) const;
+  MPInt operator/(uint64_t operand2) const;
+  uint64_t operator%(uint64_t operand2) const;
+
   MPInt operator<<(size_t operand2) const;
   MPInt operator>>(size_t operand2) const;
   MPInt operator-() const;
@@ -171,16 +185,28 @@ class MPInt {
   MPInt operator|(const MPInt &operand2) const;
   MPInt operator^(const MPInt &operand2) const;
 
-  MPInt operator+=(const MPInt &operand2);
-  MPInt operator-=(const MPInt &operand2);
-  MPInt operator*=(const MPInt &operand2);
-  MPInt operator/=(const MPInt &operand2);
-  MPInt operator%=(const MPInt &operand2);
-  MPInt operator<<=(size_t operand2);
-  MPInt operator>>=(size_t operand2);
-  MPInt operator&=(const MPInt &operand2);
-  MPInt operator|=(const MPInt &operand2);
-  MPInt operator^=(const MPInt &operand2);
+  MPInt &operator+=(const MPInt &operand2);
+  MPInt &operator-=(const MPInt &operand2);
+  MPInt &operator*=(const MPInt &operand2);
+  MPInt &operator/=(const MPInt &operand2);
+  MPInt &operator%=(const MPInt &operand2);
+
+  MPInt &operator+=(uint64_t operand2);
+  MPInt &operator-=(uint64_t operand2);
+  MPInt &operator*=(uint64_t operand2);
+  MPInt &operator/=(uint64_t operand2);
+
+  MPInt &operator<<=(size_t operand2);
+  MPInt &operator>>=(size_t operand2);
+
+  MPInt &operator&=(const MPInt &operand2);
+  MPInt &operator|=(const MPInt &operand2);
+  MPInt &operator^=(const MPInt &operand2);
+
+  MPInt &operator++();
+  MPInt operator++(int);
+  MPInt &operator--();
+  MPInt operator--(int);
 
   MPInt &DecrOne() &;
   MPInt &IncrOne() &;
@@ -236,10 +262,15 @@ class MPInt {
   // exception is thrown
   static void InvertMod(const MPInt &a, const MPInt &mod, MPInt *c);
   MPInt InvertMod(const MPInt &mod) const;
+  MPInt InvMod(const MPInt &mod) const { return InvertMod(mod); }
 
   /* c = a mod b, 0 <= c < b  */
   static void Mod(const MPInt &a, const MPInt &mod, MPInt *c);
   MPInt Mod(const MPInt &mod) const;
+
+  /* c = a mod b, 0 <= c < b  */
+  static void Mod(const MPInt &a, mp_digit mod, mp_digit *c);
+  mp_digit Mod(mp_digit mod) const;
 
   /* a = -a */
   inline void Negate(MPInt *z) const { MPINT_ENFORCE_OK(mp_neg(&n_, &z->n_)); }
@@ -270,9 +301,13 @@ class MPInt {
 
   // select a random r in [0, n)
   static void RandomLtN(const MPInt &n, MPInt *r);
+  static MPInt RandomLtN(const MPInt &n);
 
   static void Lcm(const MPInt &a, const MPInt &b, MPInt *c);
+  static MPInt Lcm(const MPInt &a, const MPInt &b);
+
   static void Gcd(const MPInt &a, const MPInt &b, MPInt *c);
+  static MPInt Gcd(const MPInt &a, const MPInt &b);
 
   //================================//
   //          Prime tools           //
@@ -297,7 +332,6 @@ class MPInt {
    * You can rerun the benchmark using following command:
    *    bazel run -c opt heu/library/phe/benchmark:mpint
    * @param[in] bit_size prime bit size, at least 81 bits
-   * @param[out] out a bit_size prime whose highest bit always one
    */
   static void RandPrimeOver(size_t bit_size, MPInt *out,
                             PrimeType prime_type = PrimeType::BBS);
@@ -316,6 +350,7 @@ class MPInt {
   size_t Serialize(uint8_t *buf, size_t buf_len) const;
 
   void Deserialize(yacl::ByteContainerView buffer);
+
   [[nodiscard]] std::string ToString() const;
   [[nodiscard]] std::string ToHexString() const;
 
@@ -393,7 +428,7 @@ class MPInt {
  private:
   [[nodiscard]] std::string ToRadixString(int radix) const;
 
-  friend class MontgomerySpace;
+  friend class tommath::MPIntMontSpace;
 };
 
 // for fmtlib

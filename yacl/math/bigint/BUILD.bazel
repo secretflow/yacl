@@ -1,0 +1,90 @@
+# Copyright 2024 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+yacl_cc_library(
+    name = "bigint_libs",
+    deps = [
+        "//yacl/math/bigint/openssl:openssl_lib",
+        "//yacl/math/bigint/tommath:tommath_lib",
+    ] + select({
+        "//bazel/config:gmp": ["//yacl/math/bigint/gmp:gmp_lib"],
+        "//conditions:default": [],
+    }),
+)
+
+yacl_cc_library(
+    name = "bigint",
+    srcs = ["bigint.cc"],
+    hdrs = ["bigint.h"],
+    deps = [
+        ":bigint_libs",
+        ":bigint_spi",
+        ":bigint_var",
+    ],
+)
+
+yacl_cc_library(
+    name = "bigint_spi",
+    srcs = ["bigint_spi.cc"],
+    hdrs = ["bigint_spi.h"],
+    deps = [
+        ":bigint_libs",
+        "//yacl/utils/spi",
+    ],
+)
+
+yacl_cc_library(
+    name = "bigint_lib",
+    hdrs = ["bigint_lib.h"],
+    deps = [
+        ":mont_space",
+    ],
+)
+
+yacl_cc_library(
+    name = "mont_space",
+    srcs = ["mont_space.cc"],
+    hdrs = ["mont_space.h"],
+    deps = [
+        ":bigint_var",
+    ],
+)
+
+yacl_cc_library(
+    name = "bigint_var",
+    hdrs = ["bigint_var.h"],
+    defines = select({
+        "@yacl//bazel/config:gmp": ["BIGNUM_WITH_GMP"],
+        "//conditions:default": [],
+    }),
+    deps = [
+        "//yacl/math/bigint/openssl:bignum",
+        "//yacl/math/mpint",
+    ] + select({
+        "//bazel/config:gmp": ["//yacl/math/bigint/gmp:gmp_int"],
+        "//conditions:default": [],
+    }),
+)
+
+yacl_cc_test(
+    name = "bigint_test",
+    srcs = ["bigint_test.cc"],
+    deps = [
+        ":bigint",
+    ],
+)

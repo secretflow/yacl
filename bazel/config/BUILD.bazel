@@ -17,3 +17,9 @@ config_setting(
     define_values = {"YACL_WITH_TONGSUO": "true"},
     visibility = ["//visibility:public"],
 )
+
+config_setting(
+    name = "gmp",
+    define_values = {"BIGNUM_WITH_GMP": "true"},
+    visibility = ["//visibility:public"],
+)
