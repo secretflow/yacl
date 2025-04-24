@@ -3,10 +3,10 @@
 #include <memory>
 #include <vector>
 #include <cstring>
+#include <cstdint>
 
-// REMOVED CONDITIONAL COMPILATION FOR ABSEIL
+#include "yacl/base/buffer.h"
 #include "yacl/base/exception.h"
-
 #include "yacl/crypto/ecc/ec_point.h"
 #include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/math/mpint/mp_int.h"
@@ -21,6 +21,7 @@
 
 namespace examples::zkp {
 
+using yacl::Buffer;
 using yacl::crypto::EcGroup;
 using yacl::crypto::EcPoint;
 using yacl::math::MPInt;
@@ -491,123 +492,235 @@ RangeProof::Error RangeProof::VerifySingle(
   return Error::kOk;
 }
 
-yacl::Buffer RangeProof::ToBytes() const {
-  // Serialize all components of the proof
-  yacl::Buffer buffer;
-  
-  // First get the curve from the IPP proof
-  auto curve = ipp_proof_.GetCurve();
-  YACL_ENFORCE(curve != nullptr, "Curve cannot be null in ToBytes");
-  
-  // Serialize EC points A_, S_, T1_, T2_
-  auto A_bytes = curve->SerializePoint(A_);
-  auto S_bytes = curve->SerializePoint(S_);
-  auto T1_bytes = curve->SerializePoint(T1_);
-  auto T2_bytes = curve->SerializePoint(T2_);
-  
-  // Serialize MPInt values t_x_, t_x_blinding_, e_blinding_
-  auto t_x_bytes = t_x_.ToMagBytes();
-  auto t_x_blinding_bytes = t_x_blinding_.ToMagBytes();
-  auto e_blinding_bytes = e_blinding_.ToMagBytes();
-  
-  // Serialize inner product proof
-  auto ipp_bytes = ipp_proof_.ToBytes();
-  
-  // Calculate total size
-  size_t total_size = A_bytes.size() + S_bytes.size() + 
-                      T1_bytes.size() + T2_bytes.size() +
-                      t_x_bytes.size() + t_x_blinding_bytes.size() + 
-                      e_blinding_bytes.size() + ipp_bytes.size() +
-                      8 * sizeof(uint32_t); // 8 size fields
+// 在 range_proof.cc 文件中添加这两个函数的实现
 
-  // Allocate buffer
-  buffer.resize(total_size);
+yacl::Buffer RangeProof::ToBytes(const std::shared_ptr<yacl::crypto::EcGroup>& curve) const {
+  // 1. 首先计算总大小
+  size_t total_size = 0;
   
-  // Add each component with its size
+  // A_ 序列化大小
+  auto A_bytes = curve->SerializePoint(A_);
+  total_size += sizeof(size_t) + A_bytes.size();
+  
+  // S_ 序列化大小
+  auto S_bytes = curve->SerializePoint(S_);
+  total_size += sizeof(size_t) + S_bytes.size();
+  
+  // T1_ 序列化大小
+  auto T1_bytes = curve->SerializePoint(T1_);
+  total_size += sizeof(size_t) + T1_bytes.size();
+  
+  // T2_ 序列化大小
+  auto T2_bytes = curve->SerializePoint(T2_);
+  total_size += sizeof(size_t) + T2_bytes.size();
+  
+  // t_x_ 序列化大小
+  auto t_bytes = t_x_.Serialize();
+  total_size += sizeof(size_t) + t_bytes.size();
+  
+  // t_x_blinding_ 序列化大小
+  auto t_blinding_bytes = t_x_blinding_.Serialize();
+  total_size += sizeof(size_t) + t_blinding_bytes.size();
+  
+  // e_blinding_ 序列化大小
+  auto e_blinding_bytes = e_blinding_.Serialize();
+  total_size += sizeof(size_t) + e_blinding_bytes.size();
+  
+  // 2. 分配缓冲区
+  yacl::Buffer result(total_size);
   size_t offset = 0;
-  uint8_t* buf_ptr = buffer.data<uint8_t>();
   
-  // Helper function to add a component to the buffer
-  auto add_component = [&](const yacl::Buffer& component) {
-    uint32_t size = static_cast<uint32_t>(component.size());
-    memcpy(buf_ptr + offset, &size, sizeof(uint32_t));
-    offset += sizeof(uint32_t);
-    memcpy(buf_ptr + offset, component.data(), component.size());
-    offset += component.size();
-  };
+  // 3. 写入数据
+  // A_
+  auto* ptr = result.data<uint8_t>();
+  size_t size = A_bytes.size();
+  std::memcpy(ptr + offset, &size, sizeof(size_t));
+  offset += sizeof(size_t);
+  std::memcpy(ptr + offset, A_bytes.data(), size);
+  offset += size;
   
-  // Add all components
-  add_component(A_bytes);
-  add_component(S_bytes);
-  add_component(T1_bytes);
-  add_component(T2_bytes);
-  add_component(t_x_bytes);
-  add_component(t_x_blinding_bytes);
-  add_component(e_blinding_bytes);
-  add_component(ipp_bytes);
+  // S_
+  size = S_bytes.size();
+  std::memcpy(ptr + offset, &size, sizeof(size_t));
+  offset += sizeof(size_t);
+  std::memcpy(ptr + offset, S_bytes.data(), size);
+  offset += size;
   
-  return buffer;
+  // T1_
+  size = T1_bytes.size();
+  std::memcpy(ptr + offset, &size, sizeof(size_t));
+  offset += sizeof(size_t);
+  std::memcpy(ptr + offset, T1_bytes.data(), size);
+  offset += size;
+  
+  // T2_
+  size = T2_bytes.size();
+  std::memcpy(ptr + offset, &size, sizeof(size_t));
+  offset += sizeof(size_t);
+  std::memcpy(ptr + offset, T2_bytes.data(), size);
+  offset += size;
+  
+  // t_x_
+  size = t_bytes.size();
+  std::memcpy(ptr + offset, &size, sizeof(size_t));
+  offset += sizeof(size_t);
+  std::memcpy(ptr + offset, t_bytes.data(), size);
+  offset += size;
+  
+  // t_x_blinding_
+  size = t_blinding_bytes.size();
+  std::memcpy(ptr + offset, &size, sizeof(size_t));
+  offset += sizeof(size_t);
+  std::memcpy(ptr + offset, t_blinding_bytes.data(), size);
+  offset += size;
+  
+  // e_blinding_
+  size = e_blinding_bytes.size();
+  std::memcpy(ptr + offset, &size, sizeof(size_t));
+  offset += sizeof(size_t);
+  std::memcpy(ptr + offset, e_blinding_bytes.data(), size);
+  offset += size;
+  
+  return result;
 }
 
 RangeProof RangeProof::FromBytes(
     const std::shared_ptr<yacl::crypto::EcGroup>& curve,
     const yacl::ByteContainerView& bytes) {
-  YACL_ENFORCE(curve != nullptr, "Curve cannot be null");
   
+  if (bytes.size() == 0) {
+    throw yacl::Exception("Cannot deserialize empty data");
+  }
+  
+  const uint8_t* data = bytes.data();
+  size_t offset = 0;
+  
+  // 1. 解析椭圆曲线上的点
+  // A_
+  size_t A_size;
+  if (offset + sizeof(size_t) > bytes.size()) {
+    throw yacl::Exception("Insufficient data for A point size");
+  }
+  std::memcpy(&A_size, data + offset, sizeof(size_t));
+  offset += sizeof(size_t);
+  
+  if (offset + A_size > bytes.size()) {
+    throw yacl::Exception("Insufficient data for A point");
+  }
+  yacl::Buffer A_bytes(A_size);
+  std::memcpy(A_bytes.data(), data + offset, A_size);
+  yacl::crypto::EcPoint A = curve->DeserializePoint(A_bytes);
+  offset += A_size;
+  
+  // S_
+  size_t S_size;
+  if (offset + sizeof(size_t) > bytes.size()) {
+    throw yacl::Exception("Insufficient data for S point size");
+  }
+  std::memcpy(&S_size, data + offset, sizeof(size_t));
+  offset += sizeof(size_t);
+  
+  if (offset + S_size > bytes.size()) {
+    throw yacl::Exception("Insufficient data for S point");
+  }
+  yacl::Buffer S_bytes(S_size);
+  std::memcpy(S_bytes.data(), data + offset, S_size);
+  yacl::crypto::EcPoint S = curve->DeserializePoint(S_bytes);
+  offset += S_size;
+  
+  // T1_
+  size_t T1_size;
+  if (offset + sizeof(size_t) > bytes.size()) {
+    throw yacl::Exception("Insufficient data for T1 point size");
+  }
+  std::memcpy(&T1_size, data + offset, sizeof(size_t));
+  offset += sizeof(size_t);
+  
+  if (offset + T1_size > bytes.size()) {
+    throw yacl::Exception("Insufficient data for T1 point");
+  }
+  yacl::Buffer T1_bytes(T1_size);
+  std::memcpy(T1_bytes.data(), data + offset, T1_size);
+  yacl::crypto::EcPoint T1 = curve->DeserializePoint(T1_bytes);
+  offset += T1_size;
+  
+  // T2_
+  size_t T2_size;
+  if (offset + sizeof(size_t) > bytes.size()) {
+    throw yacl::Exception("Insufficient data for T2 point size");
+  }
+  std::memcpy(&T2_size, data + offset, sizeof(size_t));
+  offset += sizeof(size_t);
+  
+  if (offset + T2_size > bytes.size()) {
+    throw yacl::Exception("Insufficient data for T2 point");
+  }
+  yacl::Buffer T2_bytes(T2_size);
+  std::memcpy(T2_bytes.data(), data + offset, T2_size);
+  yacl::crypto::EcPoint T2 = curve->DeserializePoint(T2_bytes);
+  offset += T2_size;
+  
+  // 2. 解析标量值
+  // t_x_
+  size_t t_size;
+  if (offset + sizeof(size_t) > bytes.size()) {
+    throw yacl::Exception("Insufficient data for t scalar size");
+  }
+  std::memcpy(&t_size, data + offset, sizeof(size_t));
+  offset += sizeof(size_t);
+  
+  if (offset + t_size > bytes.size()) {
+    throw yacl::Exception("Insufficient data for t scalar");
+  }
+  yacl::Buffer t_bytes(t_size);
+  std::memcpy(t_bytes.data(), data + offset, t_size);
+  yacl::math::MPInt t;
+  t.Deserialize(t_bytes);
+  offset += t_size;
+  
+  // t_x_blinding_
+  size_t t_blinding_size;
+  if (offset + sizeof(size_t) > bytes.size()) {
+    throw yacl::Exception("Insufficient data for t_blinding scalar size");
+  }
+  std::memcpy(&t_blinding_size, data + offset, sizeof(size_t));
+  offset += sizeof(size_t);
+  
+  if (offset + t_blinding_size > bytes.size()) {
+    throw yacl::Exception("Insufficient data for t_blinding scalar");
+  }
+  yacl::Buffer t_blinding_bytes(t_blinding_size);
+  std::memcpy(t_blinding_bytes.data(), data + offset, t_blinding_size);
+  yacl::math::MPInt t_blinding;
+  t_blinding.Deserialize(t_blinding_bytes);
+  offset += t_blinding_size;
+  
+  // e_blinding_
+  size_t e_blinding_size;
+  if (offset + sizeof(size_t) > bytes.size()) {
+    throw yacl::Exception("Insufficient data for e_blinding scalar size");
+  }
+  std::memcpy(&e_blinding_size, data + offset, sizeof(size_t));
+  offset += sizeof(size_t);
+  
+  if (offset + e_blinding_size > bytes.size()) {
+    throw yacl::Exception("Insufficient data for e_blinding scalar");
+  }
+  yacl::Buffer e_blinding_bytes(e_blinding_size);
+  std::memcpy(e_blinding_bytes.data(), data + offset, e_blinding_size);
+  yacl::math::MPInt e_blinding;
+  e_blinding.Deserialize(e_blinding_bytes);
+  offset += e_blinding_size;
+  
+  // 创建并返回 RangeProof 对象
   RangeProof proof;
-  size_t pos = 0;
-  
-  // Helper to read size-prefixed components
-  auto read_component = [&](yacl::Buffer& out) {
-    // Use bytes.size() and bytes.data() correctly
-    YACL_ENFORCE(pos + sizeof(uint32_t) <= bytes.size(), 
-                 "Buffer too short to read component size");
-                 
-    uint32_t size;
-    // Use std::memcpy
-    std::memcpy(&size, bytes.data() + pos, sizeof(uint32_t));
-    pos += sizeof(uint32_t);
-    
-    YACL_ENFORCE(pos + size <= bytes.size(), 
-                 "Buffer too short to read component data");
-    
-    out.resize(size);
-    // Use std::memcpy
-    std::memcpy(out.data(), bytes.data() + pos, size);
-    pos += size;
-  };
-  
-  // Read EC points
-  yacl::Buffer A_bytes, S_bytes, T1_bytes, T2_bytes;
-  read_component(A_bytes);
-  read_component(S_bytes);
-  read_component(T1_bytes);
-  read_component(T2_bytes);
-  
-  // Deserialize points
-  proof.A_ = curve->DeserializePoint(yacl::ByteContainerView(A_bytes));
-  proof.S_ = curve->DeserializePoint(yacl::ByteContainerView(S_bytes));
-  proof.T1_ = curve->DeserializePoint(yacl::ByteContainerView(T1_bytes));
-  proof.T2_ = curve->DeserializePoint(yacl::ByteContainerView(T2_bytes));
-  
-  // Read MPInt values
-  yacl::Buffer t_x_bytes, t_x_blinding_bytes, e_blinding_bytes;
-  read_component(t_x_bytes);
-  read_component(t_x_blinding_bytes);
-  read_component(e_blinding_bytes);
-  
-  // Deserialize MPInt values (assuming FromMagBytes takes ByteContainerView)
-  proof.t_x_.FromMagBytes(yacl::ByteContainerView(t_x_bytes));
-  proof.t_x_blinding_.FromMagBytes(yacl::ByteContainerView(t_x_blinding_bytes));
-  proof.e_blinding_.FromMagBytes(yacl::ByteContainerView(e_blinding_bytes));
-  
-  // Read InnerProductProof
-  yacl::Buffer ipp_bytes;
-  read_component(ipp_bytes);
-  
-  // Deserialize IPP
-  proof.ipp_proof_ = InnerProductProof::FromBytes(
-      curve, yacl::ByteContainerView(ipp_bytes));
+  proof.A_ = A;
+  proof.S_ = S;
+  proof.T1_ = T1;
+  proof.T2_ = T2;
+  proof.t_x_ = t;
+  proof.t_x_blinding_ = t_blinding;
+  proof.e_blinding_ = e_blinding;
   
   return proof;
 }

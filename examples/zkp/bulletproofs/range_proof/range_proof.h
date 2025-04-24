@@ -70,10 +70,11 @@ class RangeProof {
       size_t bit_size) const;
 
   // Serialization
-  yacl::Buffer ToBytes() const;
+  yacl::Buffer ToBytes(const std::shared_ptr<yacl::crypto::EcGroup>& curve) const;
   static RangeProof FromBytes(
       const std::shared_ptr<yacl::crypto::EcGroup>& curve,
       const yacl::ByteContainerView& bytes);
+
 
   // Members
   yacl::crypto::EcPoint A_;            // Commitment A
@@ -84,6 +85,8 @@ class RangeProof {
   yacl::math::MPInt t_x_blinding_;   // Blinding factor for t(x)
   yacl::math::MPInt e_blinding_;   // Blinding factor for V
   InnerProductProof ipp_proof_;        // Inner product proof
+
+  
 };
 
 } // namespace examples::zkp 

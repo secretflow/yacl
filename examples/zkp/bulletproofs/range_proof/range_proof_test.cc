@@ -93,7 +93,7 @@ TEST_F(RangeProofTest, TestSerialization) {
   auto [proof, commitment] = RangeProof::CreateSingle(
       curve_, *transcript_, v, blinding, 8);
       
-  yacl::Buffer proof_bytes = proof.ToBytes();
+  yacl::Buffer proof_bytes = proof.ToBytes(curve_);
   EXPECT_GT(proof_bytes.size(), 0);
   
   auto new_transcript = std::make_unique<SimpleTranscript>(
