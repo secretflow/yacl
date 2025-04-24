@@ -7,6 +7,10 @@ YACL (Yet Another Common Cryptography Library) is a sub-project of `SecretFlow <
 - **About Network ("link") Modules:** The network ("link") module in Yacl uses `BRPC <https://brpc.apache.org/>`_ to handle network. And we also provide a "mocked" in-memory link.
 - **About IO Modules:** Yacl also provides many io modules for kv storage, file io, `bristol circuits <https://nigelsmart.github.io/MPC-Circuits/>`_, and so on.
 
+.. image:: ./imgs/yacl_arch.png
+  :width: 800
+  :alt: Alternative text
+
 The following parts describes the top-level folders of Yacl repository.
 
 - `yacl/base/ <https://github.com/secretflow/yacl/tree/main/yacl/base>`_: some basic types and utils in yacl.

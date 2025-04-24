@@ -50,6 +50,11 @@ class SpiArgKey {
   extern __attribute__((visibility("default"))) const yacl::SpiArgKey<T> \
       Arg##ArgName
 
+#define DEFINE_INLINE_ARG(T, ArgName)                                        \
+  extern                                                                     \
+      __attribute__((visibility("default"))) inline const yacl::SpiArgKey<T> \
+          Arg##ArgName(#ArgName)
+
 // define an arg
 #define DEFINE_ARG_bool(ArgName) DEFINE_ARG(bool, ArgName)
 #define DEFINE_ARG_int(ArgName) DEFINE_ARG(int, ArgName)
@@ -69,5 +74,9 @@ class SpiArgKey {
 #define DECLARE_ARG_double(ArgName) DECLARE_ARG(double, ArgName)
 // Note: The arg value will be automatically converted to lowercase
 #define DECLARE_ARG_string(ArgName) DECLARE_ARG(std::string, ArgName)
+
+// define an inline arg
+#define DEFINE_INLINE_ARG_string(ArgName) \
+  DEFINE_INLINE_ARG(std::string, ArgName)
 
 }  // namespace yacl

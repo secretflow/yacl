@@ -20,7 +20,10 @@
 
 #include "c/blake3.h"
 
+#include "yacl/base/byte_container_view.h"
 #include "yacl/base/exception.h"
+#include "yacl/crypto/hash/ssl_hash.h"
+#include "yacl/crypto/hash/ssl_hash_xof.h"
 
 namespace yacl::crypto {
 
@@ -38,6 +41,20 @@ std::array<uint8_t, 32> Sm3(ByteContainerView data) {
   std::array<uint8_t, 32> out{};
   memcpy(out.data(), buf.data(), 32);
   return out;
+}
+
+std::vector<uint8_t> Shake128(ByteContainerView data, size_t output_length) {
+  YACL_ENFORCE(output_length > 0, "Output length must be positive");
+  SslHashXof hash(HashAlgorithm::SHAKE128);
+  hash.Update(data);
+  return hash.CumulativeHash(output_length);
+}
+
+std::vector<uint8_t> Shake256(ByteContainerView data, size_t output_length) {
+  YACL_ENFORCE(output_length > 0, "Output length must be positive");
+  SslHashXof hash(HashAlgorithm::SHAKE256);
+  hash.Update(data);
+  return hash.CumulativeHash(output_length);
 }
 
 #ifndef YACL_WITH_TONGSUO
