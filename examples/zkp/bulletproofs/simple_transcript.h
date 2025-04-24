@@ -40,15 +40,34 @@ class SimpleTranscript {
   // Absorb data into the transcript state with a label
   void Absorb(yacl::ByteContainerView label, yacl::ByteContainerView data);
 
+  // Absorb a scalar value into the transcript
+  void AbsorbScalar(yacl::ByteContainerView label, const yacl::math::MPInt& scalar);
+
+  // Absorb an EC point after validating it
+  void ValidateAndAbsorbEcPoint(const std::shared_ptr<yacl::crypto::EcGroup>& curve,
+                               yacl::ByteContainerView label,
+                               const yacl::crypto::EcPoint& point);
+
+  // Absorb an EC point without validation
   void AbsorbEcPoint(const std::shared_ptr<yacl::crypto::EcGroup>& curve,
                      yacl::ByteContainerView label,
                      const yacl::crypto::EcPoint& point);
 
+  // Domain separation for range proofs
+  void RangeProofDomainSep(size_t n, size_t m);
+
+  // Domain separation for inner product arguments
+  void InnerProductDomainSep(size_t n);
+
+  // Get a challenge scalar from the transcript
   yacl::math::MPInt ChallengeMPInt(yacl::ByteContainerView label,
                                   const yacl::math::MPInt& order);
 
   // Squeeze bytes from the transcript state with a label
   yacl::Buffer Squeeze(yacl::ByteContainerView label);
+
+  // Squeeze specified number of bytes from the transcript
+  yacl::Buffer SqueezeBytes(yacl::ByteContainerView label, size_t num_bytes);
 
  private:
   // Helper to absorb a 64-bit unsigned integer as little-endian bytes

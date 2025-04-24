@@ -38,17 +38,49 @@ void SimpleTranscript::Absorb(yacl::ByteContainerView label,
   hasher_.Update(data);
 }
 
+void SimpleTranscript::AbsorbScalar(yacl::ByteContainerView label,
+                                  const yacl::math::MPInt& scalar) {
+  auto scalar_bytes = scalar.Serialize(); 
+  AbsorbU64(scalar_bytes.size()); 
+  hasher_.Update(label);
+  hasher_.Update(yacl::ByteContainerView(scalar_bytes.data(), scalar_bytes.size()));
+}
+
+void SimpleTranscript::ValidateAndAbsorbEcPoint(
+    const std::shared_ptr<yacl::crypto::EcGroup>& curve,
+    yacl::ByteContainerView label,
+    const yacl::crypto::EcPoint& point) {
+  // Validate that the point is not infinity
+  YACL_ENFORCE(!curve->IsInfinity(point), "Point cannot be infinity");
+  
+  // After validation, absorb the point
+  AbsorbEcPoint(curve, label, point);
+}
+
 void SimpleTranscript::AbsorbEcPoint(
     const std::shared_ptr<yacl::crypto::EcGroup>& curve,
-    yacl::ByteContainerView label, const yacl::crypto::EcPoint& point) {
+    yacl::ByteContainerView label,
+    const yacl::crypto::EcPoint& point) {
   auto encoded = curve->SerializePoint(point);
   AbsorbU64(encoded.size());
   hasher_.Update(label);
   hasher_.Update(yacl::ByteContainerView(encoded.data(), encoded.size()));
 }
 
+void SimpleTranscript::RangeProofDomainSep(size_t n, size_t m) {
+  hasher_.Update(yacl::ByteContainerView("range-proof"));
+  AbsorbU64(n);  // number of bits
+  AbsorbU64(m);  // number of values/parties
+}
+
+void SimpleTranscript::InnerProductDomainSep(size_t n) {
+  hasher_.Update(yacl::ByteContainerView("inner-product"));
+  AbsorbU64(n);  // vector length
+}
+
 yacl::math::MPInt SimpleTranscript::ChallengeMPInt(
-    yacl::ByteContainerView label, const yacl::math::MPInt& order) {
+    yacl::ByteContainerView label,
+    const yacl::math::MPInt& order) {
   auto bytes = Squeeze(label);
   yacl::math::MPInt challenge;
   challenge.FromMagBytes(yacl::ByteContainerView(bytes.data(), bytes.size()));
@@ -60,6 +92,40 @@ yacl::Buffer SimpleTranscript::Squeeze(yacl::ByteContainerView label) {
   hasher_.Update(label);
   auto hash = hasher_.CumulativeHash();
   return yacl::Buffer(hash.data(), hash.size());
+}
+
+yacl::Buffer SimpleTranscript::SqueezeBytes(
+    yacl::ByteContainerView label,
+    size_t num_bytes) {
+  // First get a hash
+  auto initial_bytes = Squeeze(label);
+  
+  // If we need more bytes than the hash provides
+  if (num_bytes > initial_bytes.size()) {
+    yacl::Buffer result(num_bytes);
+    size_t bytes_copied = 0;
+    
+    // Copy the initial hash
+    std::memcpy(result.data(), initial_bytes.data(), initial_bytes.size());
+    bytes_copied = initial_bytes.size();
+    
+    // Keep hashing until we have enough bytes
+    while (bytes_copied < num_bytes) {
+      hasher_.Update(yacl::ByteContainerView("more"));
+      auto more_bytes = hasher_.CumulativeHash();
+      size_t to_copy = std::min(more_bytes.size(), num_bytes - bytes_copied);
+      std::memcpy(static_cast<uint8_t*>(result.data()) + bytes_copied, 
+                 more_bytes.data(), 
+                 to_copy);
+      bytes_copied += to_copy;
+    }
+    
+    return result;
+  }
+  
+  // If we need fewer bytes than the hash provides, truncate
+  return yacl::Buffer(initial_bytes.data(),
+                     std::min<size_t>(num_bytes, initial_bytes.size()));
 }
 
 }  // namespace examples::zkp 
