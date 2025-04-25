@@ -28,6 +28,13 @@ using yacl::math::MPInt;
 
 namespace {
 
+// Helper function to generate random scalar
+static MPInt RandomScalar(const MPInt& order) {
+  MPInt result;
+  MPInt::RandomLtN(order, &result);
+  return result;
+}
+
 // Helper function to compute vector of powers: [2^0, 2^1, ..., 2^(n-1)]
 [[maybe_unused]] std::vector<MPInt> PowersOfTwo(size_t n, const MPInt& order) {
   std::vector<MPInt> powers(n);
@@ -58,54 +65,44 @@ std::vector<MPInt> DecomposeValue(const MPInt& value, size_t n) {
   return bits;
 }
 
-// Helper function to compute delta(y,z)
-[[maybe_unused]] MPInt ComputeDelta(size_t n, const MPInt& y, const MPInt& z, const MPInt& order) {
-  // Calculate sum_y = y^0 + y^1 + ... + y^(n-1)
-  MPInt sum_y;
-  {
-    MPInt y_i;
-    y_i.Set(1);  // y^0
-    sum_y.Set(0);
-    
-    for (size_t i = 0; i < n; i++) {
-      MPInt::AddMod(sum_y, y_i, order, &sum_y);
-      MPInt::MulMod(y_i, y, order, &y_i);
-    }
+// Helper function to compute sum of powers efficiently for power of 2
+static MPInt SumOfPowers(const MPInt& x, size_t n, const MPInt& order) {
+  // If n is 0 or 1, return n directly
+  if (n == 0 || n == 1) {
+    MPInt result;
+    result.Set(n);
+    return result;
   }
-  
-  // Calculate sum_2 = 2^0 + 2^1 + ... + 2^(n-1)
-  MPInt sum_2;
-  {
-    MPInt two_i, two;
-    two_i.Set(1);  // 2^0
-    two.Set(2);
-    sum_2.Set(0);
-    
-    for (size_t i = 0; i < n; i++) {
-      MPInt::AddMod(sum_2, two_i, order, &sum_2);
-      MPInt::MulMod(two_i, two, order, &two_i);
-    }
-  }
-  
-  // delta = (z - z^2) * sum_y - z^3 * sum_2
-  MPInt z2, z3, term1, term2, result;
-  MPInt::MulMod(z, z, order, &z2);
-  MPInt::MulMod(z2, z, order, &z3);
-  
-  MPInt z_minus_z2;
-  MPInt::SubMod(z, z2, order, &z_minus_z2);
-  
-  MPInt::MulMod(z_minus_z2, sum_y, order, &term1);
-  MPInt::MulMod(z3, sum_2, order, &term2);
-  MPInt::SubMod(term1, term2, order, &result);
-  
-  return result;
-}
 
-// Helper function to generate random scalar
-MPInt RandomScalar(const MPInt& order) {
-  MPInt result;
-  MPInt::RandomLtN(order, &result);
+  // For non-power of 2, use slow method
+  if ((n & (n - 1)) != 0) {
+    MPInt sum, x_i;
+    sum.Set(0);
+    x_i.Set(1);
+    
+    for (size_t i = 0; i < n; i++) {
+      MPInt::AddMod(sum, x_i, order, &sum);
+      MPInt::MulMod(x_i, x, order, &x_i);
+    }
+    return sum;
+  }
+
+  // Fast method for power of 2
+  MPInt result, one;
+  one.Set(1);
+  MPInt::AddMod(one, x, order, &result);  // result = 1 + x
+  
+  MPInt factor = x;
+  size_t m = n;
+  
+  while (m > 2) {
+    MPInt::MulMod(factor, factor, order, &factor);  // factor = factor * factor
+    MPInt temp;
+    MPInt::MulMod(factor, result, order, &temp);  // temp = factor * result
+    MPInt::AddMod(result, temp, order, &result);  // result = result + temp
+    m = m / 2;
+  }
+  
   return result;
 }
 
@@ -120,7 +117,8 @@ std::pair<RangeProof, yacl::crypto::EcPoint> RangeProof::CreateSingle(
   YACL_ENFORCE(curve != nullptr, "Curve cannot be null");
   YACL_ENFORCE(bit_size == 8 || bit_size == 16 || bit_size == 32 || bit_size == 64,
                "Bit size must be 8, 16, 32, or 64");
-  
+
+
   const MPInt& order = curve->GetOrder();
   
   // Generate the generator vectors at the beginning
@@ -365,13 +363,17 @@ RangeProof::Error RangeProof::VerifySingle(
     SimpleTranscript& transcript,
     const yacl::crypto::EcPoint& V,
     size_t bit_size) const {
+
+
+
   if (!curve) {
     return Error::kInvalidArgument;
   }
+
   if (bit_size != 8 && bit_size != 16 && bit_size != 32 && bit_size != 64) {
     return Error::kInvalidArgument;
   }
-  
+
   // Domain separation
   transcript.Absorb(yacl::ByteContainerView("dom-sep"),
                    yacl::ByteContainerView("range-proof-single"));
@@ -388,6 +390,9 @@ RangeProof::Error RangeProof::VerifySingle(
   MPInt y = transcript.ChallengeMPInt(yacl::ByteContainerView("y"), order);
   MPInt z = transcript.ChallengeMPInt(yacl::ByteContainerView("z"), order);
 
+  auto zz = z * z;
+  auto minus_z = -z;
+
   // Absorb T1 and T2
   transcript.AbsorbEcPoint(curve, yacl::ByteContainerView("T1"), T1_);
   transcript.AbsorbEcPoint(curve, yacl::ByteContainerView("T2"), T2_);
@@ -396,18 +401,15 @@ RangeProof::Error RangeProof::VerifySingle(
   MPInt x = transcript.ChallengeMPInt(yacl::ByteContainerView("x"), order);
 
   // Verify that t = t(x) = <l(x), r(x)>
-  transcript.Absorb(yacl::ByteContainerView("t"), 
-                   t_x_.ToBytes(32, yacl::Endian::little));
-  transcript.Absorb(yacl::ByteContainerView("tau_x"), 
-                   t_x_blinding_.ToBytes(32, yacl::Endian::little));
-  transcript.Absorb(yacl::ByteContainerView("mu"), 
-                   e_blinding_.ToBytes(32, yacl::Endian::little));
+  transcript.AbsorbScalar(yacl::ByteContainerView("t"), t_x_);
+  transcript.AbsorbScalar(yacl::ByteContainerView("tau_x"), t_x_blinding_);
+  transcript.AbsorbScalar(yacl::ByteContainerView("mu"), e_blinding_);
 
   // Get challenge w
   MPInt w = transcript.ChallengeMPInt(yacl::ByteContainerView("w"), order);
 
   // Calculate delta(y,z)
-  MPInt delta = ComputeDelta(bit_size, y, z, order);
+  MPInt delta = RangeProof::ComputeDelta(bit_size, bit_size, y, z, order);
 
   // Compute the verification equation
   // g^t = V^z^2 * g^delta * T1^x * T2^x^2
@@ -441,10 +443,21 @@ RangeProof::Error RangeProof::VerifySingle(
   EcPoint right = VartimeMultiscalarMul(curve, scalars, points);
   EcPoint left = curve->Mul(curve->GetGenerator(), t_x_);
 
+  //debug
+  std::cout << "========================Verify left==============================" << std::endl;
+  std::cout << curve->SerializePoint(left) << std::endl;
+  std::cout << "========================Verify right==============================" << std::endl;
+  std::cout << curve->SerializePoint(right) << std::endl;
+
+  //debug
+  std::cout << "========================Verify PointEqual==============================" << std::endl;
   if (!curve->PointEqual(left, right)) {
     return Error::kVerificationFailed;
   }
 
+  //debug
+  std::cout << "========================Verify inner product proof==============================" << std::endl;
+  
   // Verify the inner product proof
   std::vector<MPInt> ones(bit_size);
   for (size_t i = 0; i < bit_size; ++i) {
@@ -462,6 +475,8 @@ RangeProof::Error RangeProof::VerifySingle(
   auto g_vec_ipp = GenerateGenerators(curve, bit_size, "G");
   auto h_vec_ipp = GenerateGenerators(curve, bit_size, "H");
 
+  //debug
+  std::cout << "========================ipp_proof_.Verify==============================" << std::endl;
   // Call InnerProductProof::Verify
   if (ipp_proof_.Verify(
           curve,
@@ -823,6 +838,37 @@ RangeProof::Error RangeProof::Create(
   // ... and so on for T1, T2, t_x, tau_x, mu, ipp_proof
 
   return Error::kOk; // Placeholder
+}
+
+MPInt RangeProof::ComputeDelta(size_t n, size_t m, const MPInt& y, const MPInt& z, const MPInt& order) {
+  // Calculate sum_y = y^0 + y^1 + ... + y^(n*m-1)
+  MPInt sum_y = SumOfPowers(y, n * m, order);
+  
+  // Calculate sum_2 = 2^0 + 2^1 + ... + 2^(n-1)
+  MPInt two;
+  two.Set(2);
+  MPInt sum_2 = SumOfPowers(two, n, order);
+  
+  // Calculate sum_z = z^0 + z^1 + ... + z^(m-1)
+  MPInt sum_z = SumOfPowers(z, m, order);
+  
+  // Calculate delta = (z - z^2) * sum_y - z^3 * sum_2 * sum_z
+  MPInt z2, z3, term1, term2, result;
+  MPInt::MulMod(z, z, order, &z2);  // z^2
+  MPInt::MulMod(z2, z, order, &z3);  // z^3
+  
+  MPInt z_minus_z2;
+  MPInt::SubMod(z, z2, order, &z_minus_z2);  // z - z^2
+  
+  MPInt::MulMod(z_minus_z2, sum_y, order, &term1);  // (z - z^2) * sum_y
+  
+  MPInt temp;
+  MPInt::MulMod(sum_2, sum_z, order, &temp);  // sum_2 * sum_z
+  MPInt::MulMod(z3, temp, order, &term2);  // z^3 * sum_2 * sum_z
+  
+  MPInt::SubMod(term1, term2, order, &result);  // term1 - term2
+  
+  return result;
 }
 
 } // namespace examples::zkp 

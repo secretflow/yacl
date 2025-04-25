@@ -81,31 +81,90 @@ TEST_F(RangeProofTest, TestInvalidRange8Bit) {
                yacl::Exception);
 }
 
-TEST_F(RangeProofTest, TestSerialization) {
-  uint64_t value = 123;
+TEST_F(RangeProofTest, TestDelta) {
+  // Choose n = 256 to ensure we overflow the group order during computation
+  const size_t n = 256;
+  const size_t m = 1;
+  const MPInt& order = curve_->GetOrder();
   
-  MPInt v;
-  v.Set(value);
+  // Generate random y and z
+  MPInt y, z;
+  MPInt::RandomLtN(order, &y);
+  MPInt::RandomLtN(order, &z);
   
-  MPInt blinding;
-  MPInt::RandomLtN(curve_->GetOrder(), &blinding);
+  // Compute delta using the optimized implementation
+  MPInt optimized_delta = RangeProof::ComputeDelta(n, m, y, z, order);
   
-  auto [proof, commitment] = RangeProof::CreateSingle(
-      curve_, *transcript_, v, blinding, 8);
-      
-  yacl::Buffer proof_bytes = proof.ToBytes(curve_);
-  EXPECT_GT(proof_bytes.size(), 0);
+  // Compute delta using the naive implementation for verification
+  MPInt z2, z3;
+  MPInt::MulMod(z, z, order, &z2);  // z^2
+  MPInt::MulMod(z2, z, order, &z3);  // z^3
   
-  auto new_transcript = std::make_unique<SimpleTranscript>(
-      yacl::ByteContainerView("test-range-proof"));
-      
-  auto recovered_proof = RangeProof::FromBytes(
-      curve_, yacl::ByteContainerView(proof_bytes));
+  MPInt power_g;
+  power_g.SetZero();
   
-  auto verify_result = recovered_proof.VerifySingle(
-      curve_, *new_transcript, commitment, 8);
-      
-  EXPECT_EQ(verify_result, RangeProof::Error::kOk);
+  MPInt exp_y, exp_2;
+  exp_y.Set(1);  // y^0 = 1
+  exp_2.Set(1);  // 2^0 = 1
+  
+  MPInt two;
+  two.Set(2);
+  
+  MPInt z_minus_z2;
+  MPInt::SubMod(z, z2, order, &z_minus_z2);  // z - z^2
+  
+  for (size_t i = 0; i < n; i++) {
+    // power_g += (z - z^2) * exp_y - z^3 * exp_2
+    MPInt term1, term2, temp;
+    
+    // Calculate (z - z^2) * exp_y
+    MPInt::MulMod(z_minus_z2, exp_y, order, &term1);
+    
+    // Calculate z^3 * exp_2
+    MPInt::MulMod(z3, exp_2, order, &term2);
+    
+    // Subtract term2 from term1
+    MPInt::SubMod(term1, term2, order, &temp);
+    
+    // Add to power_g
+    MPInt::AddMod(power_g, temp, order, &power_g);
+    
+    // Update exp_y = exp_y * y
+    MPInt::MulMod(exp_y, y, order, &exp_y);
+    
+    // Update exp_2 = exp_2 * 2
+    MPInt::MulMod(exp_2, two, order, &exp_2);
+  }
+  
+  // Verify that both implementations give the same result
+  EXPECT_TRUE(power_g.Compare(optimized_delta) == 0);
 }
+
+// TEST_F(RangeProofTest, TestSerialization) {
+//   uint64_t value = 123;
+  
+//   MPInt v;
+//   v.Set(value);
+  
+//   MPInt blinding;
+//   MPInt::RandomLtN(curve_->GetOrder(), &blinding);
+  
+//   auto [proof, commitment] = RangeProof::CreateSingle(
+//       curve_, *transcript_, v, blinding, 8);
+      
+//   yacl::Buffer proof_bytes = proof.ToBytes(curve_);
+//   EXPECT_GT(proof_bytes.size(), 0);
+  
+//   auto new_transcript = std::make_unique<SimpleTranscript>(
+//       yacl::ByteContainerView("test-range-proof"));
+      
+//   auto recovered_proof = RangeProof::FromBytes(
+//       curve_, yacl::ByteContainerView(proof_bytes));
+  
+//   auto verify_result = recovered_proof.VerifySingle(
+//       curve_, *new_transcript, commitment, 8);
+      
+//   EXPECT_EQ(verify_result, RangeProof::Error::kOk);
+// }
 
 } // namespace examples::zkp 

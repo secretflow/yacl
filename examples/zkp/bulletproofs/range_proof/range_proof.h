@@ -75,6 +75,8 @@ class RangeProof {
       const std::shared_ptr<yacl::crypto::EcGroup>& curve,
       const yacl::ByteContainerView& bytes);
 
+  // Make ComputeDelta static
+  static yacl::math::MPInt ComputeDelta(size_t n, size_t m, const yacl::math::MPInt& y, const yacl::math::MPInt& z, const yacl::math::MPInt& order);
 
   // Members
   yacl::crypto::EcPoint A_;            // Commitment A
