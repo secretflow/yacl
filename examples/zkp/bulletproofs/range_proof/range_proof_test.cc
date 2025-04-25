@@ -58,8 +58,10 @@ TEST_F(RangeProofTest, TestValidRange8Bit) {
     MPInt blinding;
     MPInt::RandomLtN(curve_->GetOrder(), &blinding);
     
+    BulletproofGens bp_gens(curve_, 64, 4);
+    PedersenGens pc_gens(curve_);
     auto [proof, commitment] = RangeProof::CreateSingle(
-        curve_, *transcript_, v, blinding, 8);
+        bp_gens, pc_gens, curve_, *transcript_, v, blinding, 8);
         
     auto verify_transcript = std::make_unique<SimpleTranscript>(
         yacl::ByteContainerView("test-range-proof"));
@@ -77,7 +79,9 @@ TEST_F(RangeProofTest, TestInvalidRange8Bit) {
   MPInt blinding;
   MPInt::RandomLtN(curve_->GetOrder(), &blinding);
   
-  EXPECT_THROW(RangeProof::CreateSingle(curve_, *transcript_, v, blinding, 8),
+  BulletproofGens bp_gens(curve_, 64, 4);
+  PedersenGens pc_gens(curve_);
+  EXPECT_THROW(RangeProof::CreateSingle(bp_gens, pc_gens, curve_, *transcript_, v, blinding, 8),
                yacl::Exception);
 }
 

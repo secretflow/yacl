@@ -109,6 +109,8 @@ static MPInt SumOfPowers(const MPInt& x, size_t n, const MPInt& order) {
 } // namespace
 
 std::pair<RangeProof, yacl::crypto::EcPoint> RangeProof::CreateSingle(
+    BulletproofGens& bp_gens,
+    PedersenGens& pc_gens,
     const std::shared_ptr<yacl::crypto::EcGroup>& curve,
     SimpleTranscript& transcript,
     const yacl::math::MPInt& value,

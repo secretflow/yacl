@@ -28,6 +28,57 @@ yacl_cc_library(
 )
 
 yacl_cc_library(
+    name = "messages",
+    srcs = ["messages.cc"],
+    hdrs = ["messages.h"],
+    copts = COMMON_COPTS,
+    deps = [
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/crypto/ecc:ecc",
+        "@yacl//yacl/crypto/ecc:ec_point",
+        "@yacl//yacl/crypto/hash:hash_utils",
+        "@yacl//yacl/math/mpint:mpint",
+        "@yacl//yacl/math/mpint:mp_int_enforce",
+    ],
+)
+
+yacl_cc_library(
+    name = "party",
+    srcs = ["party.cc"],
+    hdrs = ["party.h"],
+    copts = COMMON_COPTS,
+    deps = [
+        ":messages",
+        "//zkp/bulletproofs:inner_product_proof",
+        "//zkp/bulletproofs:generators",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/crypto/ecc:ecc",
+        "@yacl//yacl/crypto/ecc:ec_point",
+        "@yacl//yacl/crypto/hash:hash_utils",
+        "@yacl//yacl/math/mpint:mpint",
+        "@yacl//yacl/math/mpint:mp_int_enforce",
+    ],
+)
+
+yacl_cc_library(
+    name = "dealer",
+    srcs = ["dealer.cc"],
+    hdrs = ["dealer.h"],
+    copts = COMMON_COPTS,
+    deps = [
+        ":messages", 
+        "//zkp/bulletproofs:inner_product_proof", 
+        "//zkp/bulletproofs:generators",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/crypto/ecc:ecc",
+        "@yacl//yacl/crypto/ecc:ec_point",
+        "@yacl//yacl/crypto/hash:hash_utils",
+        "@yacl//yacl/math/mpint:mpint",
+        "@yacl//yacl/math/mpint:mp_int_enforce",  
+    ],
+)
+
+yacl_cc_library(
     name = "range_proof",
     srcs = ["range_proof.cc"],
     hdrs = ["range_proof.h"],

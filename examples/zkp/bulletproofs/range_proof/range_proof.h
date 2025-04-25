@@ -10,6 +10,7 @@
 #include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/math/mpint/mp_int.h"
 #include "../inner_product_proof.h"
+#include "zkp/bulletproofs/generators.h"
 
 namespace examples::zkp {
 
@@ -44,6 +45,8 @@ class RangeProof {
   // Creates a single range proof for value in [0, 2^bit_size - 1]
   // Returns the proof and the Pedersen commitment V = g^value * h^blinding
   static std::pair<RangeProof, yacl::crypto::EcPoint> CreateSingle(
+    BulletproofGens& bp_gens,
+    PedersenGens& pc_gens,
       const std::shared_ptr<yacl::crypto::EcGroup>& curve,
       SimpleTranscript& transcript,
       const yacl::math::MPInt& value,
@@ -78,6 +81,7 @@ class RangeProof {
   // Make ComputeDelta static
   static yacl::math::MPInt ComputeDelta(size_t n, size_t m, const yacl::math::MPInt& y, const yacl::math::MPInt& z, const yacl::math::MPInt& order);
 
+
   // Members
   yacl::crypto::EcPoint A_;            // Commitment A
   yacl::crypto::EcPoint S_;            // Commitment S
@@ -85,8 +89,8 @@ class RangeProof {
   yacl::crypto::EcPoint T2_;           // Commitment T2
   yacl::math::MPInt t_x_;            // t(x) opening
   yacl::math::MPInt t_x_blinding_;   // Blinding factor for t(x)
-  yacl::math::MPInt e_blinding_;   // Blinding factor for V
-  InnerProductProof ipp_proof_;        // Inner product proof
+  yacl::math::MPInt e_blinding_;   // Blinding factor for the synthetic commitment to the inner-product arguments
+  InnerProductProof ipp_proof_;        // Proof data for the inner-product argument.
 
   
 };
