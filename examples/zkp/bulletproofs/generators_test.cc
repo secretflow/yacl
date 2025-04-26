@@ -10,8 +10,9 @@ namespace {
 class GeneratorsTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    curve_ = yacl::crypto::OpenSSLGroup::Create(
-        yacl::crypto::CurveMeta::CreateByName("secp256k1"));
+    curve_ = yacl::crypto::EcGroupFactory::Instance().Create(
+       "secp256k1",
+        yacl::ArgLib = "openssl");
   }
 
   std::shared_ptr<yacl::crypto::EcGroup> curve_;

@@ -22,8 +22,18 @@ PedersenGens::PedersenGens(std::shared_ptr<yacl::crypto::EcGroup> curve)
   // This matches the behavior of RistrettoPoint::hash_from_bytes in the Rust implementation
   // HashToCurve handles the internal hashing
   B_blinding_ = curve_->HashToCurve(
-      yacl::crypto::HashToCurveStrategy::TryAndIncrement_SHA3,  // Use SHA3 to match Rust Sha3_512
+      yacl::crypto::HashToCurveStrategy::Autonomous,  // 
       base_view);
+}
+
+yacl::crypto::EcPoint PedersenGens::Commit(
+    const yacl::math::MPInt& value, 
+    const yacl::math::MPInt& blinding) const {
+  // Compute value*B + blinding*B_blinding
+  yacl::crypto::EcPoint value_term = curve_->Mul(B_, value);
+  yacl::crypto::EcPoint blinding_term = curve_->Mul(B_blinding_, blinding);
+  
+  return curve_->Add(value_term, blinding_term);
 }
 
 // ---- GeneratorsChain implementation ----
@@ -65,7 +75,7 @@ yacl::crypto::EcPoint GeneratorsChain::Next() {
   std::vector<uint8_t> uniform_bytes = yacl::crypto::Shake256(seed, 64);
   
   // Convert to a point on the curve
-  return curve_->HashToCurve(yacl::crypto::HashToCurveStrategy::TryAndIncrement_SHA3, yacl::ByteContainerView(uniform_bytes));
+  return curve_->HashToCurve(yacl::crypto::HashToCurveStrategy::Autonomous, yacl::ByteContainerView(uniform_bytes));
 }
 
 // ---- BulletproofGens implementation ----
