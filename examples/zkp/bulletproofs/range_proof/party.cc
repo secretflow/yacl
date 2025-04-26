@@ -1,8 +1,11 @@
-#include "zkp/bulletproofs/party/party.h"
+#include "zkp/bulletproofs/range_proof/party.h"
 
 #include "yacl/crypto/rand/rand.h"
 #include "yacl/crypto/hash/hash_utils.h"
 #include "yacl/math/mpint/mp_int.h"
+#include "zkp/bulletproofs/generators.h"
+#include "zkp/bulletproofs/range_proof/messages.h"
+#include "zkp/bulletproofs/util.h"
 
 namespace examples::zkp {
 
@@ -64,11 +67,11 @@ PartyAwaitingPosition::AssignPosition(size_t j) const {
   yacl::math::MPInt::RandomExactBits(curve->GetField().BitCount(), &a_blinding);
   
   // Compute A = <a_L, G> + <a_R, H> + a_blinding * B_blinding
-  yacl::crypto::EcPoint A = curve->Mul(pc_gens_.H(), a_blinding);
+  yacl::crypto::EcPoint A = curve->Mul(pc_gens_.GetHPoint(), a_blinding);
   
   // Get party's share of generators
-  auto party_gens_G = bp_gens_.G_party(j);
-  auto party_gens_H = bp_gens_.H_party(j);
+  auto party_gens_G = bp_gens_.GetGParty(j);
+  auto party_gens_H = bp_gens_.GetHParty(j);
   
   // For each bit, add the appropriate generator
   for (size_t i = 0; i < n_; i++) {
@@ -99,7 +102,7 @@ PartyAwaitingPosition::AssignPosition(size_t j) const {
   }
   
   // Compute S = <s_L, G> + <s_R, H> + s_blinding * B_blinding
-  yacl::crypto::EcPoint S = curve->Mul(pc_gens_.H(), s_blinding);
+  yacl::crypto::EcPoint S = curve->Mul(pc_gens_.GetHPoint(), s_blinding);
   
   for (size_t i = 0; i < n_; i++) {
     S = curve->Add(S, curve->Mul(party_gens_G[i], s_L[i]));
@@ -156,18 +159,18 @@ PartyAwaitingBitChallenge::~PartyAwaitingBitChallenge() {
 }
 
 std::pair<PartyAwaitingPolyChallenge, PolyCommitment>
-PartyAwaitingBitChallenge::ApplyChallenge(const BitChallenge& challenge) const {
+PartyAwaitingBitChallenge::ApplyChallenge(const BitChallenge& challenge) const {  
   auto curve = pc_gens_.GetCurve();
   
   // Calculate offset values based on party position
-  yacl::math::MPInt offset_y = ScalarExp(challenge.y, static_cast<uint64_t>(j_ * n_));
-  yacl::math::MPInt offset_z = ScalarExp(challenge.z, static_cast<uint64_t>(j_));
+  yacl::math::MPInt offset_y = ScalarExpVartime(challenge.GetY(), static_cast<uint64_t>(j_ * n_));
+  yacl::math::MPInt offset_z = ScalarExpVartime(challenge.GetZ(), static_cast<uint64_t>(j_));
   
   // Calculate vectors l0, l1, r0, r1 for polynomial calculation
   VecPoly1 l_poly = VecPoly1::Zero(n_);
   VecPoly1 r_poly = VecPoly1::Zero(n_);
   
-  yacl::math::MPInt offset_zz = challenge.z * challenge.z * offset_z;
+  yacl::math::MPInt offset_zz = challenge.GetZ() * challenge.GetZ() * offset_z;
   yacl::math::MPInt exp_y = offset_y; // Start at y^j
   yacl::math::MPInt exp_2 = yacl::math::MPInt(1); // Start at 2^0 = 1
   
@@ -177,13 +180,13 @@ PartyAwaitingBitChallenge::ApplyChallenge(const BitChallenge& challenge) const {
     yacl::math::MPInt a_R_i = a_L_i - yacl::math::MPInt(1);
     
     // Update the polynomials
-    l_poly.vec0[i] = a_L_i - challenge.z;
+    l_poly.vec0[i] = a_L_i - challenge.GetZ();
     l_poly.vec1[i] = s_L_[i];
-    r_poly.vec0[i] = exp_y * (a_R_i + challenge.z) + offset_zz * exp_2;
+    r_poly.vec0[i] = exp_y * (a_R_i + challenge.GetZ()) + offset_zz * exp_2;
     r_poly.vec1[i] = exp_y * s_R_[i];
     
     // Update exponentials for next iteration
-    exp_y = exp_y * challenge.y;
+    exp_y = exp_y * challenge.GetY();
     exp_2 = exp_2 + exp_2;
   }
   
@@ -247,7 +250,7 @@ PartyAwaitingPolyChallenge::~PartyAwaitingPolyChallenge() {
 ProofShare PartyAwaitingPolyChallenge::ApplyChallenge(
     const PolyChallenge& challenge) const {
   // Prevent a malicious dealer from annihilating the blinding factors
-  if (challenge.x == yacl::math::MPInt(0)) {
+  if (challenge.GetX() == yacl::math::MPInt(0)) {
     throw yacl::Exception("Malicious dealer: challenge.x is zero");
   }
   
@@ -258,11 +261,11 @@ ProofShare PartyAwaitingPolyChallenge::ApplyChallenge(
       t_2_blinding_);
   
   // Evaluate polynomials at the challenge point x
-  yacl::math::MPInt t_x = t_poly_.Eval(challenge.x);
-  yacl::math::MPInt t_x_blinding = t_blinding_poly.Eval(challenge.x);
-  yacl::math::MPInt e_blinding = a_blinding_ + s_blinding_ * challenge.x;
-  std::vector<yacl::math::MPInt> l_vec = l_poly_.Eval(challenge.x);
-  std::vector<yacl::math::MPInt> r_vec = r_poly_.Eval(challenge.x);
+  yacl::math::MPInt t_x = t_poly_.Eval(challenge.GetX());
+  yacl::math::MPInt t_x_blinding = t_blinding_poly.Eval(challenge.GetX());
+  yacl::math::MPInt e_blinding = a_blinding_ + s_blinding_ * challenge.GetX();
+  std::vector<yacl::math::MPInt> l_vec = l_poly_.Eval(challenge.GetX());
+  std::vector<yacl::math::MPInt> r_vec = r_poly_.Eval(challenge.GetX());
   
   // Create and return the proof share
   return ProofShare{

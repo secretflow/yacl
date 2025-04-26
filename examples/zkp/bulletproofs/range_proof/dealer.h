@@ -10,8 +10,8 @@
 #include "yacl/math/mpint/mp_int.h"
 #include "zkp/bulletproofs/generators.h"
 #include "zkp/bulletproofs/range_proof/messages.h"
+#include "zkp/bulletproofs/simple_transcript.h"
 #include "zkp/bulletproofs/range_proof/range_proof.h"
-#include "zkp/bulletproofs/transcript.h"
 
 namespace examples::zkp {
 
@@ -39,7 +39,7 @@ class Dealer {
   static DealerAwaitingBitCommitments New(
       const BulletproofGens& bp_gens,
       const PedersenGens& pc_gens,
-      Transcript& transcript,
+      SimpleTranscript& transcript,
       size_t n,
       size_t m);
 };
@@ -73,16 +73,16 @@ class DealerAwaitingBitCommitments {
   DealerAwaitingBitCommitments(
       const BulletproofGens& bp_gens,
       const PedersenGens& pc_gens,
-      Transcript& transcript,
-      Transcript initial_transcript,
+      SimpleTranscript& transcript,
+      SimpleTranscript initial_transcript,
       size_t n,
       size_t m);
 
   const BulletproofGens& bp_gens_;
   const PedersenGens& pc_gens_;
-  Transcript& transcript_;
+  SimpleTranscript& transcript_;
   // The dealer keeps a copy of the initial transcript state for verification
-  Transcript initial_transcript_;
+  SimpleTranscript initial_transcript_;
   size_t n_; // Bitsize of the range
   size_t m_; // Number of parties
 };
@@ -117,8 +117,8 @@ class DealerAwaitingPolyCommitments {
   DealerAwaitingPolyCommitments(
       size_t n,
       size_t m,
-      Transcript& transcript,
-      Transcript initial_transcript,
+      SimpleTranscript& transcript,
+      SimpleTranscript initial_transcript,
       const BulletproofGens& bp_gens,
       const PedersenGens& pc_gens,
       const BitChallenge& bit_challenge,
@@ -128,8 +128,8 @@ class DealerAwaitingPolyCommitments {
 
   size_t n_; // Bitsize of the range
   size_t m_; // Number of parties
-  Transcript& transcript_;
-  Transcript initial_transcript_;
+  SimpleTranscript& transcript_;
+  SimpleTranscript initial_transcript_;
   const BulletproofGens& bp_gens_;
   const PedersenGens& pc_gens_;
   BitChallenge bit_challenge_;
@@ -181,8 +181,8 @@ class DealerAwaitingProofShares {
   DealerAwaitingProofShares(
       size_t n,
       size_t m,
-      Transcript& transcript,
-      Transcript initial_transcript,
+      SimpleTranscript& transcript,
+      SimpleTranscript initial_transcript,
       const BulletproofGens& bp_gens,
       const PedersenGens& pc_gens,
       const BitChallenge& bit_challenge,
@@ -205,8 +205,8 @@ class DealerAwaitingProofShares {
 
   size_t n_; // Bitsize of the range
   size_t m_; // Number of parties
-  Transcript& transcript_;
-  Transcript initial_transcript_;
+  SimpleTranscript& transcript_;
+  SimpleTranscript initial_transcript_;
   const BulletproofGens& bp_gens_;
   const PedersenGens& pc_gens_;
   BitChallenge bit_challenge_;
@@ -222,8 +222,8 @@ class DealerAwaitingProofShares {
 /**
  * @brief Check if a number is a power of 2
  */
-inline bool IsPowerOfTwo(size_t n) {
-  return n > 0 && (n & (n - 1)) == 0;
-}
+// inline bool IsPowerOfTwo(size_t n) {
+//   return n > 0 && (n & (n - 1)) == 0;
+// }
 
 } // namespace examples::zkp

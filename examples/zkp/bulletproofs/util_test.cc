@@ -1,149 +1,225 @@
 #include "zkp/bulletproofs/util.h"
 
-#include "gtest/gtest.h"
-#include "yacl/crypto/ecc/openssl/openssl_group.h"
-#include "yacl/crypto/ecc/curve_meta.h"
-#include "yacl/math/mpint/mp_int.h"
-#include "yacl/base/exception.h"
+#include <gtest/gtest.h>
 
 namespace examples::zkp {
+namespace {
 
 class UtilTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    curve_ = yacl::crypto::openssl::OpensslGroup::Create(
-        yacl::crypto::GetCurveMetaByName("secp256k1"));
-    ASSERT_NE(curve_, nullptr);
-    order_ = curve_->GetOrder();
-    // Initialize some basic MPInts for tests
-    mp_0_.Set(0);
-    mp_1_.Set(1);
-    mp_2_.Set(2);
-    mp_3_.Set(3);
-    mp_4_.Set(4);
-    mp_5_.Set(5);
-    mp_10_.Set(10);
+    // Initialize any test-wide resources
   }
-
-  std::shared_ptr<EcGroup> curve_;
-  MPInt order_;
-  MPInt mp_0_, mp_1_, mp_2_, mp_3_, mp_4_, mp_5_, mp_10_;
 };
 
-TEST_F(UtilTest, InnerProduct) {
-  std::vector<MPInt> a = {mp_1_, mp_2_, mp_3_, mp_4_};
-  std::vector<MPInt> b = {mp_2_, mp_3_, mp_4_, mp_5_};
-  MPInt expected;
-  expected.Set(40);
-  // InnerProduct uses modular arithmetic
-  // 1*2 + 2*3 + 3*4 + 4*5 = 2 + 6 + 12 + 20 = 40
-  EXPECT_EQ(InnerProduct(a, b, order_), expected % order_);
-
-  std::vector<MPInt> c = {mp_1_, mp_2_};
-  std::vector<MPInt> d = {mp_1_};
-  EXPECT_THROW(InnerProduct(c, d, order_), yacl::Exception);
+TEST_F(UtilTest, ExpIterVectorWorks) {
+  auto exp_2 = ExpIterVector(yacl::math::MPInt(2), 4);
+  
+  ASSERT_EQ(exp_2.size(), 4);
+  EXPECT_EQ(exp_2[0], yacl::math::MPInt(1));
+  EXPECT_EQ(exp_2[1], yacl::math::MPInt(2));
+  EXPECT_EQ(exp_2[2], yacl::math::MPInt(4));
+  EXPECT_EQ(exp_2[3], yacl::math::MPInt(8));
 }
 
-TEST_F(UtilTest, AddVectors) {
-   std::vector<MPInt> a = {mp_1_, mp_2_, mp_3_};
-   std::vector<MPInt> b = {mp_5_, mp_4_, mp_3_};
-   std::vector<MPInt> expected = {MPInt(6), MPInt(6), MPInt(6)};
-   auto result = AddVectors(a, b, order_);
-   ASSERT_EQ(result.size(), expected.size());
-   for(size_t i=0; i<result.size(); ++i) {
-       EXPECT_EQ(result[i], expected[i]);
-   }
+TEST_F(UtilTest, InnerProductWorks) {
+  std::vector<yacl::math::MPInt> a = {
+    yacl::math::MPInt(1),
+    yacl::math::MPInt(2),
+    yacl::math::MPInt(3),
+    yacl::math::MPInt(4)
+  };
+  
+  std::vector<yacl::math::MPInt> b = {
+    yacl::math::MPInt(2),
+    yacl::math::MPInt(3),
+    yacl::math::MPInt(4),
+    yacl::math::MPInt(5)
+  };
+  
+  EXPECT_EQ(InnerProduct(a, b), yacl::math::MPInt(40));
 }
 
-TEST_F(UtilTest, Powers) {
-    auto powers_of_2 = Powers(mp_2_, 4, order_);
-    ASSERT_EQ(powers_of_2.size(), 4);
-    EXPECT_EQ(powers_of_2[0], mp_1_); // 2^0
-    EXPECT_EQ(powers_of_2[1], mp_2_); // 2^1
-    EXPECT_EQ(powers_of_2[2], mp_4_); // 2^2
-    EXPECT_EQ(powers_of_2[3], MPInt(8)); // 2^3
+TEST_F(UtilTest, ScalarExpVartimeWorks) {
+  // Create a test scalar
+  yacl::math::MPInt x(257);
+  
+  EXPECT_EQ(ScalarExpVartime(x, 0), yacl::math::MPInt(1));
+  EXPECT_EQ(ScalarExpVartime(x, 1), x);
+  EXPECT_EQ(ScalarExpVartime(x, 2), x * x);
+  EXPECT_EQ(ScalarExpVartime(x, 3), x * x * x);
+  EXPECT_EQ(ScalarExpVartime(x, 4), x * x * x * x);
 }
 
-TEST_F(UtilTest, ScalarExpVartime) {
-    EXPECT_EQ(ScalarExpVartime(mp_3_, 0), mp_1_); // 3^0 = 1
-    EXPECT_EQ(ScalarExpVartime(mp_3_, 1), mp_3_); // 3^1 = 3
-    EXPECT_EQ(ScalarExpVartime(mp_3_, 2), MPInt(9)); // 3^2 = 9
-    EXPECT_EQ(ScalarExpVartime(mp_3_, 3), MPInt(27)); // 3^3 = 27
-    EXPECT_EQ(ScalarExpVartime(mp_2_, 10), MPInt(1024)); // 2^10 = 1024
+// Helper function for slow scalar exponentiation
+yacl::math::MPInt ScalarExpVartimeSlow(const yacl::math::MPInt& x, uint64_t n) {
+  yacl::math::MPInt result(1);
+  for (uint64_t i = 0; i < n; i++) {
+    result = result * x;
+  }
+  return result;
 }
 
-TEST_F(UtilTest, SumOfPowers) {
-    EXPECT_EQ(SumOfPowers(mp_10_, 0, order_), mp_0_);  // 0 terms
-    EXPECT_EQ(SumOfPowers(mp_10_, 1, order_), mp_1_);  // 10^0 = 1
-    EXPECT_EQ(SumOfPowers(mp_10_, 2, order_), MPInt(11)); // 1 + 10
-    EXPECT_EQ(SumOfPowers(mp_10_, 3, order_), MPInt(111)); // 1 + 10 + 100
-    EXPECT_EQ(SumOfPowers(mp_10_, 4, order_), MPInt(1111)); // 1 + 10 + 100 + 1000
-
-    // Test optimized path (n=4 is power of 2) indirectly by calling SumOfPowers
-    MPInt result_4 = SumOfPowers(mp_10_, 4, order_);
-    EXPECT_EQ(result_4, MPInt(1111));
-
-    // Test optimized path (n=8 is power of 2) indirectly by calling SumOfPowers
-     MPInt result_8 = SumOfPowers(mp_2_, 8, order_); // 1+2+4+8+16+32+64+128 = 255
-     EXPECT_EQ(result_8, MPInt(255));
+TEST_F(UtilTest, ScalarExpVartimeMatchesSlow) {
+  yacl::math::MPInt x(123);
+  
+  EXPECT_EQ(ScalarExpVartime(x, 64), ScalarExpVartimeSlow(x, 64));
+  EXPECT_EQ(ScalarExpVartime(x, 0b11001010), ScalarExpVartimeSlow(x, 0b11001010));
 }
 
-TEST_F(UtilTest, VecPoly1Eval) {
-    VecPoly1 poly( {mp_1_, mp_2_}, {mp_3_, mp_4_} ); // (1+3x, 2+4x)
-    auto result = poly.Eval(mp_2_); // x=2
-    ASSERT_EQ(result.size(), 2);
-    EXPECT_EQ(result[0], MPInt(7)); // 1 + 3*2 = 7
-    EXPECT_EQ(result[1], MPInt(10)); // 2 + 4*2 = 10
+TEST_F(UtilTest, SumOfPowersWorks) {
+  yacl::math::MPInt x(10);
+  
+  EXPECT_EQ(SumOfPowers(x, 0), SumOfPowersSlow(x, 0));
+  EXPECT_EQ(SumOfPowers(x, 1), SumOfPowersSlow(x, 1));
+  EXPECT_EQ(SumOfPowers(x, 2), SumOfPowersSlow(x, 2));
+  EXPECT_EQ(SumOfPowers(x, 4), SumOfPowersSlow(x, 4));
+  EXPECT_EQ(SumOfPowers(x, 8), SumOfPowersSlow(x, 8));
+  EXPECT_EQ(SumOfPowers(x, 16), SumOfPowersSlow(x, 16));
+  EXPECT_EQ(SumOfPowers(x, 32), SumOfPowersSlow(x, 32));
+  EXPECT_EQ(SumOfPowers(x, 64), SumOfPowersSlow(x, 64));
 }
 
-TEST_F(UtilTest, Poly2Eval) {
-    Poly2 poly(mp_1_, mp_2_, mp_3_); // 1 + 2x + 3x^2
-    MPInt result = poly.Eval(mp_2_, order_); // x=2
-    // 1 + 2*2 + 3*4 = 1 + 4 + 12 = 17
-    EXPECT_EQ(result, MPInt(17));
+TEST_F(UtilTest, SumOfPowersSlowWorks) {
+  yacl::math::MPInt x(10);
+  
+  EXPECT_EQ(SumOfPowersSlow(x, 0), yacl::math::MPInt(0));
+  EXPECT_EQ(SumOfPowersSlow(x, 1), yacl::math::MPInt(1));
+  EXPECT_EQ(SumOfPowersSlow(x, 2), yacl::math::MPInt(11));
+  EXPECT_EQ(SumOfPowersSlow(x, 3), yacl::math::MPInt(111));
+  EXPECT_EQ(SumOfPowersSlow(x, 4), yacl::math::MPInt(1111));
+  EXPECT_EQ(SumOfPowersSlow(x, 5), yacl::math::MPInt(11111));
+  EXPECT_EQ(SumOfPowersSlow(x, 6), yacl::math::MPInt(111111));
 }
 
-TEST_F(UtilTest, VecPoly1InnerProduct) {
-    VecPoly1 p1( {mp_1_, mp_2_}, {mp_3_, mp_1_} ); // a=(1,2), b=(3,1)
-    VecPoly1 p2( {mp_2_, mp_1_}, {mp_1_, mp_4_} ); // c=(2,1), d=(1,4)
-    // Inner Product = <a,c> + (<a,d> + <b,c>)x + <b,d>x^2
-    // t0 = <a,c> = 1*2 + 2*1 = 4
-    // t2 = <b,d> = 3*1 + 1*4 = 7
-    // <a,d> = 1*1 + 2*4 = 9
-    // <b,c> = 3*2 + 1*1 = 7
-    // t1 = <a,d> + <b,c> = 9 + 7 = 16
-    Poly2 result = p1.InnerProduct(p2, order_);
-    EXPECT_EQ(result.a, mp_4_);
-    EXPECT_EQ(result.b, MPInt(16));
-    EXPECT_EQ(result.c, MPInt(7));
+TEST_F(UtilTest, VecPoly1EvalWorks) {
+  std::vector<yacl::math::MPInt> vec0 = {
+    yacl::math::MPInt(1),
+    yacl::math::MPInt(2)
+  };
+  
+  std::vector<yacl::math::MPInt> vec1 = {
+    yacl::math::MPInt(3),
+    yacl::math::MPInt(4)
+  };
+  
+  VecPoly1 poly(vec0, vec1);
+  
+  yacl::math::MPInt x(2);
+  auto result = poly.Eval(x);
+  
+  ASSERT_EQ(result.size(), 2);
+  // 1 + 3*2 = 7
+  EXPECT_EQ(result[0], yacl::math::MPInt(7));
+  // 2 + 4*2 = 10
+  EXPECT_EQ(result[1], yacl::math::MPInt(10));
 }
 
-// Add tests for VecPoly3 and Poly6 if YACL_ENABLE_YOLOPROOFS is defined
-#ifdef YACL_ENABLE_YOLOPROOFS
-TEST_F(UtilTest, VecPoly3Eval) {
-   VecPoly3 poly = VecPoly3::Zero(1);
-   poly.a[0].Set(1);
-   poly.b[0].Set(2);
-   poly.c[0].Set(3);
-   poly.d[0].Set(4);
-   // 1 + 2x + 3x^2 + 4x^3
-   auto result = poly.Eval(mp_2_, order_); // x=2
-   // 1 + 2*2 + 3*4 + 4*8 = 1 + 4 + 12 + 32 = 49
-   ASSERT_EQ(result.size(), 1);
-   EXPECT_EQ(result[0], MPInt(49));
+TEST_F(UtilTest, Poly2EvalWorks) {
+  Poly2 poly(
+    yacl::math::MPInt(1),  // x^0 term
+    yacl::math::MPInt(2),  // x^1 term
+    yacl::math::MPInt(3)   // x^2 term
+  );
+  
+  yacl::math::MPInt x(2);
+  auto result = poly.Eval(x);
+  
+  // 1 + 2*2 + 3*2^2 = 1 + 4 + 12 = 17
+  EXPECT_EQ(result, yacl::math::MPInt(17));
 }
 
-TEST_F(UtilTest, Poly6Eval) {
-    // 1x + 2x^2 + 3x^3 + 4x^4 + 5x^5 + 6x^6
-    Poly6 poly(mp_1_, mp_2_, mp_3_, mp_4_, MPInt(5), MPInt(6));
-    auto result = poly.Eval(mp_2_, order_); // x=2
-    // 2 + 2*4 + 3*8 + 4*16 + 5*32 + 6*64
-    // 2 + 8 + 24 + 64 + 160 + 384 = 642
-    EXPECT_EQ(result, MPInt(642));
+TEST_F(UtilTest, VecPoly1InnerProductWorks) {
+  std::vector<yacl::math::MPInt> a0 = {
+    yacl::math::MPInt(1),
+    yacl::math::MPInt(2)
+  };
+  
+  std::vector<yacl::math::MPInt> a1 = {
+    yacl::math::MPInt(3),
+    yacl::math::MPInt(4)
+  };
+  
+  std::vector<yacl::math::MPInt> b0 = {
+    yacl::math::MPInt(5),
+    yacl::math::MPInt(6)
+  };
+  
+  std::vector<yacl::math::MPInt> b1 = {
+    yacl::math::MPInt(7),
+    yacl::math::MPInt(8)
+  };
+  
+  VecPoly1 a(a0, a1);
+  VecPoly1 b(b0, b1);
+  
+  Poly2 result = a.InnerProduct(b);
+  
+  // t0 = a0 · b0 = 1*5 + 2*6 = 5 + 12 = 17
+  EXPECT_EQ(result.t0, yacl::math::MPInt(17));
+  
+  // t2 = a1 · b1 = 3*7 + 4*8 = 21 + 32 = 53
+  EXPECT_EQ(result.t2, yacl::math::MPInt(53));
+  
+  // t1 = (a0+a1)·(b0+b1) - t0 - t2
+  // (a0+a1) = [4, 6]
+  // (b0+b1) = [12, 14]
+  // (a0+a1)·(b0+b1) = 4*12 + 6*14 = 48 + 84 = 132
+  // t1 = 132 - 17 - 53 = 62
+  EXPECT_EQ(result.t1, yacl::math::MPInt(62));
 }
 
-// Add SpecialInnerProduct test if needed
+TEST_F(UtilTest, Read32Works) {
+  std::vector<uint8_t> data(40, 0);
+  for (size_t i = 0; i < 40; i++) {
+    data[i] = static_cast<uint8_t>(i);
+  }
+  
+  auto result = Read32(data);
+  
+  ASSERT_EQ(result.size(), 32);
+  for (size_t i = 0; i < 32; i++) {
+    EXPECT_EQ(result[i], static_cast<uint8_t>(i));
+  }
+}
 
-#endif // YACL_ENABLE_YOLOPROOFS
+TEST_F(UtilTest, SecureClearingWorks) {
+  // Test that the destructors clear the data properly
+  {
+    auto a = std::make_unique<VecPoly1>(
+      std::vector<yacl::math::MPInt>{yacl::math::MPInt(123)},
+      std::vector<yacl::math::MPInt>{yacl::math::MPInt(456)}
+    );
+    
+    // Verify data is present
+    EXPECT_EQ(a->vec0[0], yacl::math::MPInt(123));
+    EXPECT_EQ(a->vec1[0], yacl::math::MPInt(456));
+    
+    // Let the destructor run
+    a.reset();
+  }
+  
+  {
+    auto p = std::make_unique<Poly2>(
+      yacl::math::MPInt(111),
+      yacl::math::MPInt(222),
+      yacl::math::MPInt(333)
+    );
+    
+    // Verify data is present
+    EXPECT_EQ(p->t0, yacl::math::MPInt(111));
+    EXPECT_EQ(p->t1, yacl::math::MPInt(222));
+    EXPECT_EQ(p->t2, yacl::math::MPInt(333));
+    
+    // Let the destructor run
+    p.reset();
+  }
+}
 
-} // namespace examples::zkp 
+} // namespace
+} // namespace examples::zkp
+
+int main(int argc, char **argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}

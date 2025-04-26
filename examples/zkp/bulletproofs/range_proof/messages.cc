@@ -1,4 +1,4 @@
-#include "zkp/bulletproofs/messages.h"
+#include "zkp/bulletproofs/range_proof/messages.h"
 
 #include <algorithm>
 #include <stdexcept>
@@ -10,32 +10,46 @@ namespace examples::zkp {
 
 //-------------------- BitCommitment --------------------
 
+// Helper function to append data to a Buffer
+void AppendToBuffer(yacl::Buffer& buffer, const void* data, size_t data_size) {
+  int64_t old_size = buffer.size();
+  buffer.resize(old_size + data_size);
+  std::memcpy(buffer.data<uint8_t>() + old_size, data, data_size);
+}
+
+// Helper function to append a Buffer to another Buffer
+void AppendBufferToBuffer(yacl::Buffer& buffer, const yacl::Buffer& data) {
+  AppendToBuffer(buffer, data.data(), data.size());
+}
+
+
 BitCommitment::BitCommitment(
     const yacl::crypto::EcPoint& V_j,
     const yacl::crypto::EcPoint& A_j,
     const yacl::crypto::EcPoint& S_j)
     : V_j_(V_j), A_j_(A_j), S_j_(S_j) {}
 
-yacl::Buffer BitCommitment::ToBytes() const {
+yacl::Buffer BitCommitment::ToBytes(const std::shared_ptr<yacl::crypto::EcGroup>& curve) const {
   yacl::Buffer result;
   
-  // Serialize V_j_
-  std::vector<uint8_t> V_bytes = V_j_.Serialize();
-  size_t V_size = V_bytes.size();
-  result.append(&V_size, sizeof(size_t));
-  result.append(V_bytes.data(), V_bytes.size());
   
-  // Serialize A_j_
-  std::vector<uint8_t> A_bytes = A_j_.Serialize();
-  size_t A_size = A_bytes.size();
-  result.append(&A_size, sizeof(size_t));
-  result.append(A_bytes.data(), A_bytes.size());
+  // Serialize V_j_ using YACL's EcPoint serialization
+  yacl::Buffer V_buf = curve->SerializePoint(V_j_);
+  size_t V_size = V_buf.size();
+  AppendToBuffer(result, &V_size, sizeof(size_t));
+  AppendBufferToBuffer(result, V_buf);
   
-  // Serialize S_j_
-  std::vector<uint8_t> S_bytes = S_j_.Serialize();
-  size_t S_size = S_bytes.size();
-  result.append(&S_size, sizeof(size_t));
-  result.append(S_bytes.data(), S_bytes.size());
+  // Serialize A_j_ using YACL's EcPoint serialization
+  yacl::Buffer A_buf = curve->SerializePoint(A_j_);
+  size_t A_size = A_buf.size();
+  AppendToBuffer(result, &A_size, sizeof(size_t));
+  AppendBufferToBuffer(result, A_buf);
+  
+  // Serialize S_j_ using YACL's EcPoint serialization
+  yacl::Buffer S_buf = curve->SerializePoint(S_j_);
+  size_t S_size = S_buf.size();
+  AppendToBuffer(result, &S_size, sizeof(size_t));
+  AppendBufferToBuffer(result, S_buf);
   
   return result;
 }
@@ -57,7 +71,7 @@ BitCommitment BitCommitment::FromBytes(
   if (offset + V_size > bytes.size()) {
     throw yacl::Exception("Insufficient data for V_j");
   }
-  yacl::crypto::EcPoint V_j = curve->DecodePoint(
+  yacl::crypto::EcPoint V_j = curve->DeserializePoint(
       yacl::ByteContainerView(data + offset, V_size));
   offset += V_size;
   
@@ -72,7 +86,7 @@ BitCommitment BitCommitment::FromBytes(
   if (offset + A_size > bytes.size()) {
     throw yacl::Exception("Insufficient data for A_j");
   }
-  yacl::crypto::EcPoint A_j = curve->DecodePoint(
+  yacl::crypto::EcPoint A_j = curve->DeserializePoint(
       yacl::ByteContainerView(data + offset, A_size));
   offset += A_size;
   
@@ -87,7 +101,7 @@ BitCommitment BitCommitment::FromBytes(
   if (offset + S_size > bytes.size()) {
     throw yacl::Exception("Insufficient data for S_j");
   }
-  yacl::crypto::EcPoint S_j = curve->DecodePoint(
+  yacl::crypto::EcPoint S_j = curve->DeserializePoint(
       yacl::ByteContainerView(data + offset, S_size));
   
   return BitCommitment(V_j, A_j, S_j);
@@ -104,16 +118,16 @@ yacl::Buffer BitChallenge::ToBytes() const {
   yacl::Buffer result;
   
   // Serialize y_
-  std::vector<uint8_t> y_bytes = y_.ToBytes();
-  size_t y_size = y_bytes.size();
-  result.append(&y_size, sizeof(size_t));
-  result.append(y_bytes.data(), y_bytes.size());
+  yacl::Buffer y_buf = y_.Serialize();
+  size_t y_size = y_buf.size();
+  AppendToBuffer(result, &y_size, sizeof(size_t));
+  AppendBufferToBuffer(result, y_buf);
   
   // Serialize z_
-  std::vector<uint8_t> z_bytes = z_.ToBytes();
-  size_t z_size = z_bytes.size();
-  result.append(&z_size, sizeof(size_t));
-  result.append(z_bytes.data(), z_bytes.size());
+  yacl::Buffer z_buf = z_.Serialize();
+  size_t z_size = z_buf.size();
+  AppendToBuffer(result, &z_size, sizeof(size_t));
+  AppendBufferToBuffer(result, z_buf);
   
   return result;
 }
@@ -133,8 +147,8 @@ BitChallenge BitChallenge::FromBytes(yacl::ByteContainerView bytes) {
   if (offset + y_size > bytes.size()) {
     throw yacl::Exception("Insufficient data for y");
   }
-  yacl::math::MPInt y = yacl::math::MPInt::FromBytes(
-      yacl::ByteContainerView(data + offset, y_size));
+  yacl::math::MPInt y;
+  y.Deserialize(yacl::ByteContainerView(data + offset, y_size));
   offset += y_size;
   
   // Deserialize z
@@ -148,8 +162,8 @@ BitChallenge BitChallenge::FromBytes(yacl::ByteContainerView bytes) {
   if (offset + z_size > bytes.size()) {
     throw yacl::Exception("Insufficient data for z");
   }
-  yacl::math::MPInt z = yacl::math::MPInt::FromBytes(
-      yacl::ByteContainerView(data + offset, z_size));
+  yacl::math::MPInt z;
+  z.Deserialize(yacl::ByteContainerView(data + offset, z_size));
   
   return BitChallenge(y, z);
 }
@@ -161,20 +175,21 @@ PolyCommitment::PolyCommitment(
     const yacl::crypto::EcPoint& T_2_j)
     : T_1_j_(T_1_j), T_2_j_(T_2_j) {}
 
-yacl::Buffer PolyCommitment::ToBytes() const {
+yacl::Buffer PolyCommitment::ToBytes(const std::shared_ptr<yacl::crypto::EcGroup>& curve) const {
   yacl::Buffer result;
+
   
-  // Serialize T_1_j_
-  std::vector<uint8_t> T1_bytes = T_1_j_.Serialize();
-  size_t T1_size = T1_bytes.size();
-  result.append(&T1_size, sizeof(size_t));
-  result.append(T1_bytes.data(), T1_bytes.size());
+  // Serialize T_1_j_ using YACL's EcPoint serialization
+  yacl::Buffer T1_buf = curve->SerializePoint(T_1_j_);
+  size_t T1_size = T1_buf.size();
+  AppendToBuffer(result, &T1_size, sizeof(size_t));
+  AppendBufferToBuffer(result, T1_buf);
   
-  // Serialize T_2_j_
-  std::vector<uint8_t> T2_bytes = T_2_j_.Serialize();
-  size_t T2_size = T2_bytes.size();
-  result.append(&T2_size, sizeof(size_t));
-  result.append(T2_bytes.data(), T2_bytes.size());
+  // Serialize T_2_j_ using YACL's EcPoint serialization
+  yacl::Buffer T2_buf = curve->SerializePoint(T_2_j_);
+  size_t T2_size = T2_buf.size();
+  AppendToBuffer(result, &T2_size, sizeof(size_t));
+  AppendBufferToBuffer(result, T2_buf);
   
   return result;
 }
@@ -196,7 +211,7 @@ PolyCommitment PolyCommitment::FromBytes(
   if (offset + T1_size > bytes.size()) {
     throw yacl::Exception("Insufficient data for T_1_j");
   }
-  yacl::crypto::EcPoint T_1_j = curve->DecodePoint(
+  yacl::crypto::EcPoint T_1_j = curve->DeserializePoint(
       yacl::ByteContainerView(data + offset, T1_size));
   offset += T1_size;
   
@@ -211,7 +226,7 @@ PolyCommitment PolyCommitment::FromBytes(
   if (offset + T2_size > bytes.size()) {
     throw yacl::Exception("Insufficient data for T_2_j");
   }
-  yacl::crypto::EcPoint T_2_j = curve->DecodePoint(
+  yacl::crypto::EcPoint T_2_j = curve->DeserializePoint(
       yacl::ByteContainerView(data + offset, T2_size));
   
   return PolyCommitment(T_1_j, T_2_j);
@@ -226,10 +241,10 @@ yacl::Buffer PolyChallenge::ToBytes() const {
   yacl::Buffer result;
   
   // Serialize x_
-  std::vector<uint8_t> x_bytes = x_.ToBytes();
-  size_t x_size = x_bytes.size();
-  result.append(&x_size, sizeof(size_t));
-  result.append(x_bytes.data(), x_bytes.size());
+  yacl::Buffer x_buf = x_.Serialize();
+  size_t x_size = x_buf.size();
+  AppendToBuffer(result, &x_size, sizeof(size_t));
+  AppendBufferToBuffer(result, x_buf);
   
   return result;
 }
@@ -249,8 +264,8 @@ PolyChallenge PolyChallenge::FromBytes(yacl::ByteContainerView bytes) {
   if (offset + x_size > bytes.size()) {
     throw yacl::Exception("Insufficient data for x");
   }
-  yacl::math::MPInt x = yacl::math::MPInt::FromBytes(
-      yacl::ByteContainerView(data + offset, x_size));
+  yacl::math::MPInt x;
+  x.Deserialize(yacl::ByteContainerView(data + offset, x_size));
   
   return PolyChallenge(x);
 }
@@ -312,11 +327,12 @@ void ProofShare::AuditShare(
   
   // Precompute some variables
   yacl::math::MPInt zz = z * z;
-  yacl::math::MPInt minus_z = yacl::math::MPInt::Zero() - z;
+  yacl::math::MPInt zero = yacl::math::MPInt(0);
+  yacl::math::MPInt minus_z = zero - z;
   yacl::math::MPInt z_j = ScalarExpVartime(z, j); // z^j
   yacl::math::MPInt y_jn = ScalarExpVartime(y, j * n); // y^(j*n)
-  yacl::math::MPInt y_jn_inv = y_jn.Inverse(curve->GetField()); // y^(-j*n)
-  yacl::math::MPInt y_inv = y.Inverse(curve->GetField()); // y^(-1)
+  yacl::math::MPInt y_jn_inv = y_jn.InvertMod(curve->GetField()); // y^(-j*n)
+  yacl::math::MPInt y_inv = y.InvertMod(curve->GetField()); // y^(-1)
   
   // Verify that t_x = <l_vec, r_vec>
   yacl::math::MPInt t_x_check = InnerProduct(l_vec_, r_vec_);
@@ -335,7 +351,7 @@ void ProofShare::AuditShare(
   // Coefficients for A_j, S_j, B_blinding
   scalars.push_back(yacl::math::MPInt(1));
   scalars.push_back(x);
-  scalars.push_back(yacl::math::MPInt::Zero() - e_blinding_);
+  scalars.push_back(zero - e_blinding_);
   
   // Compute scalars for G generators (coefficients for l_vec)
   std::vector<yacl::math::MPInt> exp_2 = ExpIterVector(yacl::math::MPInt(2), n);
@@ -348,7 +364,7 @@ void ProofShare::AuditShare(
   // Compute scalars for H generators (coefficients for r_vec)
   for (size_t i = 0; i < n; i++) {
     yacl::math::MPInt h_i = z + 
-        exp_y_inv[i] * y_jn_inv * (yacl::math::MPInt::Zero() - r_vec_[i]) + 
+        exp_y_inv[i] * y_jn_inv * (zero - r_vec_[i]) + 
         exp_y_inv[i] * y_jn_inv * (zz * z_j * exp_2[i]);
     scalars.push_back(h_i);
   }
@@ -375,10 +391,17 @@ void ProofShare::AuditShare(
   }
   
   // Compute P_check = ∑ scalars[i] * points[i]
-  yacl::crypto::EcPoint P_check = curve->MultiScalarMul(scalars, points);
+    // 从第一个元素开始，避免处理单位元
+  yacl::crypto::EcPoint P_check = curve->Mul(points[0], scalars[0]);
+
+  // 从第二个元素开始累加
+  for (size_t i = 1; i < scalars.size(); i++) {
+      yacl::crypto::EcPoint term = curve->Mul(points[i], scalars[i]);
+      P_check = curve->Add(P_check, term);
+  }
   
   // P_check should be the identity element
-  if (!curve->IsIdentity(P_check)) {
+  if (!curve->IsInfinity(P_check)) {
     throw yacl::Exception("P_check verification failed");
   }
   
@@ -398,7 +421,7 @@ void ProofShare::AuditShare(
   scalars.push_back(x);
   scalars.push_back(x * x);
   scalars.push_back(delta - t_x_);
-  scalars.push_back(yacl::math::MPInt::Zero() - t_x_blinding_);
+  scalars.push_back(zero - t_x_blinding_);
   
   points.push_back(bit_commitment.GetV());
   points.push_back(poly_commitment.GetT1());
@@ -407,10 +430,16 @@ void ProofShare::AuditShare(
   points.push_back(pc_gens.GetHPoint());
   
   // Compute t_check = ∑ scalars[i] * points[i]
-  yacl::crypto::EcPoint t_check = curve->MultiScalarMul(scalars, points);
-  
+  // 从第一个元素开始，避免处理单位元
+  yacl::crypto::EcPoint t_check = curve->Mul(points[0], scalars[0]);
+
+  // 从第二个元素开始累加
+  for (size_t i = 1; i < scalars.size(); i++) {
+      yacl::crypto::EcPoint term = curve->Mul(points[i], scalars[i]);
+      t_check = curve->Add(t_check, term);
+  }
   // t_check should be the identity element
-  if (!curve->IsIdentity(t_check)) {
+  if (!curve->IsInfinity(t_check)) {
     throw yacl::Exception("t_check verification failed");
   }
 }
@@ -419,43 +448,43 @@ yacl::Buffer ProofShare::ToBytes() const {
   yacl::Buffer result;
   
   // Serialize t_x_
-  std::vector<uint8_t> t_x_bytes = t_x_.ToBytes();
-  size_t t_x_size = t_x_bytes.size();
-  result.append(&t_x_size, sizeof(size_t));
-  result.append(t_x_bytes.data(), t_x_bytes.size());
+  yacl::Buffer t_x_buf = t_x_.Serialize();
+  size_t t_x_size = t_x_buf.size();
+  AppendToBuffer(result, &t_x_size, sizeof(size_t));
+  AppendBufferToBuffer(result, t_x_buf);
   
   // Serialize t_x_blinding_
-  std::vector<uint8_t> t_x_blinding_bytes = t_x_blinding_.ToBytes();
-  size_t t_x_blinding_size = t_x_blinding_bytes.size();
-  result.append(&t_x_blinding_size, sizeof(size_t));
-  result.append(t_x_blinding_bytes.data(), t_x_blinding_bytes.size());
+  yacl::Buffer t_x_blinding_buf = t_x_blinding_.Serialize();
+  size_t t_x_blinding_size = t_x_blinding_buf.size();
+  AppendToBuffer(result, &t_x_blinding_size, sizeof(size_t));
+  AppendBufferToBuffer(result, t_x_blinding_buf);
   
   // Serialize e_blinding_
-  std::vector<uint8_t> e_blinding_bytes = e_blinding_.ToBytes();
-  size_t e_blinding_size = e_blinding_bytes.size();
-  result.append(&e_blinding_size, sizeof(size_t));
-  result.append(e_blinding_bytes.data(), e_blinding_bytes.size());
+  yacl::Buffer e_blinding_buf = e_blinding_.Serialize();
+  size_t e_blinding_size = e_blinding_buf.size();
+  AppendToBuffer(result, &e_blinding_size, sizeof(size_t));
+  AppendBufferToBuffer(result, e_blinding_buf);
   
   // Serialize l_vec_
   size_t l_vec_size = l_vec_.size();
-  result.append(&l_vec_size, sizeof(size_t));
+  AppendToBuffer(result, &l_vec_size, sizeof(size_t));
   
   for (const auto& l : l_vec_) {
-    std::vector<uint8_t> l_bytes = l.ToBytes();
-    size_t l_size = l_bytes.size();
-    result.append(&l_size, sizeof(size_t));
-    result.append(l_bytes.data(), l_bytes.size());
+    yacl::Buffer l_buf = l.Serialize();
+    size_t l_size = l_buf.size();
+    AppendToBuffer(result, &l_size, sizeof(size_t));
+    AppendBufferToBuffer(result, l_buf);
   }
   
   // Serialize r_vec_
   size_t r_vec_size = r_vec_.size();
-  result.append(&r_vec_size, sizeof(size_t));
+  AppendToBuffer(result, &r_vec_size, sizeof(size_t));
   
   for (const auto& r : r_vec_) {
-    std::vector<uint8_t> r_bytes = r.ToBytes();
-    size_t r_size = r_bytes.size();
-    result.append(&r_size, sizeof(size_t));
-    result.append(r_bytes.data(), r_bytes.size());
+    yacl::Buffer r_buf = r.Serialize();
+    size_t r_size = r_buf.size();
+    AppendToBuffer(result, &r_size, sizeof(size_t));
+    AppendBufferToBuffer(result, r_buf);
   }
   
   return result;
@@ -476,8 +505,8 @@ ProofShare ProofShare::FromBytes(yacl::ByteContainerView bytes) {
   if (offset + t_x_size > bytes.size()) {
     throw yacl::Exception("Insufficient data for t_x");
   }
-  yacl::math::MPInt t_x = yacl::math::MPInt::FromBytes(
-      yacl::ByteContainerView(data + offset, t_x_size));
+  yacl::math::MPInt t_x;
+  t_x.Deserialize(yacl::ByteContainerView(data + offset, t_x_size));
   offset += t_x_size;
   
   // Deserialize t_x_blinding
@@ -491,8 +520,8 @@ ProofShare ProofShare::FromBytes(yacl::ByteContainerView bytes) {
   if (offset + t_x_blinding_size > bytes.size()) {
     throw yacl::Exception("Insufficient data for t_x_blinding");
   }
-  yacl::math::MPInt t_x_blinding = yacl::math::MPInt::FromBytes(
-      yacl::ByteContainerView(data + offset, t_x_blinding_size));
+  yacl::math::MPInt t_x_blinding;
+  t_x_blinding.Deserialize(yacl::ByteContainerView(data + offset, t_x_blinding_size));
   offset += t_x_blinding_size;
   
   // Deserialize e_blinding
@@ -506,8 +535,8 @@ ProofShare ProofShare::FromBytes(yacl::ByteContainerView bytes) {
   if (offset + e_blinding_size > bytes.size()) {
     throw yacl::Exception("Insufficient data for e_blinding");
   }
-  yacl::math::MPInt e_blinding = yacl::math::MPInt::FromBytes(
-      yacl::ByteContainerView(data + offset, e_blinding_size));
+  yacl::math::MPInt e_blinding;
+  e_blinding.Deserialize(yacl::ByteContainerView(data + offset, e_blinding_size));
   offset += e_blinding_size;
   
   // Deserialize l_vec
@@ -532,8 +561,9 @@ ProofShare ProofShare::FromBytes(yacl::ByteContainerView bytes) {
     if (offset + l_size > bytes.size()) {
       throw yacl::Exception("Insufficient data for l_vec element");
     }
-    l_vec.push_back(yacl::math::MPInt::FromBytes(
-        yacl::ByteContainerView(data + offset, l_size)));
+    yacl::math::MPInt l;
+    l.Deserialize(yacl::ByteContainerView(data + offset, l_size));
+    l_vec.push_back(l);
     offset += l_size;
   }
   
@@ -563,16 +593,16 @@ ProofShare ProofShare::FromBytes(yacl::ByteContainerView bytes) {
     if (offset + r_size > bytes.size()) {
       throw yacl::Exception("Insufficient data for r_vec element");
     }
-    r_vec.push_back(yacl::math::MPInt::FromBytes(
-        yacl::ByteContainerView(data + offset, r_size)));
+    yacl::math::MPInt r;
+    r.Deserialize(yacl::ByteContainerView(data + offset, r_size));
+    r_vec.push_back(r);
     offset += r_size;
   }
   
   return ProofShare(t_x, t_x_blinding, e_blinding, std::move(l_vec), std::move(r_vec));
 }
 
-//-------------------- Utility Functions --------------------
-
+// Utility functions remain unchanged
 yacl::math::MPInt InnerProduct(
     const std::vector<yacl::math::MPInt>& a,
     const std::vector<yacl::math::MPInt>& b) {
@@ -580,7 +610,7 @@ yacl::math::MPInt InnerProduct(
     throw yacl::Exception("Vectors must have same length for inner product");
   }
   
-  yacl::math::MPInt result = yacl::math::MPInt::Zero();
+  yacl::math::MPInt result = yacl::math::MPInt(0);
   for (size_t i = 0; i < a.size(); i++) {
     result = result + a[i] * b[i];
   }
@@ -613,7 +643,6 @@ yacl::math::MPInt SumOfPowers(const yacl::math::MPInt& s, size_t n) {
   yacl::math::MPInt denom = yacl::math::MPInt(1) - s;
   
   // Return num/denom assuming we're in a field
-  // This is simplified for demonstration - should be field-specific
   return num / denom;
 }
 

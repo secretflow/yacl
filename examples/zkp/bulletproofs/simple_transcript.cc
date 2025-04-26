@@ -1,131 +1,166 @@
-// Copyright 2023 Ant Group Co., Ltd.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+#include "zkp/bulletproofs/simple_transcript.h"
 
-#include "simple_transcript.h"
-
-#include "yacl/base/exception.h"
-#include "yacl/crypto/ecc/ecc_spi.h"
-#include "yacl/crypto/hash/hash_utils.h"
-#include "yacl/math/mpint/mp_int.h"
+#include <algorithm>
+#include <cstring>
 
 namespace examples::zkp {
 
-// Constants
-constexpr uint8_t SimpleTranscript::PROTOCOL_LABEL[];
-constexpr uint8_t SimpleTranscript::APP_LABEL[];
-
-SimpleTranscript::SimpleTranscript(yacl::ByteContainerView initial_label) {
-  hasher_.Update(PROTOCOL_LABEL);
-  hasher_.Update(APP_LABEL);
-  hasher_.Update(initial_label);
-}
-
-void SimpleTranscript::Absorb(yacl::ByteContainerView label,
-                            yacl::ByteContainerView data) {
-  AbsorbU64(data.size());
-  hasher_.Update(label);
-  hasher_.Update(data);
-}
-
-void SimpleTranscript::AbsorbScalar(yacl::ByteContainerView label,
-                                  const yacl::math::MPInt& scalar) {
-  auto scalar_bytes = scalar.Serialize(); 
-  AbsorbU64(scalar_bytes.size()); 
-  hasher_.Update(label);
-  hasher_.Update(yacl::ByteContainerView(scalar_bytes.data(), scalar_bytes.size()));
-}
-
-void SimpleTranscript::ValidateAndAbsorbEcPoint(
-    const std::shared_ptr<yacl::crypto::EcGroup>& curve,
-    yacl::ByteContainerView label,
-    const yacl::crypto::EcPoint& point) {
-  // Validate that the point is not infinity
-  YACL_ENFORCE(!curve->IsInfinity(point), "Point cannot be infinity");
+SimpleTranscript::SimpleTranscript(std::string_view label) {
+  // Initialize with an empty state - convert array to vector
+  auto initial_hash = yacl::crypto::Sha256(yacl::ByteContainerView());
+  state_ = std::vector<uint8_t>(initial_hash.begin(), initial_hash.end());
   
-  // After validation, absorb the point
-  AbsorbEcPoint(curve, label, point);
+  // If a label is provided, append it
+  if (!label.empty()) {
+    AppendMessage("label", label);
+  }
 }
 
-void SimpleTranscript::AbsorbEcPoint(
-    const std::shared_ptr<yacl::crypto::EcGroup>& curve,
-    yacl::ByteContainerView label,
-    const yacl::crypto::EcPoint& point) {
-  auto encoded = curve->SerializePoint(point);
-  AbsorbU64(encoded.size());
-  hasher_.Update(label);
-  hasher_.Update(yacl::ByteContainerView(encoded.data(), encoded.size()));
+void SimpleTranscript::RangeproofDomainSep(uint64_t n, uint64_t m) {
+  AppendMessage("dom-sep", "rangeproof v1");
+  AppendU64("n", n);
+  AppendU64("m", m);
 }
 
-void SimpleTranscript::RangeProofDomainSep(size_t n, size_t m) {
-  hasher_.Update(yacl::ByteContainerView("range-proof"));
-  AbsorbU64(n);  // number of bits
-  AbsorbU64(m);  // number of values/parties
+void SimpleTranscript::InnerproductDomainSep(uint64_t n) {
+  AppendMessage("dom-sep", "ipp v1");
+  AppendU64("n", n);
 }
 
-void SimpleTranscript::InnerProductDomainSep(size_t n) {
-  hasher_.Update(yacl::ByteContainerView("inner-product"));
-  AbsorbU64(n);  // vector length
+void SimpleTranscript::R1csDomainSep() {
+  AppendMessage("dom-sep", "r1cs v1");
 }
 
-yacl::math::MPInt SimpleTranscript::ChallengeMPInt(
-    yacl::ByteContainerView label,
-    const yacl::math::MPInt& order) {
-  auto bytes = Squeeze(label);
-  yacl::math::MPInt challenge;
-  challenge.FromMagBytes(yacl::ByteContainerView(bytes.data(), bytes.size()));
-  challenge = challenge % order;
-  return challenge;
+void SimpleTranscript::R1cs1phaseDomainSep() {
+  AppendMessage("dom-sep", "r1cs-1phase");
 }
 
-yacl::Buffer SimpleTranscript::Squeeze(yacl::ByteContainerView label) {
-  hasher_.Update(label);
-  auto hash = hasher_.CumulativeHash();
-  return yacl::Buffer(hash.data(), hash.size());
+void SimpleTranscript::R1cs2phaseDomainSep() {
+  AppendMessage("dom-sep", "r1cs-2phase");
 }
 
-yacl::Buffer SimpleTranscript::SqueezeBytes(
-    yacl::ByteContainerView label,
-    size_t num_bytes) {
-  // First get a hash
-  auto initial_bytes = Squeeze(label);
+void SimpleTranscript::AppendScalar(std::string_view label, const yacl::math::MPInt& scalar) {
+  // Convert the scalar to a byte representation
+  yacl::Buffer scalar_bytes = scalar.Serialize();
   
-  // If we need more bytes than the hash provides
-  if (num_bytes > initial_bytes.size()) {
-    yacl::Buffer result(num_bytes);
-    size_t bytes_copied = 0;
-    
-    // Copy the initial hash
-    std::memcpy(result.data(), initial_bytes.data(), initial_bytes.size());
-    bytes_copied = initial_bytes.size();
-    
-    // Keep hashing until we have enough bytes
-    while (bytes_copied < num_bytes) {
-      hasher_.Update(yacl::ByteContainerView("more"));
-      auto more_bytes = hasher_.CumulativeHash();
-      size_t to_copy = std::min(more_bytes.size(), num_bytes - bytes_copied);
-      std::memcpy(static_cast<uint8_t*>(result.data()) + bytes_copied, 
-                 more_bytes.data(), 
-                 to_copy);
-      bytes_copied += to_copy;
-    }
-    
-    return result;
+  // Append the scalar bytes with the given label
+  AppendMessage(label, std::string_view(
+      reinterpret_cast<const char*>(scalar_bytes.data()), scalar_bytes.size()));
+}
+
+void SimpleTranscript::AppendPoint(std::string_view label, 
+                               const yacl::crypto::EcPoint& point,
+                               const std::shared_ptr<yacl::crypto::EcGroup>& curve) {
+  // Serialize the point to bytes
+  yacl::Buffer point_bytes = curve->SerializePoint(point);
+  
+  // Append the point bytes with the given label
+  AppendMessage(label, std::string_view(
+      reinterpret_cast<const char*>(point_bytes.data()), point_bytes.size()));
+}
+
+void SimpleTranscript::ValidateAndAppendPoint(std::string_view label,
+                                         const yacl::crypto::EcPoint& point,
+                                         const std::shared_ptr<yacl::crypto::EcGroup>& curve) {
+  // Check if the point is the identity (infinity point)
+  if (curve->IsInfinity(point)) {
+    throw yacl::Exception(
+        "Transcript validation failed: point is the identity element");
   }
   
-  // If we need fewer bytes than the hash provides, truncate
-  return yacl::Buffer(initial_bytes.data(),
-                     std::min<size_t>(num_bytes, initial_bytes.size()));
+  // Append the point if it's valid
+  AppendPoint(label, point, curve);
 }
 
-}  // namespace examples::zkp 
+yacl::math::MPInt SimpleTranscript::ChallengeScalar(
+    std::string_view label, 
+    const std::shared_ptr<yacl::crypto::EcGroup>& curve) {
+  // Generate 64 bytes of challenge data
+  std::array<uint8_t, 64> buf{};
+  ChallengeBytes(label, buf.data(), buf.size());
+  
+  // Convert the challenge bytes to a scalar modulo the curve order
+  yacl::math::MPInt scalar;
+  scalar.FromMagBytes(yacl::ByteContainerView(buf.data(), buf.size()));
+  
+  // Ensure the scalar is in the proper range (0, curve_order)
+  scalar = scalar % curve->GetOrder();
+  
+  return scalar;
+}
+
+void SimpleTranscript::AppendMessage(std::string_view label, std::string_view message) {
+  // Prepare the data to be appended (label length + label + message)
+  std::vector<uint8_t> data;
+  
+  // Append the label length as a byte
+  data.push_back(static_cast<uint8_t>(label.size()));
+  
+  // Append the label
+  data.insert(data.end(), label.begin(), label.end());
+  
+  // Append the message
+  data.insert(data.end(), message.begin(), message.end());
+  
+  // Update the transcript state
+  UpdateState(data);
+}
+
+void SimpleTranscript::AppendU64(std::string_view label, uint64_t value) {
+  // Convert uint64_t to 8 bytes in little-endian format
+  std::array<uint8_t, 8> bytes{};
+  bytes[0] = static_cast<uint8_t>(value & 0xFF);
+  bytes[1] = static_cast<uint8_t>((value >> 8) & 0xFF);
+  bytes[2] = static_cast<uint8_t>((value >> 16) & 0xFF);
+  bytes[3] = static_cast<uint8_t>((value >> 24) & 0xFF);
+  bytes[4] = static_cast<uint8_t>((value >> 32) & 0xFF);
+  bytes[5] = static_cast<uint8_t>((value >> 40) & 0xFF);
+  bytes[6] = static_cast<uint8_t>((value >> 48) & 0xFF);
+  bytes[7] = static_cast<uint8_t>((value >> 56) & 0xFF);
+  
+  // Append the bytes with the given label
+  AppendMessage(label, std::string_view(
+      reinterpret_cast<const char*>(bytes.data()), bytes.size()));
+}
+
+void SimpleTranscript::ChallengeBytes(std::string_view label, uint8_t* dest, size_t length) {
+  // First, update the state with the challenge request
+  std::vector<uint8_t> request;
+  
+  // Append a specific challenge indicator
+  const char* challenge_indicator = "challenge";
+  request.insert(request.end(), challenge_indicator, 
+                challenge_indicator + strlen(challenge_indicator));
+  
+  // Append the label
+  request.push_back(static_cast<uint8_t>(label.size()));
+  request.insert(request.end(), label.begin(), label.end());
+  
+  // Append the length requested
+  request.push_back(static_cast<uint8_t>(length));
+  
+  // Update state with the challenge request
+  UpdateState(request);
+  
+  // Derive the challenge bytes from the current state using YACL's Shake256
+  // Note: Shake256 returns a vector, not an array
+  std::vector<uint8_t> output = yacl::crypto::Shake256(
+      yacl::ByteContainerView(state_.data(), state_.size()), length);
+  
+  // Copy the challenge bytes to the destination
+  std::copy_n(output.begin(), length, dest);
+}
+
+void SimpleTranscript::UpdateState(const std::vector<uint8_t>& data) {
+  // Create a context that includes current state and new data
+  std::vector<uint8_t> context;
+  context.insert(context.end(), state_.begin(), state_.end());
+  context.insert(context.end(), data.begin(), data.end());
+  
+  // Update the state with the hash of the context
+  // Convert array to vector
+  auto new_hash = yacl::crypto::Sha256(yacl::ByteContainerView(context.data(), context.size()));
+  state_ = std::vector<uint8_t>(new_hash.begin(), new_hash.end());
+}
+
+} // namespace examples::zkp

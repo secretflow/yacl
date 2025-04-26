@@ -1,76 +1,188 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <vector>
-#include <string>
 
-#include "yacl/crypto/ecc/ecc_spi.h"
+#include "yacl/base/exception.h"
 #include "yacl/crypto/ecc/ec_point.h"
+#include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/math/mpint/mp_int.h"
+#include "yacl/crypto/hash/hash_utils.h"
 
 namespace examples::zkp {
 
-// Generate a vector of generators for use in range proofs
-std::vector<yacl::crypto::EcPoint> GenerateGenerators(
-    const std::shared_ptr<yacl::crypto::EcGroup>& curve,
-    size_t n,
-    const std::string& label);
-
-// Represents a pair of base points for Pedersen commitments.
-// B: the standard base point (generator) of the curve
-// B_blinding: derived from hashing B's bytes
+/**
+ * @brief Represents a pair of base points for Pedersen commitments.
+ * 
+ * The Bulletproofs implementation and API is designed to support
+ * pluggable bases for Pedersen commitments.
+ */
 class PedersenGens {
  public:
+  /**
+   * @brief Construct a new Pedersen Gens object with default generators
+   * 
+   * @param curve The elliptic curve group
+   */
   explicit PedersenGens(std::shared_ptr<yacl::crypto::EcGroup> curve);
 
-  // Creates a Pedersen commitment: value * B + blinding * B_blinding
-  yacl::crypto::EcPoint Commit(const yacl::math::MPInt& value,
-                              const yacl::math::MPInt& blinding) const;
+  /**
+   * @brief Creates a Pedersen commitment using the value scalar and a blinding factor.
+   * 
+   * @param value The value to commit to
+   * @param blinding The blinding factor
+   * @return yacl::crypto::EcPoint The commitment
+   */
+  yacl::crypto::EcPoint Commit(
+      const yacl::math::MPInt& value, 
+      const yacl::math::MPInt& blinding) const;
 
   // Getters
-  const yacl::crypto::EcPoint& GetB() const { return B_; }
-  const yacl::crypto::EcPoint& GetBBlinding() const { return B_blinding_; }
+  const yacl::crypto::EcPoint& GetGPoint() const { return B_; }
+  const yacl::crypto::EcPoint& GetHPoint() const { return B_blinding_; }
+  const std::shared_ptr<yacl::crypto::EcGroup>& GetCurve() const { return curve_; }
 
  private:
   std::shared_ptr<yacl::crypto::EcGroup> curve_;
-  yacl::crypto::EcPoint B_;         // Base for the committed value
-  yacl::crypto::EcPoint B_blinding_; // Base for the blinding factor
+  yacl::crypto::EcPoint B_;           // Base for the committed value
+  yacl::crypto::EcPoint B_blinding_;  // Base for the blinding factor
 };
 
-// The BulletproofGens contains all generators needed for aggregating
-// up to m range proofs of up to n bits each.
+/**
+ * @brief Generates a chain of deterministic random points
+ */
+class GeneratorsChain {
+ public:
+  /**
+   * @brief Creates a chain of generators, determined by the hash of label
+   * 
+   * @param curve The elliptic curve group
+   * @param label The seed label
+   */
+  GeneratorsChain(
+      std::shared_ptr<yacl::crypto::EcGroup> curve,
+      const std::string& label);
+
+  /**
+   * @brief Advances the generator chain n times, discarding the results
+   * 
+   * @param n Number of steps to advance
+   */
+  void FastForward(size_t n);
+
+  /**
+   * @brief Get the next point in the chain
+   * 
+   * @return yacl::crypto::EcPoint The next point
+   */
+  yacl::crypto::EcPoint Next();
+
+ private:
+  std::shared_ptr<yacl::crypto::EcGroup> curve_;
+  std::vector<uint8_t> state_;
+  size_t counter_ = 0;
+};
+
+/**
+ * @brief Forward declaration for BulletproofGensShare
+ */
+class BulletproofGensShare;
+
+/**
+ * @brief The BulletproofGens struct contains all the generators needed
+ * for aggregating up to `m` range proofs of up to `n` bits each.
+ */
 class BulletproofGens {
  public:
-  BulletproofGens(std::shared_ptr<yacl::crypto::EcGroup> curve,
-                  size_t gens_capacity,
-                  size_t party_capacity);
+  /**
+   * @brief Construct a new Bulletproof Gens object
+   * 
+   * @param curve The elliptic curve group
+   * @param gens_capacity Number of generators to precompute for each party
+   * @param party_capacity Maximum number of parties for aggregated proofs
+   */
+  BulletproofGens(
+      std::shared_ptr<yacl::crypto::EcGroup> curve,
+      size_t gens_capacity,
+      size_t party_capacity);
+
+  /**
+   * @brief Returns j-th share of generators, with an appropriate
+   * slice of vectors G and H for the j-th range proof.
+   * 
+   * @param j Party index
+   * @return BulletproofGensShare Share for party j
+   */
+  BulletproofGensShare Share(size_t j) const;
+
+  /**
+   * @brief Increases the generators' capacity to the amount specified.
+   * If less than or equal to the current capacity, does nothing.
+   * 
+   * @param new_capacity New capacity
+   */
+  void IncreaseCapacity(size_t new_capacity);
+
+  /**
+   * @brief Get the G generators for party j
+   */
+  const std::vector<yacl::crypto::EcPoint>& GetGParty(size_t j) const;
+
+  /**
+   * @brief Get the H generators for party j
+   */
+  const std::vector<yacl::crypto::EcPoint>& GetHParty(size_t j) const;
+
+  /**
+   * @brief Get all G generators for n bits and m parties
+   */
+  std::vector<yacl::crypto::EcPoint> GetAllG(size_t n, size_t m) const;
+
+  /**
+   * @brief Get all H generators for n bits and m parties
+   */
+  std::vector<yacl::crypto::EcPoint> GetAllH(size_t n, size_t m) const;
 
   // Getters
-  size_t GensCapacity() const { return gens_capacity_; }
-  size_t PartyCapacity() const { return party_capacity_; }
-
-  // Get G generators for party i
-  const std::vector<yacl::crypto::EcPoint>& GetGVec(size_t i) const {
-    YACL_ENFORCE(i < party_capacity_, "Party index out of bounds");
-    return G_vec_[i];
-  }
-
-  // Get H generators for party i
-  const std::vector<yacl::crypto::EcPoint>& GetHVec(size_t i) const {
-    YACL_ENFORCE(i < party_capacity_, "Party index out of bounds");
-    return H_vec_[i];
-  }
+  size_t gens_capacity() const { return gens_capacity_; }
+  size_t party_capacity() const { return party_capacity_; }
+  const std::shared_ptr<yacl::crypto::EcGroup>& GetCurve() const { return curve_; }
 
  private:
   std::shared_ptr<yacl::crypto::EcGroup> curve_;
-  size_t gens_capacity_;   // Number of generators for each party
-  size_t party_capacity_;  // Number of parties
-  std::vector<std::vector<yacl::crypto::EcPoint>> G_vec_; // G generators for each party
-  std::vector<std::vector<yacl::crypto::EcPoint>> H_vec_; // H generators for each party
+  size_t gens_capacity_;
+  size_t party_capacity_;
+  std::vector<std::vector<yacl::crypto::EcPoint>> G_vec_;
+  std::vector<std::vector<yacl::crypto::EcPoint>> H_vec_;
 
-  // Helper function to generate deterministic generators
-  std::vector<yacl::crypto::EcPoint> GeneratePartyGens(
-      const std::string& label, size_t party_index, bool is_h);
+  friend class BulletproofGensShare;
 };
 
-} // namespace examples::zkp 
+/**
+ * @brief Represents a view of the generators used by a specific party in an
+ * aggregated proof.
+ */
+class BulletproofGensShare {
+ public:
+  /**
+   * @brief Get G generators for this party up to size n
+   */
+  std::vector<yacl::crypto::EcPoint> G(size_t n) const;
+
+  /**
+   * @brief Get H generators for this party up to size n
+   */
+  std::vector<yacl::crypto::EcPoint> H(size_t n) const;
+
+ private:
+  friend class BulletproofGens;
+
+  BulletproofGensShare(const BulletproofGens& gens, size_t share)
+      : gens_(gens), share_(share) {}
+
+  const BulletproofGens& gens_;
+  size_t share_;
+};
+
+} // namespace examples::zkp

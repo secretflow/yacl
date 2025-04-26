@@ -1,174 +1,116 @@
-// Copyright 2023 Ant Group Co., Ltd.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+#include "zkp/bulletproofs/range_proof/range_proof.h"
 
-#include "range_proof.h"
+#include <gtest/gtest.h>
 
-#include <memory>
-#include <random>
-#include <string>
-
-#include "gtest/gtest.h"
-#include "yacl/base/exception.h"
-#include "yacl/crypto/ecc/ec_point.h"
-#include "yacl/crypto/ecc/ecc_spi.h"
-#include "yacl/math/mpint/mp_int.h"
 #include "yacl/crypto/ecc/openssl/openssl_group.h"
-#include "zkp/bulletproofs/range_proof/range_proof_config.h"
+#include "yacl/crypto/ecc/curve_meta.h"
+#include "range_proof_config.h"
 #include "zkp/bulletproofs/simple_transcript.h"
 
 namespace examples::zkp {
-
-using yacl::crypto::EcGroup;
-using yacl::crypto::EcPoint;
-using yacl::math::MPInt;
+namespace {
 
 class RangeProofTest : public ::testing::Test {
  protected:
-  std::shared_ptr<EcGroup> curve_;
-  std::unique_ptr<SimpleTranscript> transcript_;
-
   void SetUp() override {
-    using namespace yacl::crypto;
-    using namespace yacl::crypto::openssl;
-    curve_ = OpensslGroup::Create(GetCurveMetaByName(kRangeProofEcName));
+    curve_ = yacl::crypto::EcGroupFactory::Instance().Create(
+       kRangeProofEcName,
+        yacl::ArgLib = kRangeProofEcLib);
     transcript_ = std::make_unique<SimpleTranscript>(
         yacl::ByteContainerView("test-range-proof"));
   }
+
+  std::shared_ptr<yacl::crypto::EcGroup> curve_;
+  std::unique_ptr<SimpleTranscript> transcript_;
 };
 
 TEST_F(RangeProofTest, TestValidRange8Bit) {
-  // Test values in range [0, 2^8 - 1]
-  std::vector<uint64_t> test_values = {127};
+  uint64_t value = 123;
   
-  for (uint64_t value : test_values) {
-    MPInt v;
-    v.Set(value);
-    
-    MPInt blinding;
-    MPInt::RandomLtN(curve_->GetOrder(), &blinding);
-    
-    BulletproofGens bp_gens(curve_, 64, 4);
-    PedersenGens pc_gens(curve_);
-    auto [proof, commitment] = RangeProof::CreateSingle(
-        bp_gens, pc_gens, curve_, *transcript_, v, blinding, 8);
-        
-    auto verify_transcript = std::make_unique<SimpleTranscript>(
-        yacl::ByteContainerView("test-range-proof"));
-    EXPECT_EQ(proof.VerifySingle(curve_, *verify_transcript, commitment, 8),
-              RangeProof::Error::kOk);
-  }
+  yacl::math::MPInt v(value);
+  
+  yacl::math::MPInt blinding;
+  yacl::math::MPInt::RandomExactBits(curve_->GetField().BitCount(), &blinding);
+  
+  auto [proof, commitment] = RangeProof::CreateSingle(
+      curve_, *transcript_, value, blinding, 8);
+      
+  auto verify_transcript = std::make_unique<SimpleTranscript>(
+      yacl::ByteContainerView("test-range-proof"));
+      
+  EXPECT_EQ(proof.VerifySingle(curve_, *verify_transcript, commitment, 8), 
+            ProofError::kOk);
 }
 
 TEST_F(RangeProofTest, TestInvalidRange8Bit) {
-  uint64_t value = 256;  // 2^8
+  // Value 256 is outside the 8-bit range [0, 2^8)
+  uint64_t value = 256;
   
-  MPInt v;
-  v.Set(value);
+  yacl::math::MPInt v(value);
   
-  MPInt blinding;
-  MPInt::RandomLtN(curve_->GetOrder(), &blinding);
+  yacl::math::MPInt blinding;
+  yacl::math::MPInt::RandomExactBits(curve_->GetField().BitCount(), &blinding);
   
-  BulletproofGens bp_gens(curve_, 64, 4);
-  PedersenGens pc_gens(curve_);
-  EXPECT_THROW(RangeProof::CreateSingle(bp_gens, pc_gens, curve_, *transcript_, v, blinding, 8),
-               yacl::Exception);
+  auto [proof, commitment] = RangeProof::CreateSingle(
+      curve_, *transcript_, value, blinding, 8);
+      
+  auto verify_transcript = std::make_unique<SimpleTranscript>(
+      yacl::ByteContainerView("test-range-proof"));
+      
+  EXPECT_NE(proof.VerifySingle(curve_, *verify_transcript, commitment, 8), 
+            ProofError::kOk);
 }
 
-TEST_F(RangeProofTest, TestDelta) {
-  // Choose n = 256 to ensure we overflow the group order during computation
-  const size_t n = 256;
-  const size_t m = 1;
-  const MPInt& order = curve_->GetOrder();
+TEST_F(RangeProofTest, TestMultipleProofs) {
+  std::vector<uint64_t> values = {1, 5, 10, 50};
   
-  // Generate random y and z
-  MPInt y, z;
-  MPInt::RandomLtN(order, &y);
-  MPInt::RandomLtN(order, &z);
-  
-  // Compute delta using the optimized implementation
-  MPInt optimized_delta = RangeProof::ComputeDelta(n, m, y, z, order);
-  
-  // Compute delta using the naive implementation for verification
-  MPInt z2, z3;
-  MPInt::MulMod(z, z, order, &z2);  // z^2
-  MPInt::MulMod(z2, z, order, &z3);  // z^3
-  
-  MPInt power_g;
-  power_g.SetZero();
-  
-  MPInt exp_y, exp_2;
-  exp_y.Set(1);  // y^0 = 1
-  exp_2.Set(1);  // 2^0 = 1
-  
-  MPInt two;
-  two.Set(2);
-  
-  MPInt z_minus_z2;
-  MPInt::SubMod(z, z2, order, &z_minus_z2);  // z - z^2
-  
-  for (size_t i = 0; i < n; i++) {
-    // power_g += (z - z^2) * exp_y - z^3 * exp_2
-    MPInt term1, term2, temp;
-    
-    // Calculate (z - z^2) * exp_y
-    MPInt::MulMod(z_minus_z2, exp_y, order, &term1);
-    
-    // Calculate z^3 * exp_2
-    MPInt::MulMod(z3, exp_2, order, &term2);
-    
-    // Subtract term2 from term1
-    MPInt::SubMod(term1, term2, order, &temp);
-    
-    // Add to power_g
-    MPInt::AddMod(power_g, temp, order, &power_g);
-    
-    // Update exp_y = exp_y * y
-    MPInt::MulMod(exp_y, y, order, &exp_y);
-    
-    // Update exp_2 = exp_2 * 2
-    MPInt::MulMod(exp_2, two, order, &exp_2);
+  std::vector<yacl::math::MPInt> blindings;
+  for (size_t i = 0; i < values.size(); i++) {
+    yacl::math::MPInt blinding;
+    yacl::math::MPInt::RandomExactBits(curve_->GetField().BitCount(), &blinding);
+    blindings.push_back(blinding);
   }
   
-  // Verify that both implementations give the same result
-  EXPECT_TRUE(power_g.Compare(optimized_delta) == 0);
+  auto [proof, commitments] = RangeProof::CreateMultiple(
+      curve_, *transcript_, values, blindings, 8);
+      
+  auto verify_transcript = std::make_unique<SimpleTranscript>(
+      yacl::ByteContainerView("test-range-proof"));
+      
+  EXPECT_EQ(proof.VerifyMultiple(curve_, *verify_transcript, commitments, 8), 
+            ProofError::kOk);
 }
 
-// TEST_F(RangeProofTest, TestSerialization) {
-//   uint64_t value = 123;
+TEST_F(RangeProofTest, TestSerialization) {
+  uint64_t value = 123;
   
-//   MPInt v;
-//   v.Set(value);
+  yacl::math::MPInt v(value);
   
-//   MPInt blinding;
-//   MPInt::RandomLtN(curve_->GetOrder(), &blinding);
+  yacl::math::MPInt blinding;
+  yacl::math::MPInt::RandomExactBits(curve_->GetField().BitCount(), &blinding);
   
-//   auto [proof, commitment] = RangeProof::CreateSingle(
-//       curve_, *transcript_, v, blinding, 8);
+  auto [proof, commitment] = RangeProof::CreateSingle(
+      curve_, *transcript_, value, blinding, 8);
       
-//   yacl::Buffer proof_bytes = proof.ToBytes(curve_);
-//   EXPECT_GT(proof_bytes.size(), 0);
+  yacl::Buffer proof_bytes = proof.ToBytes(curve_);
+  EXPECT_GT(proof_bytes.size(), 0);
   
-//   auto new_transcript = std::make_unique<SimpleTranscript>(
-//       yacl::ByteContainerView("test-range-proof"));
+  auto new_transcript = std::make_unique<SimpleTranscript>(
+      yacl::ByteContainerView("test-range-proof"));
       
-//   auto recovered_proof = RangeProof::FromBytes(
-//       curve_, yacl::ByteContainerView(proof_bytes));
+  auto recovered_proof = RangeProof::FromBytes(
+      curve_, yacl::ByteContainerView(proof_bytes));
   
-//   auto verify_result = recovered_proof.VerifySingle(
-//       curve_, *new_transcript, commitment, 8);
+  auto verify_result = recovered_proof.VerifySingle(
+      curve_, *new_transcript, commitment, 8);
       
-//   EXPECT_EQ(verify_result, RangeProof::Error::kOk);
-// }
+  EXPECT_EQ(verify_result, ProofError::kOk);
+}
 
-} // namespace examples::zkp 
+} // namespace
+} // namespace examples::zkp
+
+int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}

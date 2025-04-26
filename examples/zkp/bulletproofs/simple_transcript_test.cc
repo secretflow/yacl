@@ -1,155 +1,186 @@
 #include "zkp/bulletproofs/simple_transcript.h"
 
-#include "gtest/gtest.h"
+#include <gtest/gtest.h>
+
 #include "yacl/crypto/ecc/openssl/openssl_group.h"
 #include "yacl/crypto/ecc/curve_meta.h"
-#include "yacl/math/mpint/mp_int.h"
-#include "yacl/base/exception.h"
-#include <string>
 
 namespace examples::zkp {
-
-using yacl::crypto::EcGroup;
-using yacl::crypto::EcPoint;
-using yacl::math::MPInt;
+namespace {
 
 class SimpleTranscriptTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    curve_ = yacl::crypto::openssl::OpensslGroup::Create(
-        yacl::crypto::GetCurveMetaByName("secp256k1"));
-    ASSERT_NE(curve_, nullptr);
+    // Create a curve for testing
+    curve_ = yacl::crypto::EcGroupFactory::Instance().Create(
+        "secp256k1",
+        yacl::ArgLib = "openssl");
   }
 
-  std::shared_ptr<EcGroup> curve_;
+  std::shared_ptr<yacl::crypto::EcGroup> curve_;
 };
 
-// Test Initialization and Basic Absorb/Challenge
-TEST_F(SimpleTranscriptTest, InitAndAbsorb) {
-  SimpleTranscript t1(yacl::ByteContainerView("test_label_1"));
-  SimpleTranscript t2(yacl::ByteContainerView("test_label_2"));
-  SimpleTranscript t3(yacl::ByteContainerView("test_label_1")); // Same as t1
-
-  // Absorb same data into t1 and t3
-  std::string data1 = "some data";
-  t1.Absorb(yacl::ByteContainerView("data_label"), yacl::ByteContainerView(data1));
-  t3.Absorb(yacl::ByteContainerView("data_label"), yacl::ByteContainerView(data1));
-
-  // Absorb different data into t2
-  std::string data2 = "other data";
-  t2.Absorb(yacl::ByteContainerView("data_label"), yacl::ByteContainerView(data2));
-
-  // Get challenges
-  MPInt order = curve_->GetOrder();
-  MPInt c1 = t1.ChallengeMPInt(yacl::ByteContainerView("challenge"), order);
-  MPInt c2 = t2.ChallengeMPInt(yacl::ByteContainerView("challenge"), order);
-  MPInt c3 = t3.ChallengeMPInt(yacl::ByteContainerView("challenge"), order);
-
-  // t1 and t3 should produce the same challenge
-  EXPECT_EQ(c1, c3);
-  // t1 and t2 should produce different challenges
-  EXPECT_NE(c1, c2);
+TEST_F(SimpleTranscriptTest, CreateTranscript) {
+  SimpleTranscript transcript("test-transcript");
+  // No assertions needed - just verify it can be created
 }
 
-// Test Absorbing Scalars
-TEST_F(SimpleTranscriptTest, AbsorbScalar) {
-  SimpleTranscript t1(yacl::ByteContainerView("scalar_test"));
-  SimpleTranscript t2(yacl::ByteContainerView("scalar_test"));
-
-  MPInt s1, s2;
-  s1.Set(1234567890);
-  s2.Set(987654321);
-
-  t1.AbsorbScalar(yacl::ByteContainerView("scalar1"), s1);
-  t2.AbsorbScalar(yacl::ByteContainerView("scalar1"), s2);
-
-  MPInt order = curve_->GetOrder();
-  MPInt c1 = t1.ChallengeMPInt(yacl::ByteContainerView("challenge"), order);
-  MPInt c2 = t2.ChallengeMPInt(yacl::ByteContainerView("challenge"), order);
-
-  EXPECT_NE(c1, c2);
+TEST_F(SimpleTranscriptTest, AppendingMessages) {
+  SimpleTranscript transcript;
+  
+  // Append various types of data
+  transcript.AppendMessage("test", "message");
+  transcript.AppendU64("count", 42);
+  
+  // Transcript state should have changed internally
+  yacl::math::MPInt challenge1 = transcript.ChallengeScalar("test-challenge", curve_);
+  
+  // Create a fresh transcript with the same inputs
+  SimpleTranscript transcript2;
+  transcript2.AppendMessage("test", "message");
+  transcript2.AppendU64("count", 42);
+  
+  // Challenge from the same sequence should be identical
+  yacl::math::MPInt challenge2 = transcript2.ChallengeScalar("test-challenge", curve_);
+  EXPECT_EQ(challenge1, challenge2);
+  
+  // Adding different data should result in a different challenge
+  transcript2.AppendMessage("extra", "data");
+  yacl::math::MPInt challenge3 = transcript2.ChallengeScalar("test-challenge", curve_);
+  EXPECT_NE(challenge2, challenge3);
 }
 
-// Test Absorbing EC Points
-TEST_F(SimpleTranscriptTest, AbsorbEcPoint) {
-  SimpleTranscript t1(yacl::ByteContainerView("point_test"));
-  SimpleTranscript t2(yacl::ByteContainerView("point_test"));
-
-  EcPoint p1 = curve_->GetGenerator();
-  EcPoint p2 = curve_->MulBase(MPInt(2)); // Different point
-
-  t1.AbsorbEcPoint(curve_, yacl::ByteContainerView("point1"), p1);
-  t2.AbsorbEcPoint(curve_, yacl::ByteContainerView("point1"), p2);
-
-  MPInt order = curve_->GetOrder();
-  MPInt c1 = t1.ChallengeMPInt(yacl::ByteContainerView("challenge"), order);
-  MPInt c2 = t2.ChallengeMPInt(yacl::ByteContainerView("challenge"), order);
-
-  EXPECT_NE(c1, c2);
+TEST_F(SimpleTranscriptTest, ScalarOperations) {
+  SimpleTranscript transcript;
+  
+  // Test with a few different scalars
+  yacl::math::MPInt scalar1(123);
+  yacl::math::MPInt scalar2(456);
+  
+  transcript.AppendScalar("scalar1", scalar1);
+  transcript.AppendScalar("scalar2", scalar2);
+  
+  // Generate a challenge
+  yacl::math::MPInt challenge = transcript.ChallengeScalar("test-challenge", curve_);
+  
+  // The challenge should be in the proper range
+  EXPECT_TRUE(challenge >= yacl::math::MPInt(0));
+  EXPECT_TRUE(challenge < curve_->GetOrder());
 }
 
-// Test ValidateAndAbsorbEcPoint
-TEST_F(SimpleTranscriptTest, ValidateAndAbsorbEcPoint) {
-  SimpleTranscript t1(yacl::ByteContainerView("validate_point_test"));
-
-  EcPoint valid_point = curve_->GetGenerator();
-  EcPoint identity_point = curve_->Add(valid_point, curve_->Negate(valid_point)); // Should be identity
-  ASSERT_TRUE(curve_->IsInfinity(identity_point));
-
-  // Absorbing a valid point should succeed
-  EXPECT_NO_THROW(t1.ValidateAndAbsorbEcPoint(curve_, yacl::ByteContainerView("valid_pt"), valid_point));
-
-  // Absorbing the identity point should throw
-  EXPECT_THROW(t1.ValidateAndAbsorbEcPoint(curve_, yacl::ByteContainerView("invalid_pt"), identity_point),
-               yacl::Exception);
+TEST_F(SimpleTranscriptTest, PointOperations) {
+  SimpleTranscript transcript;
+  
+  // Get the generator point
+  yacl::crypto::EcPoint generator = curve_->GetGenerator();
+  
+  // Append the generator
+  transcript.AppendPoint("point", generator, curve_);
+  
+  // Create a second point
+  yacl::crypto::EcPoint point2 = curve_->Double(generator);
+  
+  // Append the second point
+  transcript.AppendPoint("point2", point2, curve_);
+  
+  // Generate a challenge
+  yacl::math::MPInt challenge = transcript.ChallengeScalar("test-challenge", curve_);
+  
+  // The challenge should be in the proper range
+  EXPECT_TRUE(challenge >= yacl::math::MPInt(0));
+  EXPECT_TRUE(challenge < curve_->GetOrder());
 }
 
-// Test Domain Separation Methods
-TEST_F(SimpleTranscriptTest, DomainSeparation) {
-  SimpleTranscript t_base(yacl::ByteContainerView("base"));
-  SimpleTranscript t_range(yacl::ByteContainerView("base"));
-  SimpleTranscript t_ipp(yacl::ByteContainerView("base"));
-
-  t_range.RangeProofDomainSep(64, 1);
-  t_ipp.InnerProductDomainSep(64);
-
-  MPInt order = curve_->GetOrder();
-  MPInt c_base = t_base.ChallengeMPInt(yacl::ByteContainerView("challenge"), order);
-  MPInt c_range = t_range.ChallengeMPInt(yacl::ByteContainerView("challenge"), order);
-  MPInt c_ipp = t_ipp.ChallengeMPInt(yacl::ByteContainerView("challenge"), order);
-
-  // Different domain separators should lead to different states/challenges
-  EXPECT_NE(c_base, c_range);
-  EXPECT_NE(c_base, c_ipp);
-  EXPECT_NE(c_range, c_ipp);
+TEST_F(SimpleTranscriptTest, PointValidation) {
+  SimpleTranscript transcript;
+  
+  // Get the generator point
+  yacl::crypto::EcPoint generator = curve_->GetGenerator();
+  
+  // This should succeed
+  transcript.ValidateAndAppendPoint("valid-point", generator, curve_);
+  
+  // Create an infinity point
+  yacl::crypto::EcPoint infinity_point = curve_->Add(
+      generator, curve_->Negate(generator));
+  
+  // This should throw an exception
+  EXPECT_THROW(
+      transcript.ValidateAndAppendPoint("infinity", infinity_point, curve_),
+      yacl::Exception);
 }
 
-// Test SqueezeBytes and its effect on state
-TEST_F(SimpleTranscriptTest, SqueezeBytes) {
-  SimpleTranscript t1(yacl::ByteContainerView("squeeze_test"));
-
-  // Initial challenge
-  MPInt order = curve_->GetOrder();
-  MPInt c_before = t1.ChallengeMPInt(yacl::ByteContainerView("c1"), order);
-
-  // Squeeze some bytes
-  size_t num_bytes_to_squeeze = 32;
-  yacl::Buffer squeezed1 = t1.SqueezeBytes(yacl::ByteContainerView("squeeze1"), num_bytes_to_squeeze);
-  EXPECT_EQ(squeezed1.size(), num_bytes_to_squeeze);
-
-  // Challenge after squeezing should be different because state changed
-  MPInt c_after1 = t1.ChallengeMPInt(yacl::ByteContainerView("c2"), order);
-  EXPECT_NE(c_before, c_after1);
-
-  // Squeezing again with a different label
-   yacl::Buffer squeezed2 = t1.SqueezeBytes(yacl::ByteContainerView("squeeze2"), 16);
-   EXPECT_EQ(squeezed2.size(), 16);
-
-  // Challenge after second squeeze
-  MPInt c_after2 = t1.ChallengeMPInt(yacl::ByteContainerView("c3"), order);
-  EXPECT_NE(c_after1, c_after2);
-  EXPECT_NE(c_before, c_after2);
+TEST_F(SimpleTranscriptTest, DomainSeparators) {
+  SimpleTranscript transcript1;
+  SimpleTranscript transcript2;
+  
+  // Apply domain separators
+  transcript1.RangeproofDomainSep(64, 1);
+  transcript2.RangeproofDomainSep(64, 1);
+  
+  // Challenges should be the same
+  yacl::math::MPInt challenge1 = transcript1.ChallengeScalar("test", curve_);
+  yacl::math::MPInt challenge2 = transcript2.ChallengeScalar("test", curve_);
+  EXPECT_EQ(challenge1, challenge2);
+  
+  // Different domain separators should yield different challenges
+  SimpleTranscript transcript3;
+  transcript3.RangeproofDomainSep(32, 1); // Different bit size
+  yacl::math::MPInt challenge3 = transcript3.ChallengeScalar("test", curve_);
+  EXPECT_NE(challenge1, challenge3);
+  
+  // Test other domain separators
+  SimpleTranscript transcript4;
+  transcript4.InnerproductDomainSep(64);
+  yacl::math::MPInt challenge4 = transcript4.ChallengeScalar("test", curve_);
+  EXPECT_NE(challenge1, challenge4);
+  
+  SimpleTranscript transcript5;
+  transcript5.R1csDomainSep();
+  yacl::math::MPInt challenge5 = transcript5.ChallengeScalar("test", curve_);
+  EXPECT_NE(challenge1, challenge5);
+  EXPECT_NE(challenge4, challenge5);
 }
 
+TEST_F(SimpleTranscriptTest, ChallengeBytes) {
+  SimpleTranscript transcript;
+  
+  // Append some data
+  transcript.AppendMessage("test", "message");
+  
+  // Get challenge bytes of different lengths
+  std::array<uint8_t, 32> bytes32{};
+  transcript.ChallengeBytes("challenge32", bytes32.data(), bytes32.size());
+  
+  std::array<uint8_t, 64> bytes64{};
+  transcript.ChallengeBytes("challenge64", bytes64.data(), bytes64.size());
+  
+  // The first 32 bytes should be different because the label is different
+  bool all_same = true;
+  for (size_t i = 0; i < 32; i++) {
+    if (bytes32[i] != bytes64[i]) {
+      all_same = false;
+      break;
+    }
+  }
+  EXPECT_FALSE(all_same);
+  
+  // Get another 32 bytes with the same label
+  std::array<uint8_t, 32> bytes32_again{};
+  SimpleTranscript transcript2;
+  transcript2.AppendMessage("test", "message");
+  transcript2.ChallengeBytes("challenge32", bytes32_again.data(), bytes32_again.size());
+  
+  // These should be the same
+  for (size_t i = 0; i < 32; i++) {
+    EXPECT_EQ(bytes32[i], bytes32_again[i]);
+  }
+}
 
-} // namespace examples::zkp 
+} // namespace
+} // namespace examples::zkp
+
+int main(int argc, char **argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  return RUN_ALL_TESTS();
+}

@@ -30,7 +30,7 @@ class BitCommitment {
   const yacl::crypto::EcPoint& GetS() const { return S_j_; }
   
   // Serialization methods
-  yacl::Buffer ToBytes() const;
+  yacl::Buffer ToBytes(const std::shared_ptr<yacl::crypto::EcGroup>& curve) const;
   static BitCommitment FromBytes(
       const std::shared_ptr<yacl::crypto::EcGroup>& curve,
       yacl::ByteContainerView bytes);
@@ -81,7 +81,7 @@ class PolyCommitment {
   const yacl::crypto::EcPoint& GetT2() const { return T_2_j_; }
   
   // Serialization methods
-  yacl::Buffer ToBytes() const;
+  yacl::Buffer ToBytes(const std::shared_ptr<yacl::crypto::EcGroup>& curve) const;
   static PolyCommitment FromBytes(
       const std::shared_ptr<yacl::crypto::EcGroup>& curve,
       yacl::ByteContainerView bytes);

@@ -139,6 +139,29 @@ yacl_cc_test(
 
 )
 
+yacl_cc_test(
+    name = "util_test",
+    srcs = ["util_test.cc"],
+    copts = COMMON_COPTS,
+    deps = [":util"],
+)
+
+yacl_cc_library(
+    name = "util",
+    srcs = ["util.cc"],
+    hdrs = ["util.h"],
+    copts = COMMON_COPTS,
+    deps = [
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/crypto/ecc:ecc",
+        "@yacl//yacl/crypto/ecc:ec_point",
+        "@yacl//yacl/crypto/hash:hash_utils",
+        "@yacl//yacl/math/mpint:mpint",
+        "@yacl//yacl/math/mpint:mp_int_enforce",
+    ],
+)
+
+
 
 
 

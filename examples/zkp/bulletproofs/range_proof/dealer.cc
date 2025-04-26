@@ -1,4 +1,4 @@
-#include "zkp/bulletproofs/dealer/dealer.h"
+#include "zkp/bulletproofs/range_proof/dealer.h"
 
 #include <algorithm>
 #include <numeric>
@@ -16,7 +16,7 @@ namespace examples::zkp {
 DealerAwaitingBitCommitments Dealer::New(
     const BulletproofGens& bp_gens,
     const PedersenGens& pc_gens,
-    Transcript& transcript,
+    SimpleTranscript& transcript,
     size_t n,
     size_t m) {
   // Check that n is a valid bitsize
@@ -39,10 +39,10 @@ DealerAwaitingBitCommitments Dealer::New(
   }
   
   // Keep a copy of the initial transcript state for verification
-  Transcript initial_transcript = transcript;
+  SimpleTranscript initial_transcript = transcript;
   
   // Set domain separator for the range proof
-  transcript.RangeproofDomainSep(n, m);
+  transcript.RangeProofDomainSep(n, m);
   
   return DealerAwaitingBitCommitments(
       bp_gens, pc_gens, transcript, initial_transcript, n, m);
@@ -53,8 +53,8 @@ DealerAwaitingBitCommitments Dealer::New(
 DealerAwaitingBitCommitments::DealerAwaitingBitCommitments(
     const BulletproofGens& bp_gens,
     const PedersenGens& pc_gens,
-    Transcript& transcript,
-    Transcript initial_transcript,
+    SimpleTranscript& transcript,
+    SimpleTranscript initial_transcript,
     size_t n,
     size_t m)
     : bp_gens_(bp_gens),
@@ -79,8 +79,8 @@ DealerAwaitingBitCommitments::ReceiveBitCommitments(
   }
   
   // Compute aggregated A_j and S_j
-  yacl::crypto::EcPoint A = curve->GetIdentity();
-  yacl::crypto::EcPoint S = curve->GetIdentity();
+  yacl::crypto::EcPoint A = curve->GetInfinity();
+  yacl::crypto::EcPoint S = curve->GetInfinity();
   
   for (const auto& commitment : bit_commitments) {
     A = curve->Add(A, commitment.GetA());
@@ -115,8 +115,8 @@ DealerAwaitingBitCommitments::ReceiveBitCommitments(
 DealerAwaitingPolyCommitments::DealerAwaitingPolyCommitments(
     size_t n,
     size_t m,
-    Transcript& transcript,
-    Transcript initial_transcript,
+    SimpleTranscript& transcript,
+    SimpleTranscript initial_transcript,
     const BulletproofGens& bp_gens,
     const PedersenGens& pc_gens,
     const BitChallenge& bit_challenge,
@@ -144,8 +144,8 @@ DealerAwaitingPolyCommitments::ReceivePolyCommitments(
   auto curve = bp_gens_.GetCurve();
   
   // Compute sums of T_1_j's and T_2_j's
-  yacl::crypto::EcPoint T_1 = curve->GetIdentity();
-  yacl::crypto::EcPoint T_2 = curve->GetIdentity();
+  yacl::crypto::EcPoint T_1 = curve->GetInfinity();
+  yacl::crypto::EcPoint T_2 = curve->GetInfinity();
   
   for (const auto& commitment : poly_commitments) {
     T_1 = curve->Add(T_1, commitment.GetT1());
@@ -180,8 +180,8 @@ DealerAwaitingPolyCommitments::ReceivePolyCommitments(
 DealerAwaitingProofShares::DealerAwaitingProofShares(
     size_t n,
     size_t m,
-    Transcript& transcript,
-    Transcript initial_transcript,
+    SimpleTranscript& transcript,
+    SimpleTranscript initial_transcript,
     const BulletproofGens& bp_gens,
     const PedersenGens& pc_gens,
     const BitChallenge& bit_challenge,

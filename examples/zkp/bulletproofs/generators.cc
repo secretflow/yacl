@@ -1,148 +1,210 @@
 #include "zkp/bulletproofs/generators.h"
 
-#include "yacl/base/exception.h"
-#include "yacl/crypto/hash/ssl_hash.h"
-#include "yacl/utils/parallel.h"
-#include <string_view>
+#include <cstring>
+#include <array>
 
 namespace examples::zkp {
 
+// ---- PedersenGens implementation ----
+
 PedersenGens::PedersenGens(std::shared_ptr<yacl::crypto::EcGroup> curve)
     : curve_(std::move(curve)) {
-  // Use the standard base point as B
+  // Use the curve's base point for B
   B_ = curve_->GetGenerator();
-  YACL_ENFORCE(!curve_->IsInfinity(B_), "Base generator cannot be infinity");
-
-  // Generate B_blinding by hashing B's serialized bytes
-  // This follows the Rust implementation's approach
-  auto b_bytes = curve_->SerializePoint(B_);
   
-  // Hash the serialized point using SHA256
-  yacl::crypto::SslHash hasher(yacl::crypto::HashAlgorithm::SHA256);
-  auto hash = hasher.Update(yacl::ByteContainerView(b_bytes)).CumulativeHash();
-
-  // Convert hash to a point
-  std::string_view hash_view(reinterpret_cast<const char*>(hash.data()), hash.size());
-  B_blinding_ = curve_->HashToCurve(hash_view);
-
-  // Verify the generated point
-  YACL_ENFORCE(!curve_->IsInfinity(B_blinding_), 
-               "B_blinding cannot be infinity point");
-  YACL_ENFORCE(!curve_->PointEqual(B_, B_blinding_),
-               "B_blinding cannot equal B");
+  // Hash the serialized base point to get B_blinding
+  yacl::Buffer base_bytes = curve_->SerializePoint(B_);
+  
+  // Create a string view for the hash input
+  yacl::ByteContainerView base_view(base_bytes.data(), base_bytes.size());
+  
+  // Use the base point bytes as input to HashToCurve
+  // This matches the behavior of RistrettoPoint::hash_from_bytes in the Rust implementation
+  // HashToCurve handles the internal hashing
+  B_blinding_ = curve_->HashToCurve(
+      yacl::crypto::HashToCurveStrategy::TryAndIncrement_SHA3,  // Use SHA3 to match Rust Sha3_512
+      base_view);
 }
 
-yacl::crypto::EcPoint PedersenGens::Commit(
-    const yacl::math::MPInt& value,
-    const yacl::math::MPInt& blinding) const {
-  // Compute value * B + blinding * B_blinding
-  auto term1 = curve_->Mul(B_, value);
-  auto term2 = curve_->Mul(B_blinding_, blinding);
-  return curve_->Add(term1, term2);
+// ---- GeneratorsChain implementation ----
+
+GeneratorsChain::GeneratorsChain(
+    std::shared_ptr<yacl::crypto::EcGroup> curve,
+    const std::string& label)
+    : curve_(std::move(curve)) {
+  // Create a Shake256 context
+  std::string domain_sep = "GeneratorsChain";
+  
+  // Initialize with domain separator and label
+  std::vector<uint8_t> init_input;
+  init_input.insert(init_input.end(), domain_sep.begin(), domain_sep.end());
+  init_input.insert(init_input.end(), label.begin(), label.end());
+  
+  // Initialize state with hash of input
+  state_ = yacl::crypto::Shake256(init_input, 32);
 }
+
+void GeneratorsChain::FastForward(size_t n) {
+  // Just advance the counter, actual generation is lazy
+  counter_ += n;
+}
+
+yacl::crypto::EcPoint GeneratorsChain::Next() {
+  // Create a unique seed for this position
+  std::vector<uint8_t> seed = state_;
+  
+  // Append counter to state
+  std::vector<uint8_t> counter_bytes(sizeof(counter_));
+  std::memcpy(counter_bytes.data(), &counter_, sizeof(counter_));
+  seed.insert(seed.end(), counter_bytes.begin(), counter_bytes.end());
+  
+  // Increment counter for next call
+  counter_++;
+  
+  // Get 64 bytes of output to use for the point generation
+  std::vector<uint8_t> uniform_bytes = yacl::crypto::Shake256(seed, 64);
+  
+  // Convert to a point on the curve
+  return curve_->HashToCurve(yacl::crypto::HashToCurveStrategy::TryAndIncrement_SHA3, yacl::ByteContainerView(uniform_bytes));
+}
+
+// ---- BulletproofGens implementation ----
 
 BulletproofGens::BulletproofGens(
     std::shared_ptr<yacl::crypto::EcGroup> curve,
     size_t gens_capacity,
     size_t party_capacity)
     : curve_(std::move(curve)),
-      gens_capacity_(gens_capacity),
+      gens_capacity_(0),
       party_capacity_(party_capacity) {
-  
-  YACL_ENFORCE(gens_capacity > 0, "gens_capacity must be positive");
-  YACL_ENFORCE(party_capacity >= 1, "party_capacity must be at least 1");
-
-  // Initialize vectors
+  // Initialize empty vectors for each party
   G_vec_.resize(party_capacity);
   H_vec_.resize(party_capacity);
+  
+  // Fill with the requested capacity of generators
+  IncreaseCapacity(gens_capacity);
+}
 
-  // Generate generators for each party in parallel
-  yacl::parallel_for(0, party_capacity, [&](size_t begin, size_t end) {
-    for (size_t i = begin; i < end; ++i) {
-      // Generate G generators for party i
-      G_vec_[i] = GeneratePartyGens("G", i, false);
-      // Generate H generators for party i
-      H_vec_[i] = GeneratePartyGens("H", i, true);
+BulletproofGensShare BulletproofGens::Share(size_t j) const {
+  if (j >= party_capacity_) {
+    throw yacl::Exception("Party index out of bounds");
+  }
+  
+  return BulletproofGensShare(*this, j);
+}
+
+void BulletproofGens::IncreaseCapacity(size_t new_capacity) {
+  if (gens_capacity_ >= new_capacity) {
+    return;
+  }
+  
+  for (size_t i = 0; i < party_capacity_; i++) {
+    uint32_t party_index = static_cast<uint32_t>(i);
+    
+    // Generate G generators
+    std::string g_label = "G";
+    g_label.append(reinterpret_cast<char*>(&party_index), sizeof(party_index));
+    
+    GeneratorsChain g_chain(curve_, g_label);
+    g_chain.FastForward(gens_capacity_);
+    
+    // Generate new G points
+    for (size_t j = gens_capacity_; j < new_capacity; j++) {
+      G_vec_[i].push_back(g_chain.Next());
     }
-  });
+    
+    // Generate H generators
+    std::string h_label = "H";
+    h_label.append(reinterpret_cast<char*>(&party_index), sizeof(party_index));
+    
+    GeneratorsChain h_chain(curve_, h_label);
+    h_chain.FastForward(gens_capacity_);
+    
+    // Generate new H points
+    for (size_t j = gens_capacity_; j < new_capacity; j++) {
+      H_vec_[i].push_back(h_chain.Next());
+    }
+  }
+  
+  gens_capacity_ = new_capacity;
 }
 
-std::vector<yacl::crypto::EcPoint> BulletproofGens::GeneratePartyGens(
-    const std::string& label,
-    size_t party_index,
-    bool is_h) {
-  std::vector<yacl::crypto::EcPoint> generators;
-  generators.reserve(gens_capacity_);
-
-  // Create unique label for this party's generators
-  std::string party_label = label + std::to_string(party_index);
-  if (is_h) {
-    party_label += "_H";
-  } else {
-    party_label += "_G";
+const std::vector<yacl::crypto::EcPoint>& BulletproofGens::GetGParty(size_t j) const {
+  if (j >= party_capacity_) {
+    throw yacl::Exception("Party index out of bounds");
   }
-
-  // Use SHA256 for deterministic generation
-  yacl::crypto::SslHash hasher(yacl::crypto::HashAlgorithm::SHA256);
-  hasher.Update(yacl::ByteContainerView("BulletproofGens"));
-  hasher.Update(yacl::ByteContainerView(party_label));
-
-  // Generate gens_capacity_ points
-  for (size_t i = 0; i < gens_capacity_; ++i) {
-    // Add index to make each generator unique
-    hasher.Update(yacl::ByteContainerView(std::to_string(i)));
-    auto hash = hasher.CumulativeHash();
-
-    // Convert hash to point
-    std::string_view hash_view(reinterpret_cast<const char*>(hash.data()), 
-                              hash.size());
-    auto point = curve_->HashToCurve(hash_view);
-    
-    // Verify point is valid
-    YACL_ENFORCE(!curve_->IsInfinity(point), 
-                 "Generated point cannot be infinity");
-    
-    generators.push_back(point);
-  }
-
-  return generators;
+  
+  return G_vec_[j];
 }
 
-std::vector<yacl::crypto::EcPoint> GenerateGenerators(
-    const std::shared_ptr<yacl::crypto::EcGroup>& curve,
-    size_t n,
-    const std::string& label) {
-  YACL_ENFORCE(curve != nullptr, "GenerateGenerators: Curve cannot be null");
-  
-  std::vector<yacl::crypto::EcPoint> generators;
-  generators.reserve(n);
-
-  // Use SHA256 for deterministic generation
-  yacl::crypto::SslHash hasher(yacl::crypto::HashAlgorithm::SHA256);
-  
-  // Add domain separation
-  hasher.Update(yacl::ByteContainerView("generators"));
-  hasher.Update(yacl::ByteContainerView(label));
-  
-  // Generate n points
-  for (size_t i = 0; i < n; ++i) {
-    // Add counter to make each generator unique
-    hasher.Update(yacl::ByteContainerView(std::to_string(i)));
-    auto hash = hasher.CumulativeHash();
-
-    // Convert hash to point
-    std::string_view hash_view(reinterpret_cast<const char*>(hash.data()), 
-                              hash.size());
-    auto point = curve->HashToCurve(hash_view);
-    
-    // Verify point is valid
-    YACL_ENFORCE(!curve->IsInfinity(point), 
-                 "Generated point cannot be infinity");
-    
-    generators.push_back(point);
+const std::vector<yacl::crypto::EcPoint>& BulletproofGens::GetHParty(size_t j) const {
+  if (j >= party_capacity_) {
+    throw yacl::Exception("Party index out of bounds");
   }
-
-  return generators;
+  
+  return H_vec_[j];
 }
 
-} // namespace examples::zkp 
+std::vector<yacl::crypto::EcPoint> BulletproofGens::GetAllG(size_t n, size_t m) const {
+  if (n > gens_capacity_) {
+    throw yacl::Exception("Generator capacity too small for requested size");
+  }
+  
+  if (m > party_capacity_) {
+    throw yacl::Exception("Party capacity too small for requested size");
+  }
+  
+  std::vector<yacl::crypto::EcPoint> result;
+  result.reserve(n * m);
+  
+  for (size_t party_idx = 0; party_idx < m; party_idx++) {
+    for (size_t gen_idx = 0; gen_idx < n; gen_idx++) {
+      result.push_back(G_vec_[party_idx][gen_idx]);
+    }
+  }
+  
+  return result;
+}
+
+std::vector<yacl::crypto::EcPoint> BulletproofGens::GetAllH(size_t n, size_t m) const {
+  if (n > gens_capacity_) {
+    throw yacl::Exception("Generator capacity too small for requested size");
+  }
+  
+  if (m > party_capacity_) {
+    throw yacl::Exception("Party capacity too small for requested size");
+  }
+  
+  std::vector<yacl::crypto::EcPoint> result;
+  result.reserve(n * m);
+  
+  for (size_t party_idx = 0; party_idx < m; party_idx++) {
+    for (size_t gen_idx = 0; gen_idx < n; gen_idx++) {
+      result.push_back(H_vec_[party_idx][gen_idx]);
+    }
+  }
+  
+  return result;
+}
+
+// ---- BulletproofGensShare implementation ----
+
+std::vector<yacl::crypto::EcPoint> BulletproofGensShare::G(size_t n) const {
+  if (n > gens_.gens_capacity_) {
+    throw yacl::Exception("Requested more generators than available");
+  }
+  
+  const auto& party_G = gens_.G_vec_[share_];
+  return std::vector<yacl::crypto::EcPoint>(party_G.begin(), party_G.begin() + n);
+}
+
+std::vector<yacl::crypto::EcPoint> BulletproofGensShare::H(size_t n) const {
+  if (n > gens_.gens_capacity_) {
+    throw yacl::Exception("Requested more generators than available");
+  }
+  
+  const auto& party_H = gens_.H_vec_[share_];
+  return std::vector<yacl::crypto::EcPoint>(party_H.begin(), party_H.begin() + n);
+}
+
+} // namespace examples::zkp

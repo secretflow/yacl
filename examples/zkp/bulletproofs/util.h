@@ -1,111 +1,111 @@
 #pragma once
 
+#include <cstdint>
+#include <memory>
 #include <vector>
-#include <memory> // For std::shared_ptr
-#include "yacl/math/mpint/mp_int.h"
-#include "yacl/crypto/ecc/ecc_spi.h" // For EcGroup
 
-// Forward declarations if needed, or include full headers
-// #include "yacl/crypto/ecc/ec_point.h"
+#include "yacl/base/exception.h"
+#include "yacl/math/mpint/mp_int.h"
 
 namespace examples::zkp {
 
-// Use YACL's MPInt for scalars
-using yacl::math::MPInt;
-using yacl::crypto::EcGroup;
+// Forward declaration for inner product function
+yacl::math::MPInt InnerProduct(const std::vector<yacl::math::MPInt>& a,
+                             const std::vector<yacl::math::MPInt>& b);
 
-// Represents a degree-1 vector polynomial a + b * x.
-struct VecPoly1 {
-  std::vector<MPInt> a;
-  std::vector<MPInt> b;
+/**
+ * @brief Represents a degree-1 vector polynomial a + b·x
+ */
+class VecPoly1 {
+ public:
+  std::vector<yacl::math::MPInt> vec0;  // Coefficient of x^0 (constant term)
+  std::vector<yacl::math::MPInt> vec1;  // Coefficient of x^1
 
-  VecPoly1() = default;
-  VecPoly1(std::vector<MPInt> a_vec, std::vector<MPInt> b_vec);
-  ~VecPoly1(); // For clearing memory
+  /**
+   * @brief Constructs a new VecPoly1 object
+   */
+  VecPoly1(std::vector<yacl::math::MPInt> vec0, std::vector<yacl::math::MPInt> vec1)
+      : vec0(std::move(vec0)), vec1(std::move(vec1)) {}
 
-  // Creates a zero polynomial of size n.
+  /**
+   * @brief Create a zero polynomial of length n
+   */
   static VecPoly1 Zero(size_t n);
 
-  // Evaluates the polynomial at point x.
-  std::vector<MPInt> Eval(const MPInt& x) const;
+  /**
+   * @brief Compute inner product with another vector polynomial
+   * Uses Karatsuba's method
+   */
+  class Poly2 InnerProduct(const VecPoly1& rhs) const;
 
-  // Computes the inner product with another VecPoly1, resulting in Poly2.
-  // Requires curve order for modular arithmetic.
-  struct Poly2 InnerProduct(const VecPoly1& rhs, const MPInt& order) const;
+  /**
+   * @brief Evaluate the polynomial at point x
+   */
+  std::vector<yacl::math::MPInt> Eval(const yacl::math::MPInt& x) const;
+
+  /**
+   * @brief Destructor to clear sensitive data
+   */
+  ~VecPoly1();
 };
 
-// Represents a degree-2 scalar polynomial a + b*x + c*x^2.
-struct Poly2 {
-  MPInt a;
-  MPInt b;
-  MPInt c;
+/**
+ * @brief Represents a degree-2 scalar polynomial a + b·x + c·x^2
+ */
+class Poly2 {
+ public:
+  yacl::math::MPInt t0;  // Coefficient of x^0 (constant term)
+  yacl::math::MPInt t1;  // Coefficient of x^1
+  yacl::math::MPInt t2;  // Coefficient of x^2
 
-  Poly2() = default;
-  Poly2(MPInt a_val, MPInt b_val, MPInt c_val);
-  ~Poly2(); // For clearing memory
+  /**
+   * @brief Constructs a new Poly2 object
+   */
+  Poly2(const yacl::math::MPInt& t0, const yacl::math::MPInt& t1, const yacl::math::MPInt& t2)
+      : t0(t0), t1(t1), t2(t2) {}
 
-  // Evaluates the polynomial at point x.
-  // Requires curve order for modular arithmetic.
-  MPInt Eval(const MPInt& x, const MPInt& order) const;
+  /**
+   * @brief Evaluate the polynomial at point x
+   */
+  yacl::math::MPInt Eval(const yacl::math::MPInt& x) const;
+
+  /**
+   * @brief Destructor to clear sensitive data
+   */
+  ~Poly2();
 };
 
-#ifdef YACL_ENABLE_YOLOPROOFS
-// Represents a degree-3 vector polynomial a + b*x + c*x^2 + d*x^3.
-struct VecPoly3 {
-  std::vector<MPInt> a;
-  std::vector<MPInt> b;
-  std::vector<MPInt> c;
-  std::vector<MPInt> d;
+/**
+ * @brief Add two vectors of MPInt
+ */
+std::vector<yacl::math::MPInt> AddVec(const std::vector<yacl::math::MPInt>& a,
+                                    const std::vector<yacl::math::MPInt>& b);
 
-  VecPoly3() = default;
-  VecPoly3(std::vector<MPInt> a_vec, std::vector<MPInt> b_vec,
-           std::vector<MPInt> c_vec, std::vector<MPInt> d_vec);
-  ~VecPoly3(); // For clearing memory
+/**
+ * @brief Creates an iterator of powers of x
+ * Returns vector of [1, x, x^2, ..., x^(n-1)]
+ */
+std::vector<yacl::math::MPInt> ExpIterVector(const yacl::math::MPInt& x, size_t n);
 
-  // Creates a zero polynomial of size n.
-  static VecPoly3 Zero(size_t n);
+/**
+ * @brief Raises x to the power n using binary exponentiation
+ */
+yacl::math::MPInt ScalarExpVartime(const yacl::math::MPInt& x, uint64_t n);
 
-  // Evaluates the polynomial at point x.
-  std::vector<MPInt> Eval(const MPInt& x, const MPInt& order) const;
+/**
+ * @brief Takes the sum of all powers of x, up to n
+ * If n is a power of 2, uses efficient algorithm with 2*log(n) multiplications
+ */
+yacl::math::MPInt SumOfPowers(const yacl::math::MPInt& x, size_t n);
 
-  // Computes the special inner product with another VecPoly3.
-  // Assumes lhs.a and rhs.c are zero. Requires curve order.
-  struct Poly6 SpecialInnerProduct(const VecPoly3& rhs, const MPInt& order) const;
-};
+/**
+ * @brief Takes the sum of all powers of x, up to n (slow version)
+ */
+yacl::math::MPInt SumOfPowersSlow(const yacl::math::MPInt& x, size_t n);
 
-// Represents coefficients t1..t6 for t1*x + t2*x^2 + ... + t6*x^6.
-struct Poly6 {
-  MPInt t1, t2, t3, t4, t5, t6;
+/**
+ * @brief Given data with len >= 32, return the first 32 bytes
+ */
+std::array<uint8_t, 32> Read32(const std::vector<uint8_t>& data);
 
-  Poly6() = default;
-  Poly6(MPInt t1_val, MPInt t2_val, MPInt t3_val, MPInt t4_val, MPInt t5_val, MPInt t6_val);
-  ~Poly6(); // For clearing memory
-
-  // Evaluates the polynomial at point x. Requires curve order.
-  MPInt Eval(const MPInt& x, const MPInt& order) const;
-};
-#endif // YACL_ENABLE_YOLOPROOFS
-
-// --- Standalone Utility Functions ---
-
-// Computes the inner product of two vectors modulo order.
-MPInt InnerProduct(const absl::Span<const MPInt>& a,
-                   const absl::Span<const MPInt>& b,
-                   const MPInt& order);
-
-// Adds two vectors element-wise modulo order.
-std::vector<MPInt> AddVectors(const absl::Span<const MPInt>& a,
-                              const absl::Span<const MPInt>& b,
-                              const MPInt& order);
-
-// Computes powers of x: [1, x, x^2, ..., x^(n-1)] modulo order.
-std::vector<MPInt> Powers(const MPInt& x, size_t n, const MPInt& order);
-
-// Computes sum of powers: 1 + x + ... + x^(n-1) modulo order.
-MPInt SumOfPowers(const MPInt& x, size_t n, const MPInt& order);
-
-// Computes x^n (non-modular).
-// CAUTION: Use PowMod for cryptographic exponentiation.
-MPInt ScalarExpVartime(const MPInt& x, uint64_t n);
-
-} // namespace examples::zkp 
+} // namespace examples::zkp
