@@ -129,7 +129,7 @@ class InnerProductProof {
    * @param curve The elliptic curve to use for point serialization
    * @return std::vector<uint8_t> The serialized proof
    */
-  std::vector<uint8_t> ToBytes(
+  yacl::Buffer ToBytes(
       const std::shared_ptr<yacl::crypto::EcGroup>& curve) const;
 
   /**
@@ -140,8 +140,11 @@ class InnerProductProof {
    * @return InnerProductProof The deserialized proof
    */
   static InnerProductProof FromBytes(
-      const std::vector<uint8_t>& bytes,
+      const yacl::ByteContainerView& bytes,
       const std::shared_ptr<yacl::crypto::EcGroup>& curve);
+
+  yacl::math::MPInt GetA() const { return a_; }
+  yacl::math::MPInt GetB() const { return b_; }
 
  private:
   std::vector<yacl::crypto::EcPoint> L_vec_;

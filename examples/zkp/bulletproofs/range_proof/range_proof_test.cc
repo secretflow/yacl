@@ -3,8 +3,7 @@
 #include <gtest/gtest.h>
 
 #include "yacl/crypto/ecc/openssl/openssl_group.h"
-#include "yacl/crypto/ecc/curve_meta.h"
-#include "range_proof_config.h"
+#include "yacl/crypto/rand/rand.h"
 #include "zkp/bulletproofs/simple_transcript.h"
 
 namespace examples::zkp {
@@ -13,104 +12,138 @@ namespace {
 class RangeProofTest : public ::testing::Test {
  protected:
   void SetUp() override {
+    // Initialize with secp256k1 curve for testing
     curve_ = yacl::crypto::EcGroupFactory::Instance().Create(
-       kRangeProofEcName,
-        yacl::ArgLib = kRangeProofEcLib);
-    transcript_ = std::make_unique<SimpleTranscript>(
-        yacl::ByteContainerView("test-range-proof"));
+        "secp256k1", yacl::ArgLib = "openssl");
+  }
+
+  // Helper function for creating and verifying a single range proof
+  void TestSingleRangeProof(uint64_t value, size_t n) {
+    // Create transcript for the prover
+    auto prover_transcript = std::make_unique<SimpleTranscript>("range_proof_test");
+    
+    // Generate a random blinding factor
+    yacl::math::MPInt blinding;
+    yacl::math::MPInt::RandomExactBits(curve_->GetField().BitCount(), &blinding);
+    
+    // Create the proof
+    auto [proof, commitment] = RangeProof::CreateSingle(
+        curve_, *prover_transcript, value, blinding, n);
+    
+    // Verify the proof with a fresh transcript
+    auto verifier_transcript = std::make_unique<SimpleTranscript>("range_proof_test");
+    EXPECT_TRUE(proof.VerifySingle(curve_, *verifier_transcript, commitment, n));
+  }
+  
+  // Helper function for creating and verifying multiple range proofs
+  void TestMultipleRangeProof(const std::vector<uint64_t>& values, size_t n) {
+    // Create transcript for the prover
+    auto prover_transcript = std::make_unique<SimpleTranscript>("range_proof_test");
+    
+    // Generate random blinding factors
+    std::vector<yacl::math::MPInt> blindings;
+    for (size_t i = 0; i < values.size(); i++) {
+      yacl::math::MPInt blinding;
+      yacl::math::MPInt::RandomExactBits(curve_->GetField().BitCount(), &blinding);
+      blindings.push_back(blinding);
+    }
+    
+    // Create the proof
+    auto [proof, commitments] = RangeProof::CreateMultiple(
+        curve_, *prover_transcript, values, blindings, n);
+    
+    // Verify the proof with a fresh transcript
+    auto verifier_transcript = std::make_unique<SimpleTranscript>("range_proof_test");
+    EXPECT_TRUE(proof.VerifyMultiple(curve_, *verifier_transcript, commitments, n));
   }
 
   std::shared_ptr<yacl::crypto::EcGroup> curve_;
-  std::unique_ptr<SimpleTranscript> transcript_;
 };
 
-TEST_F(RangeProofTest, TestValidRange8Bit) {
-  uint64_t value = 123;
+TEST_F(RangeProofTest, TestDelta) {
+  // Test the Delta function with small values
+  yacl::math::MPInt y(3);
+  yacl::math::MPInt z(5);
   
-  yacl::math::MPInt v(value);
+  const size_t n = 4;
+  const size_t m = 2;
   
-  yacl::math::MPInt blinding;
-  yacl::math::MPInt::RandomExactBits(curve_->GetField().BitCount(), &blinding);
+  // Calculate delta manually
+  yacl::math::MPInt delta = RangeProof::Delta(n, m, y, z, curve_);
   
-  auto [proof, commitment] = RangeProof::CreateSingle(
-      curve_, *transcript_, value, blinding, 8);
-      
-  auto verify_transcript = std::make_unique<SimpleTranscript>(
-      yacl::ByteContainerView("test-range-proof"));
-      
-  EXPECT_EQ(proof.VerifySingle(curve_, *verify_transcript, commitment, 8), 
-            ProofError::kOk);
+  // The delta calculation is complex, so we just verify it's non-zero here
+  EXPECT_NE(delta, yacl::math::MPInt(0));
 }
 
-TEST_F(RangeProofTest, TestInvalidRange8Bit) {
-  // Value 256 is outside the 8-bit range [0, 2^8)
-  uint64_t value = 256;
-  
-  yacl::math::MPInt v(value);
-  
-  yacl::math::MPInt blinding;
-  yacl::math::MPInt::RandomExactBits(curve_->GetField().BitCount(), &blinding);
-  
-  auto [proof, commitment] = RangeProof::CreateSingle(
-      curve_, *transcript_, value, blinding, 8);
-      
-  auto verify_transcript = std::make_unique<SimpleTranscript>(
-      yacl::ByteContainerView("test-range-proof"));
-      
-  EXPECT_NE(proof.VerifySingle(curve_, *verify_transcript, commitment, 8), 
-            ProofError::kOk);
+TEST_F(RangeProofTest, TestSingleProof8Bit) {
+  // Test a valid 8-bit value (0 <= value < 2^8)
+  TestSingleRangeProof(123, 8);
 }
 
-TEST_F(RangeProofTest, TestMultipleProofs) {
-  std::vector<uint64_t> values = {1, 5, 10, 50};
-  
-  std::vector<yacl::math::MPInt> blindings;
-  for (size_t i = 0; i < values.size(); i++) {
-    yacl::math::MPInt blinding;
-    yacl::math::MPInt::RandomExactBits(curve_->GetField().BitCount(), &blinding);
-    blindings.push_back(blinding);
-  }
-  
-  auto [proof, commitments] = RangeProof::CreateMultiple(
-      curve_, *transcript_, values, blindings, 8);
-      
-  auto verify_transcript = std::make_unique<SimpleTranscript>(
-      yacl::ByteContainerView("test-range-proof"));
-      
-  EXPECT_EQ(proof.VerifyMultiple(curve_, *verify_transcript, commitments, 8), 
-            ProofError::kOk);
+TEST_F(RangeProofTest, TestSingleProof16Bit) {
+  // Test a valid 16-bit value (0 <= value < 2^16)
+  TestSingleRangeProof(12345, 16);
+}
+
+TEST_F(RangeProofTest, TestSingleProof32Bit) {
+  // Test a valid 32-bit value (0 <= value < 2^32)
+  TestSingleRangeProof(1234567890, 32);
+}
+
+TEST_F(RangeProofTest, TestMultipleProof8Bit) {
+  // Test multiple valid 8-bit values
+  TestMultipleRangeProof({123, 45, 67, 89}, 8);
+}
+
+TEST_F(RangeProofTest, TestMultipleProof16Bit) {
+  // Test multiple valid 16-bit values
+  TestMultipleRangeProof({12345, 6789, 10111, 12131}, 16);
+}
+
+TEST_F(RangeProofTest, TestMultipleProof32Bit) {
+  // Test multiple valid 32-bit values
+  TestMultipleRangeProof({1234567890, 987654321, 123456789, 987654321}, 32);
 }
 
 TEST_F(RangeProofTest, TestSerialization) {
-  uint64_t value = 123;
-  
-  yacl::math::MPInt v(value);
+  // Create a proof
+  auto prover_transcript = std::make_unique<SimpleTranscript>("range_proof_test");
   
   yacl::math::MPInt blinding;
   yacl::math::MPInt::RandomExactBits(curve_->GetField().BitCount(), &blinding);
   
   auto [proof, commitment] = RangeProof::CreateSingle(
-      curve_, *transcript_, value, blinding, 8);
-      
-  yacl::Buffer proof_bytes = proof.ToBytes(curve_);
-  EXPECT_GT(proof_bytes.size(), 0);
+      curve_, *prover_transcript, 123, blinding, 8);
   
-  auto new_transcript = std::make_unique<SimpleTranscript>(
-      yacl::ByteContainerView("test-range-proof"));
-      
-  auto recovered_proof = RangeProof::FromBytes(
-      curve_, yacl::ByteContainerView(proof_bytes));
+  // Serialize and deserialize
+  yacl::Buffer serialized = proof.ToBytes(curve_);
+  RangeProof deserialized = RangeProof::FromBytes(curve_, serialized);
   
-  auto verify_result = recovered_proof.VerifySingle(
-      curve_, *new_transcript, commitment, 8);
-      
-  EXPECT_EQ(verify_result, ProofError::kOk);
+  // Verify the deserialized proof
+  auto verifier_transcript = std::make_unique<SimpleTranscript>("range_proof_test");
+  EXPECT_TRUE(deserialized.VerifySingle(curve_, *verifier_transcript, commitment, 8));
+}
+
+TEST_F(RangeProofTest, TestInvalidRange) {
+  auto prover_transcript = std::make_unique<SimpleTranscript>("range_proof_test");
+  
+  yacl::math::MPInt blinding;
+  yacl::math::MPInt::RandomExactBits(curve_->GetField().BitCount(), &blinding);
+  
+  // Create proof for 8-bit range but use a value that's too large (> 2^8)
+  uint64_t value = 256; // First value outside 8-bit range
+  auto [proof, commitment] = RangeProof::CreateSingle(
+      curve_, *prover_transcript, value, blinding, 8);
+  
+  // This verification should fail because the value is outside the range
+  auto verifier_transcript = std::make_unique<SimpleTranscript>("range_proof_test");
+  EXPECT_FALSE(proof.VerifySingle(curve_, *verifier_transcript, commitment, 8));
 }
 
 } // namespace
 } // namespace examples::zkp
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

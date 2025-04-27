@@ -16,7 +16,7 @@ SimpleTranscript::SimpleTranscript(std::string_view label) {
   }
 }
 
-void SimpleTranscript::RangeproofDomainSep(uint64_t n, uint64_t m) {
+void SimpleTranscript::RangeProofDomainSep(uint64_t n, uint64_t m) {
   AppendMessage("dom-sep", "rangeproof v1");
   AppendU64("n", n);
   AppendU64("m", m);

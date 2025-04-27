@@ -115,8 +115,8 @@ TEST_F(SimpleTranscriptTest, DomainSeparators) {
   SimpleTranscript transcript2;
   
   // Apply domain separators
-  transcript1.RangeproofDomainSep(64, 1);
-  transcript2.RangeproofDomainSep(64, 1);
+  transcript1.RangeProofDomainSep(64, 1);
+  transcript2.RangeProofDomainSep(64, 1);
   
   // Challenges should be the same
   yacl::math::MPInt challenge1 = transcript1.ChallengeScalar("test", curve_);
@@ -125,7 +125,7 @@ TEST_F(SimpleTranscriptTest, DomainSeparators) {
   
   // Different domain separators should yield different challenges
   SimpleTranscript transcript3;
-  transcript3.RangeproofDomainSep(32, 1); // Different bit size
+  transcript3.RangeProofDomainSep(32, 1); // Different bit size
   yacl::math::MPInt challenge3 = transcript3.ChallengeScalar("test", curve_);
   EXPECT_NE(challenge1, challenge3);
   

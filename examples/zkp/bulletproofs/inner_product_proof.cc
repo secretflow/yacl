@@ -366,14 +366,14 @@ size_t InnerProductProof::SerializedSize() const {
   return (L_vec_.size() * 2 + 2) * point_size;
 }
 
-std::vector<uint8_t> InnerProductProof::ToBytes(
+yacl::Buffer InnerProductProof::ToBytes(
     const std::shared_ptr<yacl::crypto::EcGroup>& curve) const {
-  std::vector<uint8_t> bytes;
+  yacl::Buffer bytes;
   
   // First, write the number of L/R pairs (needed for deserialization)
   uint32_t lg_n = static_cast<uint32_t>(L_vec_.size());
   bytes.resize(sizeof(lg_n));
-  std::memcpy(bytes.data(), &lg_n, sizeof(lg_n));
+  std::memcpy(bytes.data<uint8_t>(), &lg_n, sizeof(lg_n));
   
   // Serialize L and R vectors with size prefixes for each point
   for (size_t i = 0; i < L_vec_.size(); i++) {
@@ -383,8 +383,8 @@ std::vector<uint8_t> InnerProductProof::ToBytes(
     
     size_t prev_size = bytes.size();
     bytes.resize(prev_size + sizeof(L_size) + L_size);
-    std::memcpy(bytes.data() + prev_size, &L_size, sizeof(L_size));
-    std::memcpy(bytes.data() + prev_size + sizeof(L_size), 
+    std::memcpy(bytes.data<uint8_t>() + prev_size, &L_size, sizeof(L_size));
+    std::memcpy(bytes.data<uint8_t>() + prev_size + sizeof(L_size), 
                L_bytes.data<uint8_t>(), L_size);
     
     // R point
@@ -393,8 +393,8 @@ std::vector<uint8_t> InnerProductProof::ToBytes(
     
     prev_size = bytes.size();
     bytes.resize(prev_size + sizeof(R_size) + R_size);
-    std::memcpy(bytes.data() + prev_size, &R_size, sizeof(R_size));
-    std::memcpy(bytes.data() + prev_size + sizeof(R_size), 
+    std::memcpy(bytes.data<uint8_t>() + prev_size, &R_size, sizeof(R_size));
+    std::memcpy(bytes.data<uint8_t>() + prev_size + sizeof(R_size), 
                R_bytes.data<uint8_t>(), R_size);
   }
   
@@ -404,8 +404,8 @@ std::vector<uint8_t> InnerProductProof::ToBytes(
   
   size_t prev_size = bytes.size();
   bytes.resize(prev_size + sizeof(a_size) + a_size);
-  std::memcpy(bytes.data() + prev_size, &a_size, sizeof(a_size));
-  std::memcpy(bytes.data() + prev_size + sizeof(a_size), 
+  std::memcpy(bytes.data<uint8_t>() + prev_size, &a_size, sizeof(a_size));
+  std::memcpy(bytes.data<uint8_t>() + prev_size + sizeof(a_size), 
              a_bytes.data<uint8_t>(), a_size);
   
   yacl::Buffer b_bytes = b_.Serialize();
@@ -413,15 +413,16 @@ std::vector<uint8_t> InnerProductProof::ToBytes(
   
   prev_size = bytes.size();
   bytes.resize(prev_size + sizeof(b_size) + b_size);
-  std::memcpy(bytes.data() + prev_size, &b_size, sizeof(b_size));
-  std::memcpy(bytes.data() + prev_size + sizeof(b_size), 
+  std::memcpy(bytes.data<uint8_t>() + prev_size, &b_size, sizeof(b_size));
+  std::memcpy(bytes.data<uint8_t>() + prev_size + sizeof(b_size), 
              b_bytes.data<uint8_t>(), b_size);
   
   return bytes;
 }
 
+
 InnerProductProof InnerProductProof::FromBytes(
-    const std::vector<uint8_t>& bytes,
+    const yacl::ByteContainerView& bytes,
     const std::shared_ptr<yacl::crypto::EcGroup>& curve) {
   if (bytes.size() < sizeof(uint32_t)) {
     throw yacl::Exception("Invalid proof format: too short");
@@ -518,6 +519,7 @@ InnerProductProof InnerProductProof::FromBytes(
   
   return InnerProductProof(L_vec, R_vec, a, b);
 }
+
 
 yacl::math::MPInt InnerProduct(
     const std::vector<yacl::math::MPInt>& a,

@@ -140,7 +140,7 @@ class InnerProductProofTest : public ::testing::Test {
     // Only perform serialization test if verification passed
     if (result) {
       // Test serialization/deserialization
-      std::vector<uint8_t> proof_bytes = proof.ToBytes(curve_);
+      yacl::Buffer proof_bytes = proof.ToBytes(curve_);
       InnerProductProof deserialized_proof = 
           InnerProductProof::FromBytes(proof_bytes, curve_);
       

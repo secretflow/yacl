@@ -43,7 +43,7 @@ class SimpleTranscript {
    * @param n The number of bits in the range proof
    * @param m The number of parties
    */
-  void RangeproofDomainSep(uint64_t n, uint64_t m);
+  void RangeProofDomainSep(uint64_t n, uint64_t m);
 
   /**
    * @brief Append a domain separator for a length-n inner product proof

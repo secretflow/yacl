@@ -75,12 +75,14 @@ DealerAwaitingBitCommitments::ReceiveBitCommitments(
   
   // Commit each V_j individually
   for (const auto& commitment : bit_commitments) {
-    transcript_.AppendPoint("V", commitment.GetV());
+    transcript_.AppendPoint("V", commitment.GetV(), curve);
   }
   
   // Compute aggregated A_j and S_j
-  yacl::crypto::EcPoint A = curve->GetInfinity();
-  yacl::crypto::EcPoint S = curve->GetInfinity();
+  yacl::crypto::EcPoint A = curve->GetGenerator();
+  curve->MulInplace(&A, yacl::math::MPInt(0)); // Set to identity/infinity
+  yacl::crypto::EcPoint S = curve->GetGenerator();
+  curve->MulInplace(&S, yacl::math::MPInt(0)); // Set to identity/infinity
   
   for (const auto& commitment : bit_commitments) {
     A = curve->Add(A, commitment.GetA());
@@ -88,12 +90,12 @@ DealerAwaitingBitCommitments::ReceiveBitCommitments(
   }
   
   // Commit aggregated A and S
-  transcript_.AppendPoint("A", A);
-  transcript_.AppendPoint("S", S);
+  transcript_.AppendPoint("A", A, curve);
+  transcript_.AppendPoint("S", S, curve);
   
   // Generate challenges
-  yacl::math::MPInt y = transcript_.ChallengeScalar("y");
-  yacl::math::MPInt z = transcript_.ChallengeScalar("z");
+  yacl::math::MPInt y = transcript_.ChallengeScalar("y", curve);
+  yacl::math::MPInt z = transcript_.ChallengeScalar("z", curve);
   
   BitChallenge bit_challenge(y, z);
   
@@ -144,8 +146,10 @@ DealerAwaitingPolyCommitments::ReceivePolyCommitments(
   auto curve = bp_gens_.GetCurve();
   
   // Compute sums of T_1_j's and T_2_j's
-  yacl::crypto::EcPoint T_1 = curve->GetInfinity();
-  yacl::crypto::EcPoint T_2 = curve->GetInfinity();
+  yacl::crypto::EcPoint T_1 = curve->GetGenerator();
+  curve->MulInplace(&T_1, yacl::math::MPInt(0)); // Set to identity/infinity
+  yacl::crypto::EcPoint T_2 = curve->GetGenerator();
+  curve->MulInplace(&T_2, yacl::math::MPInt(0)); // Set to identity/infinity
   
   for (const auto& commitment : poly_commitments) {
     T_1 = curve->Add(T_1, commitment.GetT1());
@@ -153,11 +157,11 @@ DealerAwaitingPolyCommitments::ReceivePolyCommitments(
   }
   
   // Commit aggregated T_1 and T_2
-  transcript_.AppendPoint("T_1", T_1);
-  transcript_.AppendPoint("T_2", T_2);
+  transcript_.AppendPoint("T_1", T_1, curve);
+  transcript_.AppendPoint("T_2", T_2, curve);
   
   // Generate challenge
-  yacl::math::MPInt x = transcript_.ChallengeScalar("x");
+  yacl::math::MPInt x = transcript_.ChallengeScalar("x", curve);
   
   PolyChallenge poly_challenge(x);
   
@@ -231,9 +235,9 @@ RangeProof DealerAwaitingProofShares::AssembleShares(
   auto curve = bp_gens_.GetCurve();
   
   // Aggregate t_x, t_x_blinding, and e_blinding values
-  yacl::math::MPInt t_x = yacl::math::MPInt::Zero();
-  yacl::math::MPInt t_x_blinding = yacl::math::MPInt::Zero();
-  yacl::math::MPInt e_blinding = yacl::math::MPInt::Zero();
+  yacl::math::MPInt t_x(0);
+  yacl::math::MPInt t_x_blinding(0);
+  yacl::math::MPInt e_blinding(0);
   
   for (const auto& share : proof_shares) {
     t_x = t_x + share.GetTX();
@@ -247,13 +251,13 @@ RangeProof DealerAwaitingProofShares::AssembleShares(
   transcript_.AppendScalar("e_blinding", e_blinding);
   
   // Get a challenge value to combine statements for the IPP
-  yacl::math::MPInt w = transcript_.ChallengeScalar("w");
+  yacl::math::MPInt w = transcript_.ChallengeScalar("w", curve);
   yacl::crypto::EcPoint Q = curve->Mul(pc_gens_.GetGPoint(), w);
   
   // Prepare G_factors and H_factors for the inner product proof
   std::vector<yacl::math::MPInt> G_factors(n_ * m_, yacl::math::MPInt(1));
   
-  yacl::math::MPInt y_inv = bit_challenge_.GetY().Inverse(curve->GetField());
+  yacl::math::MPInt y_inv = bit_challenge_.GetY().InvertMod(curve->GetOrder());
   std::vector<yacl::math::MPInt> H_factors = ExpIterVector(y_inv, n_ * m_);
   
   // Collect l_vec and r_vec from all proof shares
@@ -276,7 +280,7 @@ RangeProof DealerAwaitingProofShares::AssembleShares(
   
   // Create inner product proof
   InnerProductProof ipp_proof = InnerProductProof::Create(
-      transcript_, Q, G_factors, H_factors, G_vec, H_vec, l_vec, r_vec);
+    &transcript_, curve, Q, G_factors, H_factors, G_vec, H_vec, l_vec, r_vec);
   
   // Construct the range proof
   return RangeProof(A_, S_, T_1_, T_2_, t_x, t_x_blinding, e_blinding, ipp_proof);
@@ -295,10 +299,10 @@ RangeProof DealerAwaitingProofShares::ReceiveShares(
   }
   
   // Verify the proof using the initial transcript
-  Transcript verification_transcript = initial_transcript_;
+  SimpleTranscript verification_transcript = initial_transcript_;
   
   try {
-    proof.VerifyMultiple(bp_gens_, pc_gens_, verification_transcript, Vs, n_);
+    proof.VerifyMultiple(bp_gens_.GetCurve(), verification_transcript, Vs, n_);
   } catch (const std::exception&) {
     // Proof verification failed. Now audit the parties
     std::vector<size_t> bad_shares;
