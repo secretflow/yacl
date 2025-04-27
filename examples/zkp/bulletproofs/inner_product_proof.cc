@@ -24,7 +24,9 @@ yacl::crypto::EcPoint MultiScalarMul(
   curve->MulInplace(&result, yacl::math::MPInt(0));  // Set to identity
   
   for (size_t i = 0; i < scalars.size(); i++) {
+    std::cout << "MultiScalarMul: i = " << i << ", scalar = " << scalars[i] << std::endl;
     yacl::crypto::EcPoint term = curve->Mul(points[i], scalars[i]);
+    std::cout << "MultiScalarMul: term = " << curve->SerializePoint(term) << std::endl;
     result = curve->Add(result, term);
   }
   
@@ -70,6 +72,10 @@ InnerProductProof InnerProductProof::Create(
     temp_n >>= 1;
   }
   lg_n -= 1;  // Adjust for off-by-one
+
+  if (lg_n >= 32) {
+    throw yacl::Exception("Inner product proof too large: lg_n >= 32");
+  }
   
   std::vector<yacl::crypto::EcPoint> L_vec;
   std::vector<yacl::crypto::EcPoint> R_vec;
@@ -234,6 +240,7 @@ InnerProductProof::VerificationScalars(
   }
   
   // 2. Compute inverses
+  std::cout << "VerificationScalars: Calculating inverses..." << std::endl;
   std::vector<yacl::math::MPInt> challenges_inv;
   challenges_inv.reserve(lg_n);
   
@@ -241,9 +248,12 @@ InnerProductProof::VerificationScalars(
   yacl::math::MPInt all_inv_product(1);
   for (const auto& challenge : challenges) {
     yacl::math::MPInt inv = challenge.InvertMod(curve->GetOrder());
+    std::cout << "VerificationScalars: challenge = " << challenge << ", inv = " << inv << std::endl;
     challenges_inv.push_back(inv);
     all_inv_product = all_inv_product.MulMod(inv, curve->GetOrder());
   }
+
+  std::cout << "VerificationScalars: all_inv_product = " << all_inv_product << std::endl;
   
   // 3. Compute squares of challenges and their inverses
   std::vector<yacl::math::MPInt> challenges_sq;
@@ -260,18 +270,9 @@ InnerProductProof::VerificationScalars(
   s.push_back(all_inv_product);
   
   for (size_t i = 1; i < n; i++) {
-    // Count leading zeros of i to compute lg_i
-    uint32_t i_u32 = static_cast<uint32_t>(i);
-    uint32_t leading_zeros = 0;
-    for (int bit = 31; bit >= 0; bit--) {
-      if ((i_u32 & (1 << bit)) == 0) {
-        leading_zeros++;
-      } else {
-        break;
-      }
-    }
     
-    size_t lg_i = 32 - 1 - leading_zeros;
+    // GCC/Clang intrinsic for counting leading zeros
+    size_t lg_i = 32 - 1 - __builtin_clz(i);
     size_t k = 1ULL << lg_i;
     
     // Get the corresponding squared challenge
@@ -350,6 +351,16 @@ bool InnerProductProof::Verify(
     // Final multiscalar multiplication
     yacl::crypto::EcPoint expect_P = MultiScalarMul(curve, scalars, points);
     
+    //debug
+    std::cout << "expect_P: " << curve->SerializePoint(expect_P) << std::endl;
+    std::cout << "P: " << curve->SerializePoint(P) << std::endl;
+
+    auto expect_P_affine = curve->GetAffinePoint(expect_P);
+    auto P_affine = curve->GetAffinePoint(P);
+
+    std::cout << "expect_P_affine: " << expect_P_affine << std::endl;
+    std::cout << "P_affine: " << P_affine << std::endl;
+
     std::cout << "Expected vs Actual result: " 
               << (curve->PointEqual(expect_P, P) ? "MATCH" : "DIFFERENT") << std::endl;
     

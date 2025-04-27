@@ -131,7 +131,6 @@ class RangeProof {
       const std::shared_ptr<yacl::crypto::EcGroup>& curve);
 
  private:
-  
 
   // Proof components
   yacl::crypto::EcPoint A_;        // Commitment to the bits of the value

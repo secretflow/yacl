@@ -197,9 +197,23 @@ TEST_F(InnerProductProofTest, MakeIPP4) {
   TestCreateAndVerify(4);
 }
 
+TEST_F(InnerProductProofTest, MakeIPP8) {
+  TestCreateAndVerify(8);
+}
+
+TEST_F(InnerProductProofTest, MakeIPP16) {
+  TestCreateAndVerify(16);
+}
+
 TEST_F(InnerProductProofTest, MakeIPP32) {
   TestCreateAndVerify(32);
 }
+
+TEST_F(InnerProductProofTest, MakeIPP64) {
+  TestCreateAndVerify(64);
+}
+
+
 
 } // namespace
 } // namespace examples::zkp
