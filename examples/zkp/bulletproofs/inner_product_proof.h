@@ -162,7 +162,8 @@ class InnerProductProof {
  */
 yacl::math::MPInt InnerProduct(
     const std::vector<yacl::math::MPInt>& a,
-    const std::vector<yacl::math::MPInt>& b);
+    const std::vector<yacl::math::MPInt>& b,
+    const std::shared_ptr<yacl::crypto::EcGroup>& curve);
 
 /**
  * @brief Helper for optimized multi-scalar multiplication
