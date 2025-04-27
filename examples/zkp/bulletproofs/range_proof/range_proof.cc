@@ -120,10 +120,10 @@ std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>> RangeProof::CreateMult
   for (size_t j = 0; j < m; j++) {
     proof_shares.push_back(parties_awaiting_poly[j].ApplyChallenge(poly_challenge));
   }
-  
+
   // Dealer assembles final proof from shares
   auto proof = dealer_proof.ReceiveTrustedShares(proof_shares);
-  
+
   // Extract value commitments from bit commitments
   std::vector<yacl::crypto::EcPoint> value_commitments;
   for (const auto& commitment : bit_commitments) {

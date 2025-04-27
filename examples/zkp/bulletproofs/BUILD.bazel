@@ -79,6 +79,9 @@ yacl_cc_library(
     copts = COMMON_COPTS,
     deps = [
         ":simple_transcript",
+        ":generators",
+        ":ipa_config",
+        ":util",
         "@yacl//yacl/base:byte_container_view",
         "@yacl//yacl/base:exception",
         "@yacl//yacl/crypto/ecc:ecc",

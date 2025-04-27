@@ -82,8 +82,8 @@ yacl::crypto::EcPoint GeneratorsChain::Next() {
 
 BulletproofGens::BulletproofGens(
     std::shared_ptr<yacl::crypto::EcGroup> curve,
-    size_t gens_capacity,
-    size_t party_capacity)
+                             size_t gens_capacity,
+                             size_t party_capacity)
     : curve_(std::move(curve)),
       gens_capacity_(0),
       party_capacity_(party_capacity) {
@@ -107,7 +107,7 @@ void BulletproofGens::IncreaseCapacity(size_t new_capacity) {
   if (gens_capacity_ >= new_capacity) {
     return;
   }
-  
+
   for (size_t i = 0; i < party_capacity_; i++) {
     uint32_t party_index = static_cast<uint32_t>(i);
     

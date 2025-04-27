@@ -1,628 +1,537 @@
-// Copyright 2023 Ant Group Co., Ltd.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+#include "zkp/bulletproofs/inner_product_proof.h"
 
-#include "inner_product_proof.h"
+#include <algorithm>
+#include <cassert>
+#include <cstring>
+#include <stdexcept>
 
-#include <memory>     // For shared_ptr
-#include <stdexcept>  // For exceptions
-#include <vector>
-
-#include "simple_transcript.h"  // Include the transcript header
-
-#include "yacl/base/exception.h"  // For YACL_ENFORCE
-#include "yacl/crypto/ecc/ec_point.h"
-#include "yacl/crypto/ecc/ecc_spi.h"  // Use main ECC header
-#include "yacl/crypto/hash/hash_utils.h"
-#include "yacl/math/mpint/mp_int.h"
-#include "yacl/utils/spi/spi_factory.h"  // For EcGroup definition if not in ecc.h
+#include "zkp/bulletproofs/util.h"  // For exponentiation helpers
 
 namespace examples::zkp {
 
-// Use fully qualified names or using declarations for clarity
-using yacl::crypto::EcGroup;
-using yacl::crypto::EcPoint;
-using yacl::math::MPInt;
-
-// Modular Inner Product
-MPInt InnerProduct(const std::vector<MPInt>& a, const std::vector<MPInt>& b,
-                   const MPInt& order) {
-  YACL_ENFORCE_EQ(a.size(), b.size(), "InnerProduct: vector size mismatch");
-
-  if (a.empty()) {
-    return MPInt(0);
+yacl::crypto::EcPoint MultiScalarMul(
+    const std::shared_ptr<yacl::crypto::EcGroup>& curve,
+    const std::vector<yacl::math::MPInt>& scalars,
+    const std::vector<yacl::crypto::EcPoint>& points) {
+  
+  if (scalars.size() != points.size()) {
+    throw yacl::Exception("Mismatched vector lengths in multiscalar mul");
   }
-
-  MPInt result(0);
-  MPInt term;
-
-  for (size_t i = 0; i < a.size(); ++i) {
-    MPInt::MulMod(a[i], b[i], order, &term);
-    MPInt::AddMod(result, term, order, &result);
+  
+  // For now we implement this naively - in production code you would
+  // use a more optimized algorithm like Straus/Pippenger
+  yacl::crypto::EcPoint result = curve->GetGenerator();
+  curve->MulInplace(&result, yacl::math::MPInt(0));  // Set to identity
+  
+  for (size_t i = 0; i < scalars.size(); i++) {
+    yacl::crypto::EcPoint term = curve->Mul(points[i], scalars[i]);
+    result = curve->Add(result, term);
   }
-
+  
   return result;
 }
 
-// Vartime Multiscalar Multiplication
-yacl::crypto::EcPoint VartimeMultiscalarMul(
-    const std::shared_ptr<EcGroup>& curve, const std::vector<MPInt>& scalars,
-    const std::vector<EcPoint>& points) {
-  YACL_ENFORCE_EQ(scalars.size(), points.size(),
-                  "MSM: Scalars and points vectors must have the same length");
-  if (scalars.empty()) {
-    return curve->MulBase(MPInt(0));  // Return identity
-  }
-  EcPoint result = curve->MulBase(MPInt(0));
-  for (size_t i = 0; i < scalars.size(); ++i) {
-    result = curve->Add(result, curve->Mul(points[i], scalars[i]));
-  }
-  return result;
-}
-
-// Helper to absorb EcPoint using SimpleTranscript
-void AbsorbEcPoint(SimpleTranscript& transcript,
-                   const std::shared_ptr<EcGroup>& curve,
-                   const yacl::ByteContainerView label, const EcPoint& point) {
-  yacl::Buffer bytes = curve->SerializePoint(point);
-  transcript.Absorb(label, bytes);
-}
-
-// Helper to get challenge MPInt using SimpleTranscript
-MPInt ChallengeMPInt(SimpleTranscript& transcript,
-                     const yacl::ByteContainerView label, const MPInt& order) {
-  return transcript.ChallengeMPInt(label, order);
-}
-
-// Calculates the s vector explicitly from challenges
-std::vector<MPInt> CalculateSVector(const std::vector<MPInt>& challenges,
-                                    size_t n, const MPInt& order) {
-  size_t lg_n = challenges.size();
-  std::vector<MPInt> s(n);
-
-  for (size_t j = 0; j < n; ++j) {
-    s[j].Set(1);
-    for (size_t i = 0; i < lg_n; ++i) {
-      MPInt u_term;
-      if ((j >> i) & 1) {
-        u_term = challenges[i];
-      } else {
-        u_term = challenges[i].InvertMod(order);
-      }
-      MPInt::MulMod(s[j], u_term, order, &s[j]);
-    }
-  }
-
-  return s;
-}
-
-// --- InnerProductProof::Create --- //
 InnerProductProof InnerProductProof::Create(
-    const std::shared_ptr<EcGroup>& curve,
-    SimpleTranscript& transcript,
-    const EcPoint& Q,
-    const std::vector<MPInt>& G_factors,
-    const std::vector<MPInt>& H_factors,
-    const std::vector<EcPoint>& G_vec,
-    const std::vector<EcPoint>& H_vec,
-    const std::vector<MPInt>& a_vec,
-    const std::vector<MPInt>& b_vec) {
-  InnerProductProof proof;
-  YACL_ENFORCE(curve != nullptr, "Create: Curve cannot be null");
+    SimpleTranscript* transcript,
+    const std::shared_ptr<yacl::crypto::EcGroup>& curve,
+    const yacl::crypto::EcPoint& Q,
+    const std::vector<yacl::math::MPInt>& G_factors,
+    const std::vector<yacl::math::MPInt>& H_factors,
+    std::vector<yacl::crypto::EcPoint> G_vec,
+    std::vector<yacl::crypto::EcPoint> H_vec,
+    std::vector<yacl::math::MPInt> a_vec,
+    std::vector<yacl::math::MPInt> b_vec) {
   
-  // Set the curve first
-  proof.curve_ = curve;
+  // Create mutable copies just like in Rust
+  auto G = G_vec;
+  auto H = H_vec;
+  auto a = a_vec;
+  auto b = b_vec;
   
-  const MPInt& order = curve->GetOrder();
-
-  transcript.Absorb(yacl::ByteContainerView("dom-sep"),
-                   yacl::ByteContainerView("inner-product"));
-
-  std::vector<EcPoint> G_vec_in = G_vec;
-  std::vector<EcPoint> H_vec_in = H_vec;
-  std::vector<MPInt> a_vec_in = a_vec;
-  std::vector<MPInt> b_vec_in = b_vec;
-  std::vector<MPInt> g_factors = G_factors;
-  std::vector<MPInt> h_factors = H_factors;
-
-  size_t n = G_vec_in.size();
-  YACL_ENFORCE_EQ(n, H_vec_in.size(), "Create: H_vec size mismatch");
-  YACL_ENFORCE_EQ(n, a_vec_in.size(), "Create: a_vec size mismatch");
-  YACL_ENFORCE_EQ(n, b_vec_in.size(), "Create: b_vec size mismatch");
-  YACL_ENFORCE_EQ(n, g_factors.size(), "Create: g_factors size mismatch");
-  YACL_ENFORCE_EQ(n, h_factors.size(), "Create: h_factors size mismatch");
-
+  size_t n = G.size();
+  
+  // All of the input vectors must have the same length
+  assert(H.size() == n);
+  assert(a.size() == n);
+  assert(b.size() == n);
+  assert(G_factors.size() == n);
+  assert(H_factors.size() == n);
+  
+  // Must be a power of two
+  assert((n & (n - 1)) == 0);
+  
+  transcript->InnerproductDomainSep(n);
+  
+  // Calculate lg_n just like in Rust
   size_t lg_n = 0;
-  while ((1 << lg_n) < n) {
+  size_t temp_n = n;
+  while (temp_n > 0) {
     lg_n++;
+    temp_n >>= 1;
   }
-  YACL_ENFORCE_EQ((1 << lg_n), n,
-                  "Create: Input vector size must be a power of 2");
-
-  proof.L_.reserve(lg_n);
-  proof.R_.reserve(lg_n);
-
+  lg_n -= 1;  // Adjust for off-by-one
+  
+  std::vector<yacl::crypto::EcPoint> L_vec;
+  std::vector<yacl::crypto::EcPoint> R_vec;
+  L_vec.reserve(lg_n);
+  R_vec.reserve(lg_n);
+  
+  // Main reduction loop
   while (n > 1) {
-    size_t n_half = n / 2;
-
-    // Split the vectors
-    std::vector<MPInt> a_L(a_vec_in.begin(), a_vec_in.begin() + n_half);
-    std::vector<MPInt> a_R(a_vec_in.begin() + n_half, a_vec_in.end());
-    std::vector<MPInt> b_L(b_vec_in.begin(), b_vec_in.begin() + n_half);
-    std::vector<MPInt> b_R(b_vec_in.begin() + n_half, b_vec_in.end());
-    std::vector<EcPoint> G_L(G_vec_in.begin(), G_vec_in.begin() + n_half);
-    std::vector<EcPoint> G_R(G_vec_in.begin() + n_half, G_vec_in.end());
-    std::vector<EcPoint> H_L(H_vec_in.begin(), H_vec_in.begin() + n_half);
-    std::vector<EcPoint> H_R(H_vec_in.begin() + n_half, H_vec_in.end());
-    std::vector<MPInt> g_factors_L(g_factors.begin(),
-                                   g_factors.begin() + n_half);
-    std::vector<MPInt> g_factors_R(g_factors.begin() + n_half, g_factors.end());
-    std::vector<MPInt> h_factors_L(h_factors.begin(),
-                                   h_factors.begin() + n_half);
-    std::vector<MPInt> h_factors_R(h_factors.begin() + n_half, h_factors.end());
-
-    // Calculate cross-products c_L = <a_L, b_R> and c_R = <a_R, b_L>
-    MPInt cL = InnerProduct(a_L, b_R, order);
-    MPInt cR = InnerProduct(a_R, b_L, order);
-
-    // Calculate L = <a_L*g_factors_R, G_R> + <b_R*h_factors_L, H_L> + cL*Q
-    std::vector<MPInt> scalars_L;
-    std::vector<EcPoint> points_L;
-    scalars_L.reserve(n_half * 2);
-    points_L.reserve(n_half * 2);
-
-    // Add G terms: a_L[i] * g_factors_R[i] * G_R[i]
-    for (size_t i = 0; i < n_half; ++i) {
-      MPInt aL_gR;
-      MPInt::MulMod(a_L[i], g_factors_R[i], order, &aL_gR);
-      scalars_L.push_back(aL_gR);
-      points_L.push_back(G_R[i]);
-    }
-
-    // Add H terms: b_R[i] * h_factors_L[i] * H_L[i]
-    for (size_t i = 0; i < n_half; ++i) {
-      MPInt bR_hL;
-      MPInt::MulMod(b_R[i], h_factors_L[i], order, &bR_hL);
-      scalars_L.push_back(bR_hL);
-      points_L.push_back(H_L[i]);
-    }
-
-    // Calculate L using multiscalar multiplication
-    EcPoint L = VartimeMultiscalarMul(curve, scalars_L, points_L);
-    L = curve->Add(L, curve->Mul(Q, cL));
-    proof.L_.push_back(L);
-
-    // Calculate R = <a_R*g_factors_L, G_L> + <b_L*h_factors_R, H_R> + cR*Q
-    std::vector<MPInt> scalars_R;
-    std::vector<EcPoint> points_R;
-    scalars_R.reserve(n_half * 2);
-    points_R.reserve(n_half * 2);
-
-    // Add G terms: a_R[i] * g_factors_L[i] * G_L[i]
-    for (size_t i = 0; i < n_half; ++i) {
-      MPInt aR_gL;
-      MPInt::MulMod(a_R[i], g_factors_L[i], order, &aR_gL);
-      scalars_R.push_back(aR_gL);
-      points_R.push_back(G_L[i]);
-    }
-
-    // Add H terms: b_L[i] * h_factors_R[i] * H_R[i]
-    for (size_t i = 0; i < n_half; ++i) {
-      MPInt bL_hR;
-      MPInt::MulMod(b_L[i], h_factors_R[i], order, &bL_hR);
-      scalars_R.push_back(bL_hR);
-      points_R.push_back(H_R[i]);
-    }
-
-    // Calculate R using multiscalar multiplication
-    EcPoint R = VartimeMultiscalarMul(curve, scalars_R, points_R);
-    R = curve->Add(R, curve->Mul(Q, cR));
-    proof.R_.push_back(R);
-
-    // Add L and R to the transcript with proper domain labels
-    AbsorbEcPoint(transcript, curve, yacl::ByteContainerView("L"), L);
-    AbsorbEcPoint(transcript, curve, yacl::ByteContainerView("R"), R);
-
-    // Get the challenge with a consistent label
-    MPInt u = ChallengeMPInt(transcript, yacl::ByteContainerView("u"), order);
-    MPInt u_inv = u.InvertMod(order);
-
-    // Resize vectors for next round
-    a_vec_in.resize(n_half);
-    b_vec_in.resize(n_half);
-    G_vec_in.resize(n_half);
-    H_vec_in.resize(n_half);
-    g_factors.resize(n_half);
-    h_factors.resize(n_half);
-
-    // Calculate a' = u·a_L + u^{-1}·a_R and b' = u^{-1}·b_L + u·b_R
-    for (size_t i = 0; i < n_half; ++i) {
-      // a' = u·a_L + u^{-1}·a_R
-      MPInt aL_u, aR_u_inv;
-      MPInt::MulMod(a_L[i], u, order, &aL_u);
-      MPInt::MulMod(a_R[i], u_inv, order, &aR_u_inv);
-      MPInt::AddMod(aL_u, aR_u_inv, order, &a_vec_in[i]);
-
-      // b' = u^{-1}·b_L + u·b_R
-      MPInt bL_u_inv, bR_u;
-      MPInt::MulMod(b_L[i], u_inv, order, &bL_u_inv);
-      MPInt::MulMod(b_R[i], u, order, &bR_u);
-      MPInt::AddMod(bL_u_inv, bR_u, order, &b_vec_in[i]);
-
-      // Calculate G' = u^{-1}·G_L + u·G_R
-      G_vec_in[i] = curve->Add(curve->Mul(G_L[i], u_inv), curve->Mul(G_R[i], u));
-
-      // Calculate H' = u·H_L + u^{-1}·H_R
-      H_vec_in[i] = curve->Add(curve->Mul(H_L[i], u), curve->Mul(H_R[i], u_inv));
-
-      // Update the factors
-      MPInt gL_u_inv, gR_u;
-      MPInt::MulMod(g_factors_L[i], u_inv, order, &gL_u_inv);
-      MPInt::MulMod(g_factors_R[i], u, order, &gR_u);
-      MPInt::AddMod(gL_u_inv, gR_u, order, &g_factors[i]);
-
-      MPInt hL_u, hR_u_inv;
-      MPInt::MulMod(h_factors_L[i], u, order, &hL_u);
-      MPInt::MulMod(h_factors_R[i], u_inv, order, &hR_u_inv);
-      MPInt::AddMod(hL_u, hR_u_inv, order, &h_factors[i]);
-    }
-
-    n = n_half;
-  }
-
-  YACL_ENFORCE_EQ(a_vec_in.size(), 1, "Create: final a_vec size != 1");
-  YACL_ENFORCE_EQ(b_vec_in.size(), 1, "Create: final b_vec size != 1");
-  proof.a_ = a_vec_in[0];
-  proof.b_ = b_vec_in[0];
-
-  return proof;
-}
-
-// --- InnerProductProof::Verify --- //
-InnerProductProof::Error InnerProductProof::Verify(
-    const std::shared_ptr<EcGroup>& curve,
-    size_t n_in,
-    SimpleTranscript& transcript,
-    const std::vector<MPInt>& G_factors,
-    const std::vector<MPInt>& H_factors,
-    const EcPoint& P,
-    const EcPoint& Q,
-    const std::vector<EcPoint>& G_vec,
-    const std::vector<EcPoint>& H_vec) const {
-  YACL_ENFORCE(curve != nullptr, "Verify: Curve cannot be null");
-  const MPInt& order = curve->GetOrder();
-
-  transcript.Absorb(yacl::ByteContainerView("dom-sep"),
-                     yacl::ByteContainerView("inner-product"));
-
-  size_t lg_n = L_.size();
-  if (lg_n == 0) {
-    YACL_THROW("Verify: Proof contains no L/R rounds (lg_n=0)");
-  }
-  size_t n = 1 << lg_n;
-  if (n > n_in) {
-    YACL_THROW("Verify: Proof size n exceeds input size n_in");
-  }
-  if (G_vec.size() < n || H_vec.size() < n || G_factors.size() < n ||
-      H_factors.size() < n) {
-    YACL_THROW("Verify: Input vector sizes too small for proof size n");
-  }
-
-  std::vector<MPInt> u_sq(lg_n);
-  std::vector<MPInt> u_inv_sq(lg_n);
-  std::vector<MPInt> challenges(lg_n);
-
-  for (size_t i = 0; i < lg_n; ++i) {
-    AbsorbEcPoint(transcript, curve, yacl::ByteContainerView("L"), L_[i]);
-    AbsorbEcPoint(transcript, curve, yacl::ByteContainerView("R"), R_[i]);
-
-    MPInt u = ChallengeMPInt(transcript, yacl::ByteContainerView("u"), order);
-    challenges[i] = u;
-    MPInt u_inv = u.InvertMod(order);
-
-    MPInt::MulMod(u, u, order, &u_sq[i]);
-    MPInt::MulMod(u_inv, u_inv, order, &u_inv_sq[i]);
-  }
-
-  EcPoint P_prime = P;
-  for (size_t i = 0; i < lg_n; ++i) {
-    P_prime = curve->Add(P_prime, curve->Mul(L_[i], u_sq[i]));
-    P_prime = curve->Add(P_prime, curve->Mul(R_[i], u_inv_sq[i]));
-  }
-
-  MPInt ab;
-  MPInt::MulMod(a_, b_, order, &ab);
-
-  std::vector<MPInt> s = CalculateSVector(challenges, n, order);
-  std::vector<MPInt> s_inv(n);
-  for (size_t i = 0; i < n; ++i) {
-    s_inv[i] = s[i].InvertMod(order);
-  }
-
-  std::vector<EcPoint> G_vec_n(G_vec.begin(), G_vec.begin() + n);
-  std::vector<EcPoint> H_vec_n(H_vec.begin(), H_vec.begin() + n);
-
-  std::vector<MPInt> final_scalars_1;
-  std::vector<EcPoint> final_points_1;
-
-  for (size_t i = 0; i < n; ++i) {
-    MPInt as;
-    MPInt::MulMod(a_, s[i], order, &as);
-    final_scalars_1.push_back(as);
-    final_points_1.push_back(G_vec_n[i]);
-  }
-
-  for (size_t i = 0; i < n; ++i) {
-    MPInt bs_inv;
-    MPInt::MulMod(b_, s_inv[i], order, &bs_inv);
-    final_scalars_1.push_back(bs_inv);
-    final_points_1.push_back(H_vec_n[i]);
-  }
-
-  final_scalars_1.push_back(ab);
-  final_points_1.push_back(Q);
-
-  EcPoint calculated_p =
-      VartimeMultiscalarMul(curve, final_scalars_1, final_points_1);
-
-  MPInt a_b_prod;
-  MPInt::MulMod(a_, b_, order, &a_b_prod);
-
-  MPInt zero;
-  zero.Set(0);
-  EcPoint P_from_scratch = curve->MulBase(zero);
-
-  for (size_t i = 0; i < n; ++i) {
-    MPInt term;
-    MPInt::MulMod(a_, s[i], order, &term);
-    P_from_scratch = curve->Add(P_from_scratch, curve->Mul(G_vec_n[i], term));
-  }
-
-  for (size_t i = 0; i < n; ++i) {
-    MPInt term;
-    MPInt::MulMod(b_, s_inv[i], order, &term);
-    P_from_scratch = curve->Add(P_from_scratch, curve->Mul(H_vec_n[i], term));
-  }
-
-  P_from_scratch = curve->Add(P_from_scratch, curve->Mul(Q, a_b_prod));
-
-  EcPoint P_plus_abQ = curve->Add(P, curve->Mul(Q, ab));
-
-  EcPoint P_net = P_prime;
-  for (size_t i = 0; i < lg_n; ++i) {
-    MPInt neg_u_sq, neg_u_inv_sq;
-    MPInt zero;
-    zero.Set(0);
-    MPInt::SubMod(zero, u_sq[i], order, &neg_u_sq);
-    MPInt::SubMod(zero, u_inv_sq[i], order, &neg_u_inv_sq);
-
-    P_net = curve->Add(P_net, curve->Mul(L_[i], neg_u_sq));
-    P_net = curve->Add(P_net, curve->Mul(R_[i], neg_u_inv_sq));
-  }
-  EcPoint ab_Q = curve->Mul(Q, ab);
-
-  bool success = curve->PointEqual(P_prime, calculated_p) ||
-                 curve->PointEqual(P_prime, P_from_scratch) ||
-                 curve->PointEqual(P_plus_abQ, P_prime) ||
-                 curve->PointEqual(P_net, ab_Q);
-
-  if (curve->PointEqual(P_net, ab_Q)) {
-    return Error::kOk;
-  }
-
-  return success ? Error::kOk : Error::kInvalidProof;
-}
-
-// Add ComputeVerificationScalars implementation
-std::optional<IPPVerificationScalars> InnerProductProof::ComputeVerificationScalars(
-    const std::shared_ptr<EcGroup>& curve,
-    size_t n,
-    SimpleTranscript& transcript) const {
-  
-  YACL_ENFORCE(curve != nullptr, "ComputeVerificationScalars: Curve cannot be null");
-  const MPInt& order = curve->GetOrder();
-
-  // Calculate log2(n)
-  size_t lg_n = 0;
-  while ((1 << lg_n) < n) {
-    lg_n++;
-  }
-  YACL_ENFORCE_EQ((1 << lg_n), n,
-                  "ComputeVerificationScalars: Input size must be a power of 2");
-
-  // Initialize result structure
-  IPPVerificationScalars result;
-  result.challenges.reserve(lg_n);
-  result.challenges_inv.reserve(lg_n);
-
-  // Generate challenges
-  for (size_t i = 0; i < lg_n; ++i) {
-    // Generate challenge u_i
-    MPInt u_i = ChallengeMPInt(transcript, yacl::ByteContainerView("u"), order);
-    result.challenges.push_back(u_i);
+    size_t n_prime = n / 2;
     
-    // Calculate inverse
-    MPInt u_i_inv = u_i.InvertMod(order);
-    result.challenges_inv.push_back(u_i_inv);
+    // Split vectors in half - use clean indexing to avoid bugs
+    std::vector<yacl::math::MPInt> a_L(a.begin(), a.begin() + n_prime);
+    std::vector<yacl::math::MPInt> a_R(a.begin() + n_prime, a.end());
+    std::vector<yacl::math::MPInt> b_L(b.begin(), b.begin() + n_prime);
+    std::vector<yacl::math::MPInt> b_R(b.begin() + n_prime, b.end());
+    std::vector<yacl::crypto::EcPoint> G_L(G.begin(), G.begin() + n_prime);
+    std::vector<yacl::crypto::EcPoint> G_R(G.begin() + n_prime, G.end());
+    std::vector<yacl::crypto::EcPoint> H_L(H.begin(), H.begin() + n_prime);
+    std::vector<yacl::crypto::EcPoint> H_R(H.begin() + n_prime, H.end());
+    
+    // Compute c_L and c_R (inner products)
+    yacl::math::MPInt c_L = InnerProduct(a_L, b_R);
+    yacl::math::MPInt c_R = InnerProduct(a_R, b_L);
+    
+    // Compute L point with the exact same logic as Rust
+    std::vector<yacl::math::MPInt> L_scalars;
+    std::vector<yacl::crypto::EcPoint> L_points;
+    
+    // a_L * G_factors[n_prime..n]
+    for (size_t i = 0; i < n_prime; i++) {
+      L_scalars.push_back(a_L[i].MulMod(G_factors[n_prime + i], curve->GetOrder()));
+      L_points.push_back(G_R[i]);
+    }
+    
+    // b_R * H_factors[0..n_prime]
+    for (size_t i = 0; i < n_prime; i++) {
+      L_scalars.push_back(b_R[i].MulMod(H_factors[i], curve->GetOrder()));
+      L_points.push_back(H_L[i]);
+    }
+    
+    // c_L * Q
+    L_scalars.push_back(c_L);
+    L_points.push_back(Q);
+    
+    yacl::crypto::EcPoint L = MultiScalarMul(curve, L_scalars, L_points);
+    L_vec.push_back(L);
+    
+    // Compute R point with the exact same logic as Rust
+    std::vector<yacl::math::MPInt> R_scalars;
+    std::vector<yacl::crypto::EcPoint> R_points;
+    
+    // a_R * G_factors[0..n_prime]
+    for (size_t i = 0; i < n_prime; i++) {
+      R_scalars.push_back(a_R[i].MulMod(G_factors[i], curve->GetOrder()));
+      R_points.push_back(G_L[i]);
+    }
+    
+    // b_L * H_factors[n_prime..n]
+    for (size_t i = 0; i < n_prime; i++) {
+      R_scalars.push_back(b_L[i].MulMod(H_factors[n_prime + i], curve->GetOrder()));
+      R_points.push_back(H_R[i]);
+    }
+    
+    // c_R * Q
+    R_scalars.push_back(c_R);
+    R_points.push_back(Q);
+    
+    yacl::crypto::EcPoint R = MultiScalarMul(curve, R_scalars, R_points);
+    R_vec.push_back(R);
+    
+    // Add points to transcript and generate challenge
+    transcript->AppendPoint("L", L, curve);
+    transcript->AppendPoint("R", R, curve);
+    
+    yacl::math::MPInt u = transcript->ChallengeScalar("u", curve);
+    yacl::math::MPInt u_inv = u.InvertMod(curve->GetOrder());
+    
+    // Update vectors for next round - exactly like the Rust implementation
+    std::vector<yacl::math::MPInt> new_a;
+    std::vector<yacl::math::MPInt> new_b;
+    std::vector<yacl::crypto::EcPoint> new_G;
+    std::vector<yacl::crypto::EcPoint> new_H;
+    
+    for (size_t i = 0; i < n_prime; i++) {
+      // a_L[i] * u + u_inv * a_R[i]
+      new_a.push_back((a_L[i].MulMod(u, curve->GetOrder())).AddMod(u_inv.MulMod(a_R[i], curve->GetOrder()), curve->GetOrder()));
+      
+      // b_L[i] * u_inv + u * b_R[i]
+      new_b.push_back((b_L[i].MulMod(u_inv, curve->GetOrder())).AddMod(u.MulMod(b_R[i], curve->GetOrder()), curve->GetOrder()));
+      
+      // Compute new G[i] = G_L[i] * u_inv + G_R[i] * u with their respective factors
+      std::vector<yacl::math::MPInt> g_scalars = {
+        (u_inv.MulMod(G_factors[i], curve->GetOrder())), 
+        (u.MulMod(G_factors[n_prime + i], curve->GetOrder()))
+      };
+      std::vector<yacl::crypto::EcPoint> g_points = {G_L[i], G_R[i]};
+      new_G.push_back(MultiScalarMul(curve, g_scalars, g_points));
+      
+      // Compute new H[i] = H_L[i] * u + H_R[i] * u_inv with their respective factors
+      std::vector<yacl::math::MPInt> h_scalars = {
+        (u.MulMod(H_factors[i], curve->GetOrder())), 
+        (u_inv.MulMod(H_factors[n_prime + i], curve->GetOrder()))
+      };
+      std::vector<yacl::crypto::EcPoint> h_points = {H_L[i], H_R[i]};
+      new_H.push_back(MultiScalarMul(curve, h_scalars, h_points));
+    }
+    
+    // Replace old vectors with new ones
+    a = new_a;
+    b = new_b;
+    G = new_G;
+    H = new_H;
+    
+    // Halve n for next iteration
+    n = n_prime;
   }
-
-  // Calculate s vector and its inverse
-  result.s = CalculateSVector(result.challenges, n, order);
-  result.s_inv.resize(n);
   
-  // Calculate s_inv vector
-  for (size_t i = 0; i < n; ++i) {
-    result.s_inv[i] = result.s[i].InvertMod(order);
-  }
+  // When n=1, we have our final a and b values
+  return InnerProductProof(L_vec, R_vec, a[0], b[0]);
+}
 
+// Utility function to compute floor(log2(x))
+size_t FloorLog2(size_t x) {
+  if (x == 0) return 0;  // Handle special case
+  size_t result = 0;
+  while (x > 1) {
+    x >>= 1;
+    result++;
+  }
   return result;
 }
 
-// Add ToBytes and FromBytes implementations
-yacl::Buffer InnerProductProof::ToBytes() const {
-  // Serialize all components of the proof
-  yacl::Buffer buffer;
+std::tuple<std::vector<yacl::math::MPInt>, 
+           std::vector<yacl::math::MPInt>, 
+           std::vector<yacl::math::MPInt>> 
+InnerProductProof::VerificationScalars(
+    size_t n,
+    SimpleTranscript* transcript,
+    const std::shared_ptr<yacl::crypto::EcGroup>& curve) const {
   
-  // Calculate total size - first we need sizes for all EcPoints in L_ and R_
-  size_t point_count = L_.size() + R_.size();
-  size_t point_size = 0;
+  size_t lg_n = L_vec_.size();
   
-  if (!L_.empty()) {
-    // Get serialized size of a point (assuming all points have same size when serialized)
-    auto sample_point_bytes = curve_->SerializePoint(L_[0]);
-    point_size = sample_point_bytes.size();
+  // Basic checks
+  if (lg_n >= 32) {
+    throw yacl::Exception("Inner product proof too large");
   }
   
-  // Size for a_ and b_ MPInt values
-  auto a_bytes = a_.ToMagBytes();
-  auto b_bytes = b_.ToMagBytes();
-  
-  // Calculate total size
-  size_t total_size = (point_count * point_size) + // L_ and R_ points
-                      a_bytes.size() + b_bytes.size() + // a_, b_ values
-                      (2 * sizeof(uint32_t)) + // number of L_ and R_ points
-                      (2 * sizeof(uint32_t)); // size of a_ and b_ bytes
-  
-  // Allocate buffer
-  buffer.resize(total_size);
-  uint8_t* buf_ptr = buffer.data<uint8_t>();
-  
-  // Write L_ and R_ sizes
-  size_t offset = 0;
-  uint32_t l_size = static_cast<uint32_t>(L_.size());
-  uint32_t r_size = static_cast<uint32_t>(R_.size());
-  
-  memcpy(buf_ptr + offset, &l_size, sizeof(uint32_t));
-  offset += sizeof(uint32_t);
-  memcpy(buf_ptr + offset, &r_size, sizeof(uint32_t));
-  offset += sizeof(uint32_t);
-  
-  // Write L_ points
-  for (const auto& point : L_) {
-    auto point_bytes = curve_->SerializePoint(point);
-    memcpy(buf_ptr + offset, point_bytes.data(), point_bytes.size());
-    offset += point_bytes.size();
+  if (n != (1ULL << lg_n)) {
+    throw yacl::Exception("Length n doesn't match proof size");
   }
   
-  // Write R_ points
-  for (const auto& point : R_) {
-    auto point_bytes = curve_->SerializePoint(point);
-    memcpy(buf_ptr + offset, point_bytes.data(), point_bytes.size());
-    offset += point_bytes.size();
+  transcript->InnerproductDomainSep(n);
+  
+  // 1. Recompute challenges
+  std::vector<yacl::math::MPInt> challenges;
+  challenges.reserve(lg_n);
+  
+  for (size_t i = 0; i < lg_n; i++) {
+    transcript->AppendPoint("L", L_vec_[i], curve);
+    transcript->AppendPoint("R", R_vec_[i], curve);
+    challenges.push_back(transcript->ChallengeScalar("u", curve));
   }
   
-  // Write a_ and b_ values
+  // 2. Compute inverses
+  std::vector<yacl::math::MPInt> challenges_inv;
+  challenges_inv.reserve(lg_n);
+  
+  // Compute individual inverses and their product (we don't have batch inversion)
+  yacl::math::MPInt all_inv_product(1);
+  for (const auto& challenge : challenges) {
+    yacl::math::MPInt inv = challenge.InvertMod(curve->GetOrder());
+    challenges_inv.push_back(inv);
+    all_inv_product = all_inv_product.MulMod(inv, curve->GetOrder());
+  }
+  
+  // 3. Compute squares of challenges and their inverses
+  std::vector<yacl::math::MPInt> challenges_sq;
+  std::vector<yacl::math::MPInt> challenges_inv_sq;
+  
+  for (size_t i = 0; i < lg_n; i++) {
+    challenges_sq.push_back(challenges[i].MulMod(challenges[i], curve->GetOrder()));
+    challenges_inv_sq.push_back(challenges_inv[i].MulMod(challenges_inv[i], curve->GetOrder()));
+  }
+  
+  // 4. Compute s values exactly as in Rust
+  std::vector<yacl::math::MPInt> s;
+  s.reserve(n);
+  s.push_back(all_inv_product);
+  
+  for (size_t i = 1; i < n; i++) {
+    // Count leading zeros of i to compute lg_i
+    uint32_t i_u32 = static_cast<uint32_t>(i);
+    uint32_t leading_zeros = 0;
+    for (int bit = 31; bit >= 0; bit--) {
+      if ((i_u32 & (1 << bit)) == 0) {
+        leading_zeros++;
+      } else {
+        break;
+      }
+    }
+    
+    size_t lg_i = 32 - 1 - leading_zeros;
+    size_t k = 1ULL << lg_i;
+    
+    // Get the corresponding squared challenge
+    // The challenges are stored in "creation order" [u_k,...,u_1]
+    yacl::math::MPInt u_lg_i_sq = challenges_sq[(lg_n - 1) - lg_i];
+    
+    // s[i] = s[i-k] * u_lg_i_sq
+    s.push_back(s[i - k].MulMod(u_lg_i_sq, curve->GetOrder()));
+  }
+  
+  return {challenges_sq, challenges_inv_sq, s};
+}
+
+bool InnerProductProof::Verify(
+    size_t n,
+    SimpleTranscript* transcript,
+    const std::shared_ptr<yacl::crypto::EcGroup>& curve,
+    const std::vector<yacl::math::MPInt>& G_factors,
+    const std::vector<yacl::math::MPInt>& H_factors,
+    const yacl::crypto::EcPoint& P,
+    const yacl::crypto::EcPoint& Q,
+    const std::vector<yacl::crypto::EcPoint>& G,
+    const std::vector<yacl::crypto::EcPoint>& H) const {
+  
+  try {
+    std::cout << "Verifying proof with n=" << n << ", lg_n=" << L_vec_.size() << std::endl;
+    
+    // Get verification scalars
+    auto [u_sq, u_inv_sq, s] = VerificationScalars(n, transcript, curve);
+    
+    std::cout << "Final a*b: " << a_.MulMod(b_, curve->GetOrder()) << std::endl;
+    
+    // The verification equation must be constructed exactly like in Rust
+    std::vector<yacl::math::MPInt> scalars;
+    std::vector<yacl::crypto::EcPoint> points;
+    
+    // 1. a*b*Q
+    scalars.push_back(a_.MulMod(b_, curve->GetOrder()));
+    points.push_back(Q);
+    
+    // 2. g_times_a_times_s
+    for (size_t i = 0; i < G.size(); i++) {
+      yacl::math::MPInt scalar = a_.MulMod(s[i], curve->GetOrder()).MulMod(G_factors[i], curve->GetOrder());
+      scalars.push_back(scalar);
+      points.push_back(G[i]);
+    }
+    
+    // 3. h_times_b_div_s
+    // 1/s[i] is s[!i], and !i runs from n-1 to 0 as i runs from 0 to n-1
+    for (size_t i = 0; i < H.size(); i++) {
+      yacl::math::MPInt scalar = b_.MulMod(s[n - 1 - i], curve->GetOrder()).MulMod(H_factors[i], curve->GetOrder());
+      scalars.push_back(scalar);
+      points.push_back(H[i]);
+    }
+    
+    // 4. neg_u_sq
+    for (const auto& ui_sq : u_sq) {
+      // -u_sq mod order = order - u_sq
+      yacl::math::MPInt neg_ui_sq = yacl::math::MPInt(0).SubMod(ui_sq, curve->GetOrder());
+      scalars.push_back(neg_ui_sq);
+    }
+    for (const auto& L_i : L_vec_) {
+      points.push_back(L_i);
+    }
+    
+    // 5. neg_u_inv_sq
+    for (const auto& ui_inv_sq : u_inv_sq) {
+      // -u_inv_sq mod order = order - u_inv_sq
+      yacl::math::MPInt neg_ui_inv_sq = yacl::math::MPInt(0).SubMod(ui_inv_sq, curve->GetOrder());
+      scalars.push_back(neg_ui_inv_sq);
+    }
+    for (const auto& R_i : R_vec_) {
+      points.push_back(R_i);
+    }
+    
+    // Final multiscalar multiplication
+    yacl::crypto::EcPoint expect_P = MultiScalarMul(curve, scalars, points);
+    
+    std::cout << "Expected vs Actual result: " 
+              << (curve->PointEqual(expect_P, P) ? "MATCH" : "DIFFERENT") << std::endl;
+    
+    return curve->PointEqual(expect_P, P);
+  } catch (const std::exception& e) {
+    std::cerr << "Verification error: " << e.what() << std::endl;
+    return false;
+  }
+}
+
+size_t InnerProductProof::SerializedSize() const {
+  size_t point_size = 32; // Typical compressed EC point size
+  size_t scalar_size = 32; // Typical EC scalar size
+  return (L_vec_.size() * 2 + 2) * point_size;
+}
+
+std::vector<uint8_t> InnerProductProof::ToBytes(
+    const std::shared_ptr<yacl::crypto::EcGroup>& curve) const {
+  std::vector<uint8_t> bytes;
+  
+  // First, write the number of L/R pairs (needed for deserialization)
+  uint32_t lg_n = static_cast<uint32_t>(L_vec_.size());
+  bytes.resize(sizeof(lg_n));
+  std::memcpy(bytes.data(), &lg_n, sizeof(lg_n));
+  
+  // Serialize L and R vectors with size prefixes for each point
+  for (size_t i = 0; i < L_vec_.size(); i++) {
+    // L point
+    yacl::Buffer L_bytes = curve->SerializePoint(L_vec_[i]);
+    uint32_t L_size = static_cast<uint32_t>(L_bytes.size());
+    
+    size_t prev_size = bytes.size();
+    bytes.resize(prev_size + sizeof(L_size) + L_size);
+    std::memcpy(bytes.data() + prev_size, &L_size, sizeof(L_size));
+    std::memcpy(bytes.data() + prev_size + sizeof(L_size), 
+               L_bytes.data<uint8_t>(), L_size);
+    
+    // R point
+    yacl::Buffer R_bytes = curve->SerializePoint(R_vec_[i]);
+    uint32_t R_size = static_cast<uint32_t>(R_bytes.size());
+    
+    prev_size = bytes.size();
+    bytes.resize(prev_size + sizeof(R_size) + R_size);
+    std::memcpy(bytes.data() + prev_size, &R_size, sizeof(R_size));
+    std::memcpy(bytes.data() + prev_size + sizeof(R_size), 
+               R_bytes.data<uint8_t>(), R_size);
+  }
+  
+  // Serialize a and b with size prefixes
+  yacl::Buffer a_bytes = a_.Serialize();
   uint32_t a_size = static_cast<uint32_t>(a_bytes.size());
-  memcpy(buf_ptr + offset, &a_size, sizeof(uint32_t));
-  offset += sizeof(uint32_t);
-  memcpy(buf_ptr + offset, a_bytes.data(), a_bytes.size());
-  offset += a_bytes.size();
   
+  size_t prev_size = bytes.size();
+  bytes.resize(prev_size + sizeof(a_size) + a_size);
+  std::memcpy(bytes.data() + prev_size, &a_size, sizeof(a_size));
+  std::memcpy(bytes.data() + prev_size + sizeof(a_size), 
+             a_bytes.data<uint8_t>(), a_size);
+  
+  yacl::Buffer b_bytes = b_.Serialize();
   uint32_t b_size = static_cast<uint32_t>(b_bytes.size());
-  memcpy(buf_ptr + offset, &b_size, sizeof(uint32_t));
-  offset += sizeof(uint32_t);
-  memcpy(buf_ptr + offset, b_bytes.data(), b_bytes.size());
   
-  return buffer;
+  prev_size = bytes.size();
+  bytes.resize(prev_size + sizeof(b_size) + b_size);
+  std::memcpy(bytes.data() + prev_size, &b_size, sizeof(b_size));
+  std::memcpy(bytes.data() + prev_size + sizeof(b_size), 
+             b_bytes.data<uint8_t>(), b_size);
+  
+  return bytes;
 }
 
 InnerProductProof InnerProductProof::FromBytes(
-    const std::shared_ptr<yacl::crypto::EcGroup>& curve,
-    const yacl::ByteContainerView& bytes) {
-  YACL_ENFORCE(curve != nullptr, "FromBytes: Curve cannot be null");
-  
-  InnerProductProof proof;
-  proof.curve_ = curve;
-  
-  size_t offset = 0;
-  
-  // Read L_ and R_ sizes
-  YACL_ENFORCE(offset + 2 * sizeof(uint32_t) <= bytes.size(), 
-               "Invalid serialized format: buffer too small for L_/R_ sizes");
-  
-  uint32_t l_size, r_size;
-  memcpy(&l_size, bytes.data() + offset, sizeof(uint32_t));
-  offset += sizeof(uint32_t);
-  memcpy(&r_size, bytes.data() + offset, sizeof(uint32_t));
-  offset += sizeof(uint32_t);
-  
-  // Get the point size based on the curve
-  size_t point_size = 33;  // Default to 33 bytes for compressed points
-  
-  // Read L_ points
-  proof.L_.resize(l_size);
-  for (uint32_t i = 0; i < l_size; i++) {
-    YACL_ENFORCE(offset + point_size <= bytes.size(), 
-                 "Invalid serialized format: buffer too small for L_ points");
-    
-    yacl::ByteContainerView point_bytes(
-        bytes.data() + offset, 
-        point_size);
-    
-    proof.L_[i] = curve->DeserializePoint(point_bytes);
-    offset += point_size;
+    const std::vector<uint8_t>& bytes,
+    const std::shared_ptr<yacl::crypto::EcGroup>& curve) {
+  if (bytes.size() < sizeof(uint32_t)) {
+    throw yacl::Exception("Invalid proof format: too short");
   }
   
-  // Read R_ points
-  proof.R_.resize(r_size);
-  for (uint32_t i = 0; i < r_size; i++) {
-    YACL_ENFORCE(offset + point_size <= bytes.size(), 
-                 "Invalid serialized format: buffer too small for R_ points");
-    
-    yacl::ByteContainerView point_bytes(
-        bytes.data() + offset, 
-        point_size);
-    
-    proof.R_[i] = curve->DeserializePoint(point_bytes);
-    offset += point_size;
+  // Read the number of L/R pairs
+  uint32_t lg_n;
+  std::memcpy(&lg_n, bytes.data(), sizeof(lg_n));
+  
+  if (lg_n >= 32) {
+    throw yacl::Exception("Proof too large");
   }
   
-  // Read a_ value
-  YACL_ENFORCE(offset + sizeof(uint32_t) <= bytes.size(), 
-               "Invalid serialized format: buffer too small for a_ size");
+  std::vector<yacl::crypto::EcPoint> L_vec;
+  std::vector<yacl::crypto::EcPoint> R_vec;
+  L_vec.reserve(lg_n);
+  R_vec.reserve(lg_n);
+  
+  size_t pos = sizeof(lg_n);
+  
+  // Read L and R points
+  for (uint32_t i = 0; i < lg_n; i++) {
+    // Check if there's enough data for size prefixes
+    if (pos + sizeof(uint32_t) > bytes.size()) {
+      throw yacl::Exception("Invalid proof format: truncated data");
+    }
+    
+    // Read L point
+    uint32_t L_size;
+    std::memcpy(&L_size, bytes.data() + pos, sizeof(L_size));
+    pos += sizeof(L_size);
+    
+    if (pos + L_size > bytes.size()) {
+      throw yacl::Exception("Invalid proof format: truncated point data");
+    }
+    
+    L_vec.push_back(curve->DeserializePoint(
+        yacl::ByteContainerView(bytes.data() + pos, L_size)));
+    pos += L_size;
+    
+    // Read R point
+    if (pos + sizeof(uint32_t) > bytes.size()) {
+      throw yacl::Exception("Invalid proof format: truncated data");
+    }
+    
+    uint32_t R_size;
+    std::memcpy(&R_size, bytes.data() + pos, sizeof(R_size));
+    pos += sizeof(R_size);
+    
+    if (pos + R_size > bytes.size()) {
+      throw yacl::Exception("Invalid proof format: truncated point data");
+    }
+    
+    R_vec.push_back(curve->DeserializePoint(
+        yacl::ByteContainerView(bytes.data() + pos, R_size)));
+    pos += R_size;
+  }
+  
+  // Read a and b scalars
+  if (pos + sizeof(uint32_t) > bytes.size()) {
+    throw yacl::Exception("Invalid proof format: truncated data");
+  }
   
   uint32_t a_size;
-  memcpy(&a_size, bytes.data() + offset, sizeof(uint32_t));
-  offset += sizeof(uint32_t);
+  std::memcpy(&a_size, bytes.data() + pos, sizeof(a_size));
+  pos += sizeof(a_size);
   
-  YACL_ENFORCE(offset + a_size <= bytes.size(), 
-               "Invalid serialized format: buffer too small for a_ value");
+  if (pos + a_size > bytes.size()) {
+    throw yacl::Exception("Invalid proof format: truncated scalar data");
+  }
   
-  yacl::ByteContainerView a_bytes(
-      bytes.data() + offset, 
-      a_size);
+  yacl::math::MPInt a;
+  a.FromMagBytes(yacl::ByteContainerView(bytes.data() + pos, a_size));
+  pos += a_size;
   
-  proof.a_.FromMagBytes(a_bytes);
-  offset += a_size;
-  
-  // Read b_ value
-  YACL_ENFORCE(offset + sizeof(uint32_t) <= bytes.size(), 
-               "Invalid serialized format: buffer too small for b_ size");
+  if (pos + sizeof(uint32_t) > bytes.size()) {
+    throw yacl::Exception("Invalid proof format: truncated data");
+  }
   
   uint32_t b_size;
-  memcpy(&b_size, bytes.data() + offset, sizeof(uint32_t));
-  offset += sizeof(uint32_t);
+  std::memcpy(&b_size, bytes.data() + pos, sizeof(b_size));
+  pos += sizeof(b_size);
   
-  YACL_ENFORCE(offset + b_size <= bytes.size(), 
-               "Invalid serialized format: buffer too small for b_ value");
+  if (pos + b_size > bytes.size()) {
+    throw yacl::Exception("Invalid proof format: truncated scalar data");
+  }
   
-  yacl::ByteContainerView b_bytes(
-      bytes.data() + offset, 
-      b_size);
+  yacl::math::MPInt b;
+  b.FromMagBytes(yacl::ByteContainerView(bytes.data() + pos, b_size));
   
-  proof.b_.FromMagBytes(b_bytes);
+  // Make sure a and b are in the correct range
+  a = a.Mod(curve->GetOrder());
+  b = b.Mod(curve->GetOrder());
   
-  return proof;
+  return InnerProductProof(L_vec, R_vec, a, b);
 }
 
-}  // namespace examples::zkp
+yacl::math::MPInt InnerProduct(
+    const std::vector<yacl::math::MPInt>& a,
+    const std::vector<yacl::math::MPInt>& b) {
+  if (a.size() != b.size()) {
+    throw yacl::Exception("Vectors must have the same length for inner product");
+  }
+  
+  yacl::math::MPInt result(0);
+  for (size_t i = 0; i < a.size(); i++) {
+    result = result + a[i] * b[i];
+  }
+  
+  return result;
+}
+
+} // namespace examples::zkp
