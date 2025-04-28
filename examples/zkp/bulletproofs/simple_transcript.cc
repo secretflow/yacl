@@ -84,7 +84,7 @@ yacl::math::MPInt SimpleTranscript::ChallengeScalar(
   scalar.FromMagBytes(yacl::ByteContainerView(buf.data(), buf.size()));
   
   // Ensure the scalar is in the proper range (0, curve_order)
-  scalar = scalar % curve->GetOrder();
+  scalar = scalar.Mod(curve->GetOrder());
   
   return scalar;
 }

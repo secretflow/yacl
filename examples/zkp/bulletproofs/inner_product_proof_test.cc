@@ -65,51 +65,48 @@ class InnerProductProofTest : public ::testing::Test {
     }
     
     // Compute the inner product c = <a,b>
-    yacl::math::MPInt c = InnerProduct(a, b, curve_);
+    yacl::math::MPInt c = InnerProduct(a, b);
     
     // Set up G_factors and H_factors
     std::vector<yacl::math::MPInt> G_factors(n, yacl::math::MPInt(1));
     
     // y_inv is a random challenge
-    // yacl::math::MPInt y_inv;
-    // yacl::math::MPInt::RandomLtN(curve_->GetOrder(), &y_inv);
+    yacl::math::MPInt y_inv;
+    yacl::math::MPInt::RandomLtN(curve_->GetOrder(), &y_inv);
     
     // Compute H_factors = [y_inv^0, y_inv^1, y_inv^2, ...]
-    std::vector<yacl::math::MPInt> H_factors(n, yacl::math::MPInt(1));
-    // H_factors.reserve(n);
+    std::vector<yacl::math::MPInt> H_factors;
+    H_factors.reserve(n);
     
-    // yacl::math::MPInt y_pow(1);
-    // for (size_t i = 0; i < n; i++) {
-    //   H_factors.push_back(y_pow);
-    //   y_pow = (y_pow * y_inv) % curve_->GetOrder();
-    // }
+    yacl::math::MPInt y_pow(1);
+    for (size_t i = 0; i < n; i++) {
+      H_factors.push_back(y_pow);
+      y_pow = y_pow.MulMod(y_inv, curve_->GetOrder());
+    }
     
     // Compute P = <a,G> + <b',H> + <a,b>Q
     // where b' = b ⊙ y^(-n) - elementwise multiplication
-    std::vector<yacl::math::MPInt> p_scalars; // Use a different name to avoid confusion
-    std::vector<yacl::crypto::EcPoint> p_points; // Use a different name
-    p_scalars.reserve(2 * n + 1);
-    p_points.reserve(2 * n + 1);
+    std::vector<yacl::math::MPInt> scalars;
+    std::vector<yacl::crypto::EcPoint> points;
     
     // <a,G> terms
     for (size_t i = 0; i < n; i++) {
-      p_scalars.push_back(a[i]);
-      p_points.push_back(G[i]);
+      scalars.push_back(a[i]);
+      points.push_back(G[i]);
     }
     
     // <b',H> terms
     for (size_t i = 0; i < n; i++) {
-      // H_factors[i] is now 1, so scalar is just b[i]
-      p_scalars.push_back(b[i].MulMod(H_factors[i], curve_->GetOrder())); // Explicitly multiply (though it's 1 now)
-      p_points.push_back(H[i]);
+      scalars.push_back(b[i] * H_factors[i]);
+      points.push_back(H[i]);
     }
     
     // <a,b>Q term
-    p_scalars.push_back(c);
-    p_points.push_back(Q);
+    scalars.push_back(c);
+    points.push_back(Q);
     
     // Compute P
-    yacl::crypto::EcPoint P = MultiScalarMul(curve_, p_scalars, p_points);
+    yacl::crypto::EcPoint P = MultiScalarMul(curve_, scalars, points);
     
     // Create a transcript and the proof
     SimpleTranscript prover_transcript("innerproducttest");
@@ -117,8 +114,8 @@ class InnerProductProofTest : public ::testing::Test {
         &prover_transcript,
         curve_,
         Q,
-        G_factors,  // Pass the original factors (all 1s)
-        H_factors,  // Pass the simplified factors (all 1s)
+        G_factors,
+        H_factors,
         G,
         H,
         a,
@@ -131,8 +128,8 @@ class InnerProductProofTest : public ::testing::Test {
         n,
         &verifier_transcript,
         curve_,
-        G_factors,  // Pass the original factors (all 1s)
-        H_factors,  // Pass the simplified factors (all 1s)
+        G_factors,
+        H_factors,
         P,
         Q,
         G,
@@ -185,7 +182,7 @@ TEST_F(InnerProductProofTest, TestInnerProduct) {
     yacl::math::MPInt(5)
   };
   
-  EXPECT_EQ(InnerProduct(a, b, curve_), yacl::math::MPInt(40));
+  EXPECT_EQ(InnerProduct(a, b), yacl::math::MPInt(40));
 }
 
 TEST_F(InnerProductProofTest, MakeIPP1) {
