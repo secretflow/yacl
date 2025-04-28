@@ -25,7 +25,19 @@
 
 namespace yacl {
 
+// RFC9380 8 Suites for Hashing
 static std::map<std::string, HashToCurveCtx> kPredefinedCurveCtxs = {
+    // each maps a curve name to HashToCurveCtx
+    // Parameters in HashToCurveCtx is listed as follows:
+    // 1. key size of current curve
+    // 2. s_in_bytes in ExpandMessageXmd Function, see RFC9380 5.3.1
+    // 3. hash algorithm in ExpandMessageXmd Function, see RFC9380 8
+    // 4. some auxiliary parameters
+    //    4.1 p: the characteristic of the field
+    //    4.2 a, b: coefficient in curve equation
+    //    4.3 z: a non-zero element of F meeting some criteria, see RFC3980 8
+    //    4.4 and after: other auxiliary parameters, depending on the underlying
+    //    function
     {"P-256",
      {32,
       64,
@@ -43,7 +55,7 @@ static std::map<std::string, HashToCurveCtx> kPredefinedCurveCtxs = {
           {"z",
            "0xffffffff000000010000000000000000"
            "00000000fffffffffffffffffffffff5"_mp},
-          {"c1",
+          {"c1",  // RFC9390 I.1 sqrt for q = 3 (mod 4)
            "0x3fffffffc00000004000000000000000"
            "00000000400000000000000000000000"_mp},
       }}},
@@ -68,7 +80,7 @@ static std::map<std::string, HashToCurveCtx> kPredefinedCurveCtxs = {
            "0xffffffffffffffffffffffffffffffff"
            "fffffffffffffffffffffffffffffffe"
            "ffffffff0000000000000000fffffff3"_mp},
-          {"c1",
+          {"c1",  // RFC9390 I.1 sqrt for q = 3 (mod 4)
            "0x3fffffffffffffffffffffffffffffff"
            "ffffffffffffffffffffffffffffffffb"
            "fffffffc00000000000000040000000"_mp},
@@ -98,7 +110,7 @@ static std::map<std::string, HashToCurveCtx> kPredefinedCurveCtxs = {
            "ffffffffffffffffffffffffffffffff"
            "ffffffffffffffffffffffffffffffff"
            "fffffffffffffffffffffffffffffffffffb"_mp},
-          {"c1",
+          {"c1",  // RFC9390 I.1 sqrt for q = 3 (mod 4)
            "0x00800000000000000000000000000000"
            "00000000000000000000000000000000"
            "00000000000000000000000000000000"
@@ -113,16 +125,13 @@ static std::map<std::string, HashToCurveCtx> kPredefinedCurveCtxs = {
            "0x7fffffffffffffffffffffffffffffff"
            "ffffffffffffffffffffffffffffffed"_mp},
           {"a", "0x76d06"_mp},
-          {"c1",
-           "0xffffffffffffffffffffffffffffffff"
-           "ffffffffffffffffffffffffffffffe"_mp},
-          {"c2",
+          {"c2",  // RFC9380 I.2 sqrt for q = 5 (mod 8)
            "0x2b8324804fc1df0b2b4d00993dfbd7a7"
            "2f431806ad2fe478c4ee1b274a0ea0b1"_mp},
-          {"sqrtm1",
+          {"sqrtm1",  // RFC9380 I.2 sqrt for q = 5 (mod 8)
            "0x547cdb7fb03e20f4d4b2ff66c2042858"
            "d0bce7f952d01b873b11e4d8b5f15f3d"_mp},
-          {"c4",
+          {"c4",  // RFC9380 G.2.  Elligator 2 Method  map_to_curve_elligator2
            "0xffffffffffffffffffffffffffffffff"
            "ffffffffffffffffffffffffffffffd"_mp},
       }}}};
@@ -380,8 +389,7 @@ std::pair<yacl::math::MPInt, yacl::math::MPInt> MapToCurveSSWU(
 
   yacl::math::MPInt tv4;  // 7. tv4 = CMOV(Z, -tv2, tv2 != 0)
   if (!tv2.IsZero()) {
-    yacl::math::MPInt::SubMod(kMpp, tv2, kMpp,
-                              &tv4);  // intrinsic `Negative` will error
+    yacl::math::MPInt::SubMod(kMpp, tv2, kMpp, &tv4);
   } else {
     tv4 = kMpZ;
   }

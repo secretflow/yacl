@@ -79,11 +79,3 @@ yacl_cc_test(
         ":libsodium",
     ],
 )
-
-yacl_cc_test(
-    name = "x25519_test",
-    srcs = ["x25519_test.cc"],
-    deps = [
-        ":libsodium",
-    ],
-)

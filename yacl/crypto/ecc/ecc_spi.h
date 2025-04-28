@@ -86,12 +86,10 @@ enum class HashToCurveStrategy {
   // Performance: This strategy takes 6 times longer than TryAndIncrement on SM2
   // Warning: The output of this strategy is not uniformly distributed on the
   // elliptic curve G.
-  EncodeToCurve,  // Not implemented, do not choose me
-  SHA256_SSWU_NU_, // for P256
-  SHA384_SSWU_NU_, // for P384
-  SHA512_SSWU_NU_, // for P521
-  SHA512_ELL2_RO_, // for Curve25519
-  SHA512_ELL2_NU_, // for Curve25519
+  SHA256_SSWU_NU_,  // for P256
+  SHA384_SSWU_NU_,  // for P384
+  SHA512_SSWU_NU_,  // for P521
+  SHA512_ELL2_NU_,  // for Curve25519
 
   // This strategy is a collection of the following methods, and SPI will
   // automatically select the applicable method according to different curves:
@@ -102,7 +100,7 @@ enum class HashToCurveStrategy {
   //  - SHAKE256_ELL2_RO_
   // Performance: This strategy takes 12 times longer than TryAndIncrement on
   // SM2
-  HashToCurve,  // Not implemented, do not choose me
+  SHA512_ELL2_RO_,  // for Curve25519
 };
 
 // Base class of elliptic curve
