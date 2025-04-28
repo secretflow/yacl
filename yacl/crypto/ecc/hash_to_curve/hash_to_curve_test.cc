@@ -15,7 +15,9 @@
 #include "yacl/crypto/ecc/hash_to_curve/hash_to_curve.h"
 
 #include "gtest/gtest.h"
+
 #include "yacl/crypto/ecc/hash_to_curve/curve25519.h"
+#include "yacl/math/mpint/mp_int.h"
 
 namespace yacl::crypto::test {
 
@@ -115,10 +117,12 @@ TEST(HashToCurveTest, Curve25519EncodeToCurveWorks) {
       "5547BC00E4C09685DCBC6CB6765288B386D8BDCB595FA5A6E3969E08097F0541",
       "405070C28E78B4FA269427C82827261991B9718BD6C6E95D627D701A53C30DB1"};
 
-  char kRFC9380Curve25519NuDst[] = "QUUX-V01-CS02-with-curve25519_XMD:SHA-512_ELL2_NU_";
+  char kRFC9380Curve25519NuDst[] =
+      "QUUX-V01-CS02-with-curve25519_XMD:SHA-512_ELL2_NU_";
 
   for (size_t i = 0; i < rfc_9380_test_msgs.size(); ++i) {
-    EcPoint px = EncodeToCurveCurve25519(rfc_9380_test_msgs[i], kRFC9380Curve25519NuDst);
+    EcPoint px =
+        EncodeToCurveCurve25519(rfc_9380_test_msgs[i], kRFC9380Curve25519NuDst);
     auto p = std::get<AffinePoint>(px);
     EXPECT_EQ(p.x.ToHexString(), rfc_9380_test_px[i]);
     EXPECT_EQ(p.y.ToHexString(), rfc_9380_test_py[i]);
@@ -138,10 +142,12 @@ TEST(HashToCurveTest, Curve25519HashToCurveWorks) {
       "1B8235F255A268F0A6FA8763E97EB3D22D149343D495DA1160EFF9703F2D07DD",
       "2A375B656207123D10766E68B938B1812A4A6625FF83CB8D5E86F58A4BE08353"};
 
-  char kRFC9380Curve25519RoDst[] = "QUUX-V01-CS02-with-curve25519_XMD:SHA-512_ELL2_RO_";
+  char kRFC9380Curve25519RoDst[] =
+      "QUUX-V01-CS02-with-curve25519_XMD:SHA-512_ELL2_RO_";
 
   for (size_t i = 0; i < rfc_9380_test_msgs.size(); ++i) {
-    EcPoint px = HashToCurveCurve25519(rfc_9380_test_msgs[i], kRFC9380Curve25519RoDst);
+    EcPoint px =
+        HashToCurveCurve25519(rfc_9380_test_msgs[i], kRFC9380Curve25519RoDst);
     auto p = std::get<AffinePoint>(px);
     EXPECT_EQ(p.x.ToHexString(), rfc_9380_test_px[i]);
     EXPECT_EQ(p.y.ToHexString(), rfc_9380_test_py[i]);

@@ -15,6 +15,7 @@
 #include "yacl/crypto/ecc/hash_to_curve/hash_to_curve_util.h"
 
 #include <cstdint>
+#include <map>
 #include <vector>
 
 #include "yacl/base/exception.h"
@@ -23,6 +24,77 @@
 #include "yacl/math/mpint/mp_int.h"
 
 namespace yacl {
+
+static std::map<std::string, HashToCurveCtx> kPredefinedCurveCtxs = {
+    {"P-256",
+     {32,
+      64,
+      crypto::HashAlgorithm::SHA256,
+      {
+          {"p",
+           "0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff"_mp},
+          {"a",
+           "0xffffffff00000001000000000000000000000000fffffffffffffffffffffffc"_mp},
+          {"b",
+           "0x5ac635d8aa3a93e7b3ebbd55769886bc651d06b0cc53b0f63bce3c3e27d2604b"_mp},
+          {"z",
+           "0xffffffff00000001000000000000000000000000fffffffffffffffffffffff5"_mp},
+          {"c1",
+           "0x3fffffffc0000000400000000000000000000000400000000000000000000000"_mp},
+      }}},
+    {"P-384",
+     {48,
+      128,
+      crypto::HashAlgorithm::SHA384,
+      {
+          {"p",
+           "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff0000000000000000ffffffff"_mp},
+          {"a",
+           "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff0000000000000000fffffffc"_mp},
+          {"b",
+           "0xb3312fa7e23ee7e4988e056be3f82d19181d9c6efe8141120314088f5013875ac656398d8a2ed19d2a85c8edd3ec2aef"_mp},
+          {"z",
+           "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff0000000000000000fffffff3"_mp},
+          {"c1",
+           "0x3fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffbfffffffc00000000000000040000000"_mp},
+      }}},
+    {"P-521",
+     {66,
+      128,
+      crypto::HashAlgorithm::SHA512,
+      {
+          {"p",
+           "0x01ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"_mp},
+          {"a",
+           "0x01fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc"_mp},
+          {"b",
+           "0x0051953eb9618e1c9a1f929a21a0b68540eea2da725b99b315f3b8b489918ef109e156193951ec7e937b1652c0bd3bb1bf073573df883d2c34f1ef451fd46b503f00"_mp},
+          {"z",
+           "0x01fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffb"_mp},
+          {"c1",
+           "0x008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"_mp},
+      }}},
+    {"Curve25519",
+     {32,
+      128,
+      crypto::HashAlgorithm::SHA512,
+      {
+          {"p",
+           "0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed"_mp},
+          {"a", "0x76d06"_mp},
+          {"c1",
+           "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe"_mp},
+          {"c2",
+           "0x2b8324804fc1df0b2b4d00993dfbd7a72f431806ad2fe478c4ee1b274a0ea0b1"_mp},
+          {"sqrtm1",
+           "0x547cdb7fb03e20f4d4b2ff66c2042858d0bce7f952d01b873b11e4d8b5f15f3d"_mp},
+          {"c4",
+           "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd"_mp},
+      }}}};
+
+HashToCurveCtx GetHashToCurveCtxByName(const crypto::CurveName &name) {
+  return kPredefinedCurveCtxs[name];
+}
 
 yacl::math::MPInt DeserializeMPInt(yacl::ByteContainerView buffer,
                                    const size_t key_size, yacl::Endian endian) {
@@ -68,30 +140,12 @@ std::vector<uint8_t> I2OSP(size_t x, size_t xlen) {
 }
 
 std::vector<uint8_t> ExpandMessageXmd(yacl::ByteContainerView msg,
-                                      const crypto::HashAlgorithm hash_algo,
+                                      HashToCurveCtx &ctx,
                                       yacl::ByteContainerView dst,
                                       size_t len_in_bytes) {
-  yacl::crypto::SslHash hash(hash_algo);
+  yacl::crypto::SslHash hash(ctx.hash_algo);
   size_t b_in_bytes = hash.DigestSize();
-  size_t s_in_bytes;
-
-  switch (hash_algo) {
-    case crypto::HashAlgorithm::SHA256: {
-      s_in_bytes = 64;
-      break;
-    }
-    case crypto::HashAlgorithm::SHA384: {
-      s_in_bytes = 128;
-      break;
-    }
-    case crypto::HashAlgorithm::SHA512: {
-      s_in_bytes = 128;
-      break;
-    }
-    default: {
-      YACL_THROW("unsupported hash algorithm");
-    }
-  }
+  size_t s_in_bytes = ctx.s_in_bytes;
 
   size_t ell = std::ceil(static_cast<double>(len_in_bytes) / b_in_bytes);
 
@@ -152,14 +206,12 @@ std::vector<uint8_t> ExpandMessageXmd(yacl::ByteContainerView msg,
 
 std::vector<std::vector<uint8_t>> HashToField(yacl::ByteContainerView msg,
                                               size_t count, size_t l,
-                                              size_t key_size,
-                                              crypto::HashAlgorithm hash_algo,
-                                              yacl::math::MPInt p,
+                                              HashToCurveCtx &ctx,
                                               const std::string &dst) {
   size_t len_in_bytes = count * l;
 
   std::vector<uint8_t> uniform_bytes =
-      ExpandMessageXmd(msg, hash_algo, dst, len_in_bytes);
+      ExpandMessageXmd(msg, ctx, dst, len_in_bytes);
 
   std::vector<std::vector<uint8_t>> ret(count);
 
@@ -170,10 +222,10 @@ std::vector<std::vector<uint8_t>> HashToField(yacl::ByteContainerView msg,
     yacl::math::MPInt e_j;
     e_j.FromMagBytes(data, yacl::Endian::big);
 
-    yacl::math::MPInt e_jp = e_j.Mod(p);
+    yacl::math::MPInt e_jp = e_j.Mod(ctx.aux["p"]);
 
-    ret[i].resize(key_size);
-    MPIntToBytesWithPad(ret[i], key_size, e_jp);
+    ret[i].resize(ctx.key_size);
+    MPIntToBytesWithPad(ret[i], ctx.key_size, e_jp);
   }
 
   return ret;
@@ -204,5 +256,150 @@ bool Sgn0(const yacl::math::MPInt &v) {
   }
 
   return ret;
+}
+
+// RFC9380 I.1 sqrt for q = 3 (mod 4)
+yacl::math::MPInt Sqrt3m4(const yacl::math::MPInt &x, HashToCurveCtx &ctx) {
+  yacl::math::MPInt kMpC1 = ctx.aux["c1"];
+  yacl::math::MPInt kMpp = ctx.aux["p"];
+
+  // int c1 = 4;
+  yacl::math::MPInt z;
+  yacl::math::MPInt::PowMod(x, kMpC1, kMpp, &z);
+
+  return z;
+}
+
+// RFC9380 I.2 sqrt for q = 5 (mod 8)
+yacl::math::MPInt Sqrt5m8(const yacl::math::MPInt &v, HashToCurveCtx &ctx) {
+  yacl::math::MPInt p = ctx.aux["p"];
+  yacl::math::MPInt kMp3(3);
+  yacl::math::MPInt kMp8(8);
+  yacl::math::MPInt kMpSqrtm1 = ctx.aux["sqrtm1"];
+
+  yacl::math::MPInt c2;
+  yacl::math::MPInt::Add(p, kMp3, &c2);
+  yacl::math::MPInt c;
+  yacl::math::MPInt d;
+  yacl::math::MPInt::Div(c2, kMp8, &c, &d);
+  c2 = c;
+
+  yacl::math::MPInt tv1 = v.PowMod(c2, p);
+  yacl::math::MPInt tv2 = tv1.MulMod(kMpSqrtm1, p);
+
+  c = tv1.MulMod(tv1, p);
+  if (c == v) {
+    return tv1;
+  }
+  return tv2;
+}
+
+std::pair<bool, yacl::math::MPInt> SqrtRatio(const yacl::math::MPInt &u,
+                                             const yacl::math::MPInt &v,
+                                             HashToCurveCtx &ctx) {
+  yacl::math::MPInt kMpp = ctx.aux["p"];
+  yacl::math::MPInt kMpZ = ctx.aux["z"];
+  yacl::math::MPInt r;
+  yacl::math::MPInt::InvertMod(v, kMpp, &r);
+
+  r = r.MulMod(u, kMpp);
+
+  bool b = IsSquare(r, kMpp);
+
+  yacl::math::MPInt y;
+
+  if (b) {
+    y = Sqrt3m4(r, ctx);
+  } else {
+    r = r.MulMod(kMpZ, kMpp);
+    y = Sqrt3m4(r, ctx);
+  }
+  return std::make_pair(b, y);
+}
+
+std::pair<yacl::math::MPInt, yacl::math::MPInt> MapToCurveSSWU(
+    yacl::ByteContainerView ubuf, HashToCurveCtx &ctx) {
+  yacl::math::MPInt kMpp = ctx.aux["p"];
+  yacl::math::MPInt kMpA = ctx.aux["a"];
+  yacl::math::MPInt kMpB = ctx.aux["b"];
+  yacl::math::MPInt kMpZ = ctx.aux["z"];
+  YACL_ENFORCE(ubuf.size() > 0);
+
+  yacl::math::MPInt u;
+  u.FromMagBytes(ubuf, yacl::Endian::big);
+
+  yacl::math::MPInt tv1;
+  yacl::math::MPInt::MulMod(u, u, kMpp, &tv1);  // 1. tv1 = u^2
+
+  tv1 = tv1.MulMod(kMpZ, kMpp);  // 2. tv1 = Z * tv1, where Z = -10
+
+  yacl::math::MPInt tv2;
+  yacl::math::MPInt::MulMod(tv1, tv1, kMpp, &tv2);  // 3. tv2 = tv1 ^ 2
+
+  tv2 = tv2.AddMod(tv1, kMpp);  // 4. tv2 = tv2 + tv1
+
+  yacl::math::MPInt tv3;
+  yacl::math::MPInt::AddMod(tv2, kMp1, kMpp, &tv3);  // 5. tv3 = tv2 + 1
+
+  tv3 = tv3.MulMod(kMpB, kMpp);  // 6. tv3 = B * tv3
+
+  yacl::math::MPInt tv4;  // 7. tv4 = CMOV(Z, -tv2, tv2 != 0)
+  if (!tv2.IsZero()) {
+    yacl::math::MPInt::SubMod(kMpp, tv2, kMpp,
+                              &tv4);  // intrinsic `Negative` will error
+  } else {
+    tv4 = kMpZ;
+  }
+
+  tv4 = tv4.MulMod(kMpA, kMpp);  // 8. tv4 = A * tv4
+
+  yacl::math::MPInt::MulMod(tv3, tv3, kMpp, &tv2);  // 9. tv2 = tv3^2
+
+  yacl::math::MPInt tv6;
+  yacl::math::MPInt::MulMod(tv4, tv4, kMpp, &tv6);  // 10. tv6 = tv4^2
+
+  yacl::math::MPInt tv5;
+  yacl::math::MPInt::MulMod(kMpA, tv6, kMpp, &tv5);  // 11. tv5 = A * tv6
+
+  tv2 = tv2.AddMod(tv5, kMpp);  // 12. tv2 = tv2 + tv5
+  tv2 = tv2.MulMod(tv3, kMpp);  // 13. tv2 = tv2 * tv3
+  tv6 = tv6.MulMod(tv4, kMpp);  // 14. tv6 = tv6 * tv4
+
+  yacl::math::MPInt::MulMod(kMpB, tv6, kMpp, &tv5);  // 15. tv5 = B * tv6
+
+  tv2 = tv2.AddMod(tv5, kMpp);  // 16. tv2 = tv2 + tv5
+
+  yacl::math::MPInt x;
+  yacl::math::MPInt::MulMod(tv1, tv3, kMpp, &x);  // 17. x = tv1 * tv3
+
+  bool is_gx1_square;
+  yacl::math::MPInt y1;
+
+  std::tie(is_gx1_square, y1) = SqrtRatio(
+      tv2, tv6, ctx);  // 18. (is_gx1_square, y1) = sqrt_ratio(tv2, tv6)
+
+  yacl::math::MPInt y;
+  yacl::math::MPInt::MulMod(tv1, u, kMpp, &y);  // 19. y = tv1 * u
+
+  y = y.MulMod(y1, kMpp);  // 20. y = y * y1
+
+  if (is_gx1_square) {
+    x = tv3;  // 21. x = CMOV(x, tv3, is_gx1_square)
+    y = y1;   // 22. y = CMOV(y, y1, is_gx1_square)
+  }
+
+  bool e1 = (Sgn0(u) == Sgn0(y));  // 23. e1 = sgn0(u) == sgn0(y)
+
+  if (!e1) {
+    y = kMpp.SubMod(y, kMpp);
+  }
+
+  yacl::math::MPInt r;
+  yacl::math::MPInt::InvertMod(tv4, kMpp, &r);
+  yacl::math::MPInt::MulMod(x, r, kMpp, &x);  // 25. x = x / tv4
+
+  // crypto::AffinePoint p(x, y);
+  // return p;
+  return std::make_pair(x, y);
 }
 }  // namespace yacl

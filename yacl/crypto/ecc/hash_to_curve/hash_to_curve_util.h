@@ -13,12 +13,25 @@
 // limitations under the License.
 #pragma once
 
+#include <map>
+
 #include "yacl/base/byte_container_view.h"
+#include "yacl/crypto/ecc/curve_meta.h"
 #include "yacl/crypto/hash/hash_interface.h"
 #include "yacl/math/mpint/mp_int.h"
 #include "yacl/utils/spi/type_traits.h"
 
 namespace yacl {
+
+struct HashToCurveCtx {
+  size_t key_size;
+  size_t s_in_bytes;
+  crypto::HashAlgorithm hash_algo;
+  std::map<std::string, yacl::math::MPInt> aux;
+  HashToCurveCtx() = default;
+};
+
+HashToCurveCtx GetHashToCurveCtxByName(const crypto::CurveName &name);
 
 const yacl::math::MPInt kMp1(1);
 const yacl::math::MPInt kMp2(2);
@@ -34,17 +47,18 @@ std::vector<uint8_t> I2OSP(size_t x, size_t xlen);
 
 // RFC9380 5.3.1.  expand_message_xmd
 std::vector<uint8_t> ExpandMessageXmd(yacl::ByteContainerView msg,
-                                      crypto::HashAlgorithm hash_algo,
+                                      HashToCurveCtx &ctx,
                                       yacl::ByteContainerView dst,
                                       size_t len_in_bytes);
 
 // RFC9380 5.2.  hash_to_field Implementation
 std::vector<std::vector<uint8_t>> HashToField(yacl::ByteContainerView msg,
                                               size_t count, size_t l,
-                                              size_t key_size,
-                                              crypto::HashAlgorithm hash_algo,
-                                              yacl::math::MPInt p,
+                                              HashToCurveCtx &ctx,
                                               const std::string &dst);
+
+std::pair<yacl::math::MPInt, yacl::math::MPInt> MapToCurveSSWU(
+    yacl::ByteContainerView ubuf, HashToCurveCtx &ctx);
 
 bool IsSquare(const yacl::math::MPInt &v, const yacl::math::MPInt &mod);
 
