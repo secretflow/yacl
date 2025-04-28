@@ -1182,6 +1182,8 @@ TEST_P(BigIntArithTest, SetBit) {
     EXPECT_EQ(a.ToString(), "1234567891");
     a.SetBit(0, 0);
     EXPECT_EQ(a.ToString(), "1234567890");
+    a.SetBit(128, 0);
+    EXPECT_EQ(a.ToString(), "1234567890");
 
     a.SetBit(31, 1);
     EXPECT_EQ(a.ToString(), "3382051538");
