@@ -32,15 +32,20 @@ static std::map<std::string, HashToCurveCtx> kPredefinedCurveCtxs = {
       crypto::HashAlgorithm::SHA256,
       {
           {"p",
-           "0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff"_mp},
+           "0xffffffff000000010000000000000000"
+           "00000000ffffffffffffffffffffffff"_mp},
           {"a",
-           "0xffffffff00000001000000000000000000000000fffffffffffffffffffffffc"_mp},
+           "0xffffffff000000010000000000000000"
+           "00000000fffffffffffffffffffffffc"_mp},
           {"b",
-           "0x5ac635d8aa3a93e7b3ebbd55769886bc651d06b0cc53b0f63bce3c3e27d2604b"_mp},
+           "0x5ac635d8aa3a93e7b3ebbd55769886bc"
+           "651d06b0cc53b0f63bce3c3e27d2604b"_mp},
           {"z",
-           "0xffffffff00000001000000000000000000000000fffffffffffffffffffffff5"_mp},
+           "0xffffffff000000010000000000000000"
+           "00000000fffffffffffffffffffffff5"_mp},
           {"c1",
-           "0x3fffffffc0000000400000000000000000000000400000000000000000000000"_mp},
+           "0x3fffffffc00000004000000000000000"
+           "00000000400000000000000000000000"_mp},
       }}},
     {"P-384",
      {48,
@@ -48,15 +53,25 @@ static std::map<std::string, HashToCurveCtx> kPredefinedCurveCtxs = {
       crypto::HashAlgorithm::SHA384,
       {
           {"p",
-           "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff0000000000000000ffffffff"_mp},
+           "0xffffffffffffffffffffffffffffffff"
+           "fffffffffffffffffffffffffffffffe"
+           "ffffffff0000000000000000ffffffff"_mp},
           {"a",
-           "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff0000000000000000fffffffc"_mp},
+           "0xffffffffffffffffffffffffffffffff"
+           "fffffffffffffffffffffffffffffffe"
+           "ffffffff0000000000000000fffffffc"_mp},
           {"b",
-           "0xb3312fa7e23ee7e4988e056be3f82d19181d9c6efe8141120314088f5013875ac656398d8a2ed19d2a85c8edd3ec2aef"_mp},
+           "0xb3312fa7e23ee7e4988e056be3f82d19"
+           "181d9c6efe8141120314088f5013875a"
+           "c656398d8a2ed19d2a85c8edd3ec2aef"_mp},
           {"z",
-           "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff0000000000000000fffffff3"_mp},
+           "0xffffffffffffffffffffffffffffffff"
+           "fffffffffffffffffffffffffffffffe"
+           "ffffffff0000000000000000fffffff3"_mp},
           {"c1",
-           "0x3fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffbfffffffc00000000000000040000000"_mp},
+           "0x3fffffffffffffffffffffffffffffff"
+           "ffffffffffffffffffffffffffffffffb"
+           "fffffffc00000000000000040000000"_mp},
       }}},
     {"P-521",
      {66,
@@ -64,15 +79,30 @@ static std::map<std::string, HashToCurveCtx> kPredefinedCurveCtxs = {
       crypto::HashAlgorithm::SHA512,
       {
           {"p",
-           "0x01ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"_mp},
+           "0x01ffffffffffffffffffffffffffffff"
+           "ffffffffffffffffffffffffffffffff"
+           "ffffffffffffffffffffffffffffffff"
+           "ffffffffffffffffffffffffffffffffffff"_mp},
           {"a",
-           "0x01fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffc"_mp},
+           "0x01ffffffffffffffffffffffffffffff"
+           "ffffffffffffffffffffffffffffffff"
+           "ffffffffffffffffffffffffffffffff"
+           "fffffffffffffffffffffffffffffffffffc"_mp},
           {"b",
-           "0x0051953eb9618e1c9a1f929a21a0b68540eea2da725b99b315f3b8b489918ef109e156193951ec7e937b1652c0bd3bb1bf073573df883d2c34f1ef451fd46b503f00"_mp},
+           "0x0051953eb9618e1c9a1f929a21a0b685"
+           "40eea2da725b99b315f3b8b489918ef1"
+           "09e156193951ec7e937b1652c0bd3bb1"
+           "bf073573df883d2c34f1ef451fd46b503f00"_mp},
           {"z",
-           "0x01fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffb"_mp},
+           "0x01ffffffffffffffffffffffffffffff"
+           "ffffffffffffffffffffffffffffffff"
+           "ffffffffffffffffffffffffffffffff"
+           "fffffffffffffffffffffffffffffffffffb"_mp},
           {"c1",
-           "0x008000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"_mp},
+           "0x00800000000000000000000000000000"
+           "00000000000000000000000000000000"
+           "00000000000000000000000000000000"
+           "000000000000000000000000000000000000"_mp},
       }}},
     {"Curve25519",
      {32,
@@ -80,16 +110,21 @@ static std::map<std::string, HashToCurveCtx> kPredefinedCurveCtxs = {
       crypto::HashAlgorithm::SHA512,
       {
           {"p",
-           "0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffed"_mp},
+           "0x7fffffffffffffffffffffffffffffff"
+           "ffffffffffffffffffffffffffffffed"_mp},
           {"a", "0x76d06"_mp},
           {"c1",
-           "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe"_mp},
+           "0xffffffffffffffffffffffffffffffff"
+           "ffffffffffffffffffffffffffffffe"_mp},
           {"c2",
-           "0x2b8324804fc1df0b2b4d00993dfbd7a72f431806ad2fe478c4ee1b274a0ea0b1"_mp},
+           "0x2b8324804fc1df0b2b4d00993dfbd7a7"
+           "2f431806ad2fe478c4ee1b274a0ea0b1"_mp},
           {"sqrtm1",
-           "0x547cdb7fb03e20f4d4b2ff66c2042858d0bce7f952d01b873b11e4d8b5f15f3d"_mp},
+           "0x547cdb7fb03e20f4d4b2ff66c2042858"
+           "d0bce7f952d01b873b11e4d8b5f15f3d"_mp},
           {"c4",
-           "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd"_mp},
+           "0xffffffffffffffffffffffffffffffff"
+           "ffffffffffffffffffffffffffffffd"_mp},
       }}}};
 
 HashToCurveCtx GetHashToCurveCtxByName(const crypto::CurveName &name) {
