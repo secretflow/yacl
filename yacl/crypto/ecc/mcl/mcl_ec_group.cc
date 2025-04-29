@@ -14,10 +14,10 @@
 
 #include "yacl/crypto/ecc/mcl/mcl_ec_group.h"
 
+#include "yacl/crypto/ecc/hash_to_curve/hash_to_curve.h"
 #include "yacl/crypto/ecc/mcl/mcl_util.h"
 #include "yacl/crypto/hash/blake3.h"
 #include "yacl/crypto/pairing/factory/mcl_pairing_header.h"
-#include "yacl/crypto/ecc/hash_to_curve/hash_to_curve.h"
 
 namespace yacl::crypto {
 

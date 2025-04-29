@@ -14,8 +14,8 @@
 
 #include "gtest/gtest.h"
 
-#include "yacl/crypto/ecc/mcl/mcl_ec_group.h"
 #include "yacl/crypto/ecc/hash_to_curve/hash_to_curve.h"
+#include "yacl/crypto/ecc/mcl/mcl_ec_group.h"
 
 namespace yacl::crypto {
 // for test
