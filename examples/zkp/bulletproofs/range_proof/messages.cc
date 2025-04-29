@@ -5,6 +5,7 @@
 
 #include "yacl/crypto/hash/hash_utils.h"
 #include "yacl/math/mpint/mp_int.h"
+#include "zkp/bulletproofs/util.h"
 
 namespace examples::zkp {
 
@@ -313,6 +314,7 @@ void ProofShare::AuditShare(
     const BitChallenge& bit_challenge,
     const PolyCommitment& poly_commitment,
     const PolyChallenge& poly_challenge) const {
+
   const size_t n = l_vec_.size();
   
   // Check sizes first
@@ -326,16 +328,16 @@ void ProofShare::AuditShare(
   const yacl::math::MPInt& x = poly_challenge.GetX();
   
   // Precompute some variables
-  yacl::math::MPInt zz = z * z;
+  yacl::math::MPInt zz = z.MulMod(z, curve->GetOrder());
   yacl::math::MPInt zero = yacl::math::MPInt(0);
-  yacl::math::MPInt minus_z = zero - z;
-  yacl::math::MPInt z_j = ScalarExpVartime(z, j); // z^j
-  yacl::math::MPInt y_jn = ScalarExpVartime(y, j * n); // y^(j*n)
-  yacl::math::MPInt y_jn_inv = y_jn.InvertMod(curve->GetField()); // y^(-j*n)
-  yacl::math::MPInt y_inv = y.InvertMod(curve->GetField()); // y^(-1)
+  yacl::math::MPInt minus_z = zero.SubMod(z, curve->GetOrder());
+  yacl::math::MPInt z_j = ScalarExp(z, j, curve); // z^j
+  yacl::math::MPInt y_jn = ScalarExp(y, j * n, curve); // y^(j*n)
+  yacl::math::MPInt y_jn_inv = y_jn.InvertMod(curve->GetOrder()); // y^(-j*n)
+  yacl::math::MPInt y_inv = y.InvertMod(curve->GetOrder()); // y^(-1)
   
   // Verify that t_x = <l_vec, r_vec>
-  yacl::math::MPInt t_x_check = InnerProduct(l_vec_, r_vec_);
+  yacl::math::MPInt t_x_check = InnerProduct(l_vec_, r_vec_, curve);
   if (t_x_ != t_x_check) {
     throw yacl::Exception("t_x doesn't match inner product of l_vec and r_vec");
   }
@@ -351,21 +353,22 @@ void ProofShare::AuditShare(
   // Coefficients for A_j, S_j, B_blinding
   scalars.push_back(yacl::math::MPInt(1));
   scalars.push_back(x);
-  scalars.push_back(zero - e_blinding_);
+  scalars.push_back(zero.SubMod(e_blinding_, curve->GetOrder()));
   
   // Compute scalars for G generators (coefficients for l_vec)
-  std::vector<yacl::math::MPInt> exp_2 = ExpIterVector(yacl::math::MPInt(2), n);
-  std::vector<yacl::math::MPInt> exp_y_inv = ExpIterVector(y_inv, n);
+  std::vector<yacl::math::MPInt> exp_2 = ExpIterVector(yacl::math::MPInt(2), n, curve);
+  std::vector<yacl::math::MPInt> exp_y_inv = ExpIterVector(y_inv, n, curve);
   
   for (size_t i = 0; i < n; i++) {
-    scalars.push_back(minus_z - l_vec_[i]);
+    scalars.push_back(minus_z.SubMod(l_vec_[i], curve->GetOrder()));
   }
   
   // Compute scalars for H generators (coefficients for r_vec)
   for (size_t i = 0; i < n; i++) {
-    yacl::math::MPInt h_i = z + 
-        exp_y_inv[i] * y_jn_inv * (zero - r_vec_[i]) + 
-        exp_y_inv[i] * y_jn_inv * (zz * z_j * exp_2[i]);
+    yacl::math::MPInt h_i = z.AddMod(
+        exp_y_inv[i].MulMod(y_jn_inv, curve->GetOrder()).MulMod(zero.SubMod(r_vec_[i], curve->GetOrder()), curve->GetOrder()) + 
+        exp_y_inv[i].MulMod(y_jn_inv, curve->GetOrder()).MulMod(zz.MulMod(z_j, curve->GetOrder()).MulMod(exp_2[i], curve->GetOrder()), curve->GetOrder()),
+        curve->GetOrder());
     scalars.push_back(h_i);
   }
   
@@ -408,20 +411,20 @@ void ProofShare::AuditShare(
   // Now verify the t_x blinding factors
   
   // Calculate delta = (z - z^2) * sum_of_powers(y, n) * y^(j*n) - z * z^2 * sum_of_powers(2, n) * z^j
-  yacl::math::MPInt sum_of_powers_y = SumOfPowers(y, n);
-  yacl::math::MPInt sum_of_powers_2 = SumOfPowers(yacl::math::MPInt(2), n);
-  yacl::math::MPInt delta = (z - zz) * sum_of_powers_y * y_jn - z * zz * sum_of_powers_2 * z_j;
+  yacl::math::MPInt sum_of_powers_y = SumOfPowers(y, n, curve);
+  yacl::math::MPInt sum_of_powers_2 = SumOfPowers(yacl::math::MPInt(2), n, curve);
+  yacl::math::MPInt delta = (z.SubMod(zz, curve->GetOrder())).MulMod(sum_of_powers_y, curve->GetOrder()).MulMod(y_jn, curve->GetOrder()).SubMod(z.MulMod(zz, curve->GetOrder()).MulMod(sum_of_powers_2, curve->GetOrder()).MulMod(z_j, curve->GetOrder()), curve->GetOrder());
   
   // Reset vectors for t_check calculation
   scalars.clear();
   points.clear();
   
   // Prepare scalars and points for t_check
-  scalars.push_back(zz * z_j);
+  scalars.push_back(zz.MulMod(z_j, curve->GetOrder()));
   scalars.push_back(x);
-  scalars.push_back(x * x);
-  scalars.push_back(delta - t_x_);
-  scalars.push_back(zero - t_x_blinding_);
+  scalars.push_back(x.MulMod(x, curve->GetOrder()));
+  scalars.push_back(delta.SubMod(t_x_, curve->GetOrder()));
+  scalars.push_back(zero.SubMod(t_x_blinding_, curve->GetOrder()));
   
   points.push_back(bit_commitment.GetV());
   points.push_back(poly_commitment.GetT1());
@@ -602,61 +605,5 @@ ProofShare ProofShare::FromBytes(yacl::ByteContainerView bytes) {
   return ProofShare(t_x, t_x_blinding, e_blinding, std::move(l_vec), std::move(r_vec));
 }
 
-// Utility functions remain unchanged
-yacl::math::MPInt InnerProduct(
-    const std::vector<yacl::math::MPInt>& a,
-    const std::vector<yacl::math::MPInt>& b) {
-  if (a.size() != b.size()) {
-    throw yacl::Exception("Vectors must have same length for inner product");
-  }
-  
-  yacl::math::MPInt result = yacl::math::MPInt(0);
-  for (size_t i = 0; i < a.size(); i++) {
-    result = result + a[i] * b[i];
-  }
-  
-  return result;
-}
-
-std::vector<yacl::math::MPInt> ExpIterVector(const yacl::math::MPInt& s, size_t n) {
-  std::vector<yacl::math::MPInt> result;
-  result.reserve(n);
-  
-  yacl::math::MPInt current = yacl::math::MPInt(1);
-  for (size_t i = 0; i < n; i++) {
-    result.push_back(current);
-    current = current * s;
-  }
-  
-  return result;
-}
-
-yacl::math::MPInt SumOfPowers(const yacl::math::MPInt& s, size_t n) {
-  // If s == 1, return n
-  if (s == yacl::math::MPInt(1)) {
-    return yacl::math::MPInt(n);
-  }
-  
-  // Otherwise compute (1 - s^n) / (1 - s)
-  yacl::math::MPInt s_n = ScalarExpVartime(s, n);
-  yacl::math::MPInt num = yacl::math::MPInt(1) - s_n;
-  yacl::math::MPInt denom = yacl::math::MPInt(1) - s;
-  
-  // Return num/denom assuming we're in a field
-  return num / denom;
-}
-
-yacl::math::MPInt ScalarExpVartime(const yacl::math::MPInt& x, uint64_t n) {
-  if (n == 0) {
-    return yacl::math::MPInt(1);
-  }
-  
-  yacl::math::MPInt result = x;
-  for (uint64_t i = 1; i < n; i++) {
-    result = result * x;
-  }
-  
-  return result;
-}
 
 } // namespace examples::zkp

@@ -1,11 +1,16 @@
 #include "zkp/bulletproofs/range_proof/party.h"
 
+#include <vector>
+#include <memory>
+#include <utility> // For std::move
+
 #include "yacl/crypto/rand/rand.h"
-#include "yacl/crypto/hash/hash_utils.h"
 #include "yacl/math/mpint/mp_int.h"
 #include "zkp/bulletproofs/generators.h"
 #include "zkp/bulletproofs/range_proof/messages.h"
-#include "zkp/bulletproofs/util.h"
+#include "zkp/bulletproofs/util.h" // Include for Poly2, VecPoly1, ScalarExp, etc.
+#include "yacl/base/exception.h"   // Include for yacl::Exception
+#include "absl/strings/substitute.h" // Include for Abseil string formatting
 
 namespace examples::zkp {
 
@@ -19,15 +24,13 @@ PartyAwaitingPosition Party::New(
     size_t n) {
   // Check that n is a valid bitsize
   if (!(n == 8 || n == 16 || n == 32 || n == 64)) {
-    throw yacl::Exception("Invalid bitsize, must be 8, 16, 32, or 64");
+    throw yacl::Exception(absl::Substitute("Invalid bitsize ($0), must be 8, 16, 32, or 64", n));
   }
-  
-  // Check that generators are sufficient
   if (bp_gens.gens_capacity() < n) {
-    throw yacl::Exception("Generators capacity is insufficient for the bitsize");
+    throw yacl::Exception(absl::Substitute(
+        "Bulletproof generators capacity ($0) insufficient for bitsize ($1)",
+        bp_gens.gens_capacity(), n));
   }
-  
-  // Create the initial party state
   return PartyAwaitingPosition(bp_gens, pc_gens, v, v_blinding, n);
 }
 
@@ -39,84 +42,95 @@ PartyAwaitingPosition::PartyAwaitingPosition(
     uint64_t v,
     const yacl::math::MPInt& v_blinding,
     size_t n)
+    // Initializer list order matches declaration in party.h
     : bp_gens_(bp_gens),
       pc_gens_(pc_gens),
       n_(n),
       v_(v),
-      v_blinding_(v_blinding) {
-  // Create the value commitment V = v*G + v_blinding*H
+      v_blinding_(v_blinding)
+       {
+  uint64_t max_value = (n == 64) ? UINT64_MAX : (1ULL << n);
+  if (v >= max_value) {
+      throw yacl::Exception(absl::Substitute(
+          "Value $0 is out of range for bitsize $1 (max is $2)",
+           v, n, max_value -1));
+  }
   V_ = pc_gens_.Commit(yacl::math::MPInt(v), v_blinding_);
 }
 
 PartyAwaitingPosition::~PartyAwaitingPosition() {
-  // Clear sensitive data when going out of scope
   v_ = 0;
-  v_blinding_ = yacl::math::MPInt(0);
 }
 
-std::pair<PartyAwaitingBitChallenge, BitCommitment> 
+std::pair<PartyAwaitingBitChallenge, BitCommitment>
 PartyAwaitingPosition::AssignPosition(size_t j) const {
   if (bp_gens_.party_capacity() <= j) {
-    throw yacl::Exception("Party index out of bounds");
+    throw yacl::Exception(absl::Substitute(
+        "Party index $0 out of bounds for generator capacity $1",
+        j, bp_gens_.party_capacity()));
   }
-  
-  auto curve = bp_gens_.GetCurve();
-  
-  // Generate random blinding factors
+
+  auto curve = pc_gens_.GetCurve();
+  YACL_ENFORCE(curve != nullptr, "Curve is null in PartyAwaitingPosition");
+  const auto& order = curve->GetOrder();
+
   yacl::math::MPInt a_blinding;
-  yacl::math::MPInt::RandomExactBits(curve->GetField().BitCount(), &a_blinding);
-  
-  // Compute A = <a_L, G> + <a_R, H> + a_blinding * B_blinding
+  a_blinding.RandomExactBits(256, &a_blinding);
+  yacl::math::MPInt s_blinding;
+  s_blinding.RandomExactBits(256, &s_blinding);
+
   yacl::crypto::EcPoint A = curve->Mul(pc_gens_.GetHPoint(), a_blinding);
-  
-  // Get party's share of generators
-  auto party_gens_G = bp_gens_.GetGParty(j);
-  auto party_gens_H = bp_gens_.GetHParty(j);
-  
-  // For each bit, add the appropriate generator
-  for (size_t i = 0; i < n_; i++) {
+
+  auto share = bp_gens_.Share(j);
+  auto party_gens_G = share.G(n_);
+  auto party_gens_H = share.H(n_);
+  YACL_ENFORCE(party_gens_G.size() == n_ && party_gens_H.size() == n_,
+               "Incorrect number of generators obtained for party");
+
+  yacl::math::MPInt one(1);
+  yacl::math::MPInt minus_one = order - one; // Calculate -1 mod order
+
+  for (size_t i = 0; i < n_; ++i) {
     bool bit_set = ((v_ >> i) & 1) == 1;
     if (bit_set) {
       A = curve->Add(A, party_gens_G[i]);
     } else {
-      A = curve->Sub(A, party_gens_H[i]);
+      A = curve->Add(A, curve->Mul(party_gens_H[i], minus_one));
     }
   }
-  
-  // Generate random blinding factors for S
-  yacl::math::MPInt s_blinding;
-  yacl::math::MPInt::RandomExactBits(curve->GetField().BitCount(), &s_blinding);
-  
-  // Generate random s_L and s_R vectors
-  std::vector<yacl::math::MPInt> s_L;
-  std::vector<yacl::math::MPInt> s_R;
-  s_L.reserve(n_);
-  s_R.reserve(n_);
-  
-  for (size_t i = 0; i < n_; i++) {
-    yacl::math::MPInt s_L_i, s_R_i;
-    yacl::math::MPInt::RandomExactBits(curve->GetField().BitCount(), &s_L_i);
-    yacl::math::MPInt::RandomExactBits(curve->GetField().BitCount(), &s_R_i);
-    s_L.push_back(std::move(s_L_i));
-    s_R.push_back(std::move(s_R_i));
+
+  std::vector<yacl::math::MPInt> s_L; s_L.reserve(n_);
+  std::vector<yacl::math::MPInt> s_R; s_R.reserve(n_);
+  for (size_t i = 0; i < n_; ++i) {
+    yacl::math::MPInt s_L_i;
+    s_L_i.RandomExactBits(256, &s_L_i);
+    s_L.push_back(s_L_i);
+    yacl::math::MPInt s_R_i;
+    s_R_i.RandomExactBits(256, &s_R_i);
+    s_R.push_back(s_R_i);
   }
-  
-  // Compute S = <s_L, G> + <s_R, H> + s_blinding * B_blinding
+
   yacl::crypto::EcPoint S = curve->Mul(pc_gens_.GetHPoint(), s_blinding);
-  
-  for (size_t i = 0; i < n_; i++) {
+  for (size_t i = 0; i < n_; ++i) {
     S = curve->Add(S, curve->Mul(party_gens_G[i], s_L[i]));
     S = curve->Add(S, curve->Mul(party_gens_H[i], s_R[i]));
   }
-  
-  // Create commitment
-  BitCommitment commitment{V_, A, S};
-  
-  // Create next state
+
+  BitCommitment commitment(V_, A, S);
+
   PartyAwaitingBitChallenge next_state(
-      n_, v_, v_blinding_, j, pc_gens_, 
-      a_blinding, s_blinding, std::move(s_L), std::move(s_R));
-  
+      n_,                       // size_t n
+      j,                       // size_t j
+      pc_gens_,                // const PedersenGens& pc_gens
+      curve,                   // const std::shared_ptr<...>& curve
+      v_,                      // uint64_t v
+      v_blinding_,             // const MPInt& v_blinding
+      a_blinding,              // const MPInt& a_blinding
+      s_blinding,              // const MPInt& s_blinding
+      std::move(s_L),          // std::vector<MPInt> s_L
+      std::move(s_R)           // std::vector<MPInt> s_R
+  );
+
   return {std::move(next_state), commitment};
 }
 
@@ -124,93 +138,89 @@ PartyAwaitingPosition::AssignPosition(size_t j) const {
 
 PartyAwaitingBitChallenge::PartyAwaitingBitChallenge(
     size_t n,
-    uint64_t v,
-    const yacl::math::MPInt& v_blinding,
     size_t j,
     const PedersenGens& pc_gens,
+    const std::shared_ptr<yacl::crypto::EcGroup>& curve,
+    uint64_t v,
+    const yacl::math::MPInt& v_blinding,
     const yacl::math::MPInt& a_blinding,
     const yacl::math::MPInt& s_blinding,
     std::vector<yacl::math::MPInt> s_L,
     std::vector<yacl::math::MPInt> s_R)
+    // Initializer list order matches declaration in party.h
     : n_(n),
-      v_(v),
-      v_blinding_(v_blinding),
       j_(j),
       pc_gens_(pc_gens),
+      curve_(curve),
+      v_(v),
+      v_blinding_(v_blinding),
       a_blinding_(a_blinding),
       s_blinding_(s_blinding),
       s_L_(std::move(s_L)),
-      s_R_(std::move(s_R)) {}
-
-PartyAwaitingBitChallenge::~PartyAwaitingBitChallenge() {
-  // Clear sensitive data when going out of scope
-  v_ = 0;
-  v_blinding_ = yacl::math::MPInt(0);
-  a_blinding_ = yacl::math::MPInt(0);
-  s_blinding_ = yacl::math::MPInt(0);
-  
-  // Clear vectors
-  for (auto& s : s_L_) {
-    s = yacl::math::MPInt(0);
-  }
-  for (auto& s : s_R_) {
-    s = yacl::math::MPInt(0);
-  }
+      s_R_(std::move(s_R)) {
+  YACL_ENFORCE(curve_ != nullptr, "Curve cannot be null in PartyAwaitingBitChallenge");
 }
 
+PartyAwaitingBitChallenge::~PartyAwaitingBitChallenge() {}
+
 std::pair<PartyAwaitingPolyChallenge, PolyCommitment>
-PartyAwaitingBitChallenge::ApplyChallenge(const BitChallenge& challenge) const {  
-  auto curve = pc_gens_.GetCurve();
-  
-  // Calculate offset values based on party position
-  yacl::math::MPInt offset_y = ScalarExpVartime(challenge.GetY(), static_cast<uint64_t>(j_ * n_));
-  yacl::math::MPInt offset_z = ScalarExpVartime(challenge.GetZ(), static_cast<uint64_t>(j_));
-  
-  // Calculate vectors l0, l1, r0, r1 for polynomial calculation
+PartyAwaitingBitChallenge::ApplyChallenge(const BitChallenge& challenge) const {
+  const auto& order = curve_->GetOrder();
+  const yacl::math::MPInt& y = challenge.GetY();
+  const yacl::math::MPInt& z = challenge.GetZ();
+
+  yacl::math::MPInt offset_y = ScalarExp(y, j_ * n_, curve_);
+  yacl::math::MPInt offset_z = ScalarExp(z, j_, curve_);
+  yacl::math::MPInt z_sq = z.MulMod(z, order);
+  yacl::math::MPInt offset_zz = z_sq.MulMod(offset_z, order);
+
   VecPoly1 l_poly = VecPoly1::Zero(n_);
   VecPoly1 r_poly = VecPoly1::Zero(n_);
-  
-  yacl::math::MPInt offset_zz = challenge.GetZ() * challenge.GetZ() * offset_z;
-  yacl::math::MPInt exp_y = offset_y; // Start at y^j
-  yacl::math::MPInt exp_2 = yacl::math::MPInt(1); // Start at 2^0 = 1
-  
-  for (size_t i = 0; i < n_; i++) {
-    // Compute a_L[i] and a_R[i]
+
+  yacl::math::MPInt one(1);
+  yacl::math::MPInt two(2);
+  std::vector<yacl::math::MPInt> y_pows = ExpIterVector(y, n_, curve_);
+  std::vector<yacl::math::MPInt> two_pows = ExpIterVector(two, n_, curve_);
+
+  for (size_t i = 0; i < n_; ++i) {
     yacl::math::MPInt a_L_i((v_ >> i) & 1);
-    yacl::math::MPInt a_R_i = a_L_i - yacl::math::MPInt(1);
-    
-    // Update the polynomials
-    l_poly.vec0[i] = a_L_i - challenge.GetZ();
+    yacl::math::MPInt a_R_i = a_L_i.SubMod(one, order);
+    l_poly.vec0[i] = a_L_i.SubMod(z, order);
     l_poly.vec1[i] = s_L_[i];
-    r_poly.vec0[i] = exp_y * (a_R_i + challenge.GetZ()) + offset_zz * exp_2;
-    r_poly.vec1[i] = exp_y * s_R_[i];
-    
-    // Update exponentials for next iteration
-    exp_y = exp_y * challenge.GetY();
-    exp_2 = exp_2 + exp_2;
+    yacl::math::MPInt current_y_pow = y_pows[i].MulMod(offset_y, order);
+    yacl::math::MPInt term1_factor = a_R_i.AddMod(z, order);
+    yacl::math::MPInt term1 = current_y_pow.MulMod(term1_factor, order);
+    yacl::math::MPInt term2 = offset_zz.MulMod(two_pows[i], order);
+    r_poly.vec0[i] = term1.AddMod(term2, order);
+    r_poly.vec1[i] = current_y_pow.MulMod(s_R_[i], order);
   }
-  
-  // Compute t_poly = l_poly * r_poly
-  Poly2 t_poly = l_poly.InnerProduct(r_poly, curve);
-  
-  // Generate random blinding factors for T_1 and T_2
-  yacl::math::MPInt t_1_blinding, t_2_blinding;
-  yacl::math::MPInt::RandomExactBits(curve->GetField().BitCount(), &t_1_blinding);
-  yacl::math::MPInt::RandomExactBits(curve->GetField().BitCount(), &t_2_blinding);
-  
-  // Compute commitments T_1 and T_2
+
+  Poly2 t_poly = l_poly.InnerProduct(r_poly, curve_);
+
+  yacl::math::MPInt t_1_blinding;
+  t_1_blinding.RandomExactBits(256, &t_1_blinding);
+  yacl::math::MPInt t_2_blinding;
+  t_2_blinding.RandomExactBits(256, &t_2_blinding);
+
   yacl::crypto::EcPoint T_1 = pc_gens_.Commit(t_poly.t1, t_1_blinding);
   yacl::crypto::EcPoint T_2 = pc_gens_.Commit(t_poly.t2, t_2_blinding);
-  
-  // Create polynomial commitment
-  PolyCommitment poly_commitment{T_1, T_2};
-  
-  // Create next state
+
+  PolyCommitment poly_commitment(T_1, T_2);
+
+  // Call constructor with parameters in the correct order matching the declaration
   PartyAwaitingPolyChallenge next_state(
-      offset_zz, l_poly, r_poly, t_poly,
-      v_blinding_, a_blinding_, s_blinding_,
-      t_1_blinding, t_2_blinding);
-  
+      offset_zz,               // const MPInt& offset_zz
+      std::move(l_poly),       // VecPoly1&& l_poly
+      std::move(r_poly),       // VecPoly1&& r_poly
+      t_poly,                  // const Poly2& t_poly
+      v_blinding_,             // const MPInt& v_blinding
+      a_blinding_,             // const MPInt& a_blinding
+      s_blinding_,             // const MPInt& s_blinding
+      t_1_blinding,            // const MPInt& t_1_blinding
+      t_2_blinding,            // const MPInt& t_2_blinding
+      curve_                   // const std::shared_ptr<...>& curve
+  );
+
   return {std::move(next_state), poly_commitment};
 }
 
@@ -218,8 +228,8 @@ PartyAwaitingBitChallenge::ApplyChallenge(const BitChallenge& challenge) const {
 
 PartyAwaitingPolyChallenge::PartyAwaitingPolyChallenge(
     const yacl::math::MPInt& offset_zz,
-    const VecPoly1& l_poly,
-    const VecPoly1& r_poly,
+    VecPoly1&& l_poly,
+    VecPoly1&& r_poly,
     const Poly2& t_poly,
     const yacl::math::MPInt& v_blinding,
     const yacl::math::MPInt& a_blinding,
@@ -227,55 +237,50 @@ PartyAwaitingPolyChallenge::PartyAwaitingPolyChallenge(
     const yacl::math::MPInt& t_1_blinding,
     const yacl::math::MPInt& t_2_blinding,
     const std::shared_ptr<yacl::crypto::EcGroup>& curve)
+    // Initializer list order MUST match declaration order in party.h
     : offset_zz_(offset_zz),
-      l_poly_(l_poly, curve),
-      r_poly_(r_poly, curve),
-      t_poly_(t_poly, curve),
+      l_poly_(std::move(l_poly)),
+      r_poly_(std::move(r_poly)),
+      t_poly_(t_poly),
       v_blinding_(v_blinding),
       a_blinding_(a_blinding),
       s_blinding_(s_blinding),
       t_1_blinding_(t_1_blinding),
-      t_2_blinding_(t_2_blinding) {}
-
-PartyAwaitingPolyChallenge::~PartyAwaitingPolyChallenge() {
-  // Clear sensitive data when going out of scope
-  v_blinding_ = yacl::math::MPInt(0);
-  a_blinding_ = yacl::math::MPInt(0);
-  s_blinding_ = yacl::math::MPInt(0);
-  t_1_blinding_ = yacl::math::MPInt(0);
-  t_2_blinding_ = yacl::math::MPInt(0);
-  
-  // Note: l_poly_, r_poly_, and t_poly_ are cleared in their own destructors
+      t_2_blinding_(t_2_blinding),
+      curve_(curve) {
+  YACL_ENFORCE(curve_ != nullptr, "Curve cannot be null in PartyAwaitingPolyChallenge");
 }
+
+PartyAwaitingPolyChallenge::~PartyAwaitingPolyChallenge() {}
 
 ProofShare PartyAwaitingPolyChallenge::ApplyChallenge(
     const PolyChallenge& challenge) const {
-  // Prevent a malicious dealer from annihilating the blinding factors
-  if (challenge.GetX() == yacl::math::MPInt(0)) {
-    throw yacl::Exception("Malicious dealer: challenge.x is zero");
+  const auto& order = curve_->GetOrder();
+  const yacl::math::MPInt& x = challenge.GetX();
+
+  if (x.IsZero()) {
+    throw yacl::Exception("Malicious dealer: challenge x is zero");
   }
-  
-  // Create t_blinding_poly = offset_zz * v_blinding + t_1_blinding*x + t_2_blinding*x^2
+
   Poly2 t_blinding_poly(
-      offset_zz_ * v_blinding_,
+      offset_zz_.MulMod(v_blinding_, order),
       t_1_blinding_,
-      t_2_blinding_);
-  
-  // Evaluate polynomials at the challenge point x
-  yacl::math::MPInt t_x = t_poly_.Eval(challenge.GetX(), curve_);
-  yacl::math::MPInt t_x_blinding = t_blinding_poly.Eval(challenge.GetX(), curve_);
-  yacl::math::MPInt e_blinding = a_blinding_ + s_blinding_ * challenge.GetX();
-  std::vector<yacl::math::MPInt> l_vec = l_poly_.Eval(challenge.GetX());
-  std::vector<yacl::math::MPInt> r_vec = r_poly_.Eval(challenge.GetX());
-  
-  // Create and return the proof share
-  return ProofShare{
+      t_2_blinding_
+  );
+
+  yacl::math::MPInt t_x = t_poly_.Eval(x, curve_);
+  yacl::math::MPInt t_x_blinding = t_blinding_poly.Eval(x, curve_);
+  yacl::math::MPInt e_blinding = a_blinding_.AddMod(s_blinding_.MulMod(x, order), order);
+  std::vector<yacl::math::MPInt> l_vec = l_poly_.Eval(x, curve_);
+  std::vector<yacl::math::MPInt> r_vec = r_poly_.Eval(x, curve_);
+
+  return ProofShare(
     t_x,
     t_x_blinding,
     e_blinding,
     std::move(l_vec),
     std::move(r_vec)
-  };
+  );
 }
 
 } // namespace examples::zkp

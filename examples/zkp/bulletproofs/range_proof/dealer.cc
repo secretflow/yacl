@@ -114,28 +114,6 @@ DealerAwaitingBitCommitments::ReceiveBitCommitments(
 
 //-------------------- DealerAwaitingPolyCommitments --------------------
 
-DealerAwaitingPolyCommitments::DealerAwaitingPolyCommitments(
-    size_t n,
-    size_t m,
-    SimpleTranscript& transcript,
-    SimpleTranscript initial_transcript,
-    const BulletproofGens& bp_gens,
-    const PedersenGens& pc_gens,
-    const BitChallenge& bit_challenge,
-    std::vector<BitCommitment> bit_commitments,
-    const yacl::crypto::EcPoint& A,
-    const yacl::crypto::EcPoint& S)
-    : n_(n),
-      m_(m),
-      transcript_(transcript),
-      initial_transcript_(std::move(initial_transcript)),
-      bp_gens_(bp_gens),
-      pc_gens_(pc_gens),
-      bit_challenge_(bit_challenge),
-      bit_commitments_(std::move(bit_commitments)),
-      A_(A),
-      S_(S) {}
-
 std::pair<DealerAwaitingProofShares, PolyChallenge>
 DealerAwaitingPolyCommitments::ReceivePolyCommitments(
     const std::vector<PolyCommitment>& poly_commitments) {
@@ -181,35 +159,7 @@ DealerAwaitingPolyCommitments::ReceivePolyCommitments(
 
 //-------------------- DealerAwaitingProofShares --------------------
 
-DealerAwaitingProofShares::DealerAwaitingProofShares(
-    size_t n,
-    size_t m,
-    SimpleTranscript& transcript,
-    SimpleTranscript initial_transcript,
-    const BulletproofGens& bp_gens,
-    const PedersenGens& pc_gens,
-    const BitChallenge& bit_challenge,
-    std::vector<BitCommitment> bit_commitments,
-    const PolyChallenge& poly_challenge,
-    std::vector<PolyCommitment> poly_commitments,
-    const yacl::crypto::EcPoint& A,
-    const yacl::crypto::EcPoint& S,
-    const yacl::crypto::EcPoint& T_1,
-    const yacl::crypto::EcPoint& T_2)
-    : n_(n),
-      m_(m),
-      transcript_(transcript),
-      initial_transcript_(std::move(initial_transcript)),
-      bp_gens_(bp_gens),
-      pc_gens_(pc_gens),
-      bit_challenge_(bit_challenge),
-      bit_commitments_(std::move(bit_commitments)),
-      poly_challenge_(poly_challenge),
-      poly_commitments_(std::move(poly_commitments)),
-      A_(A),
-      S_(S),
-      T_1_(T_1),
-      T_2_(T_2) {}
+
 
 RangeProof DealerAwaitingProofShares::AssembleShares(
     const std::vector<ProofShare>& proof_shares) {
@@ -240,9 +190,9 @@ RangeProof DealerAwaitingProofShares::AssembleShares(
   yacl::math::MPInt e_blinding(0);
   
   for (const auto& share : proof_shares) {
-    t_x = t_x + share.GetTX();
-    t_x_blinding = t_x_blinding + share.GetTXBlinding();
-    e_blinding = e_blinding + share.GetEBlinding();
+    t_x = t_x.AddMod(share.GetTX(), curve->GetOrder());
+    t_x_blinding = t_x_blinding.AddMod(share.GetTXBlinding(), curve->GetOrder());
+    e_blinding = e_blinding.AddMod(share.GetEBlinding(), curve->GetOrder());
   }
   
   // Add these values to the transcript
@@ -258,7 +208,7 @@ RangeProof DealerAwaitingProofShares::AssembleShares(
   std::vector<yacl::math::MPInt> G_factors(n_ * m_, yacl::math::MPInt(1));
   
   yacl::math::MPInt y_inv = bit_challenge_.GetY().InvertMod(curve->GetOrder());
-  std::vector<yacl::math::MPInt> H_factors = ExpIterVector(y_inv, n_ * m_);
+  std::vector<yacl::math::MPInt> H_factors = ExpIterVector(y_inv, n_ * m_, curve);
   
   // Collect l_vec and r_vec from all proof shares
   std::vector<yacl::math::MPInt> l_vec;

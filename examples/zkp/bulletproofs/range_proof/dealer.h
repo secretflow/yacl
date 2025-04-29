@@ -111,9 +111,6 @@ class DealerAwaitingPolyCommitments {
   DealerAwaitingPolyCommitments(DealerAwaitingPolyCommitments&&) = default;
   DealerAwaitingPolyCommitments& operator=(DealerAwaitingPolyCommitments&&) = default;
 
- private:
-  friend class DealerAwaitingBitCommitments;
-
   DealerAwaitingPolyCommitments(
       size_t n,
       size_t m,
@@ -124,7 +121,21 @@ class DealerAwaitingPolyCommitments {
       const BitChallenge& bit_challenge,
       std::vector<BitCommitment> bit_commitments,
       const yacl::crypto::EcPoint& A,
-      const yacl::crypto::EcPoint& S);
+      const yacl::crypto::EcPoint& S):
+      n_(n), 
+      m_(m),
+      transcript_(transcript),
+      initial_transcript_(initial_transcript),
+      bp_gens_(bp_gens),
+      pc_gens_(pc_gens),
+      bit_challenge_(bit_challenge),
+      bit_commitments_(bit_commitments),
+      A_(A), S_(S) {}
+
+ private:
+  friend class DealerAwaitingBitCommitments;
+
+  
 
   size_t n_; // Bitsize of the range
   size_t m_; // Number of parties
@@ -175,9 +186,6 @@ class DealerAwaitingProofShares {
   DealerAwaitingProofShares(DealerAwaitingProofShares&&) = default;
   DealerAwaitingProofShares& operator=(DealerAwaitingProofShares&&) = default;
 
- private:
-  friend class DealerAwaitingPolyCommitments;
-
   DealerAwaitingProofShares(
       size_t n,
       size_t m,
@@ -192,7 +200,25 @@ class DealerAwaitingProofShares {
       const yacl::crypto::EcPoint& A,
       const yacl::crypto::EcPoint& S,
       const yacl::crypto::EcPoint& T_1,
-      const yacl::crypto::EcPoint& T_2);
+      const yacl::crypto::EcPoint& T_2):
+      n_(n), 
+      m_(m),
+      transcript_(transcript),
+      initial_transcript_(initial_transcript),
+      bp_gens_(bp_gens),
+      pc_gens_(pc_gens),    
+      bit_challenge_(bit_challenge),
+      bit_commitments_(bit_commitments),
+      poly_challenge_(poly_challenge),
+      poly_commitments_(poly_commitments),
+      A_(A),
+      S_(S),
+      T_1_(T_1),
+      T_2_(T_2) {}
+ private:
+  friend class DealerAwaitingPolyCommitments;
+
+  
 
   /**
    * @brief Helper function to assemble proof shares into a RangeProof.

@@ -178,43 +178,4 @@ class ProofShare {
   std::vector<yacl::math::MPInt> r_vec_;  // Right vector
 };
 
-/**
- * @brief Calculate inner product of two scalar vectors.
- * 
- * @param a First vector
- * @param b Second vector
- * @return yacl::math::MPInt Inner product result
- * @throws yacl::Exception if vectors have different sizes
- */
-yacl::math::MPInt InnerProduct(
-    const std::vector<yacl::math::MPInt>& a,
-    const std::vector<yacl::math::MPInt>& b);
-
-/**
- * @brief Create an iterator over powers of a scalar: s^0, s^1, s^2, ...
- * 
- * @param s Base scalar
- * @return Vector of powers
- * @param n Number of powers to generate
- */
-std::vector<yacl::math::MPInt> ExpIterVector(const yacl::math::MPInt& s, size_t n);
-
-/**
- * @brief Calculate the sum of powers: s^0 + s^1 + ... + s^(n-1)
- * 
- * @param s Base scalar
- * @param n Number of terms
- * @return yacl::math::MPInt Sum of powers
- */
-yacl::math::MPInt SumOfPowers(const yacl::math::MPInt& s, size_t n);
-
-/**
- * @brief Calculate scalar exponentiation x^n in variable time.
- * 
- * @param x Base
- * @param n Exponent
- * @return yacl::math::MPInt Result
- */
-yacl::math::MPInt ScalarExpVartime(const yacl::math::MPInt& x, uint64_t n);
-
 } // namespace examples::zkp
