@@ -48,6 +48,7 @@ yacl_cc_library(
     hdrs = ["generators.h"],
     copts = COMMON_COPTS,
     deps = [
+        "//zkp/sigma:pedersen_commit",
         "@yacl//yacl/base:exception",
         "@yacl//yacl/crypto/ecc:ecc",
         "@yacl//yacl/crypto/ecc:ec_point",

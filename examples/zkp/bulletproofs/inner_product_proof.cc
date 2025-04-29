@@ -17,13 +17,19 @@ yacl::crypto::EcPoint MultiScalarMul(
   if (scalars.size() != points.size()) {
     throw yacl::Exception("Mismatched vector lengths in multiscalar mul");
   }
+
+  if (scalars.size() == 0) {
+    throw yacl::Exception("Empty scalar vector in multiscalar mul");
+  }
   
   // For now we implement this naively - in production code you would
   // use a more optimized algorithm like Straus/Pippenger
-  yacl::crypto::EcPoint result = curve->GetGenerator();
-  curve->MulInplace(&result, yacl::math::MPInt(0));  // Set to identity
+  // yacl::crypto::EcPoint result = curve->GetGenerator();
+  // curve->MulInplace(&result, yacl::math::MPInt(0));  // Set to identity
+
+  yacl::crypto::EcPoint result = curve->Mul(points[0], scalars[0]);
   
-  for (size_t i = 0; i < scalars.size(); i++) {
+  for (size_t i = 1; i < scalars.size(); i++) {
     std::cout << "MultiScalarMul: i = " << i << ", scalar = " << scalars[i] << std::endl;
     yacl::crypto::EcPoint term = curve->Mul(points[i], scalars[i]);
     std::cout << "MultiScalarMul: term = " << curve->SerializePoint(term) << std::endl;
@@ -43,6 +49,8 @@ InnerProductProof InnerProductProof::Create(
     std::vector<yacl::crypto::EcPoint> H_vec,
     std::vector<yacl::math::MPInt> a_vec,
     std::vector<yacl::math::MPInt> b_vec) {
+
+  std::cout << "InnerProductProof::Create" << std::endl;
   
   // Create mutable copies just like in Rust
   auto G = G_vec;
@@ -197,94 +205,120 @@ InnerProductProof InnerProductProof::Create(
   return InnerProductProof(L_vec, R_vec, a[0], b[0]);
 }
 
-// Utility function to compute floor(log2(x))
+// Utility function to compute floor(log2(x)) - DEFINED BEFORE USE
 size_t FloorLog2(size_t x) {
-  if (x == 0) return 0;  // Handle special case
-  size_t result = 0;
-  while (x > 1) {
-    x >>= 1;
-    result++;
-  }
-  return result;
+  if (x == 0) return 0;
+#ifdef __GNUC__
+    // Use GCC/Clang built-in if available (more efficient)
+    // __builtin_clzll returns number of leading zeros for unsigned long long
+    // Handle x=0 separately as clz(0) is undefined.
+    return (sizeof(unsigned long long) * 8 - 1) - __builtin_clzll(static_cast<unsigned long long>(x));
+#else
+    // Portable fallback
+    size_t result = 0;
+    // Shift right until x becomes 0. The number of shifts is floor(log2(original_x)).
+    while (x >>= 1) { // Condition is true as long as x > 0 after shift
+        ++result;
+    }
+    return result;
+#endif
 }
 
-std::tuple<std::vector<yacl::math::MPInt>, 
-           std::vector<yacl::math::MPInt>, 
-           std::vector<yacl::math::MPInt>> 
+std::tuple<std::vector<yacl::math::MPInt>,
+           std::vector<yacl::math::MPInt>,
+           std::vector<yacl::math::MPInt>>
 InnerProductProof::VerificationScalars(
-    size_t n,
+    size_t n, // The original vector length (vector size = n)
     SimpleTranscript* transcript,
     const std::shared_ptr<yacl::crypto::EcGroup>& curve) const {
-  
-  size_t lg_n = L_vec_.size();
-  
-  // Basic checks
-  if (lg_n >= 32) {
-    throw yacl::Exception("Inner product proof too large");
-  }
-  
-  if (n != (1ULL << lg_n)) {
-    throw yacl::Exception("Length n doesn't match proof size");
-  }
-  
+
+  size_t lg_n = L_vec_.size(); // Number of rounds = log2(n)
+
+#if DEBUG_IPP
+  std::cout << "\n--- InnerProductProof::VerificationScalars Start (n=" << n << ", lg_n=" << lg_n << ") ---" << std::endl;
+#endif
+
+  // --- Basic Checks ---
+  YACL_ENFORCE(lg_n < 32, "Inner product proof too large (lg_n >= 32)");
+  YACL_ENFORCE(n > 0 && (n == (1ULL << lg_n)), "Input n must be 2^lg_n and positive"); // Check n is power of 2 and matches lg_n
+  YACL_ENFORCE(R_vec_.size() == lg_n, "L_vec and R_vec size mismatch");
+
   transcript->InnerproductDomainSep(n);
-  
-  // 1. Recompute challenges
-  std::vector<yacl::math::MPInt> challenges;
-  challenges.reserve(lg_n);
-  
-  for (size_t i = 0; i < lg_n; i++) {
+
+  // --- 1. Recompute challenges u_i from transcript ---
+  std::vector<yacl::math::MPInt> challenges(lg_n);
+  std::vector<yacl::math::MPInt> challenges_inv(lg_n); // Store inverses too
+
+#if DEBUG_IPP
+  std::cout << "Recomputing challenges..." << std::endl;
+#endif
+  for (size_t i = 0; i < lg_n; ++i) {
+    // Append points in the same order as prover
     transcript->AppendPoint("L", L_vec_[i], curve);
     transcript->AppendPoint("R", R_vec_[i], curve);
-    challenges.push_back(transcript->ChallengeScalar("u", curve));
-  }
-  
-  // 2. Compute inverses
-  std::cout << "VerificationScalars: Calculating inverses..." << std::endl;
-  std::vector<yacl::math::MPInt> challenges_inv;
-  challenges_inv.reserve(lg_n);
-  
-  // Compute individual inverses and their product (we don't have batch inversion)
-  yacl::math::MPInt all_inv_product(1);
-  for (const auto& challenge : challenges) {
-    yacl::math::MPInt inv = challenge.InvertMod(curve->GetOrder());
-    std::cout << "VerificationScalars: challenge = " << challenge << ", inv = " << inv << std::endl;
-    challenges_inv.push_back(inv);
-    all_inv_product = all_inv_product.MulMod(inv, curve->GetOrder());
+    // Recompute challenge for this round
+    challenges[i] = transcript->ChallengeScalar("u", curve);
+    challenges_inv[i] = challenges[i].InvertMod(curve->GetOrder()); // Compute inverse now
+#if DEBUG_IPP
+    std::cout << "  u_" << (i + 1) << " = " << challenges[i] << ", u_inv_" << (i + 1) << " = " << challenges_inv[i] << std::endl;
+#endif
   }
 
-  std::cout << "VerificationScalars: all_inv_product = " << all_inv_product << std::endl;
-  
-  // 3. Compute squares of challenges and their inverses
-  std::vector<yacl::math::MPInt> challenges_sq;
-  std::vector<yacl::math::MPInt> challenges_inv_sq;
-  
-  for (size_t i = 0; i < lg_n; i++) {
-    challenges_sq.push_back(challenges[i].MulMod(challenges[i], curve->GetOrder()));
-    challenges_inv_sq.push_back(challenges_inv[i].MulMod(challenges_inv[i], curve->GetOrder()));
+  // --- 2. Compute squares of challenges and inverses ---
+  std::vector<yacl::math::MPInt> challenges_sq(lg_n);
+  std::vector<yacl::math::MPInt> challenges_inv_sq(lg_n);
+  for (size_t i = 0; i < lg_n; ++i) {
+      challenges_sq[i] = challenges[i].MulMod(challenges[i], curve->GetOrder());
+      challenges_inv_sq[i] = challenges_inv[i].MulMod(challenges_inv[i], curve->GetOrder());
   }
-  
-  // 4. Compute s values exactly as in Rust
-  std::vector<yacl::math::MPInt> s;
-  s.reserve(n);
-  s.push_back(all_inv_product);
-  
-  for (size_t i = 1; i < n; i++) {
-    
-    // GCC/Clang intrinsic for counting leading zeros
-    size_t lg_i = 32 - 1 - __builtin_clz(i);
-    size_t k = 1ULL << lg_i;
-    
-    // Get the corresponding squared challenge
-    // The challenges are stored in "creation order" [u_k,...,u_1]
-    yacl::math::MPInt u_lg_i_sq = challenges_sq[(lg_n - 1) - lg_i];
-    
-    // s[i] = s[i-k] * u_lg_i_sq
-    s.push_back(s[i - k].MulMod(u_lg_i_sq, curve->GetOrder()));
+
+  // --- 3. Compute s vector ---
+  std::vector<yacl::math::MPInt> s(n);
+  // Compute s[0] = product_{j=0}^{lg_n-1} u_{j+1}^{-1}
+  yacl::math::MPInt s_0(1);
+  for (const auto& inv : challenges_inv) {
+      s_0 = s_0.MulMod(inv, curve->GetOrder());
   }
-  
+  s[0] = s_0;
+
+#if DEBUG_IPP
+  std::cout << "Computing s vector (size " << n << ")..." << std::endl;
+  std::cout << "  s[0] = " << s[0] << std::endl;
+#endif
+
+  for (size_t i = 1; i < n; ++i) {
+      // Find the 0-based index of the highest set bit of i
+      size_t lg_i = FloorLog2(i);
+      size_t k = 1ULL << lg_i; // k = 2^{lg_i}
+
+      // *** FIX: USE RUST INDEXING SCHEME ***
+      // The challenges are stored in "creation order" as [u_1, u_2,..., u_lg_n]
+      // challenges_sq holds [u_1^2, u_2^2, ..., u_lg_n^2]
+      // Rust code uses index (lg_n - 1) - lg_i
+      size_t challenge_idx = (lg_n - 1) - lg_i;
+      YACL_ENFORCE(challenge_idx < challenges_sq.size(), "Logic error: challenge_idx out of bounds");
+      const yacl::math::MPInt& u_sq_for_level = challenges_sq[challenge_idx];
+
+      // Find the previous index `i - k`
+      size_t prev_i = i - k;
+      YACL_ENFORCE(prev_i < i, "Logic error: prev_i >= i");
+
+      // Calculate s[i] = s[prev_i] * u_sq_for_level
+      s.at(i) = s.at(prev_i).MulMod(u_sq_for_level, curve->GetOrder());
+
+#if DEBUG_IPP >= 2 // Only print s vector for higher debug levels
+      // Correct the debug print to show the challenge index used
+      std::cout << "  s[" << i << "] = s[" << prev_i << "] * challenges_sq[" << challenge_idx << "] = " << s[i] << std::endl;
+#endif
+  }
+
+#if DEBUG_IPP
+  std::cout << "--- InnerProductProof::VerificationScalars End ---" << std::endl;
+#endif
+
   return {challenges_sq, challenges_inv_sq, s};
 }
+
 
 bool InnerProductProof::Verify(
     size_t n,
@@ -296,6 +330,8 @@ bool InnerProductProof::Verify(
     const yacl::crypto::EcPoint& Q,
     const std::vector<yacl::crypto::EcPoint>& G,
     const std::vector<yacl::crypto::EcPoint>& H) const {
+
+  std::cout << "InnerProductProof::Verify" << std::endl;
   
   try {
     std::cout << "Verifying proof with n=" << n << ", lg_n=" << L_vec_.size() << std::endl;

@@ -7,34 +7,34 @@ namespace examples::zkp {
 
 // ---- PedersenGens implementation ----
 
-PedersenGens::PedersenGens(std::shared_ptr<yacl::crypto::EcGroup> curve)
-    : curve_(std::move(curve)) {
-  // Use the curve's base point for B
-  B_ = curve_->GetGenerator();
+// PedersenGens::PedersenGens(std::shared_ptr<yacl::crypto::EcGroup> curve)
+//     : curve_(std::move(curve)) {
+//   // Use the curve's base point for B
+//   B_ = curve_->GetGenerator();
   
-  // Hash the serialized base point to get B_blinding
-  yacl::Buffer base_bytes = curve_->SerializePoint(B_);
+//   // Hash the serialized base point to get B_blinding
+//   yacl::Buffer base_bytes = curve_->SerializePoint(B_);
   
-  // Create a string view for the hash input
-  yacl::ByteContainerView base_view(base_bytes.data(), base_bytes.size());
+//   // Create a string view for the hash input
+//   yacl::ByteContainerView base_view(base_bytes.data(), base_bytes.size());
   
-  // Use the base point bytes as input to HashToCurve
-  // This matches the behavior of RistrettoPoint::hash_from_bytes in the Rust implementation
-  // HashToCurve handles the internal hashing
-  B_blinding_ = curve_->HashToCurve(
-      yacl::crypto::HashToCurveStrategy::Autonomous,  // 
-      base_view);
-}
+//   // Use the base point bytes as input to HashToCurve
+//   // This matches the behavior of RistrettoPoint::hash_from_bytes in the Rust implementation
+//   // HashToCurve handles the internal hashing
+//   B_blinding_ = curve_->HashToCurve(
+//       yacl::crypto::HashToCurveStrategy::Autonomous,  // 
+//       base_view);
+// }
 
-yacl::crypto::EcPoint PedersenGens::Commit(
-    const yacl::math::MPInt& value, 
-    const yacl::math::MPInt& blinding) const {
-  // Compute value*B + blinding*B_blinding
-  yacl::crypto::EcPoint value_term = curve_->Mul(B_, value);
-  yacl::crypto::EcPoint blinding_term = curve_->Mul(B_blinding_, blinding);
+// yacl::crypto::EcPoint PedersenGens::Commit(
+//     const yacl::math::MPInt& value, 
+//     const yacl::math::MPInt& blinding) const {
+//   // Compute value*B + blinding*B_blinding
+//   yacl::crypto::EcPoint value_term = curve_->Mul(B_, value);
+//   yacl::crypto::EcPoint blinding_term = curve_->Mul(B_blinding_, blinding);
   
-  return curve_->Add(value_term, blinding_term);
-}
+//   return curve_->Add(value_term, blinding_term);
+// }
 
 // ---- GeneratorsChain implementation ----
 
@@ -42,7 +42,7 @@ GeneratorsChain::GeneratorsChain(
     std::shared_ptr<yacl::crypto::EcGroup> curve,
     const std::string& label)
     : curve_(std::move(curve)) {
-  // Create a Shake256 context
+  // Create a Sha256 context
   std::string domain_sep = "GeneratorsChain";
   
   // Initialize with domain separator and label
@@ -51,7 +51,9 @@ GeneratorsChain::GeneratorsChain(
   init_input.insert(init_input.end(), label.begin(), label.end());
   
   // Initialize state with hash of input
-  state_ = yacl::crypto::Shake256(init_input, 32);
+  state_ = yacl::crypto::Sha256(
+    yacl::ByteContainerView(init_input.data(), init_input.size())
+  );
 }
 
 void GeneratorsChain::FastForward(size_t n) {
@@ -61,18 +63,19 @@ void GeneratorsChain::FastForward(size_t n) {
 
 yacl::crypto::EcPoint GeneratorsChain::Next() {
   // Create a unique seed for this position
-  std::vector<uint8_t> seed = state_;
+  std::string seed = std::string(state_.begin(), state_.end());
   
   // Append counter to state
-  std::vector<uint8_t> counter_bytes(sizeof(counter_));
-  std::memcpy(counter_bytes.data(), &counter_, sizeof(counter_));
-  seed.insert(seed.end(), counter_bytes.begin(), counter_bytes.end());
+  std::string counter_bytes = std::to_string(counter_);
+  seed.append(counter_bytes);
   
   // Increment counter for next call
   counter_++;
   
   // Get 64 bytes of output to use for the point generation
-  std::vector<uint8_t> uniform_bytes = yacl::crypto::Shake256(seed, 64);
+  auto uniform_bytes = yacl::crypto::Sha256(
+    yacl::ByteContainerView(seed.data(), seed.size())
+  );
   
   // Convert to a point on the curve
   return curve_->HashToCurve(yacl::crypto::HashToCurveStrategy::Autonomous, yacl::ByteContainerView(uniform_bytes));

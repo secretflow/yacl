@@ -9,6 +9,7 @@
 #include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/math/mpint/mp_int.h"
 #include "yacl/crypto/hash/hash_utils.h"
+#include "zkp/sigma/pedersen_commit.h"
 
 namespace examples::zkp {
 
@@ -20,33 +21,33 @@ namespace examples::zkp {
  */
 class PedersenGens {
  public:
-  /**
-   * @brief Construct a new Pedersen Gens object with default generators
-   * 
-   * @param curve The elliptic curve group
-   */
-  explicit PedersenGens(std::shared_ptr<yacl::crypto::EcGroup> curve);
+  explicit PedersenGens(std::shared_ptr<yacl::crypto::EcGroup> curve)
+      : pedersen_commit_(curve) {}
 
-  /**
-   * @brief Creates a Pedersen commitment using the value scalar and a blinding factor.
-   * 
-   * @param value The value to commit to
-   * @param blinding The blinding factor
-   * @return yacl::crypto::EcPoint The commitment
-   */
   yacl::crypto::EcPoint Commit(
-      const yacl::math::MPInt& value, 
-      const yacl::math::MPInt& blinding) const;
+      const yacl::math::MPInt& value,
+      const yacl::math::MPInt& blinding) const {
+    return pedersen_commit_.Commit(value, blinding);
+  }
 
-  // Getters
-  const yacl::crypto::EcPoint& GetGPoint() const { return B_; }
-  const yacl::crypto::EcPoint& GetHPoint() const { return B_blinding_; }
-  const std::shared_ptr<yacl::crypto::EcGroup>& GetCurve() const { return curve_; }
+  const yacl::crypto::EcPoint& GetGPoint() const {
+    // PedersenCommit内部没有直接暴露G点，这里可用SigmaOWH::GetGenerators
+    // 但为兼容原接口，返回一个静态变量（实际项目应暴露接口）
+    static yacl::crypto::EcPoint g = pedersen_commit_.Commit(yacl::math::MPInt(1), yacl::math::MPInt(0));
+    return g;
+  }
+  const yacl::crypto::EcPoint& GetHPoint() const {
+    static yacl::crypto::EcPoint h = pedersen_commit_.Commit(yacl::math::MPInt(0), yacl::math::MPInt(1));
+    return h;
+  }
+
+    // Return the shared_ptr by value
+  std::shared_ptr<yacl::crypto::EcGroup> GetCurve() const {
+    return pedersen_commit_.GetGroup();
+  }
 
  private:
-  std::shared_ptr<yacl::crypto::EcGroup> curve_;
-  yacl::crypto::EcPoint B_;           // Base for the committed value
-  yacl::crypto::EcPoint B_blinding_;  // Base for the blinding factor
+  PedersenCommit pedersen_commit_;
 };
 
 /**
@@ -80,7 +81,7 @@ class GeneratorsChain {
 
  private:
   std::shared_ptr<yacl::crypto::EcGroup> curve_;
-  std::vector<uint8_t> state_;
+  std::array<uint8_t, 32> state_;
   size_t counter_ = 0;
 };
 
