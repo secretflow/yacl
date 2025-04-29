@@ -105,8 +105,8 @@ InnerProductProof InnerProductProof::Create(
     std::vector<yacl::crypto::EcPoint> H_R(H.begin() + n_prime, H.end());
     
     // Compute c_L and c_R (inner products)
-    yacl::math::MPInt c_L = InnerProduct(a_L, b_R);
-    yacl::math::MPInt c_R = InnerProduct(a_R, b_L);
+    yacl::math::MPInt c_L = InnerProduct(a_L, b_R, curve);
+    yacl::math::MPInt c_R = InnerProduct(a_R, b_L, curve);
     
     // Compute L point with the exact same logic as Rust
     std::vector<yacl::math::MPInt> L_scalars;

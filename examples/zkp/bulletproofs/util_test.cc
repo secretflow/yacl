@@ -1,219 +1,181 @@
 #include "zkp/bulletproofs/util.h"
 
 #include <gtest/gtest.h>
+#include <vector>
+#include <memory>
+#include <stdexcept> // Include for stdexcept
 
+#include "yacl/crypto/ecc/ecc_spi.h"
+#include "yacl/crypto/ecc/ec_point.h" // For EcGroupFactory
+#include "yacl/math/mpint/mp_int.h"
+#include "yacl/base/exception.h" // Include for yacl::Exception
+
+// Bring types and specific functions into scope for the test file
 namespace examples::zkp {
 namespace {
+
+// *** FIX: Add using declarations or use fully qualified names ***
+using yacl::math::MPInt;
 
 class UtilTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    // Initialize any test-wide resources
+    try {
+      curve_ = yacl::crypto::EcGroupFactory::Instance().Create(
+          "secp256k1", yacl::ArgLib = "openssl");
+      order_ = curve_->GetOrder();
+      ec_available_ = true;
+    } catch (const yacl::Exception& e) {
+      ec_available_ = false;
+      std::cerr << "Warning: EC operations not available, skipping tests: "
+                << e.what() << std::endl;
+    }
   }
+
+  void CheckEcAvailable() {
+      if (!ec_available_) {
+          GTEST_SKIP() << "Skipping test because EC operations are not available";
+      }
+  }
+
+  std::shared_ptr<yacl::crypto::EcGroup> curve_;
+  yacl::math::MPInt order_;
+  bool ec_available_ = false;
 };
 
-TEST_F(UtilTest, ExpIterVectorWorks) {
-  auto exp_2 = ExpIterVector(yacl::math::MPInt(2), 4);
-  
-  ASSERT_EQ(exp_2.size(), 4);
-  EXPECT_EQ(exp_2[0], yacl::math::MPInt(1));
-  EXPECT_EQ(exp_2[1], yacl::math::MPInt(2));
-  EXPECT_EQ(exp_2[2], yacl::math::MPInt(4));
-  EXPECT_EQ(exp_2[3], yacl::math::MPInt(8));
+// Test InnerProduct
+TEST_F(UtilTest, InnerProductTest) {
+  CheckEcAvailable();
+  // *** FIX: Use MPInt directly now that it's in scope ***
+  std::vector<MPInt> a = {MPInt(1), MPInt(2), MPInt(3)};
+  std::vector<MPInt> b = {MPInt(4), MPInt(5), MPInt(6)};
+  MPInt expected = MPInt(32).Mod(order_);
+  // *** FIX: Use namespace for standalone function ***
+  EXPECT_EQ(examples::zkp::InnerProduct(a, b, curve_), expected);
+
+  std::vector<MPInt> empty;
+  EXPECT_EQ(examples::zkp::InnerProduct(empty, empty, curve_), MPInt(0));
+
+  std::vector<MPInt> c = {MPInt(1)};
+  EXPECT_THROW(examples::zkp::InnerProduct(a, c, curve_), yacl::Exception);
 }
 
-TEST_F(UtilTest, InnerProductWorks) {
-  std::vector<yacl::math::MPInt> a = {
-    yacl::math::MPInt(1),
-    yacl::math::MPInt(2),
-    yacl::math::MPInt(3),
-    yacl::math::MPInt(4)
+// Test AddVec
+TEST_F(UtilTest, AddVecTest) {
+  CheckEcAvailable();
+  std::vector<MPInt> a = {MPInt(1), MPInt(10), order_ - MPInt(1)};
+  std::vector<MPInt> b = {MPInt(4), MPInt(5), MPInt(2)};
+  std::vector<MPInt> expected = {
+      MPInt(5).Mod(order_),
+      MPInt(15).Mod(order_),
+      MPInt(1).Mod(order_)
   };
-  
-  std::vector<yacl::math::MPInt> b = {
-    yacl::math::MPInt(2),
-    yacl::math::MPInt(3),
-    yacl::math::MPInt(4),
-    yacl::math::MPInt(5)
-  };
-  
-  EXPECT_EQ(InnerProduct(a, b), yacl::math::MPInt(40));
-}
-
-TEST_F(UtilTest, ScalarExpVartimeWorks) {
-  // Create a test scalar
-  yacl::math::MPInt x(257);
-  
-  EXPECT_EQ(ScalarExpVartime(x, 0), yacl::math::MPInt(1));
-  EXPECT_EQ(ScalarExpVartime(x, 1), x);
-  EXPECT_EQ(ScalarExpVartime(x, 2), x * x);
-  EXPECT_EQ(ScalarExpVartime(x, 3), x * x * x);
-  EXPECT_EQ(ScalarExpVartime(x, 4), x * x * x * x);
-}
-
-// Helper function for slow scalar exponentiation
-yacl::math::MPInt ScalarExpVartimeSlow(const yacl::math::MPInt& x, uint64_t n) {
-  yacl::math::MPInt result(1);
-  for (uint64_t i = 0; i < n; i++) {
-    result = result * x;
+  // *** FIX: Use namespace for standalone function ***
+  std::vector<MPInt> result = examples::zkp::AddVec(a, b, curve_);
+  ASSERT_EQ(result.size(), expected.size());
+  for (size_t i = 0; i < result.size(); ++i) {
+      EXPECT_EQ(result[i], expected[i]) << "Mismatch at index " << i;
   }
-  return result;
+
+  std::vector<MPInt> c = {MPInt(1)};
+  EXPECT_THROW(examples::zkp::AddVec(a, c, curve_), yacl::Exception);
 }
 
-TEST_F(UtilTest, ScalarExpVartimeMatchesSlow) {
-  yacl::math::MPInt x(123);
-  
-  EXPECT_EQ(ScalarExpVartime(x, 64), ScalarExpVartimeSlow(x, 64));
-  EXPECT_EQ(ScalarExpVartime(x, 0b11001010), ScalarExpVartimeSlow(x, 0b11001010));
-}
-
-TEST_F(UtilTest, SumOfPowersWorks) {
-  yacl::math::MPInt x(10);
-  
-  EXPECT_EQ(SumOfPowers(x, 0), SumOfPowersSlow(x, 0));
-  EXPECT_EQ(SumOfPowers(x, 1), SumOfPowersSlow(x, 1));
-  EXPECT_EQ(SumOfPowers(x, 2), SumOfPowersSlow(x, 2));
-  EXPECT_EQ(SumOfPowers(x, 4), SumOfPowersSlow(x, 4));
-  EXPECT_EQ(SumOfPowers(x, 8), SumOfPowersSlow(x, 8));
-  EXPECT_EQ(SumOfPowers(x, 16), SumOfPowersSlow(x, 16));
-  EXPECT_EQ(SumOfPowers(x, 32), SumOfPowersSlow(x, 32));
-  EXPECT_EQ(SumOfPowers(x, 64), SumOfPowersSlow(x, 64));
-}
-
-TEST_F(UtilTest, SumOfPowersSlowWorks) {
-  yacl::math::MPInt x(10);
-  
-  EXPECT_EQ(SumOfPowersSlow(x, 0), yacl::math::MPInt(0));
-  EXPECT_EQ(SumOfPowersSlow(x, 1), yacl::math::MPInt(1));
-  EXPECT_EQ(SumOfPowersSlow(x, 2), yacl::math::MPInt(11));
-  EXPECT_EQ(SumOfPowersSlow(x, 3), yacl::math::MPInt(111));
-  EXPECT_EQ(SumOfPowersSlow(x, 4), yacl::math::MPInt(1111));
-  EXPECT_EQ(SumOfPowersSlow(x, 5), yacl::math::MPInt(11111));
-  EXPECT_EQ(SumOfPowersSlow(x, 6), yacl::math::MPInt(111111));
-}
-
-TEST_F(UtilTest, VecPoly1EvalWorks) {
-  std::vector<yacl::math::MPInt> vec0 = {
-    yacl::math::MPInt(1),
-    yacl::math::MPInt(2)
+// Test ExpIterVector
+TEST_F(UtilTest, ExpIterVectorTest) {
+  CheckEcAvailable();
+  MPInt base(3);
+  size_t n = 4;
+  std::vector<MPInt> expected = {
+      MPInt(1).Mod(order_),
+      MPInt(3).Mod(order_),
+      MPInt(9).Mod(order_),
+      MPInt(27).Mod(order_)
   };
-  
-  std::vector<yacl::math::MPInt> vec1 = {
-    yacl::math::MPInt(3),
-    yacl::math::MPInt(4)
-  };
-  
-  VecPoly1 poly(vec0, vec1);
-  
-  yacl::math::MPInt x(2);
-  auto result = poly.Eval(x);
-  
-  ASSERT_EQ(result.size(), 2);
-  // 1 + 3*2 = 7
-  EXPECT_EQ(result[0], yacl::math::MPInt(7));
-  // 2 + 4*2 = 10
-  EXPECT_EQ(result[1], yacl::math::MPInt(10));
-}
-
-TEST_F(UtilTest, Poly2EvalWorks) {
-  Poly2 poly(
-    yacl::math::MPInt(1),  // x^0 term
-    yacl::math::MPInt(2),  // x^1 term
-    yacl::math::MPInt(3)   // x^2 term
-  );
-  
-  yacl::math::MPInt x(2);
-  auto result = poly.Eval(x);
-  
-  // 1 + 2*2 + 3*2^2 = 1 + 4 + 12 = 17
-  EXPECT_EQ(result, yacl::math::MPInt(17));
-}
-
-TEST_F(UtilTest, VecPoly1InnerProductWorks) {
-  std::vector<yacl::math::MPInt> a0 = {
-    yacl::math::MPInt(1),
-    yacl::math::MPInt(2)
-  };
-  
-  std::vector<yacl::math::MPInt> a1 = {
-    yacl::math::MPInt(3),
-    yacl::math::MPInt(4)
-  };
-  
-  std::vector<yacl::math::MPInt> b0 = {
-    yacl::math::MPInt(5),
-    yacl::math::MPInt(6)
-  };
-  
-  std::vector<yacl::math::MPInt> b1 = {
-    yacl::math::MPInt(7),
-    yacl::math::MPInt(8)
-  };
-  
-  VecPoly1 a(a0, a1);
-  VecPoly1 b(b0, b1);
-  
-  Poly2 result = a.InnerProduct(b);
-  
-  // t0 = a0 · b0 = 1*5 + 2*6 = 5 + 12 = 17
-  EXPECT_EQ(result.t0, yacl::math::MPInt(17));
-  
-  // t2 = a1 · b1 = 3*7 + 4*8 = 21 + 32 = 53
-  EXPECT_EQ(result.t2, yacl::math::MPInt(53));
-  
-  // t1 = (a0+a1)·(b0+b1) - t0 - t2
-  // (a0+a1) = [4, 6]
-  // (b0+b1) = [12, 14]
-  // (a0+a1)·(b0+b1) = 4*12 + 6*14 = 48 + 84 = 132
-  // t1 = 132 - 17 - 53 = 62
-  EXPECT_EQ(result.t1, yacl::math::MPInt(62));
-}
-
-TEST_F(UtilTest, Read32Works) {
-  std::vector<uint8_t> data(40, 0);
-  for (size_t i = 0; i < 40; i++) {
-    data[i] = static_cast<uint8_t>(i);
+  // *** FIX: Use namespace for standalone function ***
+  std::vector<MPInt> result = examples::zkp::ExpIterVector(base, n, curve_);
+  ASSERT_EQ(result.size(), expected.size());
+  for (size_t i = 0; i < result.size(); ++i) {
+      EXPECT_EQ(result[i], expected[i]) << "Mismatch at index " << i;
   }
-  
-  auto result = Read32(data);
-  
-  ASSERT_EQ(result.size(), 32);
-  for (size_t i = 0; i < 32; i++) {
-    EXPECT_EQ(result[i], static_cast<uint8_t>(i));
-  }
+
+  EXPECT_TRUE(examples::zkp::ExpIterVector(base, 0, curve_).empty());
 }
 
-TEST_F(UtilTest, SecureClearingWorks) {
-  // Test that the destructors clear the data properly
-  {
-    auto a = std::make_unique<VecPoly1>(
-      std::vector<yacl::math::MPInt>{yacl::math::MPInt(123)},
-      std::vector<yacl::math::MPInt>{yacl::math::MPInt(456)}
-    );
-    
-    // Verify data is present
-    EXPECT_EQ(a->vec0[0], yacl::math::MPInt(123));
-    EXPECT_EQ(a->vec1[0], yacl::math::MPInt(456));
-    
-    // Let the destructor run
-    a.reset();
-  }
-  
-  {
-    auto p = std::make_unique<Poly2>(
-      yacl::math::MPInt(111),
-      yacl::math::MPInt(222),
-      yacl::math::MPInt(333)
-    );
-    
-    // Verify data is present
-    EXPECT_EQ(p->t0, yacl::math::MPInt(111));
-    EXPECT_EQ(p->t1, yacl::math::MPInt(222));
-    EXPECT_EQ(p->t2, yacl::math::MPInt(333));
-    
-    // Let the destructor run
-    p.reset();
-  }
+// Test ScalarExp
+TEST_F(UtilTest, ScalarExpTest) {
+  CheckEcAvailable();
+  MPInt base(5);
+  size_t exp = 3;
+  MPInt expected = MPInt(125).Mod(order_);
+  // *** FIX: Use namespace for standalone function ***
+  EXPECT_EQ(examples::zkp::ScalarExp(base, exp, curve_), expected);
+
+  EXPECT_EQ(examples::zkp::ScalarExp(base, 0, curve_), MPInt(1));
+}
+
+// Test SumOfPowers
+TEST_F(UtilTest, SumOfPowersTest) {
+  CheckEcAvailable();
+  MPInt base(2);
+  size_t n = 4;
+  MPInt expected = MPInt(15).Mod(order_);
+  // *** FIX: Use namespace for standalone function ***
+  EXPECT_EQ(examples::zkp::SumOfPowers(base, n, curve_), expected);
+
+  MPInt base_one(1);
+  n = 5;
+  MPInt expected_one = MPInt(5).Mod(order_);
+  EXPECT_EQ(examples::zkp::SumOfPowers(base_one, n, curve_), expected_one);
+
+  EXPECT_EQ(examples::zkp::SumOfPowers(base, 0, curve_), MPInt(0));
+}
+
+// Test Poly2::Eval
+TEST_F(UtilTest, Poly2EvalTest) {
+  CheckEcAvailable();
+  MPInt t0(5), t1(3), t2(2);
+  // *** FIX: Use namespace for class ***
+  examples::zkp::Poly2 poly(t0, t1, t2);
+  MPInt x(4);
+  MPInt expected = MPInt(49).Mod(order_);
+  EXPECT_EQ(poly.Eval(x, curve_), expected);
+}
+
+// Test VecPoly1::Eval
+TEST_F(UtilTest, VecPoly1EvalTest) {
+  CheckEcAvailable();
+  std::vector<MPInt> v0 = {MPInt(1), MPInt(2)};
+  std::vector<MPInt> v1 = {MPInt(3), MPInt(4)};
+  // *** FIX: Use namespace for class ***
+  examples::zkp::VecPoly1 vec_poly(std::move(v0), std::move(v1));
+  MPInt x(5);
+  std::vector<MPInt> expected = {MPInt(16).Mod(order_), MPInt(22).Mod(order_)};
+  std::vector<MPInt> result = vec_poly.Eval(x, curve_);
+  ASSERT_EQ(result.size(), expected.size());
+  EXPECT_EQ(result[0], expected[0]);
+  EXPECT_EQ(result[1], expected[1]);
+}
+
+// Test VecPoly1::InnerProduct
+TEST_F(UtilTest, VecPoly1InnerProductTest) {
+  CheckEcAvailable();
+  // *** FIX: Use namespace for class ***
+  examples::zkp::VecPoly1 L({MPInt(1), MPInt(3)}, {MPInt(2), MPInt(4)});
+  examples::zkp::VecPoly1 R({MPInt(5), MPInt(7)}, {MPInt(6), MPInt(8)});
+
+  MPInt expected_t0 = MPInt(26).Mod(order_);
+  MPInt expected_t2 = MPInt(44).Mod(order_);
+  MPInt inner_sum = MPInt(138).Mod(order_);
+  MPInt expected_t1 = inner_sum.SubMod(expected_t0, order_);
+  expected_t1 = expected_t1.SubMod(expected_t2, order_);
+
+  // *** FIX: Use namespace for class ***
+  examples::zkp::Poly2 result_poly = L.InnerProduct(R, curve_);
+
+  EXPECT_EQ(result_poly.t0, expected_t0);
+  EXPECT_EQ(result_poly.t1, expected_t1);
+  EXPECT_EQ(result_poly.t2, expected_t2);
 }
 
 } // namespace

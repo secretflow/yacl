@@ -1,180 +1,191 @@
 #include "zkp/bulletproofs/util.h"
 
+#include <vector>
+#include <memory>
+#include <numeric>
 #include <algorithm>
 #include <cstring>
 
+#include "yacl/base/exception.h"
+#include "yacl/math/mpint/mp_int.h"
+#include "yacl/crypto/ecc/ecc_spi.h"
+
 namespace examples::zkp {
 
-// Implementation of VecPoly1 methods
+//-------------------- Poly2 Implementation --------------------
 
+Poly2::Poly2(yacl::math::MPInt t0_val, yacl::math::MPInt t1_val, yacl::math::MPInt t2_val)
+    : t0(std::move(t0_val)), t1(std::move(t1_val)), t2(std::move(t2_val)) {}
+
+Poly2::Poly2() : t0(0), t1(0), t2(0) {}
+
+yacl::math::MPInt Poly2::Eval(const yacl::math::MPInt& x,
+                              const std::shared_ptr<yacl::crypto::EcGroup>& curve) const {
+  YACL_ENFORCE(curve != nullptr, "Curve cannot be null");
+  const auto& order = curve->GetOrder();
+  yacl::math::MPInt x_sq = x.MulMod(x, order);
+  yacl::math::MPInt term2 = t2.MulMod(x_sq, order);
+  yacl::math::MPInt term1 = t1.MulMod(x, order);
+  yacl::math::MPInt result = t0.AddMod(term1, order);
+  result = result.AddMod(term2, order);
+  return result;
+}
+
+//-------------------- VecPoly1 Implementation --------------------
+
+VecPoly1::VecPoly1(std::vector<yacl::math::MPInt> v0, std::vector<yacl::math::MPInt> v1)
+    : vec0(std::move(v0)), vec1(std::move(v1)) {
+  YACL_ENFORCE(vec0.size() == vec1.size(), "VecPoly1 vectors must have the same size");
+}
+
+// Static factory method
 VecPoly1 VecPoly1::Zero(size_t n) {
   std::vector<yacl::math::MPInt> vec0(n, yacl::math::MPInt(0));
   std::vector<yacl::math::MPInt> vec1(n, yacl::math::MPInt(0));
   return VecPoly1(std::move(vec0), std::move(vec1));
 }
 
-Poly2 VecPoly1::InnerProduct(const VecPoly1& rhs) const {
-  // Uses Karatsuba's method
-  const VecPoly1& l = *this;
-  const VecPoly1& r = rhs;
+Poly2 VecPoly1::InnerProduct(const VecPoly1& rhs,
+                             const std::shared_ptr<yacl::crypto::EcGroup>& curve) const {
+  YACL_ENFORCE(curve != nullptr, "Curve cannot be null");
+  YACL_ENFORCE(this->vec0.size() == rhs.vec0.size(),
+               "VecPoly1 inner product requires vectors of the same size");
 
-  yacl::math::MPInt t0 = ::examples::zkp::InnerProduct(l.vec0, r.vec0);
-  yacl::math::MPInt t2 = ::examples::zkp::InnerProduct(l.vec1, r.vec1);
+  // *** FIX: Use explicit namespace or :: prefix for standalone functions ***
+  // t0 = <vec0, rhs.vec0> mod order
+  yacl::math::MPInt t0 = examples::zkp::InnerProduct(this->vec0, rhs.vec0, curve);
 
-  std::vector<yacl::math::MPInt> l0_plus_l1 = AddVec(l.vec0, l.vec1);
-  std::vector<yacl::math::MPInt> r0_plus_r1 = AddVec(r.vec0, r.vec1);
+  // t2 = <vec1, rhs.vec1> mod order
+  yacl::math::MPInt t2 = examples::zkp::InnerProduct(this->vec1, rhs.vec1, curve);
 
-  yacl::math::MPInt t1 = ::examples::zkp::InnerProduct(l0_plus_l1, r0_plus_r1) - t0 - t2;
+  // Calculate intermediate sums needed for t1 calculation
+  std::vector<yacl::math::MPInt> l0_plus_l1 = examples::zkp::AddVec(this->vec0, this->vec1, curve);
+  std::vector<yacl::math::MPInt> r0_plus_r1 = examples::zkp::AddVec(rhs.vec0, rhs.vec1, curve);
+
+  // t1 = <l0+l1, r0+r1> - t0 - t2 mod order
+  yacl::math::MPInt inner_sum = examples::zkp::InnerProduct(l0_plus_l1, r0_plus_r1, curve);
+  yacl::math::MPInt t1 = inner_sum.SubMod(t0, curve->GetOrder());
+  t1 = t1.SubMod(t2, curve->GetOrder());
 
   return Poly2(t0, t1, t2);
 }
 
-std::vector<yacl::math::MPInt> VecPoly1::Eval(const yacl::math::MPInt& x) const {
+std::vector<yacl::math::MPInt> VecPoly1::Eval(const yacl::math::MPInt& x,
+                                              const std::shared_ptr<yacl::crypto::EcGroup>& curve) const {
+  YACL_ENFORCE(curve != nullptr, "Curve cannot be null");
   size_t n = vec0.size();
-  std::vector<yacl::math::MPInt> out(n, yacl::math::MPInt(0));
-  
-  for (size_t i = 0; i < n; i++) {
-    out[i] = vec0[i] + vec1[i] * x;
+  std::vector<yacl::math::MPInt> out(n);
+
+  for (size_t i = 0; i < n; ++i) {
+    yacl::math::MPInt term1 = vec1[i].MulMod(x, curve->GetOrder());
+    out[i] = vec0[i].AddMod(term1, curve->GetOrder());
   }
-  
+
   return out;
 }
 
-VecPoly1::~VecPoly1() {
-  // Clear sensitive data
-  for (auto& e : vec0) {
-    e = yacl::math::MPInt(0);
-  }
-  for (auto& e : vec1) {
-    e = yacl::math::MPInt(0);
-  }
-}
+VecPoly1::~VecPoly1() {} // Destructor body can be empty
 
-// Implementation of Poly2 methods
-
-yacl::math::MPInt Poly2::Eval(const yacl::math::MPInt& x) const {
-  return t0 + x * (t1 + x * t2);
-}
-
-Poly2::~Poly2() {
-  // Clear sensitive data
-  t0 = yacl::math::MPInt(0);
-  t1 = yacl::math::MPInt(0);
-  t2 = yacl::math::MPInt(0);
-}
-
-// Implementation of utility functions
+//----------------------------------------
+// Standalone Utility Functions Implementation
+//----------------------------------------
 
 yacl::math::MPInt InnerProduct(const std::vector<yacl::math::MPInt>& a,
-                             const std::vector<yacl::math::MPInt>& b) {
-  if (a.size() != b.size()) {
-    throw yacl::Exception("Vector sizes don't match for inner product");
-  }
-  
+                               const std::vector<yacl::math::MPInt>& b,
+                               const std::shared_ptr<yacl::crypto::EcGroup>& curve) {
+  YACL_ENFORCE(curve != nullptr, "Curve cannot be null");
+  YACL_ENFORCE(a.size() == b.size(), "Vector sizes don't match for inner product");
+
   yacl::math::MPInt result(0);
-  for (size_t i = 0; i < a.size(); i++) {
-    result = result + a[i] * b[i];
+  if (a.empty()) {
+    return result;
   }
-  
+
+  const auto& order = curve->GetOrder();
+  for (size_t i = 0; i < a.size(); ++i) {
+    yacl::math::MPInt term = a[i].MulMod(b[i], order);
+    result = result.AddMod(term, order);
+  }
   return result;
 }
 
 std::vector<yacl::math::MPInt> AddVec(const std::vector<yacl::math::MPInt>& a,
-                                    const std::vector<yacl::math::MPInt>& b) {
-  if (a.size() != b.size()) {
-    throw yacl::Exception("Vector sizes don't match for vector addition");
+                                      const std::vector<yacl::math::MPInt>& b,
+                                      const std::shared_ptr<yacl::crypto::EcGroup>& curve) {
+  YACL_ENFORCE(curve != nullptr, "Curve cannot be null");
+  YACL_ENFORCE(a.size() == b.size(), "Vector sizes don't match for vector addition");
+
+  std::vector<yacl::math::MPInt> out(a.size());
+  const auto& order = curve->GetOrder();
+  for (size_t i = 0; i < a.size(); ++i) {
+    out[i] = a[i].AddMod(b[i], order);
   }
-  
-  std::vector<yacl::math::MPInt> out(a.size(), yacl::math::MPInt(0));
-  for (size_t i = 0; i < a.size(); i++) {
-    out[i] = a[i] + b[i];
-  }
-  
   return out;
 }
 
-std::vector<yacl::math::MPInt> ExpIterVector(const yacl::math::MPInt& x, size_t n) {
+std::vector<yacl::math::MPInt> ExpIterVector(const yacl::math::MPInt& base,
+                                             size_t n,
+                                             const std::shared_ptr<yacl::crypto::EcGroup>& curve) {
+  YACL_ENFORCE(curve != nullptr, "Curve cannot be null");
   std::vector<yacl::math::MPInt> result;
+  if (n == 0) {
+    return result;
+  }
   result.reserve(n);
-  
+
   yacl::math::MPInt current(1);
-  for (size_t i = 0; i < n; i++) {
+  const auto& order = curve->GetOrder();
+  for (size_t i = 0; i < n; ++i) {
     result.push_back(current);
-    current = current * x;
+    current = current.MulMod(base, order);
   }
-  
+
   return result;
 }
 
-yacl::math::MPInt ScalarExpVartime(const yacl::math::MPInt& x, uint64_t n) {
-  yacl::math::MPInt result(1);
-  yacl::math::MPInt aux = x;
-  
-  while (n > 0) {
-    uint64_t bit = n & 1;
-    if (bit == 1) {
-      result = result * aux;
-    }
-    n = n >> 1;
-    if (n > 0) {  // Skip the last multiply
-      aux = aux * aux;
-    }
-  }
-  
-  return result;
-}
-
-yacl::math::MPInt SumOfPowers(const yacl::math::MPInt& x, size_t n) {
-  // Check if n is a power of 2
+yacl::math::MPInt SumOfPowers(const yacl::math::MPInt& base,
+                              size_t n,
+                              const std::shared_ptr<yacl::crypto::EcGroup>& curve) {
+  YACL_ENFORCE(curve != nullptr, "Curve cannot be null");
   if (n == 0) {
     return yacl::math::MPInt(0);
   }
-  
-  if (n == 1) {
-    return yacl::math::MPInt(1);
+
+  const auto& order = curve->GetOrder();
+  yacl::math::MPInt one(1);
+
+  if (base.Mod(order) == one) {
+    yacl::math::MPInt n_mp(n);
+    return n_mp.Mod(order);
   }
-  
-  // Check if n is a power of 2
-  if ((n & (n - 1)) != 0) {
-    // n is not a power of 2, use slow method
-    return SumOfPowersSlow(x, n);
-  }
-  
-  // Fast method for powers of 2
-  yacl::math::MPInt result = yacl::math::MPInt(1) + x;
-  yacl::math::MPInt factor = x;
-  size_t m = n;
-  
-  while (m > 2) {
-    factor = factor * factor;
-    result = result + factor * result;
-    m = m / 2;
-  }
-  
-  return result;
+
+  yacl::math::MPInt base_pow_n = ScalarExp(base, n, curve);
+  yacl::math::MPInt numerator = base_pow_n.SubMod(one, order);
+  yacl::math::MPInt denominator = base.SubMod(one, order);
+  yacl::math::MPInt inv_denominator = denominator.InvertMod(order);
+
+  return numerator.MulMod(inv_denominator, order);
 }
 
-yacl::math::MPInt SumOfPowersSlow(const yacl::math::MPInt& x, size_t n) {
-  yacl::math::MPInt result(0);
-  yacl::math::MPInt current(1);
-  
-  for (size_t i = 0; i < n; i++) {
-    result = result + current;
-    current = current * x;
-  }
-  
-  return result;
+yacl::math::MPInt ScalarExp(const yacl::math::MPInt& base,
+                            size_t exp,
+                            const std::shared_ptr<yacl::crypto::EcGroup>& curve) {
+  YACL_ENFORCE(curve != nullptr, "Curve cannot be null");
+  yacl::math::MPInt exp_mp(exp);
+  return base.PowMod(exp_mp, curve->GetOrder());
 }
 
-std::array<uint8_t, 32> Read32(const std::vector<uint8_t>& data) {
-  if (data.size() < 32) {
-    throw yacl::Exception("Input data must be at least 32 bytes");
-  }
-  
-  std::array<uint8_t, 32> result;
-  std::copy_n(data.begin(), 32, result.begin());
-  
-  return result;
+size_t FloorLog2(size_t x) {
+  if (x == 0) return 0;
+#if defined(__GNUC__) || defined(__clang__)
+    return (sizeof(unsigned long long) * 8 - 1) - __builtin_clzll(static_cast<unsigned long long>(x));
+#else
+    size_t result = 0;
+    while (x >>= 1) {
+        ++result;
+    }
+    return result;
+#endif
 }
 
-} // namespace examples::zkp
+}  // namespace examples::zkp

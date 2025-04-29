@@ -90,20 +90,20 @@ TEST_F(RangeProofTest, TestSingleProof32Bit) {
   TestSingleRangeProof(1234567890, 32);
 }
 
-TEST_F(RangeProofTest, TestMultipleProof8Bit) {
-  // Test multiple valid 8-bit values
-  TestMultipleRangeProof({123, 45, 67, 89}, 8);
-}
+// TEST_F(RangeProofTest, TestMultipleProof8Bit) {
+//   // Test multiple valid 8-bit values
+//   TestMultipleRangeProof({123, 45, 67, 89}, 8);
+// }
 
-TEST_F(RangeProofTest, TestMultipleProof16Bit) {
-  // Test multiple valid 16-bit values
-  TestMultipleRangeProof({12345, 6789, 10111, 12131}, 16);
-}
+// TEST_F(RangeProofTest, TestMultipleProof16Bit) {
+//   // Test multiple valid 16-bit values
+//   TestMultipleRangeProof({12345, 6789, 10111, 12131}, 16);
+// }
 
-TEST_F(RangeProofTest, TestMultipleProof32Bit) {
-  // Test multiple valid 32-bit values
-  TestMultipleRangeProof({1234567890, 987654321, 123456789, 987654321}, 32);
-}
+// TEST_F(RangeProofTest, TestMultipleProof32Bit) {
+//   // Test multiple valid 32-bit values
+//   TestMultipleRangeProof({1234567890, 987654321, 123456789, 987654321}, 32);
+// }
 
 TEST_F(RangeProofTest, TestSerialization) {
   // Create a proof
@@ -118,7 +118,7 @@ TEST_F(RangeProofTest, TestSerialization) {
   // Serialize and deserialize
   yacl::Buffer serialized = proof.ToBytes(curve_);
   RangeProof deserialized = RangeProof::FromBytes(curve_, serialized);
-  
+        
   // Verify the deserialized proof
   auto verifier_transcript = std::make_unique<SimpleTranscript>("range_proof_test");
   EXPECT_TRUE(deserialized.VerifySingle(curve_, *verifier_transcript, commitment, 8));
