@@ -183,7 +183,6 @@ EcPoint X25519Group::HashToCurve(HashToCurveStrategy strategy,
       return p;
     }
     case HashToCurveStrategy::SHA512_ELL2_NU_: {
-      // TODO: implement corresponding methods for supporting corresponding test
       const std::string dst =
           "QUUX-V01-CS02-with-curve25519_XMD:SHA-512_ELL2_NU_";
       EcPoint p = EncodeToCurveCurve25519(input, dst);
