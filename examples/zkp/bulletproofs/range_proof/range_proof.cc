@@ -28,60 +28,33 @@ RangeProof::RangeProof(
       ipp_proof_(ipp_proof) {}
 
 std::pair<RangeProof, yacl::crypto::EcPoint> RangeProof::CreateSingle(
-    const std::shared_ptr<yacl::crypto::EcGroup>& curve,
+    const BulletproofGens& bp_gens,
+    const PedersenGens& pc_gens,
     SimpleTranscript& transcript,
     uint64_t v,
     const yacl::math::MPInt& v_blinding,
     size_t n) {
-  
-  // Create Pedersen and Bulletproof generators
-  PedersenGens pc_gens(curve);
-  BulletproofGens bp_gens(curve, n, 1);  // Single party, n-bit proof
-  
-  // Create the dealer for the protocol
-  auto dealer = Dealer::New(bp_gens, pc_gens, transcript, n, 1);
-  
-  // Create a party for the single value
-  auto party = Party::New(bp_gens, pc_gens, v, v_blinding, n);
-  
-  // Protocol step 1: Party commits to bits
-  auto [party_bits, bit_commitment] = party.AssignPosition(0);
-  
-  // Protocol step 2: Dealer issues first challenge
-  auto [dealer_poly, bit_challenge] = dealer.ReceiveBitCommitments({bit_commitment});
-  
-  // Protocol step 3: Party responds to challenge
-  auto [party_poly, poly_commitment] = party_bits.ApplyChallenge(bit_challenge);
-  
-  // Protocol step 4: Dealer issues second challenge
-  auto [dealer_proof, poly_challenge] = dealer_poly.ReceivePolyCommitments({poly_commitment});
-  
-  // Protocol step 5: Party creates final response
-  auto proof_share = party_poly.ApplyChallenge(poly_challenge);
-  
-  // Protocol step 6: Dealer creates final proof
-  auto proof = dealer_proof.ReceiveTrustedShares({proof_share});
-  
-  // Return the proof and value commitment
-  return {proof, bit_commitment.GetV()};
+
+    auto [proof, value_commitments] = CreateMultiple(bp_gens, pc_gens, transcript, {v}, {v_blinding}, n);
+
+    return {proof, value_commitments[0]};
 }
 
 std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>> RangeProof::CreateMultiple(
-    const std::shared_ptr<yacl::crypto::EcGroup>& curve,
+    const BulletproofGens& bp_gens,
+    const PedersenGens& pc_gens,
     SimpleTranscript& transcript,
     const std::vector<uint64_t>& values,
     const std::vector<yacl::math::MPInt>& blindings,
     size_t n) {
   
+  auto curve = pc_gens.GetCurve();
+
   if (values.size() != blindings.size()) {
     throw yacl::Exception("Number of values must match number of blinding factors");
   }
   
   size_t m = values.size();
-  
-  // Create Pedersen and Bulletproof generators
-  PedersenGens pc_gens(curve);
-  BulletproofGens bp_gens(curve, n, m);
   
   // Create the dealer for the protocol
   auto dealer = Dealer::New(bp_gens, pc_gens, transcript, n, m);
@@ -100,6 +73,12 @@ std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>> RangeProof::CreateMult
     auto [party_bits, bit_commitment] = parties[j].AssignPosition(j);
     parties_awaiting_challenge.push_back(std::move(party_bits));
     bit_commitments.push_back(bit_commitment);
+  }
+
+  // Extract value commitments
+  std::vector<yacl::crypto::EcPoint> value_commitments;
+  for (const auto& commitment : bit_commitments) {
+    value_commitments.push_back(commitment.GetV());
   }
   
   // Protocol step 2: Dealer issues first challenge
@@ -127,11 +106,6 @@ std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>> RangeProof::CreateMult
   // Protocol step 6: Dealer creates final proof
   auto proof = dealer_proof.ReceiveTrustedShares(proof_shares);
   
-  // Extract value commitments
-  std::vector<yacl::crypto::EcPoint> value_commitments;
-  for (const auto& commitment : bit_commitments) {
-    value_commitments.push_back(commitment.GetV());
-  }
   
   return {proof, value_commitments};
 }

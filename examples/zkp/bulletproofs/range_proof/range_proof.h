@@ -55,7 +55,8 @@ class RangeProof {
    * @return std::pair<RangeProof, yacl::crypto::EcPoint> Proof and value commitment
    */
   static std::pair<RangeProof, yacl::crypto::EcPoint> CreateSingle(
-      const std::shared_ptr<yacl::crypto::EcGroup>& curve,
+      const BulletproofGens& bp_gens,
+      const PedersenGens& pc_gens,
       SimpleTranscript& transcript,
       uint64_t v,
       const yacl::math::MPInt& v_blinding,
@@ -72,7 +73,8 @@ class RangeProof {
    * @return std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>> Proof and value commitments
    */
   static std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>> CreateMultiple(
-      const std::shared_ptr<yacl::crypto::EcGroup>& curve,
+      const BulletproofGens& bp_gens,
+      const PedersenGens& pc_gens,
       SimpleTranscript& transcript,
       const std::vector<uint64_t>& values,
       const std::vector<yacl::math::MPInt>& blindings,

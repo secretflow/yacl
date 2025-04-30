@@ -26,6 +26,8 @@ namespace examples::zkp {
 //       base_view);
 // }
 
+
+
 // yacl::crypto::EcPoint PedersenGens::Commit(
 //     const yacl::math::MPInt& value, 
 //     const yacl::math::MPInt& blinding) const {
