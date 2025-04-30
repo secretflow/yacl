@@ -58,3 +58,5 @@ build:gm --define BRPC_WITH_TONGSUO=true
 
 # make sure yacl is built with tongsuo in gm mode
 build:gm --define YACL_WITH_TONGSUO=true
+
+build:gmp --define BIGNUM_WITH_GMP=true

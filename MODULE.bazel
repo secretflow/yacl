@@ -21,7 +21,7 @@
 
 module(
     name = "yacl",
-    version = "0.4.5b10-nightly-20250110",
+    version = "0.4.5b11-nightly-20250428",
     compatibility_level = 1,
 )
 
@@ -74,5 +74,5 @@ new_local_repository(
 )
 
 # test
-bazel_dep(name = "googletest", version = "1.15.2", dev_dependency = True)
+bazel_dep(name = "googletest", version = "1.16.0.bcr.1", dev_dependency = True)
 bazel_dep(name = "google_benchmark", version = "1.9.1", dev_dependency = True)

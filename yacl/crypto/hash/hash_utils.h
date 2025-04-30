@@ -18,6 +18,7 @@
 
 #include "yacl/base/int128.h"
 #include "yacl/crypto/hash/ssl_hash.h"
+#include "yacl/crypto/hash/ssl_hash_xof.h"
 
 namespace yacl::crypto {
 
@@ -26,6 +27,12 @@ std::array<uint8_t, 32> Sha256(ByteContainerView data);  // 256-bits
 std::array<uint8_t, 32> Sm3(ByteContainerView data);  // 256-bits
 
 std::array<uint8_t, 32> Blake3(ByteContainerView data);  // 256-bits
+
+// XOF (Extendable Output Function) hash functions
+std::vector<uint8_t> Shake128(ByteContainerView data,
+                              size_t output_length = 16);  // default 128-bits
+std::vector<uint8_t> Shake256(ByteContainerView data,
+                              size_t output_length = 32);  // default 256-bits
 
 #define DECLARE_HASH_OUT_128(func)                                   \
   inline uint128_t func##_128(ByteContainerView data) {              \
@@ -39,7 +46,6 @@ std::array<uint8_t, 32> Blake3(ByteContainerView data);  // 256-bits
 
 DECLARE_HASH_OUT_128(Sha256);  // uint128_t Sha256_128(ByteContainerView data);
 DECLARE_HASH_OUT_128(Sm3);     // uint128_t Sm3_128(ByteContainerView data);
-
 DECLARE_HASH_OUT_128(Blake3);  // uint128_t Blake3_128(ByteContainerView data);
 
 #ifndef YACL_WITH_TONGSUO

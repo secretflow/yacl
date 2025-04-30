@@ -1,4 +1,4 @@
-# Copyright 2022 Ant Group Co., Ltd.
+# Copyright 2024 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,14 +17,21 @@ load("//bazel:yacl.bzl", "yacl_cc_library")
 package(default_visibility = ["//visibility:public"])
 
 yacl_cc_library(
-    name = "common",
-    hdrs = ["common.h"],
+    name = "tommath_lib",
+    srcs = ["tommath_lib.cc"],
+    hdrs = ["tommath_lib.h"],
+    deps = [
+        ":mont_space",
+        "//yacl/math/bigint:bigint_lib",
+    ],
+    alwayslink = 1,
 )
 
 yacl_cc_library(
-    name = "gadget",
-    hdrs = ["gadget.h"],
+    name = "mont_space",
+    srcs = ["mont_space.cc"],
+    hdrs = ["mont_space.h"],
     deps = [
-        "@abseil-cpp//absl/strings",
+        "//yacl/math/bigint:mont_space",
     ],
 )
