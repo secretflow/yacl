@@ -90,7 +90,8 @@ class RangeProof {
    * @return bool True if verification succeeds
    */
   bool VerifySingle(
-      const std::shared_ptr<yacl::crypto::EcGroup>& curve,
+      const BulletproofGens& bp_gens,
+      const PedersenGens& pc_gens,
       SimpleTranscript& transcript,
       const yacl::crypto::EcPoint& V,
       size_t n) const;
@@ -105,7 +106,8 @@ class RangeProof {
    * @return bool True if verification succeeds
    */
   bool VerifyMultiple(
-      const std::shared_ptr<yacl::crypto::EcGroup>& curve,
+      const BulletproofGens& bp_gens,
+      const PedersenGens& pc_gens,
       SimpleTranscript& transcript,
       const std::vector<yacl::crypto::EcPoint>& value_commitments,
       size_t n) const;
@@ -165,11 +167,11 @@ inline yacl::math::MPInt SumOfPowers(
   
   // Using the formula: sum = (base^n - 1)/(base - 1)
   yacl::math::MPInt base_pow_n = base.PowMod(yacl::math::MPInt(n), curve->GetOrder());
-  yacl::math::MPInt numerator = (base_pow_n - yacl::math::MPInt(1)) % curve->GetOrder();
-  yacl::math::MPInt denominator = (base - yacl::math::MPInt(1)) % curve->GetOrder();
+  yacl::math::MPInt numerator = base_pow_n.SubMod(yacl::math::MPInt(1), curve->GetOrder());
+  yacl::math::MPInt denominator = base.SubMod(yacl::math::MPInt(1), curve->GetOrder());
   yacl::math::MPInt inv_denominator = denominator.InvertMod(curve->GetOrder());
   
-  return (numerator * inv_denominator) % curve->GetOrder();
+  return numerator.MulMod(inv_denominator, curve->GetOrder());
 }
 
 /**

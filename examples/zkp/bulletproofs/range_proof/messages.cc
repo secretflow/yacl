@@ -366,8 +366,8 @@ void ProofShare::AuditShare(
   // Compute scalars for H generators (coefficients for r_vec)
   for (size_t i = 0; i < n; i++) {
     yacl::math::MPInt h_i = z.AddMod(
-        exp_y_inv[i].MulMod(y_jn_inv, curve->GetOrder()).MulMod(zero.SubMod(r_vec_[i], curve->GetOrder()), curve->GetOrder()) + 
-        exp_y_inv[i].MulMod(y_jn_inv, curve->GetOrder()).MulMod(zz.MulMod(z_j, curve->GetOrder()).MulMod(exp_2[i], curve->GetOrder()), curve->GetOrder()),
+        exp_y_inv[i].MulMod(y_jn_inv, curve->GetOrder()).MulMod(zero.SubMod(r_vec_[i], curve->GetOrder()), curve->GetOrder()).AddMod(
+        exp_y_inv[i].MulMod(y_jn_inv, curve->GetOrder()).MulMod(zz.MulMod(z_j, curve->GetOrder()).MulMod(exp_2[i], curve->GetOrder()), curve->GetOrder()), curve->GetOrder()),
         curve->GetOrder());
     scalars.push_back(h_i);
   }
@@ -379,7 +379,7 @@ void ProofShare::AuditShare(
   // A_j, S_j, B_blinding
   points.push_back(bit_commitment.GetA());
   points.push_back(bit_commitment.GetS());
-  points.push_back(pc_gens.GetHPoint());
+  points.push_back(pc_gens.B_blinding);
   
   // G generators
   auto G_j = bp_gens.GetGParty(j);
@@ -429,8 +429,8 @@ void ProofShare::AuditShare(
   points.push_back(bit_commitment.GetV());
   points.push_back(poly_commitment.GetT1());
   points.push_back(poly_commitment.GetT2());
-  points.push_back(pc_gens.GetGPoint());
-  points.push_back(pc_gens.GetHPoint());
+  points.push_back(pc_gens.B);
+  points.push_back(pc_gens.B_blinding);
   
   // Compute t_check = ∑ scalars[i] * points[i]
   // 从第一个元素开始，避免处理单位元

@@ -28,8 +28,8 @@ TEST_F(GeneratorsTest, PedersenCommitmentWorks) {
   yacl::crypto::EcPoint commitment = pc_gens.Commit(value, blinding);
   
   // Verify that it's different from the base points
-  EXPECT_FALSE(curve_->PointEqual(commitment, pc_gens.GetGPoint()));
-  EXPECT_FALSE(curve_->PointEqual(commitment, pc_gens.GetHPoint()));
+  EXPECT_FALSE(curve_->PointEqual(commitment, pc_gens.B));
+  EXPECT_FALSE(curve_->PointEqual(commitment, pc_gens.B_blinding));
   
   // Verify that different values produce different commitments
   yacl::math::MPInt value2(11);

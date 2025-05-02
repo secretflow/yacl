@@ -99,15 +99,21 @@ DealerAwaitingBitCommitments::ReceiveBitCommitments(
   
   BitChallenge bit_challenge(y, z);
   
-  // Create bit commitments copy for the next state
-  std::vector<BitCommitment> bit_commitments_copy(bit_commitments.begin(), bit_commitments.end());
   
   // Return next state and the challenge
   return {
       DealerAwaitingPolyCommitments(
-          n_, m_, transcript_, initial_transcript_,
-          bp_gens_, pc_gens_, bit_challenge,
-          std::move(bit_commitments_copy), A, S),
+          n_, 
+          m_, 
+          transcript_, 
+          initial_transcript_,
+          bp_gens_, 
+          pc_gens_, 
+          bit_challenge,
+          bit_commitments,
+          A, 
+          S
+      ),
       bit_challenge
   };
 }
@@ -202,7 +208,7 @@ RangeProof DealerAwaitingProofShares::AssembleShares(
   
   // Get a challenge value to combine statements for the IPP
   yacl::math::MPInt w = transcript_.ChallengeScalar("w", curve);
-  yacl::crypto::EcPoint Q = curve->Mul(pc_gens_.GetGPoint(), w);
+  yacl::crypto::EcPoint Q = curve->Mul(pc_gens_.B, w);
   
   // Prepare G_factors and H_factors for the inner product proof
   std::vector<yacl::math::MPInt> G_factors(n_ * m_, yacl::math::MPInt(1));
@@ -252,7 +258,7 @@ RangeProof DealerAwaitingProofShares::ReceiveShares(
   SimpleTranscript verification_transcript = initial_transcript_;
   
   try {
-    proof.VerifyMultiple(bp_gens_.GetCurve(), verification_transcript, Vs, n_);
+    proof.VerifyMultiple(bp_gens_, pc_gens_, verification_transcript, Vs, n_);
   } catch (const std::exception&) {
     // Proof verification failed. Now audit the parties
     std::vector<size_t> bad_shares;

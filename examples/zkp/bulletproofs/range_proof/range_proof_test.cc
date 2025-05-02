@@ -16,7 +16,7 @@ class RangeProofTest : public ::testing::Test {
     curve_ = yacl::crypto::EcGroupFactory::Instance().Create(
         "secp256k1", yacl::ArgLib = "openssl");
     pc_gens_ptr_ = std::make_unique<PedersenGens>(curve_);
-    bp_gens_ptr_ = std::make_unique<BulletproofGens>(curve_, 8, 1);
+    bp_gens_ptr_ = std::make_unique<BulletproofGens>(curve_, 64, 1);
   }
 
   // Helper function for creating and verifying a single range proof
@@ -26,7 +26,7 @@ class RangeProofTest : public ::testing::Test {
     
     // Generate a random blinding factor
     yacl::math::MPInt blinding;
-    yacl::math::MPInt::RandomExactBits(curve_->GetOrder().BitCount(), &blinding);
+    yacl::math::MPInt::RandomLtN(curve_->GetOrder(), &blinding);
     
     // Create the proof
     auto [proof, commitment] = RangeProof::CreateSingle(
@@ -34,7 +34,7 @@ class RangeProofTest : public ::testing::Test {
     
     // Verify the proof with a fresh transcript
     auto verifier_transcript = std::make_unique<SimpleTranscript>("range_proof_test");
-    EXPECT_TRUE(proof.VerifySingle(curve_, *verifier_transcript, commitment, n));
+    EXPECT_TRUE(proof.VerifySingle(*bp_gens_ptr_, *pc_gens_ptr_, *verifier_transcript, commitment, n));
   }
   
   // Helper function for creating and verifying multiple range proofs
@@ -46,7 +46,7 @@ class RangeProofTest : public ::testing::Test {
     std::vector<yacl::math::MPInt> blindings;
     for (size_t i = 0; i < values.size(); i++) {
       yacl::math::MPInt blinding;
-      yacl::math::MPInt::RandomExactBits(curve_->GetOrder().BitCount(), &blinding);
+      yacl::math::MPInt::RandomLtN(curve_->GetOrder(), &blinding);
       blindings.push_back(blinding);
     }
     
@@ -56,7 +56,7 @@ class RangeProofTest : public ::testing::Test {
     
     // Verify the proof with a fresh transcript
     auto verifier_transcript = std::make_unique<SimpleTranscript>("range_proof_test");
-    EXPECT_TRUE(proof.VerifyMultiple(curve_, *verifier_transcript, commitments, n));
+    EXPECT_TRUE(proof.VerifyMultiple(*bp_gens_ptr_, *pc_gens_ptr_, *verifier_transcript, commitments, n));
   }
 
   std::shared_ptr<yacl::crypto::EcGroup> curve_;
@@ -114,7 +114,7 @@ TEST_F(RangeProofTest, TestSerialization) {
   auto prover_transcript = std::make_unique<SimpleTranscript>("range_proof_test");
   
   yacl::math::MPInt blinding;
-  yacl::math::MPInt::RandomExactBits(curve_->GetOrder().BitCount(), &blinding);
+  yacl::math::MPInt::RandomLtN(curve_->GetOrder(), &blinding);
 
   auto [proof, commitment] = RangeProof::CreateSingle(
       *bp_gens_ptr_, *pc_gens_ptr_, *prover_transcript, 123, blinding, 8);
@@ -128,7 +128,7 @@ TEST_F(RangeProofTest, TestSerialization) {
   // EXPECT_TRUE(deserialized.VerifySingle(curve_, *verifier_transcript, commitment, 8));
 
   auto verifier_transcript = std::make_unique<SimpleTranscript>("range_proof_test");
-  EXPECT_TRUE(proof.VerifySingle(curve_, *verifier_transcript, commitment, 8));
+  EXPECT_TRUE(proof.VerifySingle(*bp_gens_ptr_, *pc_gens_ptr_, *verifier_transcript, commitment, 8));
 }
 
 } // namespace

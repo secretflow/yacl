@@ -188,4 +188,42 @@ size_t FloorLog2(size_t x) {
 #endif
 }
 
+yacl::crypto::EcPoint MultiScalarMul(
+    const std::shared_ptr<yacl::crypto::EcGroup>& curve,
+    const std::vector<yacl::math::MPInt>& scalars,
+    const std::vector<yacl::crypto::EcPoint>& points) {
+
+  YACL_ENFORCE(scalars.size() == points.size(), "Mismatched vector lengths in multiscalar mul");
+  if (scalars.empty()) {
+      // Return identity element if vectors are empty
+      return curve->MulBase(yacl::math::MPInt(0));
+  }
+
+  // Consider using curve->MultiScalarMul(points, scalars) if available in YACL
+  // Naive implementation:
+  yacl::crypto::EcPoint result = curve->MulBase(yacl::math::MPInt(0)); // Start with identity
+  for (size_t i = 0; i < scalars.size(); ++i) {
+    // Skip multiplication by zero scalar for minor optimization
+    if (!scalars[i].IsZero()) {
+        yacl::crypto::EcPoint term = curve->Mul(points[i], scalars[i]);
+        result = curve->Add(result, term);
+    }
+  }
+  return result;
+}
+
+// Helper to create a dummy EcPoint
+yacl::crypto::EcPoint CreateDummyPoint(const std::shared_ptr<yacl::crypto::EcGroup>& curve) {
+  yacl::math::MPInt r;
+  r.RandomLtN(curve->GetOrder(), &r);
+  return curve->MulBase(r);
+}
+
+// Helper to create a dummy MPInt scalar
+yacl::math::MPInt CreateDummyScalar(const std::shared_ptr<yacl::crypto::EcGroup>& curve) {
+  yacl::math::MPInt r;
+  r.RandomLtN(curve->GetOrder(), &r);
+  return r;
+}
+
 }  // namespace examples::zkp

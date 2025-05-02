@@ -145,6 +145,8 @@ class InnerProductProof {
 
   yacl::math::MPInt GetA() const { return a_; }
   yacl::math::MPInt GetB() const { return b_; }
+  std::vector<yacl::crypto::EcPoint> GetLVec() const { return L_vec_; }
+  std::vector<yacl::crypto::EcPoint> GetRVec() const { return R_vec_; }
 
  private:
   std::vector<yacl::crypto::EcPoint> L_vec_;

@@ -66,15 +66,15 @@ class InnerProductProofTest : public ::testing::Test {
     b.reserve(n);
     for (size_t i = 0; i < n; ++i) {
       MPInt a_i;
-      MPInt::RandomMonicExactBits(256, &a_i);
+      MPInt::RandomLtN(curve_->GetOrder(), &a_i);
       a.push_back(a_i); // Use curve's random scalar method
       MPInt b_i;
-      MPInt::RandomMonicExactBits(256, &b_i);
+      MPInt::RandomLtN(curve_->GetOrder(), &b_i);
       b.push_back(b_i);
     }
 
     // Compute the inner product c = <a,b> (integer result)
-    yacl::math::MPInt c_int = InnerProduct(a, b);
+    yacl::math::MPInt c_int = InnerProduct(a, b, curve_);
     // Reduce c for use as a scalar if needed (depends on how Q is used)
     yacl::math::MPInt c = c_int.Mod(curve_->GetOrder());
 
@@ -187,7 +187,7 @@ TEST_F(InnerProductProofTest, TestInnerProduct) {
   };
 
   // 1*2 + 2*3 + 3*4 + 4*5 = 2 + 6 + 12 + 20 = 40
-  EXPECT_EQ(InnerProduct(a, b), yacl::math::MPInt(40));
+  EXPECT_EQ(InnerProduct(a, b, curve_), yacl::math::MPInt(40));
 }
 
 // --- New Targeted Tests ---

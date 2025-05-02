@@ -9,35 +9,7 @@
 
 namespace examples::zkp {
 
-yacl::crypto::EcPoint MultiScalarMul(
-    const std::shared_ptr<yacl::crypto::EcGroup>& curve,
-    const std::vector<yacl::math::MPInt>& scalars,
-    const std::vector<yacl::crypto::EcPoint>& points) {
-  
-  if (scalars.size() != points.size()) {
-    throw yacl::Exception("Mismatched vector lengths in multiscalar mul");
-  }
 
-  if (scalars.size() == 0) {
-    throw yacl::Exception("Empty scalar vector in multiscalar mul");
-  }
-  
-  // For now we implement this naively - in production code you would
-  // use a more optimized algorithm like Straus/Pippenger
-  // yacl::crypto::EcPoint result = curve->GetGenerator();
-  // curve->MulInplace(&result, yacl::math::MPInt(0));  // Set to identity
-
-  yacl::crypto::EcPoint result = curve->Mul(points[0], scalars[0]);
-  
-  for (size_t i = 1; i < scalars.size(); i++) {
-    std::cout << "MultiScalarMul: i = " << i << ", scalar = " << scalars[i] << std::endl;
-    yacl::crypto::EcPoint term = curve->Mul(points[i], scalars[i]);
-    std::cout << "MultiScalarMul: term = " << curve->SerializePoint(term) << std::endl;
-    result = curve->Add(result, term);
-  }
-  
-  return result;
-}
 
 InnerProductProof InnerProductProof::Create(
     SimpleTranscript* transcript,

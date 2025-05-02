@@ -177,4 +177,15 @@ yacl::math::MPInt ScalarExp(const yacl::math::MPInt& base,
  */
 size_t FloorLog2(size_t x);
 
+yacl::crypto::EcPoint MultiScalarMul(
+    const std::shared_ptr<yacl::crypto::EcGroup>& curve,
+    const std::vector<yacl::math::MPInt>& scalars,
+    const std::vector<yacl::crypto::EcPoint>& points);
+
+// Helper to create a dummy EcPoint
+yacl::crypto::EcPoint CreateDummyPoint(const std::shared_ptr<yacl::crypto::EcGroup>& curve);
+
+// Helper to create a dummy MPInt scalar
+yacl::math::MPInt CreateDummyScalar(const std::shared_ptr<yacl::crypto::EcGroup>& curve);
+
 } // namespace examples::zkp

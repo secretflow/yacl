@@ -120,3 +120,47 @@ yacl_cc_test(
         "@yacl//yacl/math/mpint:mp_int_enforce",
     ],
 )
+
+yacl_cc_test(
+    name = "dealer_test",
+    srcs = ["dealer_test.cc"],
+    copts = COMMON_COPTS,
+    deps = [
+        ":dealer",
+        ":range_proof",
+        ":range_proof_config",
+        "@yacl//yacl/crypto:openssl_wrappers",
+        "@yacl//yacl/math/mpint:mpint",
+        "@yacl//yacl/math/mpint:mp_int_enforce",
+        ],
+)
+
+yacl_cc_test(
+    name = "messages_test",
+    srcs = ["messages_test.cc"],
+    copts = COMMON_COPTS,
+    deps = [
+        ":messages",
+        "@yacl//yacl/crypto:openssl_wrappers",
+        "@yacl//yacl/math/mpint:mpint",
+        "@yacl//yacl/math/mpint:mp_int_enforce",
+        ],
+)
+
+yacl_cc_test(
+    name = "party_test",
+    srcs = ["party_test.cc"],
+    copts = COMMON_COPTS,
+    deps = [
+        ":party",
+        ":messages",
+        ":range_proof",
+        ":range_proof_config",
+        "//zkp/bulletproofs:generators",
+        "//zkp/bulletproofs:util",
+        "@yacl//yacl/crypto:openssl_wrappers",
+        "@yacl//yacl/math/mpint:mpint",
+        "@yacl//yacl/math/mpint:mp_int_enforce",
+        ],
+)
+

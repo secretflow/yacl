@@ -76,7 +76,7 @@ class PartyAwaitingPosition {
   
 
   // Prevent copying, allow moving
-  PartyAwaitingPosition(const PartyAwaitingPosition&) = delete;
+  PartyAwaitingPosition(const PartyAwaitingPosition&) = delete; 
   PartyAwaitingPosition& operator=(const PartyAwaitingPosition&) = delete;
   PartyAwaitingPosition(PartyAwaitingPosition&&) = default;
   PartyAwaitingPosition& operator=(PartyAwaitingPosition&&) = default;

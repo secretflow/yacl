@@ -75,11 +75,11 @@ PartyAwaitingPosition::AssignPosition(size_t j) const {
   const auto& order = curve->GetOrder();
 
   yacl::math::MPInt a_blinding;
-  a_blinding.RandomExactBits(256, &a_blinding);
+  a_blinding.RandomLtN(order, &a_blinding);
   yacl::math::MPInt s_blinding;
-  s_blinding.RandomExactBits(256, &s_blinding);
+  s_blinding.RandomLtN(order, &s_blinding);
 
-  yacl::crypto::EcPoint A = curve->Mul(pc_gens_.GetHPoint(), a_blinding);
+  yacl::crypto::EcPoint A = curve->Mul(pc_gens_.B_blinding, a_blinding);
 
   auto share = bp_gens_.Share(j);
   auto party_gens_G = share.G(n_);
@@ -88,7 +88,7 @@ PartyAwaitingPosition::AssignPosition(size_t j) const {
                "Incorrect number of generators obtained for party");
 
   yacl::math::MPInt one(1);
-  yacl::math::MPInt minus_one = order - one; // Calculate -1 mod order
+  yacl::math::MPInt minus_one = order.SubMod(one, order); // Calculate -1 mod order
 
   for (size_t i = 0; i < n_; ++i) {
     bool bit_set = ((v_ >> i) & 1) == 1;
@@ -103,14 +103,14 @@ PartyAwaitingPosition::AssignPosition(size_t j) const {
   std::vector<yacl::math::MPInt> s_R; s_R.reserve(n_);
   for (size_t i = 0; i < n_; ++i) {
     yacl::math::MPInt s_L_i;
-    s_L_i.RandomExactBits(256, &s_L_i);
+    s_L_i.RandomLtN(order, &s_L_i);
     s_L.push_back(s_L_i);
     yacl::math::MPInt s_R_i;
-    s_R_i.RandomExactBits(256, &s_R_i);
+    s_R_i.RandomLtN(order, &s_R_i);
     s_R.push_back(s_R_i);
   }
 
-  yacl::crypto::EcPoint S = curve->Mul(pc_gens_.GetHPoint(), s_blinding);
+  yacl::crypto::EcPoint S = curve->Mul(pc_gens_.B_blinding, s_blinding);
   for (size_t i = 0; i < n_; ++i) {
     S = curve->Add(S, curve->Mul(party_gens_G[i], s_L[i]));
     S = curve->Add(S, curve->Mul(party_gens_H[i], s_R[i]));
@@ -198,9 +198,9 @@ PartyAwaitingBitChallenge::ApplyChallenge(const BitChallenge& challenge) const {
   Poly2 t_poly = l_poly.InnerProduct(r_poly, curve_);
 
   yacl::math::MPInt t_1_blinding;
-  t_1_blinding.RandomExactBits(256, &t_1_blinding);
+  t_1_blinding.RandomLtN(order, &t_1_blinding);
   yacl::math::MPInt t_2_blinding;
-  t_2_blinding.RandomExactBits(256, &t_2_blinding);
+  t_2_blinding.RandomLtN(order, &t_2_blinding);
 
   yacl::crypto::EcPoint T_1 = pc_gens_.Commit(t_poly.t1, t_1_blinding);
   yacl::crypto::EcPoint T_2 = pc_gens_.Commit(t_poly.t2, t_2_blinding);

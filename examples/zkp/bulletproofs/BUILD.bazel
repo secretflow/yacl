@@ -49,6 +49,7 @@ yacl_cc_library(
     copts = COMMON_COPTS,
     deps = [
         "//zkp/sigma:pedersen_commit",
+        ":util",
         "@yacl//yacl/base:exception",
         "@yacl//yacl/crypto/ecc:ecc",
         "@yacl//yacl/crypto/ecc:ec_point",

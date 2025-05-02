@@ -10,6 +10,7 @@
 #include "yacl/math/mpint/mp_int.h"
 #include "yacl/crypto/hash/hash_utils.h"
 #include "zkp/sigma/pedersen_commit.h"
+#include "zkp/bulletproofs/util.h"
 
 namespace examples::zkp {
 
@@ -21,33 +22,26 @@ namespace examples::zkp {
  */
 class PedersenGens {
  public:
+  yacl::crypto::EcPoint B;
+  yacl::crypto::EcPoint B_blinding;
+  std::shared_ptr<yacl::crypto::EcGroup> curve_;
   explicit PedersenGens(std::shared_ptr<yacl::crypto::EcGroup> curve)
-      : pedersen_commit_(curve) {}
+      : curve_(curve) {
+        B = curve_->GetGenerator();
+        B_blinding = curve_->HashToCurve(yacl::crypto::HashToCurveStrategy::Autonomous, "B_blinding");
+      }
 
   yacl::crypto::EcPoint Commit(
       const yacl::math::MPInt& value,
       const yacl::math::MPInt& blinding) const {
-    return pedersen_commit_.Commit(value, blinding);
+    return MultiScalarMul(curve_, {value, blinding}, {B, B_blinding});
   }
 
-  const yacl::crypto::EcPoint& GetGPoint() const {
-    // PedersenCommit内部没有直接暴露G点，这里可用SigmaOWH::GetGenerators
-    // 但为兼容原接口，返回一个静态变量（实际项目应暴露接口）
-    static yacl::crypto::EcPoint g = pedersen_commit_.Commit(yacl::math::MPInt(1), yacl::math::MPInt(0));
-    return g;
-  }
-  const yacl::crypto::EcPoint& GetHPoint() const {
-    static yacl::crypto::EcPoint h = pedersen_commit_.Commit(yacl::math::MPInt(0), yacl::math::MPInt(1));
-    return h;
-  }
 
     // Return the shared_ptr by value
   std::shared_ptr<yacl::crypto::EcGroup> GetCurve() const {
-    return pedersen_commit_.GetGroup();
+    return curve_;
   }
-
- private:
-  PedersenCommit pedersen_commit_;
 };
 
 /**
