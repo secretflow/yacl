@@ -78,7 +78,7 @@ TEST_F(PartyTest, AssignPosition) {
 
   size_t party_index = 1; // Example index
 
-  // *** FIX: Initialize directly ***
+
   // PartyAwaitingBitChallenge party_state2; // Remove this line
   BitCommitment bit_commitment;
 
@@ -88,7 +88,7 @@ TEST_F(PartyTest, AssignPosition) {
       ASSERT_FALSE(curve_->IsInfinity(result.second.GetV()));
       ASSERT_FALSE(curve_->IsInfinity(result.second.GetA()));
       ASSERT_FALSE(curve_->IsInfinity(result.second.GetS()));
-      // *** FIX: Initialize directly ***
+
       PartyAwaitingBitChallenge party_state2 = std::move(result.first); // Initialize here
       bit_commitment = result.second;
       // party_state2 goes out of scope here, but that's okay for this test
@@ -114,7 +114,7 @@ TEST_F(PartyTest, ApplyBitChallenge) {
   yacl::math::MPInt z_challenge = CreateDummyScalar(curve_);
   BitChallenge bit_challenge(y_challenge, z_challenge);
 
-  // *** FIX: Initialize directly ***
+
   // PartyAwaitingPolyChallenge party_state3; // Remove this line
   PolyCommitment poly_commitment;
 
@@ -123,7 +123,7 @@ TEST_F(PartyTest, ApplyBitChallenge) {
     // Check if the returned points are non-identity (basic check)
     ASSERT_FALSE(curve_->IsInfinity(result.second.GetT1()));
     ASSERT_FALSE(curve_->IsInfinity(result.second.GetT2()));
-    // *** FIX: Initialize directly ***
+
     PartyAwaitingPolyChallenge party_state3 = std::move(result.first); // Initialize here
     poly_commitment = result.second;
     // party_state3 goes out of scope here
@@ -157,7 +157,7 @@ TEST_F(PartyTest, ApplyPolyChallenge) {
   ProofShare proof_share;
   // Use the setup state directly if its ApplyChallenge is const.
   // Assuming ApplyChallenge is const based on header:
-  ASSERT_NO_THROW({ // *** FIX: Removed the extra '0' ***
+  ASSERT_NO_THROW({ 
       // If ApplyChallenge were non-const or consumed state, we would recreate here.
       // Since it seems const, we can use the state we prepared.
       proof_share = party_state3_setup.ApplyChallenge(poly_challenge);

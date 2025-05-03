@@ -40,7 +40,7 @@ TEST_F(MessagesTest, BitCommitmentSerde) {
   ASSERT_NO_THROW({
       serialized_bytes = original.ToBytes(curve_);
   });
-  // *** FIX HERE ***
+
   ASSERT_NE(serialized_bytes.size(), 0);
 
   // Deserialize
@@ -67,7 +67,7 @@ TEST_F(MessagesTest, BitChallengeSerde) {
   ASSERT_NO_THROW({
     serialized_bytes = original.ToBytes();
   });
-   // *** FIX HERE ***
+
    ASSERT_NE(serialized_bytes.size(), 0);
 
   // Deserialize
@@ -93,7 +93,7 @@ TEST_F(MessagesTest, PolyCommitmentSerde) {
    ASSERT_NO_THROW({
        serialized_bytes = original.ToBytes(curve_);
    });
-   // *** FIX HERE ***
+
    ASSERT_NE(serialized_bytes.size(), 0);
 
   // Deserialize
@@ -118,7 +118,7 @@ TEST_F(MessagesTest, PolyChallengeSerde) {
   ASSERT_NO_THROW({
       serialized_bytes = original.ToBytes();
   });
-  // *** FIX HERE ***
+
   ASSERT_NE(serialized_bytes.size(), 0);
 
   // Deserialize
@@ -153,7 +153,7 @@ TEST_F(MessagesTest, ProofShareSerde) {
   ASSERT_NO_THROW({
       serialized_bytes = original.ToBytes();
   });
-  // *** FIX HERE ***
+
   ASSERT_NE(serialized_bytes.size(), 0);
 
   // Deserialize

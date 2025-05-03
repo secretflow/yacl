@@ -14,7 +14,7 @@
 namespace examples::zkp {
 namespace {
 
-// *** FIX: Add using declarations or use fully qualified names ***
+
 using yacl::math::MPInt;
 
 class UtilTest : public ::testing::Test {
@@ -46,11 +46,11 @@ class UtilTest : public ::testing::Test {
 // Test InnerProduct
 TEST_F(UtilTest, InnerProductTest) {
   CheckEcAvailable();
-  // *** FIX: Use MPInt directly now that it's in scope ***
+
   std::vector<MPInt> a = {MPInt(1), MPInt(2), MPInt(3)};
   std::vector<MPInt> b = {MPInt(4), MPInt(5), MPInt(6)};
   MPInt expected = MPInt(32).Mod(order_);
-  // *** FIX: Use namespace for standalone function ***
+
   EXPECT_EQ(examples::zkp::InnerProduct(a, b, curve_), expected);
 
   std::vector<MPInt> empty;
@@ -70,7 +70,7 @@ TEST_F(UtilTest, AddVecTest) {
       MPInt(15).Mod(order_),
       MPInt(1).Mod(order_)
   };
-  // *** FIX: Use namespace for standalone function ***
+
   std::vector<MPInt> result = examples::zkp::AddVec(a, b, curve_);
   ASSERT_EQ(result.size(), expected.size());
   for (size_t i = 0; i < result.size(); ++i) {
@@ -92,7 +92,7 @@ TEST_F(UtilTest, ExpIterVectorTest) {
       MPInt(9).Mod(order_),
       MPInt(27).Mod(order_)
   };
-  // *** FIX: Use namespace for standalone function ***
+
   std::vector<MPInt> result = examples::zkp::ExpIterVector(base, n, curve_);
   ASSERT_EQ(result.size(), expected.size());
   for (size_t i = 0; i < result.size(); ++i) {
@@ -108,7 +108,7 @@ TEST_F(UtilTest, ScalarExpTest) {
   MPInt base(5);
   size_t exp = 3;
   MPInt expected = MPInt(125).Mod(order_);
-  // *** FIX: Use namespace for standalone function ***
+
   EXPECT_EQ(examples::zkp::ScalarExp(base, exp, curve_), expected);
 
   EXPECT_EQ(examples::zkp::ScalarExp(base, 0, curve_), MPInt(1));
@@ -120,7 +120,7 @@ TEST_F(UtilTest, SumOfPowersTest) {
   MPInt base(2);
   size_t n = 4;
   MPInt expected = MPInt(15).Mod(order_);
-  // *** FIX: Use namespace for standalone function ***
+
   EXPECT_EQ(examples::zkp::SumOfPowers(base, n, curve_), expected);
 
   MPInt base_one(1);
@@ -135,7 +135,7 @@ TEST_F(UtilTest, SumOfPowersTest) {
 TEST_F(UtilTest, Poly2EvalTest) {
   CheckEcAvailable();
   MPInt t0(5), t1(3), t2(2);
-  // *** FIX: Use namespace for class ***
+
   examples::zkp::Poly2 poly(t0, t1, t2);
   MPInt x(4);
   MPInt expected = MPInt(49).Mod(order_);
@@ -147,7 +147,7 @@ TEST_F(UtilTest, VecPoly1EvalTest) {
   CheckEcAvailable();
   std::vector<MPInt> v0 = {MPInt(1), MPInt(2)};
   std::vector<MPInt> v1 = {MPInt(3), MPInt(4)};
-  // *** FIX: Use namespace for class ***
+
   examples::zkp::VecPoly1 vec_poly(std::move(v0), std::move(v1));
   MPInt x(5);
   std::vector<MPInt> expected = {MPInt(16).Mod(order_), MPInt(22).Mod(order_)};
@@ -160,7 +160,7 @@ TEST_F(UtilTest, VecPoly1EvalTest) {
 // Test VecPoly1::InnerProduct
 TEST_F(UtilTest, VecPoly1InnerProductTest) {
   CheckEcAvailable();
-  // *** FIX: Use namespace for class ***
+
   examples::zkp::VecPoly1 L({MPInt(1), MPInt(3)}, {MPInt(2), MPInt(4)});
   examples::zkp::VecPoly1 R({MPInt(5), MPInt(7)}, {MPInt(6), MPInt(8)});
 
@@ -170,7 +170,7 @@ TEST_F(UtilTest, VecPoly1InnerProductTest) {
   MPInt expected_t1 = inner_sum.SubMod(expected_t0, order_);
   expected_t1 = expected_t1.SubMod(expected_t2, order_);
 
-  // *** FIX: Use namespace for class ***
+
   examples::zkp::Poly2 result_poly = L.InnerProduct(R, curve_);
 
   EXPECT_EQ(result_poly.t0, expected_t0);

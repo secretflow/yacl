@@ -106,7 +106,6 @@ class InnerProductProof {
    * @return true if the proof verifies, false otherwise
    */
   bool Verify(
-      size_t n,
       SimpleTranscript* transcript,
       const std::shared_ptr<yacl::crypto::EcGroup>& curve,
       const std::vector<yacl::math::MPInt>& G_factors,

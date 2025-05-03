@@ -347,7 +347,7 @@ bool RangeProof::Verify(
     // Verify IPP (ipp_proof_ is the member variable)
     // The C++ IPP Verify function needs the transcript to derive IPP challenges
     // and check the final equation.
-    bool ipp_result = ipp_proof_.Verify(n, &transcript, curve,
+    bool ipp_result = ipp_proof_.Verify(&transcript, curve,
                              ipp_G_factors, ipp_H_factors,
                              P_plus_tx_Q, 
                              Q,

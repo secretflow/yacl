@@ -140,7 +140,7 @@ TEST_F(DealerTest, FullProtocolFlowTrusted) {
 
   // 2. Receive Bit Commitments
   auto bit_commitments = CreateDummyBitCommitments(m_);
-  // *** FIX: Initialize dealer_state2 directly from the result ***
+
   auto result1 = dealer_state1.ReceiveBitCommitments(bit_commitments);
   DealerAwaitingPolyCommitments dealer_state2 = std::move(result1.first);
   BitChallenge bit_challenge = result1.second;
@@ -149,7 +149,7 @@ TEST_F(DealerTest, FullProtocolFlowTrusted) {
 
   // 3. Receive Poly Commitments
   auto poly_commitments = CreateDummyPolyCommitments(m_);
-  // *** FIX: Initialize dealer_state3 directly from the result ***
+
    auto result2 = dealer_state2.ReceivePolyCommitments(poly_commitments);
    DealerAwaitingProofShares dealer_state3 = std::move(result2.first);
    PolyChallenge poly_challenge = result2.second;

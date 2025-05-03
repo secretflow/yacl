@@ -51,7 +51,7 @@ Poly2 VecPoly1::InnerProduct(const VecPoly1& rhs,
   YACL_ENFORCE(this->vec0.size() == rhs.vec0.size(),
                "VecPoly1 inner product requires vectors of the same size");
 
-  // *** FIX: Use explicit namespace or :: prefix for standalone functions ***
+
   // t0 = <vec0, rhs.vec0> mod order
   yacl::math::MPInt t0 = examples::zkp::InnerProduct(this->vec0, rhs.vec0, curve);
 

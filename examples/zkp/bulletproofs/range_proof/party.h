@@ -10,7 +10,6 @@
 #include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/math/mpint/mp_int.h"
 
-// *** FIX: Include the full definition for VecPoly1 and Poly2 ***
 #include "zkp/bulletproofs/util.h"
 // Forward declare other dependent types from other headers
 namespace examples::zkp {
