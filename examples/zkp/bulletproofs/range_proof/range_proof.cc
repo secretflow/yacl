@@ -62,7 +62,7 @@ std::vector<yacl::crypto::EcPoint> RangeProof::MakeGenerators(
     // Generate subsequent points by hashing previous one's compressed bytes
     for (size_t i = 1; i < n; ++i) {
         yacl::Buffer prev_bytes = curve->SerializePoint(generators[i-1]); // true for compressed
-        // Rust uses Sha256 of the bytes as input to HashToCurve,
+        //  uses Sha256 of the bytes as input to HashToCurve,
         // but YACL's HashToCurve likely handles the hashing internally based on strategy.
         // Directly using HashToCurve on prev_bytes is likely the intended YACL equivalent.
         // If HashToCurve doesn't use SHA256 internally for Autonomous, this needs adjustment.
@@ -76,7 +76,7 @@ std::vector<yacl::crypto::EcPoint> RangeProof::MakeGenerators(
     return generators;
 }
 
-// --- Static Helper: Delta (Mirrors Rust single-party version) ---
+// --- Static Helper: Delta (Mirrors  single-party version) ---
 yacl::math::MPInt RangeProof::Delta(
     size_t n,
     const yacl::math::MPInt& y,
@@ -202,7 +202,7 @@ RangeProof RangeProof::GenerateProof(
     // 12. Compute IPP inputs
     // Q = w * B_blinding
     yacl::crypto::EcPoint Q = curve->Mul(B_blinding, w);
-    // IPP H factors = y^-i (Note: Rust IPP::create takes H factors as first factor arg)
+    // IPP H factors = y^-i (Note:  IPP::create takes H factors as first factor arg)
     // C++ IPP::Create takes G_factors, H_factors. We need to match how C++ IPP uses them.
     // Assuming C++ IPP expects factors for G and H basis:
     std::vector<yacl::math::MPInt> ipp_G_factors(n, one); // Factors for G_vec

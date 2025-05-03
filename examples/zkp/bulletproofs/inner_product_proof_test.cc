@@ -9,6 +9,7 @@
 #include "yacl/crypto/rand/rand.h"         // For random scalars/points
 #include "zkp/bulletproofs/simple_transcript.h" // For SimpleTranscript
 #include "zkp/bulletproofs/util.h"         // For helpers
+#include "ipa_config.h"
 
 namespace examples::zkp {
 namespace {
@@ -43,7 +44,7 @@ class InnerProductProofTest : public ::testing::Test {
  protected:
   void SetUp() override {
     curve_ = yacl::crypto::EcGroupFactory::Instance().Create(
-        "secp256k1", yacl::ArgLib = "openssl");
+        kIpaEcName, yacl::ArgLib = kIpaEcLib);
     order_ = curve_->GetOrder();
   }
 
@@ -139,7 +140,7 @@ class InnerProductProofTest : public ::testing::Test {
   yacl::math::MPInt order_;
 };
 
-// Test cases matching Rust tests
+// Test cases matching  tests
 TEST_F(InnerProductProofTest, MakeIPP1) {
   TestHelperCreate(1);
 }

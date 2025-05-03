@@ -11,6 +11,7 @@
 #include "zkp/bulletproofs/generators.h"   // For BulletproofGens, PedersenGens
 #include "zkp/bulletproofs/range_proof/messages.h" // For message types
 #include "zkp/bulletproofs/util.h"         // For VecPoly1, Poly2, etc.
+#include "range_proof_config.h"
 
 namespace examples::zkp {
 namespace {
@@ -25,7 +26,7 @@ class PartyTest : public ::testing::Test {
   void SetUp() override {
     // Initialize curve
     curve_ = yacl::crypto::EcGroupFactory::Instance().Create(
-        "secp256k1", yacl::ArgLib = "openssl");
+        kRangeProofEcName, yacl::ArgLib = kRangeProofEcLib);
     order_ = curve_->GetOrder();
 
     // Initialize generators - ensure capacity >= max n tested and party_capacity

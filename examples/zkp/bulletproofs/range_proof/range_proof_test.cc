@@ -8,16 +8,17 @@
 #include "yacl/crypto/ecc/ecc_spi.h"        // For EcGroupFactory, EcGroup
 #include "yacl/crypto/rand/rand.h"         // For random scalars and bytes
 #include "zkp/bulletproofs/simple_transcript.h" // For SimpleTranscript
+#include "range_proof_config.h"
 
 namespace examples::zkp {
 namespace {
 
 // Helper to generate random value in range [0, 2^n - 2] for testing
-// Matches Rust test range [0, (1 << (n-1)) -1], adjusting for n=64
-// Let's actually match the range used in Rust tests: [0, 2^(n-1) - 1]
+// Matches  test range [0, (1 << (n-1)) -1], adjusting for n=64
+// Let's actually match the range used in  tests: [0, 2^(n-1) - 1]
 uint64_t GenerateRandomValueInRange(size_t n, const std::shared_ptr<yacl::crypto::EcGroup>& curve) {
     if (n == 0) return 0;
-    // Rust test uses gen_range(0, (1 << (n - 1)) - 1);
+    //  test uses gen_range(0, (1 << (n - 1)) - 1);
     // This means the max value is 2^(n-1) - 2.
     // If n=1, max value is 2^0 - 2 = -1 -> range is just 0.
     // If n=8, max value is 2^7 - 2 = 126. Range [0, 126].
@@ -47,7 +48,7 @@ class RangeProofDirectTest : public ::testing::Test {
  protected:
   void SetUp() override {
     curve_ = yacl::crypto::EcGroupFactory::Instance().Create(
-        "secp256k1", yacl::ArgLib = "openssl");
+        kRangeProofEcName, yacl::ArgLib = kRangeProofEcLib);
   }
 
   // Helper to run create/verify for a given bitsize n
@@ -59,7 +60,7 @@ class RangeProofDirectTest : public ::testing::Test {
     v_blinding.RandomLtN(curve_->GetOrder(), &v_blinding);
 
     // Prover side
-    SimpleTranscript prover_transcript("RangeproofTest"); // Match Rust label
+    SimpleTranscript prover_transcript("RangeproofTest"); // Match  label
     RangeProof proof;
     ASSERT_NO_THROW({
         proof = RangeProof::GenerateProof(
@@ -105,7 +106,7 @@ class RangeProofDirectTest : public ::testing::Test {
   std::shared_ptr<yacl::crypto::EcGroup> curve_;
 };
 
-// Test cases for different bit sizes matching Rust tests
+// Test cases for different bit sizes matching  tests
 TEST_F(RangeProofDirectTest, CreateAndVerify8) {
   TestGenerateAndVerify(8);
 }

@@ -3,6 +3,7 @@
 
 #include "yacl/crypto/ecc/openssl/openssl_group.h"
 #include "yacl/crypto/ecc/curve_meta.h"
+#include "ipa_config.h"
 
 namespace examples::zkp {
 namespace {
@@ -11,8 +12,8 @@ class GeneratorsTest : public ::testing::Test {
  protected:
   void SetUp() override {
     curve_ = yacl::crypto::EcGroupFactory::Instance().Create(
-       "secp256k1",
-        yacl::ArgLib = "openssl");
+       kIpaEcName,
+        yacl::ArgLib = kIpaEcLib);
   }
 
   std::shared_ptr<yacl::crypto::EcGroup> curve_;

@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 #include <vector>
 #include <memory>
+#include "range_proof_config.h"
 
 #include "yacl/crypto/ecc/ecc_spi.h" // For EcGroupFactory, EcGroup
 #include "yacl/crypto/rand/rand.h" // For random points/scalars
@@ -20,7 +21,7 @@ class MessagesTest : public ::testing::Test {
   void SetUp() override {
     // Initialize curve
     curve_ = yacl::crypto::EcGroupFactory::Instance().Create(
-        "secp256k1", yacl::ArgLib = "openssl");
+        kRangeProofEcName, yacl::ArgLib = kRangeProofEcLib);
   }
 
   std::shared_ptr<yacl::crypto::EcGroup> curve_;

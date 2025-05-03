@@ -97,7 +97,7 @@ InnerProductProof InnerProductProof::Create(
             // b = b_L * x_inv + b_R * x
             b_L[i] = b_L[i].MulMod(x_inv, order).AddMod(b_R[i].MulMod(x, order), order);
             // G = G_L * (x_inv * G_fact_L) + G_R * (x * G_fact_R) <- Careful with factors
-            // G_new = G_L*x_inv + G_R*x (This matches Rust if factors are 1)
+            // G_new = G_L*x_inv + G_R*x (This matches  if factors are 1)
             // Let's compute the updated points without factors here, assuming factors are applied outside/in verify
              G_L[i] = MultiScalarMul(curve, {x_inv, x}, {G_L[i], G_R[i]});
             // H = H_L * x + H_R * x_inv (H already includes H_factors)
@@ -203,7 +203,7 @@ InnerProductProof::VerificationScalars(
 
       // The challenges are stored in "creation order" as [u_1, u_2,..., u_lg_n]
       // challenges_sq holds [u_1^2, u_2^2, ..., u_lg_n^2]
-      // Rust code uses index (lg_n - 1) - lg_i
+      //  code uses index (lg_n - 1) - lg_i
       size_t challenge_idx = (lg_n - 1) - lg_i;
       YACL_ENFORCE(challenge_idx < challenges_sq.size(), "Logic error: challenge_idx out of bounds");
       const yacl::math::MPInt& u_sq_for_level = challenges_sq[challenge_idx];

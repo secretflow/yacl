@@ -145,9 +145,9 @@ bool RangeProofMPC::VerifyMultiple(
   transcript.RangeProofDomainSep(n, m);
 
   // Append value commitments
-  // TODO: Ensure AppendPoint uses COMPRESSED format if needed for consistency with Rust ref.
+  // TODO: Ensure AppendPoint uses COMPRESSED format if needed for consistency with  ref.
   for (const auto& V : value_commitments) {
-    // Note: Rust uses CompressedRistretto here. If C++ V is uncompressed, ensure AppendPoint handles it consistently.
+    // Note:  uses CompressedRistretto here. If C++ V is uncompressed, ensure AppendPoint handles it consistently.
     transcript.AppendPoint("V", V, curve);
   }
 

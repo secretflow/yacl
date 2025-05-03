@@ -19,7 +19,7 @@ namespace examples::zkp {
 //   yacl::ByteContainerView base_view(base_bytes.data(), base_bytes.size());
   
 //   // Use the base point bytes as input to HashToCurve
-//   // This matches the behavior of RistrettoPoint::hash_from_bytes in the Rust implementation
+//   // This matches the behavior of RistrettoPoint::hash_from_bytes in the  implementation
 //   // HashToCurve handles the internal hashing
 //   B_blinding_ = curve_->HashToCurve(
 //       yacl::crypto::HashToCurveStrategy::Autonomous,  // 

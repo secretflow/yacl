@@ -7,6 +7,7 @@
 
 #include "yacl/crypto/ecc/ecc_spi.h"        // For EcGroupFactory, EcGroup
 #include "yacl/crypto/rand/rand.h"         // For random scalars/points
+#include "range_proof_config.h"
 #include "zkp/bulletproofs/generators.h"   // For BulletproofGens, PedersenGens
 #include "zkp/bulletproofs/range_proof/messages.h" // For message types
 #include "zkp/bulletproofs/range_proof/range_proof_mpc.h" // For RangeProof, IsPowerOfTwo
@@ -27,7 +28,7 @@ class DealerTest : public ::testing::Test {
   void SetUp() override {
     // Initialize curve
     curve_ = yacl::crypto::EcGroupFactory::Instance().Create(
-        "secp256k1", yacl::ArgLib = "openssl");
+        kRangeProofEcName, yacl::ArgLib = kRangeProofEcLib);
 
     // Initialize generators - ensure capacity >= n and m
     // Add some buffer to capacities

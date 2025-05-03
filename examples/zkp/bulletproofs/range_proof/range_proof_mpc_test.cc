@@ -5,6 +5,7 @@
 #include "yacl/crypto/ecc/openssl/openssl_group.h"
 #include "yacl/crypto/rand/rand.h"
 #include "zkp/bulletproofs/simple_transcript.h"
+#include "range_proof_config.h"
 
 namespace examples::zkp {
 namespace {
@@ -14,7 +15,7 @@ class RangeProofMPCTest : public ::testing::Test {
   void SetUp() override {
     // Initialize with secp256k1 curve for testing
     curve_ = yacl::crypto::EcGroupFactory::Instance().Create(
-        "secp256k1", yacl::ArgLib = "openssl");
+        kRangeProofEcName, yacl::ArgLib = kRangeProofEcLib);
     pc_gens_ptr_ = std::make_unique<PedersenGens>(curve_);
     bp_gens_ptr_ = std::make_unique<BulletproofGens>(curve_, 64, 1);
   }

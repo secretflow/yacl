@@ -17,7 +17,7 @@
 namespace examples::zkp {
 
 /**
- * @brief Represents a single-party range proof based on the provided Rust code.
+ * @brief Represents a single-party range proof based on the provided  code.
  *        Generators are derived internally via hashing, not from external Gens classes.
  */
 class RangeProof {
@@ -30,7 +30,7 @@ class RangeProof {
   RangeProof& operator=(RangeProof&& other) = default;
 
   /**
-   * @brief Constructor matching the Rust struct fields.
+   * @brief Constructor matching the  struct fields.
    */
   RangeProof(
       const yacl::crypto::EcPoint& V,
@@ -43,11 +43,11 @@ class RangeProof {
       const yacl::math::MPInt& e_blinding,
       const InnerProductProof& ipp_proof); // Use the YACL IPP type
 
-  // --- Single-Party Direct Proof Methods (based on provided Rust code) ---
+  // --- Single-Party Direct Proof Methods (based on provided  code) ---
 
   /**
    * @brief Creates a range proof directly for a single value.
-   *        Uses hardcoded generator derivation via hashing, mirroring the Rust code.
+   *        Uses hardcoded generator derivation via hashing, mirroring the  code.
    *
    * @param transcript Transcript for the protocol.
    * @param curve The elliptic curve group.
@@ -66,7 +66,7 @@ class RangeProof {
 
   /**
    * @brief Verifies a direct single-party range proof created by GenerateProof.
-   *        Uses hardcoded generator derivation via hashing, mirroring the Rust code.
+   *        Uses hardcoded generator derivation via hashing, mirroring the  code.
    *
    * @param transcript Transcript for the protocol (must be in sync with prover).
    * @param curve The elliptic curve group.
@@ -99,7 +99,7 @@ class RangeProof {
 
 
  private:
-  // Proof components mirroring Rust struct
+  // Proof components mirroring  struct
   yacl::crypto::EcPoint V_;
   yacl::crypto::EcPoint A_;
   yacl::crypto::EcPoint S_;
