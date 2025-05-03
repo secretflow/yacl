@@ -69,7 +69,7 @@ yacl_cc_library(
     srcs = ["dealer.cc"],
     hdrs = [
         "dealer.h",
-        "range_proof.h",
+        "range_proof_mpc.h",
         ],
     copts = COMMON_COPTS,
     deps = [
@@ -127,7 +127,7 @@ yacl_cc_test(
     copts = COMMON_COPTS,
     deps = [
         ":dealer",
-        ":range_proof",
+        ":range_proof_mpc",
         ":range_proof_config",
         "@yacl//yacl/crypto:openssl_wrappers",
         "@yacl//yacl/math/mpint:mpint",

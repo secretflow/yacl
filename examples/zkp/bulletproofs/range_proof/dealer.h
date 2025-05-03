@@ -11,7 +11,7 @@
 #include "zkp/bulletproofs/generators.h"
 #include "zkp/bulletproofs/range_proof/messages.h"
 #include "zkp/bulletproofs/simple_transcript.h"
-#include "zkp/bulletproofs/range_proof/range_proof.h"
+#include "zkp/bulletproofs/range_proof/range_proof_mpc.h"
 
 namespace examples::zkp {
 
@@ -163,7 +163,7 @@ class DealerAwaitingProofShares {
    * @return RangeProof Aggregated range proof
    * @throws yacl::Exception if any proof shares are malformed
    */
-  RangeProof ReceiveShares(const std::vector<ProofShare>& proof_shares);
+  RangeProofMPC ReceiveShares(const std::vector<ProofShare>& proof_shares);
 
   /**
    * @brief Assemble the final aggregated RangeProof from the given proof_shares,
@@ -176,7 +176,7 @@ class DealerAwaitingProofShares {
    * @warning This function does NOT validate the proof shares. It is suitable
    * only when all parties are known to be honest.
    */
-  RangeProof ReceiveTrustedShares(const std::vector<ProofShare>& proof_shares);
+  RangeProofMPC ReceiveTrustedShares(const std::vector<ProofShare>& proof_shares);
 
   // Deleted copy constructor and assignment to prevent copies
   DealerAwaitingProofShares(const DealerAwaitingProofShares&) = delete;
@@ -227,7 +227,7 @@ class DealerAwaitingProofShares {
    * @return RangeProof Aggregated range proof
    * @throws yacl::Exception if any proof shares are malformed
    */
-  RangeProof AssembleShares(const std::vector<ProofShare>& proof_shares);
+  RangeProofMPC AssembleShares(const std::vector<ProofShare>& proof_shares);
 
   size_t n_; // Bitsize of the range
   size_t m_; // Number of parties

@@ -8,7 +8,7 @@
 #include "yacl/math/mpint/mp_int.h"
 #include "zkp/bulletproofs/inner_product_proof.h"
 #include "zkp/bulletproofs/util.h"
-
+#include "zkp/bulletproofs/range_proof/range_proof_mpc.h"
 namespace examples::zkp {
 
 //-------------------- Dealer --------------------
@@ -167,7 +167,7 @@ DealerAwaitingPolyCommitments::ReceivePolyCommitments(
 
 
 
-RangeProof DealerAwaitingProofShares::AssembleShares(
+RangeProofMPC DealerAwaitingProofShares::AssembleShares(
     const std::vector<ProofShare>& proof_shares) {
   if (m_ != proof_shares.size()) {
     throw yacl::Exception("Wrong number of proof shares");
@@ -189,6 +189,7 @@ RangeProof DealerAwaitingProofShares::AssembleShares(
   
   // Combine the proof shares
   auto curve = bp_gens_.GetCurve();
+  auto order = curve->GetOrder();
   
   // Aggregate t_x, t_x_blinding, and e_blinding values
   yacl::math::MPInt t_x(0);
@@ -196,9 +197,9 @@ RangeProof DealerAwaitingProofShares::AssembleShares(
   yacl::math::MPInt e_blinding(0);
   
   for (const auto& share : proof_shares) {
-    t_x = t_x.AddMod(share.GetTX(), curve->GetOrder());
-    t_x_blinding = t_x_blinding.AddMod(share.GetTXBlinding(), curve->GetOrder());
-    e_blinding = e_blinding.AddMod(share.GetEBlinding(), curve->GetOrder());
+    t_x = t_x.AddMod(share.GetTX(), order);
+    t_x_blinding = t_x_blinding.AddMod(share.GetTXBlinding(), order);
+    e_blinding = e_blinding.AddMod(share.GetEBlinding(), order);
   }
   
   // Add these values to the transcript
@@ -213,7 +214,7 @@ RangeProof DealerAwaitingProofShares::AssembleShares(
   // Prepare G_factors and H_factors for the inner product proof
   std::vector<yacl::math::MPInt> G_factors(n_ * m_, yacl::math::MPInt(1));
   
-  yacl::math::MPInt y_inv = bit_challenge_.GetY().InvertMod(curve->GetOrder());
+  yacl::math::MPInt y_inv = bit_challenge_.GetY().InvertMod(order);
   std::vector<yacl::math::MPInt> H_factors = ExpIterVector(y_inv, n_ * m_, curve);
   
   // Collect l_vec and r_vec from all proof shares
@@ -239,12 +240,12 @@ RangeProof DealerAwaitingProofShares::AssembleShares(
     &transcript_, curve, Q, G_factors, H_factors, G_vec, H_vec, l_vec, r_vec);
   
   // Construct the range proof
-  return RangeProof(A_, S_, T_1_, T_2_, t_x, t_x_blinding, e_blinding, ipp_proof);
+  return RangeProofMPC(A_, S_, T_1_, T_2_, t_x, t_x_blinding, e_blinding, ipp_proof);
 }
 
-RangeProof DealerAwaitingProofShares::ReceiveShares(
+RangeProofMPC DealerAwaitingProofShares::ReceiveShares(
     const std::vector<ProofShare>& proof_shares) {
-  RangeProof proof = AssembleShares(proof_shares);
+  RangeProofMPC proof = AssembleShares(proof_shares);
   
   // Extract value commitments from bit commitments
   std::vector<yacl::crypto::EcPoint> Vs;
@@ -280,7 +281,7 @@ RangeProof DealerAwaitingProofShares::ReceiveShares(
   return proof;
 }
 
-RangeProof DealerAwaitingProofShares::ReceiveTrustedShares(
+RangeProofMPC DealerAwaitingProofShares::ReceiveTrustedShares(
     const std::vector<ProofShare>& proof_shares) {
   // Skip verification since shares are trusted
   return AssembleShares(proof_shares);

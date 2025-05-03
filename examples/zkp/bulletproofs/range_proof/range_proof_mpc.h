@@ -16,25 +16,25 @@
 namespace examples::zkp {
 
 /**
- * @brief The RangeProof class represents a proof that one or more values
+ * @brief The RangeProofMPC class represents a proof that one or more values
  * are in a range.
  *
  * This implementation requires that both the bitsize n and the aggregation size m
  * be powers of two, so that n = 8, 16, 32, 64 and m = 1, 2, 4, 8, 16, ...
  */
-class RangeProof {
+class RangeProofMPC {
  public:
   // Default constructors and assignment operators
-  RangeProof() = default;
-  RangeProof(const RangeProof& other) = default;
-  RangeProof& operator=(const RangeProof& other) = default;
-  RangeProof(RangeProof&& other) = default;
-  RangeProof& operator=(RangeProof&& other) = default;
+  RangeProofMPC() = default;
+  RangeProofMPC(const RangeProofMPC& other) = default;
+  RangeProofMPC& operator=(const RangeProofMPC& other) = default;
+  RangeProofMPC(RangeProofMPC&& other) = default;
+  RangeProofMPC& operator=(RangeProofMPC&& other) = default;
 
   /**
    * @brief Constructor with all components
    */
-  RangeProof(
+  RangeProofMPC(
       const yacl::crypto::EcPoint& A,
       const yacl::crypto::EcPoint& S,
       const yacl::crypto::EcPoint& T_1,
@@ -54,7 +54,7 @@ class RangeProof {
    * @param n Bitsize of the range (must be 8, 16, 32, or 64)
    * @return std::pair<RangeProof, yacl::crypto::EcPoint> Proof and value commitment
    */
-  static std::pair<RangeProof, yacl::crypto::EcPoint> CreateSingle(
+  static std::pair<RangeProofMPC, yacl::crypto::EcPoint> CreateSingle(
       const BulletproofGens& bp_gens,
       const PedersenGens& pc_gens,
       SimpleTranscript& transcript,
@@ -72,7 +72,7 @@ class RangeProof {
    * @param n Bitsize of the range (must be 8, 16, 32, or 64)
    * @return std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>> Proof and value commitments
    */
-  static std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>> CreateMultiple(
+  static std::pair<RangeProofMPC, std::vector<yacl::crypto::EcPoint>> CreateMultiple(
       const BulletproofGens& bp_gens,
       const PedersenGens& pc_gens,
       SimpleTranscript& transcript,
@@ -120,7 +120,7 @@ class RangeProof {
   /**
    * @brief Deserialize a proof from bytes
    */
-  static RangeProof FromBytes(
+  static RangeProofMPC FromBytes(
       const std::shared_ptr<yacl::crypto::EcGroup>& curve,
       const yacl::ByteContainerView& bytes);
 

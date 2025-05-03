@@ -1,4 +1,4 @@
-#include "zkp/bulletproofs/range_proof/range_proof.h"
+#include "zkp/bulletproofs/range_proof/range_proof_mpc.h"
 
 #include <gtest/gtest.h>
 
@@ -9,7 +9,7 @@
 namespace examples::zkp {
 namespace {
 
-class RangeProofTest : public ::testing::Test {
+class RangeProofMPCTest : public ::testing::Test {
  protected:
   void SetUp() override {
     // Initialize with secp256k1 curve for testing
@@ -29,7 +29,7 @@ class RangeProofTest : public ::testing::Test {
     yacl::math::MPInt::RandomLtN(curve_->GetOrder(), &blinding);
     
     // Create the proof
-    auto [proof, commitment] = RangeProof::CreateSingle(
+    auto [proof, commitment] = RangeProofMPC::CreateSingle(
         *bp_gens_ptr_, *pc_gens_ptr_, *prover_transcript, value, blinding, n);
     
     // Verify the proof with a fresh transcript
@@ -51,7 +51,7 @@ class RangeProofTest : public ::testing::Test {
     }
     
     // Create the proof
-    auto [proof, commitments] = RangeProof::CreateMultiple(
+    auto [proof, commitments] = RangeProofMPC::CreateMultiple(
         *bp_gens_ptr_, *pc_gens_ptr_, *prover_transcript, values, blindings, n);
     
     // Verify the proof with a fresh transcript
@@ -64,7 +64,7 @@ class RangeProofTest : public ::testing::Test {
   std::unique_ptr<BulletproofGens> bp_gens_ptr_; // Use pointer
 };
 
-TEST_F(RangeProofTest, TestDelta) {
+TEST_F(RangeProofMPCTest, TestDelta) {
   // Test the Delta function with small values
   yacl::math::MPInt y(3);
   yacl::math::MPInt z(5);
@@ -73,23 +73,23 @@ TEST_F(RangeProofTest, TestDelta) {
   const size_t m = 2;
   
   // Calculate delta manually
-  yacl::math::MPInt delta = RangeProof::Delta(n, m, y, z, curve_);
+  yacl::math::MPInt delta = RangeProofMPC::Delta(n, m, y, z, curve_);
   
   // The delta calculation is complex, so we just verify it's non-zero here
   EXPECT_NE(delta, yacl::math::MPInt(0));
 }
 
-TEST_F(RangeProofTest, TestSingleProof8Bit) {
+TEST_F(RangeProofMPCTest, TestSingleProof8Bit) {
   // Test a valid 8-bit value (0 <= value < 2^8)
   TestSingleRangeProof(123, 8);
 }
 
-TEST_F(RangeProofTest, TestSingleProof16Bit) {
+TEST_F(RangeProofMPCTest, TestSingleProof16Bit) {
   // Test a valid 16-bit value (0 <= value < 2^16)
   TestSingleRangeProof(12345, 16);
 }
 
-TEST_F(RangeProofTest, TestSingleProof32Bit) {
+TEST_F(RangeProofMPCTest, TestSingleProof32Bit) {
   // Test a valid 32-bit value (0 <= value < 2^32)
   TestSingleRangeProof(1234567890, 32);
 }
@@ -109,14 +109,14 @@ TEST_F(RangeProofTest, TestSingleProof32Bit) {
 //   TestMultipleRangeProof({1234567890, 987654321, 123456789, 987654321}, 32);
 // }
 
-TEST_F(RangeProofTest, TestSerialization) {
+TEST_F(RangeProofMPCTest, TestSerialization) {
   // Create a proof
   auto prover_transcript = std::make_unique<SimpleTranscript>("range_proof_test");
   
   yacl::math::MPInt blinding;
   yacl::math::MPInt::RandomLtN(curve_->GetOrder(), &blinding);
 
-  auto [proof, commitment] = RangeProof::CreateSingle(
+  auto [proof, commitment] = RangeProofMPC::CreateSingle(
       *bp_gens_ptr_, *pc_gens_ptr_, *prover_transcript, 123, blinding, 8);
   
   // Serialize and deserialize

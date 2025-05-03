@@ -9,7 +9,7 @@
 #include "yacl/crypto/rand/rand.h"         // For random scalars/points
 #include "zkp/bulletproofs/generators.h"   // For BulletproofGens, PedersenGens
 #include "zkp/bulletproofs/range_proof/messages.h" // For message types
-#include "zkp/bulletproofs/range_proof/range_proof.h" // For RangeProof, IsPowerOfTwo
+#include "zkp/bulletproofs/range_proof/range_proof_mpc.h" // For RangeProof, IsPowerOfTwo
 #include "zkp/bulletproofs/simple_transcript.h" // For SimpleTranscript
 #include "zkp/bulletproofs/util.h"         // For InnerProductProof definition (needed by RangeProof)
 
@@ -157,7 +157,7 @@ TEST_F(DealerTest, FullProtocolFlowTrusted) {
 
   // 4. Receive Trusted Shares
   auto proof_shares = CreateDummyProofShares(m_, n_);
-  RangeProof proof;
+  RangeProofMPC proof;
   ASSERT_NO_THROW({
     proof = dealer_state3.ReceiveTrustedShares(proof_shares);
   });

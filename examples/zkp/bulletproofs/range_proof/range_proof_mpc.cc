@@ -1,4 +1,4 @@
-#include "zkp/bulletproofs/range_proof/range_proof.h"
+#include "zkp/bulletproofs/range_proof/range_proof_mpc.h"
 
 #include <algorithm>
 
@@ -9,7 +9,7 @@
 
 namespace examples::zkp {
 
-RangeProof::RangeProof(
+RangeProofMPC::RangeProofMPC(
     const yacl::crypto::EcPoint& A,
     const yacl::crypto::EcPoint& S,
     const yacl::crypto::EcPoint& T_1,
@@ -27,7 +27,7 @@ RangeProof::RangeProof(
       e_blinding_(e_blinding),
       ipp_proof_(ipp_proof) {}
 
-std::pair<RangeProof, yacl::crypto::EcPoint> RangeProof::CreateSingle(
+std::pair<RangeProofMPC, yacl::crypto::EcPoint> RangeProofMPC::CreateSingle(
     const BulletproofGens& bp_gens,
     const PedersenGens& pc_gens,
     SimpleTranscript& transcript,
@@ -40,7 +40,7 @@ std::pair<RangeProof, yacl::crypto::EcPoint> RangeProof::CreateSingle(
     return {proof, value_commitments[0]};
 }
 
-std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>> RangeProof::CreateMultiple(
+std::pair<RangeProofMPC, std::vector<yacl::crypto::EcPoint>> RangeProofMPC::CreateMultiple(
     const BulletproofGens& bp_gens,
     const PedersenGens& pc_gens,
     SimpleTranscript& transcript,
@@ -110,7 +110,7 @@ std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>> RangeProof::CreateMult
   return {proof, value_commitments};
 }
 
-bool RangeProof::VerifySingle(
+bool RangeProofMPC::VerifySingle(
     const BulletproofGens& bp_gens,
     const PedersenGens& pc_gens,
     SimpleTranscript& transcript,
@@ -122,7 +122,7 @@ bool RangeProof::VerifySingle(
 }
 
 // *** REWRITTEN VerifyMultiple ***
-bool RangeProof::VerifyMultiple(
+bool RangeProofMPC::VerifyMultiple(
     const BulletproofGens& bp_gens,
     const PedersenGens& pc_gens,
     SimpleTranscript& transcript,
@@ -193,10 +193,10 @@ bool RangeProof::VerifyMultiple(
 
   // Precompute helper values
   yacl::math::MPInt z_squared = z.MulMod(z, order);
-  yacl::math::MPInt minus_z = order.SubMod(z, order); // 0 - z mod order
+  yacl::math::MPInt minus_z = z.MulMod(yacl::math::MPInt(-1), order); // 0 - z mod order
   yacl::math::MPInt y_inv = y.InvertMod(order);
   yacl::math::MPInt x_squared = x.MulMod(x, order);
-  yacl::math::MPInt minus_one = order.SubMod(yacl::math::MPInt(1), order); // Used for negation
+  yacl::math::MPInt minus_one = yacl::math::MPInt(-1); // Used for negation
 
   // Precompute powers of 2: [1, 2, 4, ..., 2^(n-1)]
   std::vector<yacl::math::MPInt> powers_of_2 = ExpIterVector(yacl::math::MPInt(2), n, curve);
@@ -313,7 +313,7 @@ bool RangeProof::VerifyMultiple(
   // --- Final Check ---
   // The proof is valid if the MSM result is the identity point
   if (!curve->IsInfinity(mega_check_result)) {
-      std::cerr << "RangeProof Verification Failed: Mega-Check MSM is not identity." << std::endl;
+      std::cerr << "RangeProofMPC Verification Failed: Mega-Check MSM is not identity." << std::endl;
       // Optional: Add more debug prints here if needed
       // std::cout << "Debug: A = " << curve->SerializePoint(A_) << std::endl;
       // ... print other proof components and scalars ...
@@ -323,7 +323,7 @@ bool RangeProof::VerifyMultiple(
 }
 
 // --- Delta Calculation (Seems correct, kept from previous version) ---
-yacl::math::MPInt RangeProof::Delta(
+yacl::math::MPInt RangeProofMPC::Delta(
     size_t n,
     size_t m,
     const yacl::math::MPInt& y,
@@ -357,7 +357,7 @@ yacl::math::MPInt RangeProof::Delta(
   return delta;
 }
 
-yacl::Buffer RangeProof::ToBytes(const std::shared_ptr<yacl::crypto::EcGroup>& curve) const {
+yacl::Buffer RangeProofMPC::ToBytes(const std::shared_ptr<yacl::crypto::EcGroup>& curve) const {
     // ... (previous implementation seems reasonable, ensure points match compression choice)
     // Calculate total size first
     yacl::Buffer A_bytes = curve->SerializePoint(A_);
@@ -405,7 +405,7 @@ yacl::Buffer RangeProof::ToBytes(const std::shared_ptr<yacl::crypto::EcGroup>& c
 }
 
 
-RangeProof RangeProof::FromBytes(
+RangeProofMPC RangeProofMPC::FromBytes(
     const std::shared_ptr<yacl::crypto::EcGroup>& curve,
     const yacl::ByteContainerView& bytes) {
 
@@ -455,7 +455,7 @@ RangeProof RangeProof::FromBytes(
 
     InnerProductProof ipp_proof = InnerProductProof::FromBytes(ipp_data, curve);
 
-    return RangeProof(A, S, T_1, T_2, t_x, t_x_blinding, e_blinding, ipp_proof);
+    return RangeProofMPC(A, S, T_1, T_2, t_x, t_x_blinding, e_blinding, ipp_proof);
 }
 
 
