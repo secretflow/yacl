@@ -42,6 +42,7 @@ yacl_cc_library(
         ":curve_meta",
         ":ec_point",
         "//yacl/base:byte_container_view",
+        "//yacl/crypto/ecc/hash_to_curve",
         "//yacl/math/mpint",
         "//yacl/utils/spi",
     ],
