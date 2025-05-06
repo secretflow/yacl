@@ -28,18 +28,8 @@ COMMON_COPTS = [
 
 yacl_cc_library(
     name = "ipa_config",
-    srcs = ["ipa_config.cc"],
     hdrs = ["ipa_config.h"],
-    copts = COMMON_COPTS,
-    deps = [
-        "@yacl//yacl/base:exception",
-        "@yacl//yacl/crypto/ecc:ec_point",
-        "@yacl//yacl/crypto/ecc:spi",
-        "@yacl//yacl/crypto/hash:hash_interface",
-        "@yacl//yacl/crypto/hash:hash_utils",
-        "@yacl//yacl/math/mpint",
-        "@yacl//yacl/utils:scope_guard",
-    ],
+    copts = COMMON_COPTS
 )
 
 yacl_cc_library(

@@ -1,44 +1,24 @@
-#include "zkp/bulletproofs/generators.h"
+// Copyright 2023 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
+#include "zkp/bulletproofs/generators.h"
+#include <cstring>
+#include "zkp/bulletproofs/generators.h"
 #include <cstring>
 #include <array>
 
 namespace examples::zkp {
-
-// ---- PedersenGens implementation ----
-
-// PedersenGens::PedersenGens(std::shared_ptr<yacl::crypto::EcGroup> curve)
-//     : curve_(std::move(curve)) {
-//   // Use the curve's base point for B
-//   B_ = curve_->GetGenerator();
-  
-//   // Hash the serialized base point to get B_blinding
-//   yacl::Buffer base_bytes = curve_->SerializePoint(B_);
-  
-//   // Create a string view for the hash input
-//   yacl::ByteContainerView base_view(base_bytes.data(), base_bytes.size());
-  
-//   // Use the base point bytes as input to HashToCurve
-//   // This matches the behavior of RistrettoPoint::hash_from_bytes in the  implementation
-//   // HashToCurve handles the internal hashing
-//   B_blinding_ = curve_->HashToCurve(
-//       yacl::crypto::HashToCurveStrategy::Autonomous,  // 
-//       base_view);
-// }
-
-
-
-// yacl::crypto::EcPoint PedersenGens::Commit(
-//     const yacl::math::MPInt& value, 
-//     const yacl::math::MPInt& blinding) const {
-//   // Compute value*B + blinding*B_blinding
-//   yacl::crypto::EcPoint value_term = curve_->Mul(B_, value);
-//   yacl::crypto::EcPoint blinding_term = curve_->Mul(B_blinding_, blinding);
-  
-//   return curve_->Add(value_term, blinding_term);
-// }
-
-// ---- GeneratorsChain implementation ----
 
 GeneratorsChain::GeneratorsChain(
     std::shared_ptr<yacl::crypto::EcGroup> curve,
