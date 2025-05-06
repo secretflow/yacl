@@ -414,8 +414,10 @@ uint8_t BigNum::GetBit(size_t idx) const {
 }
 
 void BigNum::SetBit(size_t idx, uint8_t bit) {
-  if (bit == 0U && idx < BitCount()) {
-    OSSL_RET_1(BN_clear_bit(bn_.get(), idx));
+  if (bit == 0U) {
+    if (idx < BitCount()) {
+      OSSL_RET_1(BN_clear_bit(bn_.get(), idx));
+    }
   } else {
     OSSL_RET_1(BN_set_bit(bn_.get(), idx));
   }
