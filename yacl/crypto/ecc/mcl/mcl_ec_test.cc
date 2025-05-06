@@ -14,6 +14,7 @@
 
 #include "gtest/gtest.h"
 
+#include "yacl/crypto/ecc/hash_to_curve/hash_to_curve.h"
 #include "yacl/crypto/ecc/mcl/mcl_ec_group.h"
 
 namespace yacl::crypto {
@@ -105,6 +106,40 @@ TEST(MclTest, HashToCurveWorks) {
     // Same as above
     // is_unique(curve->HashToCurve(HashToCurveStrategy::TryAndIncrement_BLAKE3,
     //                              fmt::format("id{}", i)));
+  }
+}
+
+TEST(MclTest, P256HashToCurveWorks) {
+  auto curve = MclEGFactory::Create(GetCurveMetaByName("P-256"));
+  auto is_unique = [&](EcPoint q) {
+    auto p = curve->CopyPoint(q);
+    ASSERT_TRUE(curve->IsInCurveGroup(p));
+    static std::vector<EcPoint> v;
+    for (const auto& item : v) {
+      ASSERT_FALSE(curve->PointEqual(item, p));
+    }
+    v.emplace_back(std::move(p));
+  };
+  for (int i = 0; i < 1000; ++i) {
+    is_unique(curve->HashToCurve(HashToCurveStrategy::SHA256_SSWU_NU_,
+                                 fmt::format("id{}", i)));
+  }
+}
+
+TEST(MclTest, P384HashToCurveWorks) {
+  auto curve = MclEGFactory::Create(GetCurveMetaByName("P-384"));
+  auto is_unique = [&](EcPoint q) {
+    auto p = curve->CopyPoint(q);
+    ASSERT_TRUE(curve->IsInCurveGroup(p));
+    static std::vector<EcPoint> v;
+    for (const auto& item : v) {
+      ASSERT_FALSE(curve->PointEqual(item, p));
+    }
+    v.emplace_back(std::move(p));
+  };
+  for (int i = 0; i < 1000; ++i) {
+    is_unique(curve->HashToCurve(HashToCurveStrategy::SHA384_SSWU_NU_,
+                                 fmt::format("id{}", i)));
   }
 }
 
