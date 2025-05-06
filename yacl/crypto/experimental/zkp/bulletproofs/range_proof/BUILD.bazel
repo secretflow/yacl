@@ -29,9 +29,9 @@ yacl_cc_library(
         "//yacl/crypto/experimental/zkp/bulletproofs:util",
         "//yacl/crypto/experimental/zkp/bulletproofs/ipa:inner_product_proof",
         "@yacl//yacl/crypto:openssl_wrappers",
+        "@yacl//yacl/crypto/rand",
         "@yacl//yacl/math/mpint",
         "@yacl//yacl/math/mpint:mp_int_enforce",
-        "@yacl//yacl/crypto/rand",
     ],
 )
 

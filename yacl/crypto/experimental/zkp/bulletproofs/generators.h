@@ -18,11 +18,10 @@
 #include <memory>
 #include <vector>
 
-#include "yacl/crypto/experimental/zkp/bulletproofs/util.h"
-
 #include "yacl/base/exception.h"
 #include "yacl/crypto/ecc/ec_point.h"
 #include "yacl/crypto/ecc/ecc_spi.h"
+#include "yacl/crypto/experimental/zkp/bulletproofs/util.h"
 #include "yacl/crypto/hash/hash_utils.h"
 #include "yacl/math/mpint/mp_int.h"
 

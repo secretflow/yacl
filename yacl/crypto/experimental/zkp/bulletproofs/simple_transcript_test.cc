@@ -154,12 +154,6 @@ TEST_F(SimpleTranscriptTest, DomainSeparators) {
   transcript4.InnerproductDomainSep(64);
   yacl::math::MPInt challenge4 = transcript4.ChallengeScalar("test", curve_);
   EXPECT_NE(challenge1, challenge4);
-
-  SimpleTranscript transcript5;
-  transcript5.R1csDomainSep();
-  yacl::math::MPInt challenge5 = transcript5.ChallengeScalar("test", curve_);
-  EXPECT_NE(challenge1, challenge5);
-  EXPECT_NE(challenge4, challenge5);
 }
 
 TEST_F(SimpleTranscriptTest, ChallengeBytes) {

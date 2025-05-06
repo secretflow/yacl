@@ -41,16 +41,6 @@ void SimpleTranscript::InnerproductDomainSep(uint64_t n) {
   AppendU64("n", n);
 }
 
-void SimpleTranscript::R1csDomainSep() { AppendMessage("dom-sep", "r1cs v1"); }
-
-void SimpleTranscript::R1cs1phaseDomainSep() {
-  AppendMessage("dom-sep", "r1cs-1phase");
-}
-
-void SimpleTranscript::R1cs2phaseDomainSep() {
-  AppendMessage("dom-sep", "r1cs-2phase");
-}
-
 void SimpleTranscript::AppendScalar(std::string_view label,
                                     const yacl::math::MPInt& scalar) {
   // Convert the scalar to a byte representation

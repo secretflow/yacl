@@ -27,6 +27,7 @@ yacl_cc_library(
     hdrs = ["inner_product_proof.h"],
     deps = [
         ":ipa_config",
+        "//yacl/crypto/experimental/zkp/bulletproofs:errors",
         "//yacl/crypto/experimental/zkp/bulletproofs:generators",
         "//yacl/crypto/experimental/zkp/bulletproofs:simple_transcript",
         "//yacl/crypto/experimental/zkp/bulletproofs:util",

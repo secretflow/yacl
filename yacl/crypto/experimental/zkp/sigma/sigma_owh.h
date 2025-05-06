@@ -14,9 +14,8 @@
 
 #pragma once
 
-#include "yacl/crypto/experimental/zkp/sigma/sigma_config.h"
-
 #include "yacl/crypto/ecc/group_sketch.h"
+#include "yacl/crypto/experimental/zkp/sigma/sigma_config.h"
 #include "yacl/crypto/rand/rand.h"
 
 namespace examples::zkp {

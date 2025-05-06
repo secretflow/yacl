@@ -110,3 +110,8 @@ yacl_cc_library(
         "@yacl//yacl/math/mpint:mp_int_enforce",
     ],
 )
+
+yacl_cc_library(
+    name = "errors",
+    hdrs = ["errors.h"],
+)

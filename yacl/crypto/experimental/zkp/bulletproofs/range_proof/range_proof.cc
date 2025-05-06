@@ -19,9 +19,8 @@
 #include <string>
 #include <vector>
 
-#include "yacl/crypto/experimental/zkp/bulletproofs/util.h"  // Needs definitions for VecPoly1, Poly2, etc.
-
 #include "yacl/base/exception.h"
+#include "yacl/crypto/experimental/zkp/bulletproofs/util.h"  // Needs definitions for VecPoly1, Poly2, etc.
 #include "yacl/crypto/hash/hash_utils.h"  // For HashToCurve, Sha256
 #include "yacl/crypto/rand/rand.h"
 
@@ -160,9 +159,7 @@ RangeProof RangeProof::GenerateProof(
   yacl::crypto::EcPoint S = MultiScalarMul(curve, s_scalars, s_points);
 
   // 5. Commit V, A, S and get challenges y, z
-  transcript.AppendPoint(
-      "V", V,
-      curve);  // Assume AppendPoint handles compression/format consistently
+  transcript.AppendPoint("V", V, curve);
   transcript.AppendPoint("A", A, curve);
   transcript.AppendPoint("S", S, curve);
   yacl::math::MPInt y = transcript.ChallengeScalar("y", curve);
@@ -375,9 +372,9 @@ bool RangeProof::Verify(SimpleTranscript& transcript,
   // Verify IPP (ipp_proof_ is the member variable)
   // The C++ IPP Verify function needs the transcript to derive IPP challenges
   // and check the final equation.
-  bool ipp_result = ipp_proof_.Verify(transcript, curve,
-                                      ipp_H_factors, P_plus_tx_Q, Q, G_vec,
-                                      H_vec);  // IPP uses the same G/H vectors
+  bool ipp_result =
+      ipp_proof_.Verify(transcript, curve, ipp_H_factors, P_plus_tx_Q, Q, G_vec,
+                        H_vec);  // IPP uses the same G/H vectors
 
   if (!ipp_result) {
     std::cerr << "Verification failed: IPP check failed." << std::endl;

@@ -22,10 +22,10 @@
 #include "yacl/base/exception.h"
 #include "yacl/crypto/ecc/ec_point.h"
 #include "yacl/crypto/ecc/ecc_spi.h"
-#include "yacl/math/mpint/mp_int.h"
 #include "yacl/crypto/experimental/zkp/bulletproofs/ipa/inner_product_proof.h"  // Assuming this matches rust::inner_product_proof::Proof
 #include "yacl/crypto/experimental/zkp/bulletproofs/simple_transcript.h"  // Assuming this matches rust::proof_transcript::ProofTranscript
 #include "yacl/crypto/experimental/zkp/bulletproofs/util.h"  // For VecPoly1, Poly2 and helpers
+#include "yacl/math/mpint/mp_int.h"
 
 namespace examples::zkp {
 

@@ -50,7 +50,7 @@ InnerProductProof InnerProductProof::Create(
   }
 
   // Determine number of rounds
-  size_t lg_n = FloorLog2(n);  // Assumes FloorLog2 is available
+  size_t lg_n = FloorLog2(n);
   std::vector<yacl::crypto::EcPoint> L_vec_out;
   L_vec_out.reserve(lg_n);
   std::vector<yacl::crypto::EcPoint> R_vec_out;
@@ -153,27 +153,6 @@ InnerProductProof InnerProductProof::Create(
 
   // Return final proof
   return InnerProductProof(L_vec_out, R_vec_out, a_vec[0], b_vec[0]);
-}
-
-// Utility function to compute floor(log2(x)) - DEFINED BEFORE USE
-size_t FloorLog2(size_t x) {
-  if (x == 0) return 0;
-#ifdef __GNUC__
-  // Use GCC/Clang built-in if available (more efficient)
-  // __builtin_clzll returns number of leading zeros for unsigned long long
-  // Handle x=0 separately as clz(0) is undefined.
-  return (sizeof(unsigned long long) * 8 - 1) -
-         __builtin_clzll(static_cast<unsigned long long>(x));
-#else
-  // Portable fallback
-  size_t result = 0;
-  // Shift right until x becomes 0. The number of shifts is
-  // floor(log2(original_x)).
-  while (x >>= 1) {  // Condition is true as long as x > 0 after shift
-    ++result;
-  }
-  return result;
-#endif
 }
 
 std::tuple<std::vector<yacl::math::MPInt>, std::vector<yacl::math::MPInt>,
@@ -384,7 +363,7 @@ bool InnerProductProof::Verify(
 }
 
 size_t InnerProductProof::SerializedSize() const {
-  size_t point_size = 32;   // Typical compressed EC point size
+  size_t point_size = 32;  // Typical compressed EC point size
   return (L_vec_.size() * 2 + 2) * point_size;
 }
 
@@ -539,21 +518,6 @@ InnerProductProof InnerProductProof::FromBytes(
   b = b.Mod(curve->GetOrder());
 
   return InnerProductProof(L_vec, R_vec, a, b);
-}
-
-yacl::math::MPInt InnerProduct(const std::vector<yacl::math::MPInt>& a,
-                               const std::vector<yacl::math::MPInt>& b) {
-  if (a.size() != b.size()) {
-    throw yacl::Exception(
-        "Vectors must have the same length for inner product");
-  }
-
-  yacl::math::MPInt result(0);
-  for (size_t i = 0; i < a.size(); i++) {
-    result = result + a[i] * b[i];
-  }
-
-  return result;
 }
 
 }  // namespace examples::zkp

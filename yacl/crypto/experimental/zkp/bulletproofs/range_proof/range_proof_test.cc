@@ -21,10 +21,10 @@
 #include <vector>
 
 #include "range_proof_config.h"
-#include "yacl/crypto/experimental/zkp/bulletproofs/simple_transcript.h"  // For SimpleTranscript
 
 #include "yacl/crypto/ecc/ecc_spi.h"  // For EcGroupFactory, EcGroup
-#include "yacl/crypto/rand/rand.h"    // For random scalars and bytes
+#include "yacl/crypto/experimental/zkp/bulletproofs/simple_transcript.h"  // For SimpleTranscript
+#include "yacl/crypto/rand/rand.h"  // For random scalars and bytes
 
 namespace examples::zkp {
 namespace {
@@ -32,8 +32,7 @@ namespace {
 // Helper to generate random value in range [0, 2^n - 2] for testing
 // Matches  test range [0, (1 << (n-1)) -1], adjusting for n=64
 // Let's actually match the range used in  tests: [0, 2^(n-1) - 1]
-uint64_t GenerateRandomValueInRange(
-    size_t n) {
+uint64_t GenerateRandomValueInRange(size_t n) {
   if (n == 0) return 0;
   //  test uses gen_range(0, (1 << (n - 1)) - 1);
   // This means the max value is 2^(n-1) - 2.

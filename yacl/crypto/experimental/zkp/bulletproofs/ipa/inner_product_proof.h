@@ -18,18 +18,13 @@
 #include <memory>
 #include <vector>
 
-#include "yacl/crypto/experimental/zkp/bulletproofs/simple_transcript.h"
-
 #include "yacl/base/exception.h"
 #include "yacl/crypto/ecc/ec_point.h"
+#include "yacl/crypto/experimental/zkp/bulletproofs/errors.h"
+#include "yacl/crypto/experimental/zkp/bulletproofs/simple_transcript.h"
 #include "yacl/math/mpint/mp_int.h"
 
 namespace examples::zkp {
-
-/**
- * @brief Error codes for Inner Product Proof
- */
-enum class ProofError { VerificationError, FormatError };
 
 /**
  * @brief Inner Product Proof
@@ -160,30 +155,5 @@ class InnerProductProof {
   yacl::math::MPInt a_;
   yacl::math::MPInt b_;
 };
-
-/**
- * @brief Computes the inner product of two vectors
- *
- * @param a First vector
- * @param b Second vector
- * @return yacl::math::MPInt The inner product <a,b>
- */
-yacl::math::MPInt InnerProduct(
-    const std::vector<yacl::math::MPInt>& a,
-    const std::vector<yacl::math::MPInt>& b,
-    const std::shared_ptr<yacl::crypto::EcGroup>& curve);
-
-/**
- * @brief Helper for optimized multi-scalar multiplication
- *
- * @param curve The elliptic curve
- * @param scalars Vector of scalar values
- * @param points Vector of points
- * @return yacl::crypto::EcPoint Result of the multiplication
- */
-yacl::crypto::EcPoint MultiScalarMul(
-    const std::shared_ptr<yacl::crypto::EcGroup>& curve,
-    const std::vector<yacl::math::MPInt>& scalars,
-    const std::vector<yacl::crypto::EcPoint>& points);
 
 }  // namespace examples::zkp

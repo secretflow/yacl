@@ -20,12 +20,12 @@
 #include <vector>
 
 #include "ipa_config.h"
-#include "yacl/crypto/experimental/zkp/bulletproofs/simple_transcript.h"  // For SimpleTranscript
-#include "yacl/crypto/experimental/zkp/bulletproofs/util.h"               // For helpers
 
 #include "yacl/base/exception.h"
 #include "yacl/crypto/ecc/ecc_spi.h"  // For EcGroupFactory, EcGroup
-#include "yacl/crypto/rand/rand.h"    // For random scalars/points
+#include "yacl/crypto/experimental/zkp/bulletproofs/simple_transcript.h"  // For SimpleTranscript
+#include "yacl/crypto/experimental/zkp/bulletproofs/util.h"  // For helpers
+#include "yacl/crypto/rand/rand.h"  // For random scalars/points
 
 namespace examples::zkp {
 namespace {
@@ -157,9 +157,8 @@ class InnerProductProofTest : public ::testing::Test {
     SimpleTranscript verifier_transcript2(transcript_label);
     bool result2 = false;
     ASSERT_NO_THROW({
-      result2 =
-          deserialized_proof.Verify(verifier_transcript2, curve_,
-                                    ipp_H_factors, P, Q, G_vec, H_vec);
+      result2 = deserialized_proof.Verify(verifier_transcript2, curve_,
+                                          ipp_H_factors, P, Q, G_vec, H_vec);
     });
     ASSERT_TRUE(result2) << "IPP verification failed after serde for n=" << n;
   }

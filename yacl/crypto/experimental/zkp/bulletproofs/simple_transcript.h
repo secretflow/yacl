@@ -67,21 +67,6 @@ class SimpleTranscript {
   void InnerproductDomainSep(uint64_t n);
 
   /**
-   * @brief Append a domain separator for a constraint system
-   */
-  void R1csDomainSep();
-
-  /**
-   * @brief Append a domain separator for a CS without randomized constraints
-   */
-  void R1cs1phaseDomainSep();
-
-  /**
-   * @brief Append a domain separator for a CS with randomized constraints
-   */
-  void R1cs2phaseDomainSep();
-
-  /**
    * @brief Append a scalar with the given label
    *
    * @param label The label for the scalar

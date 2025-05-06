@@ -15,7 +15,6 @@
 #pragma once
 
 #include "yacl/crypto/experimental/zkp/sigma/sigma_owh.h"
-
 #include "yacl/crypto/hash/hash_utils.h"
 
 namespace examples::zkp {

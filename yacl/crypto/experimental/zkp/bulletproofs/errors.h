@@ -20,7 +20,7 @@
 #include <variant>
 #include <vector>
 
-namespace yacl::crypto::bulletproofs {
+namespace examples::zkp {
 
 // Represents an error in proof creation, verification, or parsing.
 class ProofError : public std::runtime_error {
@@ -77,93 +77,6 @@ class ProofError : public std::runtime_error {
 
   ErrorType type_;
 };
-
-// Represents an error during the multiparty computation protocol for
-// proof aggregation.
-class MPCError : public std::runtime_error {
- public:
-  enum class ErrorType {
-    // This error occurs when the dealer gives a zero challenge,
-    // which would annihilate the blinding factors.
-    MaliciousDealer,
-    // This error occurs when attempting to create a proof with
-    // bitsize other than 8, 16, 32, or 64.
-    InvalidBitsize,
-    // This error occurs when attempting to create an aggregated
-    // proof with non-power-of-two aggregation size.
-    InvalidAggregation,
-    // This error occurs when there are insufficient generators for the proof.
-    InvalidGeneratorsLength,
-    // This error occurs when the dealer is given the wrong number of
-    // value commitments.
-    WrongNumBitCommitments,
-    // This error occurs when the dealer is given the wrong number of
-    // polynomial commitments.
-    WrongNumPolyCommitments,
-    // This error occurs when the dealer is given the wrong number of
-    // proof shares.
-    WrongNumProofShares,
-    // This error occurs when one or more parties submit malformed
-    // proof shares.
-    MalformedProofShares
-  };
-
-  explicit MPCError(ErrorType type, const std::vector<size_t>& bad_shares = {})
-      : std::runtime_error(GetErrorMessage(type, bad_shares)),
-        type_(type),
-        bad_shares_(bad_shares) {}
-
-  ErrorType GetType() const { return type_; }
-  const std::vector<size_t>& GetBadShares() const { return bad_shares_; }
-
- private:
-  static std::string GetErrorMessage(ErrorType type,
-                                     const std::vector<size_t>& bad_shares) {
-    switch (type) {
-      case ErrorType::MaliciousDealer:
-        return "Dealer gave a malicious challenge value.";
-      case ErrorType::InvalidBitsize:
-        return "Invalid bitsize, must have n = 8,16,32,64";
-      case ErrorType::InvalidAggregation:
-        return "Invalid aggregation size, m must be a power of 2";
-      case ErrorType::InvalidGeneratorsLength:
-        return "Invalid generators size, too few generators for proof";
-      case ErrorType::WrongNumBitCommitments:
-        return "Wrong number of value commitments";
-      case ErrorType::WrongNumPolyCommitments:
-        return "Wrong number of polynomial commitments";
-      case ErrorType::WrongNumProofShares:
-        return "Wrong number of proof shares";
-      case ErrorType::MalformedProofShares: {
-        std::string msg = "Malformed proof shares from parties: ";
-        for (size_t i = 0; i < bad_shares.size(); ++i) {
-          if (i > 0) msg += ", ";
-          msg += std::to_string(bad_shares[i]);
-        }
-        return msg;
-      }
-    }
-    return "Unknown error";
-  }
-
-  ErrorType type_;
-  std::vector<size_t> bad_shares_;
-};
-
-// Convert MPCError to ProofError
-inline ProofError MPCErrorToProofError(const MPCError& e) {
-  switch (e.GetType()) {
-    case MPCError::ErrorType::InvalidBitsize:
-      return ProofError(ProofError::ErrorType::InvalidBitsize);
-    case MPCError::ErrorType::InvalidAggregation:
-      return ProofError(ProofError::ErrorType::InvalidAggregation);
-    case MPCError::ErrorType::InvalidGeneratorsLength:
-      return ProofError(ProofError::ErrorType::InvalidGeneratorsLength);
-    default:
-      return ProofError(ProofError::ErrorType::ProvingError,
-                        std::string(e.what()));
-  }
-}
 
 // Result type for operations that can fail
 template <typename T = void>
@@ -238,4 +151,4 @@ class Result<void> {
   std::optional<ProofError> error_;
 };
 
-}  // namespace yacl::crypto::bulletproofs
+}  // namespace examples::zkp
