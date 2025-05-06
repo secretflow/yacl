@@ -10,7 +10,7 @@
 #include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/math/mpint/mp_int.h"
 #include "zkp/bulletproofs/generators.h"
-#include "zkp/bulletproofs/inner_product_proof.h"
+#include "zkp/bulletproofs/ipa/inner_product_proof.h"
 #include "zkp/bulletproofs/simple_transcript.h"
 
 namespace examples::zkp {

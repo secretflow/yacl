@@ -1,4 +1,4 @@
-#include "zkp/bulletproofs/range_proof/messages.h"
+#include "zkp/bulletproofs/range_proof_mpc/messages.h"
 
 #include <algorithm>
 #include <stdexcept>

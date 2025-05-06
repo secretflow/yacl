@@ -1,4 +1,4 @@
-#include "zkp/bulletproofs/range_proof/party.h"
+#include "zkp/bulletproofs/range_proof_mpc/party.h"
 
 #include <gtest/gtest.h>
 #include <memory>
@@ -9,7 +9,7 @@
 #include "yacl/crypto/ecc/ecc_spi.h"        // For EcGroupFactory, EcGroup
 #include "yacl/crypto/rand/rand.h"         // For random scalars
 #include "zkp/bulletproofs/generators.h"   // For BulletproofGens, PedersenGens
-#include "zkp/bulletproofs/range_proof/messages.h" // For message types
+#include "zkp/bulletproofs/range_proof_mpc/messages.h" // For message types
 #include "zkp/bulletproofs/util.h"         // For VecPoly1, Poly2, etc.
 #include "range_proof_config.h"
 

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "zkp/bulletproofs/ipa_config.h"
+#include "zkp/bulletproofs/ipa/ipa_config.h"
 
 #include <unordered_map>
 

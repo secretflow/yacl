@@ -1,4 +1,4 @@
-#include "zkp/bulletproofs/range_proof/dealer.h"
+#include "zkp/bulletproofs/range_proof_mpc/dealer.h"
 
 #include <gtest/gtest.h>
 #include <memory>
@@ -9,8 +9,8 @@
 #include "yacl/crypto/rand/rand.h"         // For random scalars/points
 #include "range_proof_config.h"
 #include "zkp/bulletproofs/generators.h"   // For BulletproofGens, PedersenGens
-#include "zkp/bulletproofs/range_proof/messages.h" // For message types
-#include "zkp/bulletproofs/range_proof/range_proof_mpc.h" // For RangeProof, IsPowerOfTwo
+#include "zkp/bulletproofs/range_proof_mpc/messages.h" // For message types
+#include "zkp/bulletproofs/range_proof_mpc/range_proof_mpc.h" // For RangeProof, IsPowerOfTwo
 #include "zkp/bulletproofs/simple_transcript.h" // For SimpleTranscript
 #include "zkp/bulletproofs/util.h"         // For InnerProductProof definition (needed by RangeProof)
 

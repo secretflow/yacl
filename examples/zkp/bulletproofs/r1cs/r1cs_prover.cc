@@ -7,10 +7,7 @@
 #include "zkp/bulletproofs/r1cs/r1cs.h" // Include base definitions
 #include "zkp/bulletproofs/generators.h"
 #include "zkp/bulletproofs/util.h" // For helpers like ExpIterVector etc.
-#include "yacl/crypto/Rand/Rand.h" // For random scalars
-
-// Make sure fmt is included if using fmt::format in exceptions
-#include "yacl/base/fmt_logging.h"
+#include "yacl/crypto/rand/rand.h"  // For random scalars
 
 namespace examples::zkp {
 
@@ -264,7 +261,7 @@ R1CSProof Prover::Prove(const BulletproofGens& bp_gens) {
 
     // --- Phase 1 Commitments ---
     // Commit a length suffix for the number of high-level variables 'm'
-    transcript_->AppendUint64("m", secrets_.v.size()); 
+    transcript_->AppendU64("m", secrets_.v.size()); 
 
     // Create transcript RNG - simplified, just use YACL random for blindings
 
@@ -459,7 +456,7 @@ R1CSProof Prover::Prove(const BulletproofGens& bp_gens) {
 
     // Compute l(x), r(x) vectors
     // Need to pad vectors to padded_n
-    size_t padded_n = secrets_.a_L.size().next_power_of_two(); // Need next_power_of_two helper
+    size_t padded_n = NextPowerOfTwo(secrets_.a_L.size()); // Need next_power_of_two helper
     if (padded_n == 0 && n > 0) padded_n = 1; // Handle n=0 case if necessary
     size_t pad = padded_n - n;
 
@@ -472,7 +469,7 @@ R1CSProof Prover::Prove(const BulletproofGens& bp_gens) {
         yacl::math::MPInt l1_i = secrets_.a_L[i].AddMod(y_inv_pows[i].MulMod(wR[i], order), order);
         yacl::math::MPInt l2_i = secrets_.a_O[i];
         yacl::math::MPInt l3_i = s_L_full[i];
-        l_vec[i] = l1_i.AddMod(l2_i.MulMod(x, order), order).AddMod(l3_i.MulMod(x.MulMod(x, order), order), order); /
+        l_vec[i] = l1_i.AddMod(l2_i.MulMod(x, order), order).AddMod(l3_i.MulMod(x.MulMod(x, order), order), order); // l(x) = l1 + l2*x + l3*x^2
         // Assume l(x) = l_poly.0 + l_poly.1*x + l_poly.2*x^2 + l_poly.3*x^3...
         // comments: l(x) = l_1*x + l_2*x^2 + l_3*x^3. t(x) = <l(x),r(x)>.
         // Our derived t1..t6 match   if l(x) = l1+l2*x+l3*x^2 and r(x)=r0+r1*x+r3*x^3?
@@ -506,7 +503,7 @@ R1CSProof Prover::Prove(const BulletproofGens& bp_gens) {
 
     // IPP Challenge w and Q point
     yacl::math::MPInt w = transcript_->ChallengeScalar("w", curve);
-    yacl::crypto::EcPoint Q = curve->Mul(pc_gens_->GetGPoint(), w); // Use G base like   verify
+    yacl::crypto::EcPoint Q = curve->Mul(pc_gens_->B, w); // Use G base like   verify
 
     // IPP Factors: G_factors = u^k (where u=1 for phase 1, u=challenge u for phase 2)
     // H_factors = y^-i * u^k

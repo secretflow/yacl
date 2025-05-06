@@ -4,7 +4,7 @@
 #include <vector>
 #include <memory>
 #include <stdexcept> // Include for stdexcept
-#include "ipa_config.h"
+#include "bp_config.h"
 
 #include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/crypto/ecc/ec_point.h" // For EcGroupFactory
@@ -23,7 +23,7 @@ class UtilTest : public ::testing::Test {
   void SetUp() override {
     try {
       curve_ = yacl::crypto::EcGroupFactory::Instance().Create(
-          kIpaEcName, yacl::ArgLib = kIpaEcLib);
+          kBpEcName, yacl::ArgLib = kBpEcLib);
       order_ = curve_->GetOrder();
       ec_available_ = true;
     } catch (const yacl::Exception& e) {

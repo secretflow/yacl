@@ -9,9 +9,9 @@
 #include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/math/mpint/mp_int.h"
 #include "zkp/bulletproofs/generators.h"
-#include "zkp/bulletproofs/range_proof/messages.h"
+#include "zkp/bulletproofs/range_proof_mpc/messages.h"
 #include "zkp/bulletproofs/simple_transcript.h"
-#include "zkp/bulletproofs/range_proof/range_proof_mpc.h"
+#include "zkp/bulletproofs/range_proof_mpc/range_proof_mpc.h"
 
 namespace examples::zkp {
 

@@ -1,4 +1,4 @@
-#include "zkp/bulletproofs/inner_product_proof.h"
+#include "zkp/bulletproofs/ipa/inner_product_proof.h"
 
 #include <gtest/gtest.h>
 #include <memory>

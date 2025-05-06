@@ -1,4 +1,4 @@
-#include "zkp/bulletproofs/range_proof/dealer.h"
+#include "zkp/bulletproofs/range_proof_mpc/dealer.h"
 
 #include <algorithm>
 #include <numeric>
@@ -6,9 +6,9 @@
 
 #include "yacl/crypto/hash/hash_utils.h"
 #include "yacl/math/mpint/mp_int.h"
-#include "zkp/bulletproofs/inner_product_proof.h"
+#include "zkp/bulletproofs/ipa/inner_product_proof.h"
 #include "zkp/bulletproofs/util.h"
-#include "zkp/bulletproofs/range_proof/range_proof_mpc.h"
+#include "zkp/bulletproofs/range_proof_mpc/range_proof_mpc.h"
 namespace examples::zkp {
 
 //-------------------- Dealer --------------------

@@ -3,24 +3,30 @@
 #include <vector>
 #include <numeric> // For std::accumulate
 #include <optional>
+#include <iterator> // For std::back_inserter
 
-#include "zkp/bulletproofs/r1cs/r1cs.h" // Include base definitions
+#include "zkp/bulletproofs/r1cs/r1cs.h"     // Include base definitions
 #include "zkp/bulletproofs/generators.h"
-#include "zkp/bulletproofs/util.h" // For helpers like ExpIterVector etc.
-#include "yacl/base/int128.h" // For padding check
-
-// Make sure fmt is included if using fmt::format in exceptions
-#include "yacl/base/fmt_logging.h"
+#include "zkp/bulletproofs/util.h"         // For helpers like ExpIterVector etc.
+#include "yacl/crypto/rand/rand.h"     
 
 namespace examples::zkp {
 
 // --- Verifier Implementation ---
 
 Verifier::Verifier(SimpleTranscript* transcript)
-    : transcript_(transcript), pending_multiplier_(std::nullopt) {
+    : transcript_(transcript), pending_multiplier_(std::nullopt), num_multipliers_phase1_(0) {
     YACL_ENFORCE(transcript_ != nullptr, "Transcript cannot be null");
     transcript_->R1csDomainSep();
 }
+
+// Helper to get curve context - assumes it's available via pc_gens in Verify
+// This might need adjustment depending on how pc_gens is accessed.
+// For now, methods needing curve will take it as arg or assume Verify provides it.
+// std::shared_ptr<yacl::crypto::EcGroup> Verifier::GetCurve() const {
+//      YACL_THROW("Verifier doesn't own curve directly"); // Needs context
+// }
+
 
 SimpleTranscript* Verifier::Transcript() {
     return transcript_;
@@ -36,8 +42,8 @@ std::tuple<Variable, Variable, Variable> Verifier::Multiply(
     Variable o_var(VariableType::MultiplierOutput, idx);
 
     // Add constraints: left_lc - l_var = 0, right_lc - r_var = 0
-    left = left - l_var;
-    right = right - r_var;
+    left -= l_var;
+    right -= r_var;
     Constrain(std::move(left));
     Constrain(std::move(right));
 
@@ -71,7 +77,6 @@ std::tuple<Variable, Variable, Variable> Verifier::AllocateMultiplier(
 
 
 R1CSMetrics Verifier::GetMetrics() const {
-     // Matches Prover's calculation for consistency
      return R1CSMetrics{
         num_vars_, // Number of multipliers tracked by num_vars_
         constraints_.size() + deferred_constraints_.size(),
@@ -93,7 +98,8 @@ Variable Verifier::Commit(const yacl::crypto::EcPoint& V_commitment) {
     V_commitments_.push_back(V_commitment); // Store commitment
 
     // Add commitment to transcript
-    transcript_->AppendPoint("V", V_commitment, nullptr); // Curve needed if serialization format matters
+    // Need curve context for serialization format consistency
+    transcript_->AppendPoint("V", V_commitment, nullptr); // Pass nullptr if context unknown here
 
     return Variable(VariableType::Committed, i);
 }
@@ -106,7 +112,7 @@ void Verifier::FlattenedConstraints(
     std::vector<yacl::math::MPInt>& wR,
     std::vector<yacl::math::MPInt>& wO,
     std::vector<yacl::math::MPInt>& wV,
-    yacl::math::MPInt& wc) { // Add wc output
+    yacl::math::MPInt& wc) {
 
     size_t n = num_vars_;        // Total number of multipliers
     size_t m = V_commitments_.size(); // Total number of committed variables
@@ -121,9 +127,8 @@ void Verifier::FlattenedConstraints(
     yacl::math::MPInt exp_z = z;
     yacl::math::MPInt minus_one = order - yacl::math::MPInt(1);
 
-    for (LinearCombination& lc : constraints_) { // Process constraints
-        // Optional: Optimize before processing
-        // lc.Optimize(curve);
+    // Important: Process constraints added in *both* phases
+    for (const LinearCombination& lc : constraints_) {
         for (const auto& term : lc.terms) {
             const Variable& var = term.first;
             const yacl::math::MPInt& coeff = term.second;
@@ -131,32 +136,36 @@ void Verifier::FlattenedConstraints(
 
             switch (var.type) {
                 case VariableType::MultiplierLeft:
+                     YACL_ENFORCE(var.index < n, "Invalid index in flattened L (Verifier)");
                     wL[var.index] = wL[var.index].AddMod(weighted_coeff, order);
                     break;
                 case VariableType::MultiplierRight:
+                     YACL_ENFORCE(var.index < n, "Invalid index in flattened R (Verifier)");
                     wR[var.index] = wR[var.index].AddMod(weighted_coeff, order);
                     break;
                 case VariableType::MultiplierOutput:
+                     YACL_ENFORCE(var.index < n, "Invalid index in flattened O (Verifier)");
                     wO[var.index] = wO[var.index].AddMod(weighted_coeff, order);
                     break;
                 case VariableType::Committed:
+                     YACL_ENFORCE(var.index < m, "Invalid index in flattened V (Verifier)");
                     wV[var.index] = wV[var.index].AddMod(weighted_coeff.MulMod(minus_one, order), order);
                     break;
                 case VariableType::One:
-                    // Verifier includes constant term contribution
                     wc = wc.AddMod(weighted_coeff.MulMod(minus_one, order), order);
                     break;
+                 default:
+                    YACL_THROW("Invalid variable type in FlattenedConstraints (Verifier)");
             }
         }
-        exp_z = exp_z.MulMod(z, order); // z^k -> z^(k+1)
+        exp_z = exp_z.MulMod(z, order);
     }
 }
 
 void Verifier::RunRandomizationPhase() {
      // Handle any pending multiplier from phase 1
      if (pending_multiplier_.has_value()) {
-         // Just need to make sure num_vars reflects the allocated multiplier
-         pending_multiplier_ = std::nullopt;
+         pending_multiplier_ = std::nullopt; // Verifier just tracks structure
      }
      num_multipliers_phase1_ = num_vars_; // Record size after phase 1
 
@@ -175,8 +184,7 @@ void Verifier::RunRandomizationPhase() {
             pending_multiplier_ = std::nullopt;
           }
      }
-      // Clear pending multiplier after phase 2 finishes or if there was no phase 2
-     pending_multiplier_ = std::nullopt;
+     pending_multiplier_ = std::nullopt; // Clear any pending state
 }
 
 
@@ -184,34 +192,31 @@ bool Verifier::Verify(const R1CSProof& proof,
                       const PedersenGens& pc_gens,
                       const BulletproofGens& bp_gens) {
     // Get curve and order
-    auto curve = pc_gens.GetCurve();
+    auto curve = pc_gens.GetCurve(); // Get curve from pc_gens
     const auto& order = curve->GetOrder();
     yacl::math::MPInt one(1);
     yacl::math::MPInt zero(0);
+    yacl::math::MPInt minus_one = order - one;
 
     // --- Transcript Replay and Challenge Derivation ---
     // 1. Initial State & High-Level Commitments (V)
     transcript_->R1csDomainSep();
-    transcript_->AppendUint64("m", V_commitments_.size()); // Commit 'm'
+    transcript_->AppendU64("m", V_commitments_.size());
     for (const auto& V : V_commitments_) {
-        transcript_->AppendPoint("V", V, curve); // Commit V_i
+        transcript_->AppendPoint("V", V, curve);
     }
 
     // 2. Phase 1 Commitments (A_I1, A_O1, S1)
-    // Use ValidateAndAppendPoint to check for identity points (optional)
-    // transcript_->ValidateAndAppendPoint("A_I1", proof.A_I1, curve);
-    // transcript_->ValidateAndAppendPoint("A_O1", proof.A_O1, curve);
-    // transcript_->ValidateAndAppendPoint("S1", proof.S1, curve);
-    // For now, just append matching prover transcript:
-    transcript_->AppendPoint("A_I1", proof.A_I1, curve);
-    transcript_->AppendPoint("A_O1", proof.A_O1, curve);
-    transcript_->AppendPoint("S1", proof.S1, curve);
+    // Use ValidateAndAppendPoint to check for non-identity points, matching Rust
+    transcript_->ValidateAndAppendPoint("A_I1", proof.A_I1, curve);
+    transcript_->ValidateAndAppendPoint("A_O1", proof.A_O1, curve);
+    transcript_->ValidateAndAppendPoint("S1", proof.S1, curve);
 
-
-    // 3. Run Randomization Phase (executes callbacks, derives challenges internally if needed)
-    RunRandomizationPhase(); // Advances transcript state, updates constraints/num_vars
+    // 3. Run Randomization Phase (executes callbacks, derives challenges internally)
+    RunRandomizationPhase(); // Advances transcript state
 
     // 4. Phase 2 Commitments (A_I2, A_O2, S2)
+    // Rust uses append_point here, not validate_and_append_point
     transcript_->AppendPoint("A_I2", proof.A_I2, curve);
     transcript_->AppendPoint("A_O2", proof.A_O2, curve);
     transcript_->AppendPoint("S2", proof.S2, curve);
@@ -221,11 +226,12 @@ bool Verifier::Verify(const R1CSProof& proof,
     yacl::math::MPInt z = transcript_->ChallengeScalar("z", curve);
 
     // 6. Commitments T1..T6
-    transcript_->AppendPoint("T_1", proof.T_1, curve);
-    transcript_->AppendPoint("T_3", proof.T_3, curve);
-    transcript_->AppendPoint("T_4", proof.T_4, curve);
-    transcript_->AppendPoint("T_5", proof.T_5, curve);
-    transcript_->AppendPoint("T_6", proof.T_6, curve);
+    // Use ValidateAndAppendPoint matching Rust
+    transcript_->ValidateAndAppendPoint("T_1", proof.T_1, curve);
+    transcript_->ValidateAndAppendPoint("T_3", proof.T_3, curve);
+    transcript_->ValidateAndAppendPoint("T_4", proof.T_4, curve);
+    transcript_->ValidateAndAppendPoint("T_5", proof.T_5, curve);
+    transcript_->ValidateAndAppendPoint("T_6", proof.T_6, curve);
 
     // 7. Derive u, x
     yacl::math::MPInt u = transcript_->ChallengeScalar("u", curve);
@@ -240,11 +246,12 @@ bool Verifier::Verify(const R1CSProof& proof,
     yacl::math::MPInt w = transcript_->ChallengeScalar("w", curve);
 
     // --- Prepare for Verification Check ---
-    size_t n = num_vars_; // Total number of multipliers after phase 2
+    size_t n = num_vars_; // Total number of multipliers
     size_t n1 = num_multipliers_phase1_;
     size_t n2 = n - n1;
     size_t m = V_commitments_.size();
-    size_t padded_n = NextPowerOfTwo(n); // Use helper from util or yacl::math
+    size_t padded_n = NextPowerOfTwo(n);
+    if (padded_n == 0 && n > 0) padded_n = 1;
     size_t pad = padded_n - n;
 
     YACL_ENFORCE(bp_gens.gens_capacity() >= padded_n, "Verifier::Verify: BP gens capacity < padded_n");
@@ -258,22 +265,21 @@ bool Verifier::Verify(const R1CSProof& proof,
     // Get IPP verification scalars (advances transcript)
     auto [u_sq, u_inv_sq, s] = proof.ipp_proof.VerificationScalars(padded_n, transcript_, curve);
     YACL_ENFORCE(s.size() == padded_n, "Verifier::Verify: IPP s vector size mismatch");
-    std::vector<yacl::math::MPInt> s_inv(s.rbegin(), s.rend()); // Reverse s for s_inv
+    std::vector<yacl::math::MPInt> s_inv(s.rbegin(), s.rend());
 
-    yacl::math::MPInt a = proof.ipp_proof.a;
-    yacl::math::MPInt b = proof.ipp_proof.b;
+    yacl::math::MPInt a = proof.ipp_proof.GetA();
+    yacl::math::MPInt b = proof.ipp_proof.GetB();
 
     // --- Assemble Final Verification MSM Check ("mega_check") ---
-    // This combines all checks into one MSM = Identity check.
     yacl::math::MPInt y_inv = y.InvertMod(order);
     std::vector<yacl::math::MPInt> y_inv_pows = ExpIterVector(y_inv, padded_n, curve);
-    yacl::math::MPInt minus_one = order - one;
 
     std::vector<yacl::math::MPInt> mega_scalars;
     std::vector<yacl::crypto::EcPoint> mega_points;
-    // Reserve approx size
-    mega_scalars.reserve(m + 14 + 2 * padded_n + 2 * proof.ipp_proof.GetLvec().size());
-    mega_points.reserve(m + 14 + 2 * padded_n + 2 * proof.ipp_proof.GetLvec().size());
+    // Reserve size (approximate)
+    size_t reserve_size = m + 14 + 2 * padded_n + 2 * proof.ipp_proof.GetLVec().size();
+    mega_scalars.reserve(reserve_size);
+    mega_points.reserve(reserve_size);
 
     // Term 1: A_I1^x
     mega_scalars.push_back(x); mega_points.push_back(proof.A_I1);
@@ -290,21 +296,20 @@ bool Verifier::Verify(const R1CSProof& proof,
     // Term 6: S2^(u*x^3)
     mega_scalars.push_back(u.MulMod(x_cub, order)); mega_points.push_back(proof.S2);
 
-    // Term 7: V_j^(r*x^2*wV_j) - Sum V_j terms
-    // Need random challenge r for batching Ts and Vs
-    yacl::math::MPInt r; r.RandomLtN(order, &r); // Generate random challenge
+    // Term 7: V_j terms need random challenge r
+    yacl::math::MPInt r; r.RandomLtN(order, &r); // Use YACL's RNG
     yacl::math::MPInt rxx = r.MulMod(x_sq, order);
     for (size_t j = 0; j < m; ++j) {
-        mega_scalars.push_back(rxx.MulMod(wV[j], order));
+        mega_scalars.push_back(wV[j].MulMod(rxx, order));
         mega_points.push_back(V_commitments_[j]);
     }
 
     // Term 8: T_i terms
     yacl::math::MPInt rx = r.MulMod(x, order);
-    yacl::math::MPInt rxxx = rxx.MulMod(x, order); // rx^3
-    yacl::math::MPInt rxxxx = rxxx.MulMod(x, order); // rx^4
-    yacl::math::MPInt rxxxxx = rxxxx.MulMod(x, order); // rx^5
-    yacl::math::MPInt rxxxxxx = rxxxxx.MulMod(x, order); // rx^6
+    yacl::math::MPInt rxxx = rxx.MulMod(x, order);
+    yacl::math::MPInt rxxxx = rxxx.MulMod(x, order);
+    yacl::math::MPInt rxxxxx = rxxxx.MulMod(x, order);
+    yacl::math::MPInt rxxxxxx = rxxxxx.MulMod(x, order);
     mega_scalars.push_back(rx);      mega_points.push_back(proof.T_1);
     mega_scalars.push_back(rxxx);    mega_points.push_back(proof.T_3);
     mega_scalars.push_back(rxxxx);   mega_points.push_back(proof.T_4);
@@ -313,46 +318,41 @@ bool Verifier::Verify(const R1CSProof& proof,
 
     // Term 9: Pedersen G base B
     // Scalar: w*(t_x - a*b) + r*(x^2*(wc + delta) - t_x)
-    // Compute delta = <wL, -y^n \circ wR> = - <wL, y^n \circ wR> ? No, this is range proof delta.
-    // R1CS delta = <y^{-n} \circ wR, wL>
-    std::vector<yacl::math::MPInt> yneg_wR(padded_n); // Need padded_n size
-    for(size_t i=0; i<n; ++i) yneg_wR[i] = wR[i].MulMod(y_inv_pows[i], order);
-    for(size_t i=n; i<padded_n; ++i) yneg_wR[i] = zero; // Pad wR part
-    // Need padded wL
-    std::vector<yacl::math::MPInt> padded_wL = wL; padded_wL.resize(padded_n, zero);
-
-    yacl::math::MPInt delta = InnerProduct(padded_wL, yneg_wR, curve); // R1CS delta term
+    // Need R1CS delta = <y^{-n} \circ wR padded, wL padded>
+    std::vector<yacl::math::MPInt> padded_wR = wR; PadVector(padded_wR, padded_n, zero); // Pad wR
+    std::vector<yacl::math::MPInt> yneg_wR_padded(padded_n);
+    for(size_t i=0; i<padded_n; ++i) yneg_wR_padded[i] = padded_wR[i].MulMod(y_inv_pows[i], order);
+    std::vector<yacl::math::MPInt> padded_wL = wL; PadVector(padded_wL, padded_n, zero); // Pad wL
+    yacl::math::MPInt delta = InnerProduct(padded_wL, yneg_wR_padded, curve);
 
     yacl::math::MPInt B_scalar_part1 = proof.t_x.SubMod(a.MulMod(b, order), order).MulMod(w, order);
     yacl::math::MPInt B_scalar_part2 = wc.AddMod(delta, order).MulMod(x_sq, order).SubMod(proof.t_x, order).MulMod(r, order);
     mega_scalars.push_back(B_scalar_part1.AddMod(B_scalar_part2, order));
-    mega_points.push_back(pc_gens.GetGPoint()); // B
+    mega_points.push_back(pc_gens.B); // B
 
     // Term 10: Pedersen H base B_blinding
     // Scalar: -(e_blinding + r*t_x_blinding)
     yacl::math::MPInt H_scalar = proof.e_blinding.AddMod(r.MulMod(proof.t_x_blinding, order), order);
     mega_scalars.push_back(H_scalar.MulMod(minus_one, order));
-    mega_points.push_back(pc_gens.GetHPoint()); // B_blinding
+    mega_points.push_back(pc_gens.B_blinding); // B_blinding
 
     // Term 11: Bulletproof G vectors
     // Scalar: u^k * (x*y^{-i}*wR_i - a*s_i)
     std::vector<yacl::crypto::EcPoint> G_basis = gens.G(padded_n);
-    yacl::math::MPInt u_pow = one; // u^0 for phase 1
+    yacl::math::MPInt u_pow = one;
     for(size_t i=0; i<padded_n; ++i) {
-        if (i == n1) u_pow = u; // Switch to u^1 for phase 2
-        yacl::math::MPInt g_scalar_part1 = x.MulMod(y_inv_pows[i], order);
-        // Need padded wR
-        g_scalar_part1 = g_scalar_part1.MulMod((i < wR.size() ? wR[i] : zero), order);
-        yacl::math::MPInt g_scalar_part2 = a.MulMod(s[i], order);
-        mega_scalars.push_back(g_scalar_part1.SubMod(g_scalar_part2, order).MulMod(u_pow, order));
+        if (i == n1) u_pow = u; // Switch u factor
+        yacl::math::MPInt g_scalar = x.MulMod(y_inv_pows[i], order);
+        g_scalar = g_scalar.MulMod((i < wR.size() ? wR[i] : zero), order); // Use wR padded implicitly via check
+        g_scalar = g_scalar.SubMod(a.MulMod(s[i], order), order);
+        mega_scalars.push_back(g_scalar.MulMod(u_pow, order));
         mega_points.push_back(G_basis[i]);
     }
 
     // Term 12: Bulletproof H vectors
-    // Scalar: u^k * y^{-i} * (x*wL_i + wO_i - b*s_inv_i) - u^k * y^{-i}
-    // Simplified: u^k * y^{-i} * (x*wL_i + wO_i - b*s_inv_i - 1)
+    // Scalar: u^k * y^{-i} * (x*wL_i + wO_i - b*s_inv_i - 1)
     std::vector<yacl::crypto::EcPoint> H_basis = gens.H(padded_n);
-    u_pow = one; // Reset u^k
+    u_pow = one;
     for(size_t i=0; i<padded_n; ++i) {
          if (i == n1) u_pow = u;
          yacl::math::MPInt term_in_paren = x.MulMod((i < wL.size() ? wL[i] : zero), order);
@@ -363,19 +363,22 @@ bool Verifier::Verify(const R1CSProof& proof,
          mega_points.push_back(H_basis[i]);
     }
 
-
     // Term 13: IPP L_vec
     // Scalar: u_sq_j
+    const auto& ipp_L_vec = proof.ipp_proof.GetLVec();
+    YACL_ENFORCE(u_sq.size() == ipp_L_vec.size(), "IPP L/u_sq size mismatch");
     for(size_t j=0; j < u_sq.size(); ++j) {
         mega_scalars.push_back(u_sq[j]);
-        mega_points.push_back(proof.ipp_proof.GetLvec()[j]);
+        mega_points.push_back(ipp_L_vec[j]);
     }
 
     // Term 14: IPP R_vec
     // Scalar: u_inv_sq_j
-     for(size_t j=0; j < u_inv_sq.size(); ++j) {
+    const auto& ipp_R_vec = proof.ipp_proof.GetRVec();
+    YACL_ENFORCE(u_inv_sq.size() == ipp_R_vec.size(), "IPP R/u_inv_sq size mismatch");
+    for(size_t j=0; j < u_inv_sq.size(); ++j) {
         mega_scalars.push_back(u_inv_sq[j]);
-        mega_points.push_back(proof.ipp_proof.GetRvec()[j]);
+        mega_points.push_back(ipp_R_vec[j]);
     }
 
     // --- Final Check ---
@@ -384,14 +387,50 @@ bool Verifier::Verify(const R1CSProof& proof,
     bool is_identity = curve->IsInfinity(final_check);
      if (!is_identity) {
          std::cerr << "R1CS Verification Failed: Mega-Check MSM is not identity." << std::endl;
-    }
+     }
     return is_identity;
 }
 
 
 // --- RandomizingVerifier Implementation ---
-yacl::math::MPInt RandomizingVerifier::ChallengeScalar(const std::string& label) {
-     return verifier_->Transcript()->ChallengeScalar(label, verifier_->pc_gens_->GetCurve()); // Assume Verifier holds pc_gens
+RandomizingVerifier::RandomizingVerifier(Verifier* v) : verifier_(v) {
+    YACL_ENFORCE(verifier_ != nullptr, "Verifier cannot be null");
 }
+
+SimpleTranscript* RandomizingVerifier::Transcript() {
+     return verifier_->Transcript();
+}
+std::tuple<Variable, Variable, Variable> RandomizingVerifier::Multiply(LinearCombination left, LinearCombination right) {
+    return verifier_->Multiply(std::move(left), std::move(right));
+}
+Variable RandomizingVerifier::Allocate(std::optional<yacl::math::MPInt> assignment) {
+     return verifier_->Allocate(std::move(assignment));
+}
+std::tuple<Variable, Variable, Variable> RandomizingVerifier::AllocateMultiplier(
+     std::optional<std::pair<yacl::math::MPInt, yacl::math::MPInt>> input_assignments) {
+     return verifier_->AllocateMultiplier(std::move(input_assignments));
+}
+R1CSMetrics RandomizingVerifier::GetMetrics() const {
+     return verifier_->GetMetrics();
+}
+void RandomizingVerifier::Constrain(LinearCombination lc) {
+     verifier_->Constrain(std::move(lc));
+}
+
+yacl::math::MPInt RandomizingVerifier::ChallengeScalar(const std::string& label) {
+    // Verifier needs curve context to generate scalar in correct field
+    // Assume Verifier can get it, e.g., via pc_gens passed to Verify
+    // This implies the RandomizationCallback needs access to curve somehow,
+    // or ChallengeScalar needs curve passed in.
+    // Let's assume the Verifier has a way to get the curve (e.g., stores it).
+    // If not, this needs refactoring.
+    // **Temporary:** Assuming verifier stores curve or pc_gens pointer.
+    // This part is tricky without seeing the full Verifier structure.
+    // *** Placeholder - needs proper curve access ***
+     std::shared_ptr<yacl::crypto::EcGroup> curve_ptr = nullptr; // = verifier_->GetCurve();
+     YACL_ENFORCE(curve_ptr != nullptr, "Curve context needed for ChallengeScalar");
+     return verifier_->Transcript()->ChallengeScalar(label, curve_ptr);
+}
+
 
 } // namespace examples::zkp

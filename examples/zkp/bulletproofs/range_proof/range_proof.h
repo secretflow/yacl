@@ -10,7 +10,7 @@
 #include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/math/mpint/mp_int.h"
 // Keep dependencies needed by the proof structure itself
-#include "zkp/bulletproofs/inner_product_proof.h" // Assuming this matches rust::inner_product_proof::Proof
+#include "zkp/bulletproofs/ipa/inner_product_proof.h" // Assuming this matches rust::inner_product_proof::Proof
 #include "zkp/bulletproofs/simple_transcript.h" // Assuming this matches rust::proof_transcript::ProofTranscript
 #include "zkp/bulletproofs/util.h" // For VecPoly1, Poly2 and helpers
 

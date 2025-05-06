@@ -1,0 +1,80 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+# Import yacl_cc_library
+load("@yacl//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+COMMON_COPTS = [
+    "-Wno-unused-parameter",
+    "-Wno-sign-compare",
+    "-Wno-missing-field-initializers",
+    "-Wno-unused-variable",
+    "-Wno-missing-declarations",
+]
+
+yacl_cc_library(
+    name = "r1cs_prover",
+    srcs = ["r1cs_prover.cc"],
+    hdrs = ["r1cs_prover.h"],
+    copts = COMMON_COPTS,
+    deps = [
+        ":r1cs",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/crypto/ecc:ecc",
+        "@yacl//yacl/crypto/ecc:ec_point",
+        "@yacl//yacl/crypto/hash:hash_utils",
+        "@yacl//yacl/math/mpint:mpint",
+        "@yacl//yacl/math/mpint:mp_int_enforce",
+    ],
+)
+
+yacl_cc_library(
+    name = "r1cs_verifier",
+    srcs = ["r1cs_verifier.cc"],
+    copts = COMMON_COPTS,
+    hdrs = [
+        "r1cs_verifier.h",
+    ],
+    deps = [
+        ":r1cs",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/crypto/ecc:ecc",
+        "@yacl//yacl/crypto/ecc:ec_point",
+        "@yacl//yacl/crypto/hash:hash_utils",
+        "@yacl//yacl/math/mpint:mpint",
+        "@yacl//yacl/math/mpint:mp_int_enforce",
+    ],
+)
+
+yacl_cc_library(
+    name = "r1cs",
+    srcs = ["r1cs.cc"],
+    hdrs = ["r1cs.h"],
+    copts = COMMON_COPTS,
+    deps = [
+        "//zkp/bulletproofs:simple_transcript",
+        "//zkp/bulletproofs/ipa:inner_product_proof",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/crypto/ecc:ecc",
+        "@yacl//yacl/crypto/ecc:ec_point",
+        "@yacl//yacl/crypto/hash:hash_utils",
+        "@yacl//yacl/math/mpint:mpint",
+        "@yacl//yacl/math/mpint:mp_int_enforce",
+    ],
+)
+
+yacl_cc_test(
+    name = "r1cs_test",
+    srcs = ["r1cs_test.cc"],
+    copts = COMMON_COPTS,
+    deps = [
+        ":r1cs_prover",
+        ":r1cs_verifier",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/crypto/ecc:ecc",
+        "@yacl//yacl/crypto/ecc:ec_point",
+        "@yacl//yacl/crypto/hash:hash_utils",
+        "@yacl//yacl/math/mpint:mpint",
+        "@yacl//yacl/math/mpint:mp_int_enforce",
+    ],
+)

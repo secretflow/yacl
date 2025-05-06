@@ -59,9 +59,9 @@ yacl_cc_library(
 )
 
 yacl_cc_library(
-    name = "ipa_config",
-    srcs = ["ipa_config.cc"],
-    hdrs = ["ipa_config.h"],
+    name = "bp_config",
+    srcs = ["bp_config.cc"],
+    hdrs = ["bp_config.h"],
     copts = COMMON_COPTS,
     deps = [
         "@yacl//yacl/base:exception",
@@ -74,52 +74,13 @@ yacl_cc_library(
     ],
 )
 
-yacl_cc_library(
-    name = "inner_product_proof",
-    srcs = ["inner_product_proof.cc"],
-    hdrs = ["inner_product_proof.h"],
-    copts = COMMON_COPTS,
-    deps = [
-        ":simple_transcript",
-        ":generators",
-        ":ipa_config",
-        ":util",
-        "@yacl//yacl/base:byte_container_view",
-        "@yacl//yacl/base:exception",
-        "@yacl//yacl/crypto/ecc:ecc",
-        "@yacl//yacl/crypto/ecc:ec_point",
-        "@yacl//yacl/crypto/hash:hash_utils",
-        "@yacl//yacl/crypto/hash:hash_interface",
-        "@yacl//yacl/math/mpint:mpint",
-    ],
-)
-
-yacl_cc_test(
-    name = "inner_product_proof_test",
-    srcs = ["inner_product_proof_test.cc"],
-    copts = COMMON_COPTS,
-    deps = [
-        ":inner_product_proof",
-        ":ipa_config",
-        "@yacl//yacl/base:byte_container_view",
-        "@yacl//yacl/base:exception",
-        "@yacl//yacl/crypto:openssl_wrappers",
-        "@yacl//yacl/crypto/ecc",
-        "@yacl//yacl/crypto/rand",
-        "@yacl//yacl/crypto/tools:ro",
-        "@yacl//yacl/math/mpint",
-        "@yacl//yacl/math/mpint:mp_int_enforce",
-        "@yacl//yacl/utils:scope_guard",
-    ],
-)
-
 yacl_cc_test(
     name = "generators_test",
     srcs = ["generators_test.cc"],
     copts = COMMON_COPTS,
     deps = [
         ":generators",
-        ":ipa_config",
+        ":bp_config",
         "@yacl//yacl/base:exception",
         "@yacl//yacl/crypto/ecc:ecc",
         "@yacl//yacl/crypto/ecc:ec_point",
@@ -134,7 +95,7 @@ yacl_cc_test(
     copts = COMMON_COPTS,
     deps = [
         ":simple_transcript",
-        ":ipa_config",
+        ":bp_config",
         "@yacl//yacl/base:exception",
         "@yacl//yacl/crypto/hash:hash_utils",
         "@yacl//yacl/crypto:openssl_wrappers",
@@ -154,7 +115,7 @@ yacl_cc_test(
     copts = COMMON_COPTS,
     deps = [
         ":util",
-        ":ipa_config",
+        ":bp_config",
         "@yacl//yacl/base:exception",
         "@yacl//yacl/crypto/ecc:ecc",
         "@yacl//yacl/crypto/ecc:ec_point",

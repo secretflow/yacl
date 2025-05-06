@@ -1,10 +1,10 @@
-#include "zkp/bulletproofs/range_proof/range_proof_mpc.h"
+#include "zkp/bulletproofs/range_proof_mpc/range_proof_mpc.h"
 
 #include <algorithm>
 
 #include "yacl/crypto/rand/rand.h"
-#include "zkp/bulletproofs/range_proof/dealer.h"
-#include "zkp/bulletproofs/range_proof/party.h"
+#include "zkp/bulletproofs/range_proof_mpc/dealer.h"
+#include "zkp/bulletproofs/range_proof_mpc/party.h"
 #include "zkp/bulletproofs/util.h"
 
 namespace examples::zkp {

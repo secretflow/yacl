@@ -1,0 +1,167 @@
+load("@rules_cc//cc:defs.bzl", "cc_library")
+# Import yacl_cc_library
+load("@yacl//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
+
+package(default_visibility = ["//visibility:public"])
+
+COMMON_COPTS = [
+    "-Wno-unused-parameter",
+    "-Wno-sign-compare",
+    "-Wno-missing-field-initializers",
+    "-Wno-unused-variable",
+    "-Wno-missing-declarations",
+]
+
+yacl_cc_library(
+    name = "range_proof_config",
+    srcs = ["range_proof_config.cc"],
+    hdrs = ["range_proof_config.h"],
+    copts = COMMON_COPTS,
+    deps = [
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/crypto/ecc:ecc",
+        "@yacl//yacl/crypto/ecc:ec_point",
+        "@yacl//yacl/crypto/hash:hash_utils",
+        "@yacl//yacl/math/mpint:mpint",
+        "@yacl//yacl/math/mpint:mp_int_enforce",
+    ],
+)
+
+yacl_cc_library(
+    name = "messages",
+    srcs = ["messages.cc"],
+    hdrs = ["messages.h"],
+    copts = COMMON_COPTS,
+    deps = [
+        "//zkp/bulletproofs:generators",
+        "//zkp/bulletproofs:util",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/crypto/ecc:ecc",
+        "@yacl//yacl/crypto/ecc:ec_point",
+        "@yacl//yacl/crypto/hash:hash_utils",
+        "@yacl//yacl/math/mpint:mpint",
+        "@yacl//yacl/math/mpint:mp_int_enforce",
+    ],
+)
+
+yacl_cc_library(
+    name = "party",
+    srcs = ["party.cc"],
+    hdrs = ["party.h"],
+    copts = COMMON_COPTS,
+    deps = [
+        ":messages",
+        "//zkp/bulletproofs/ipa:inner_product_proof",
+        "//zkp/bulletproofs:generators",
+        "//zkp/bulletproofs:util",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/crypto/rand",
+        "@yacl//yacl/crypto/ecc:ecc",
+        "@yacl//yacl/crypto/ecc:ec_point",
+        "@yacl//yacl/crypto/hash:hash_utils",
+        "@yacl//yacl/math/mpint:mpint",
+        "@yacl//yacl/math/mpint:mp_int_enforce",
+    ],
+)
+
+yacl_cc_library(
+    name = "dealer",
+    srcs = ["dealer.cc"],
+    hdrs = [
+        "dealer.h",
+        "range_proof_mpc.h",
+        ],
+    copts = COMMON_COPTS,
+    deps = [
+        ":messages", 
+        ":range_proof_config",
+        "//zkp/bulletproofs/ipa:inner_product_proof", 
+        "//zkp/bulletproofs:generators",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/crypto/ecc:ecc",
+        "@yacl//yacl/crypto/ecc:ec_point",
+        "@yacl//yacl/crypto/hash:hash_utils",
+        "@yacl//yacl/math/mpint:mpint",
+        "@yacl//yacl/math/mpint:mp_int_enforce",  
+    ],
+)
+
+yacl_cc_library(
+    name = "range_proof_mpc",
+    srcs = ["range_proof_mpc.cc"],
+    hdrs = ["range_proof_mpc.h"],
+    copts = COMMON_COPTS,
+    deps = [
+        ":range_proof_config",
+        ":party",
+        ":dealer",
+        ":messages",
+        "//zkp/bulletproofs/ipa:inner_product_proof",
+        "//zkp/bulletproofs:generators",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/crypto/ecc:ecc",
+        "@yacl//yacl/crypto/ecc:ec_point",
+        "@yacl//yacl/crypto/hash:hash_utils",
+        "@yacl//yacl/crypto/rand",
+        "@yacl//yacl/math/mpint:mpint",
+        "@yacl//yacl/math/mpint:mp_int_enforce",
+        "@yacl//yacl/crypto/tools:ro",
+    ],
+)
+
+yacl_cc_test(
+    name = "range_proof_mpc_test",
+    srcs = ["range_proof_mpc_test.cc"],
+    copts = COMMON_COPTS,
+    deps = [
+        ":range_proof_mpc",
+        ":range_proof_config",
+        "@yacl//yacl/crypto:openssl_wrappers",
+        "@yacl//yacl/math/mpint:mpint",
+        "@yacl//yacl/math/mpint:mp_int_enforce",
+    ],
+)
+
+yacl_cc_test(
+    name = "dealer_test",
+    srcs = ["dealer_test.cc"],
+    copts = COMMON_COPTS,
+    deps = [
+        ":dealer",
+        ":range_proof_mpc",
+        ":range_proof_config",
+        "@yacl//yacl/crypto:openssl_wrappers",
+        "@yacl//yacl/math/mpint:mpint",
+        "@yacl//yacl/math/mpint:mp_int_enforce",
+        ],
+)
+
+yacl_cc_test(
+    name = "messages_test",
+    srcs = ["messages_test.cc"],
+    copts = COMMON_COPTS,
+    deps = [
+        ":messages",
+        ":range_proof_config",
+        "@yacl//yacl/crypto:openssl_wrappers",
+        "@yacl//yacl/math/mpint:mpint",
+        "@yacl//yacl/math/mpint:mp_int_enforce",
+        ],
+)
+
+yacl_cc_test(
+    name = "party_test",
+    srcs = ["party_test.cc"],
+    copts = COMMON_COPTS,
+    deps = [
+        ":party",
+        ":messages",
+        ":range_proof_mpc",
+        ":range_proof_config",
+        "//zkp/bulletproofs:generators",
+        "//zkp/bulletproofs:util",
+        "@yacl//yacl/crypto:openssl_wrappers",
+        "@yacl//yacl/math/mpint:mpint",
+        "@yacl//yacl/math/mpint:mp_int_enforce",
+        ],
+)

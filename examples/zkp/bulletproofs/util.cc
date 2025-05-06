@@ -5,7 +5,7 @@
 #include <numeric>
 #include <algorithm>
 #include <cstring>
-
+#include <climits>
 #include "yacl/base/exception.h"
 #include "yacl/math/mpint/mp_int.h"
 #include "yacl/crypto/ecc/ecc_spi.h"
@@ -224,6 +224,32 @@ yacl::math::MPInt CreateDummyScalar(const std::shared_ptr<yacl::crypto::EcGroup>
   yacl::math::MPInt r;
   r.RandomLtN(curve->GetOrder(), &r);
   return r;
+}
+
+size_t NextPowerOfTwo(size_t n) {
+    // Handle special case
+    if (n == 0) return 1;
+    
+    // Check if n is already a power of two
+    if ((n & (n - 1)) == 0) {
+        return n;
+    }
+    
+    // Calculate number of leading zeros
+    unsigned int leading_zeros;
+    if constexpr (sizeof(size_t) == sizeof(unsigned int)) {
+        leading_zeros = __builtin_clz(static_cast<unsigned int>(n));
+    } else if constexpr (sizeof(size_t) == sizeof(unsigned long)) {
+        leading_zeros = __builtin_clzl(static_cast<unsigned long>(n));
+    } else {
+        leading_zeros = __builtin_clzll(static_cast<unsigned long long>(n));
+    }
+    
+    // Calculate total bits in size_t
+    constexpr int total_bits = sizeof(size_t) * CHAR_BIT;
+    
+    // Return 1 shifted left by (total_bits - leading_zeros)
+    return size_t(1) << (total_bits - leading_zeros);
 }
 
 }  // namespace examples::zkp

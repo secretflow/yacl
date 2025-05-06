@@ -188,4 +188,6 @@ yacl::crypto::EcPoint CreateDummyPoint(const std::shared_ptr<yacl::crypto::EcGro
 // Helper to create a dummy MPInt scalar
 yacl::math::MPInt CreateDummyScalar(const std::shared_ptr<yacl::crypto::EcGroup>& curve);
 
+size_t NextPowerOfTwo(size_t n);
+
 } // namespace examples::zkp

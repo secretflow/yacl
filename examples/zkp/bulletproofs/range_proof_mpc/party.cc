@@ -1,4 +1,4 @@
-#include "zkp/bulletproofs/range_proof/party.h"
+#include "zkp/bulletproofs/range_proof_mpc/party.h"
 
 #include <vector>
 #include <memory>
@@ -7,7 +7,7 @@
 #include "yacl/crypto/rand/rand.h"
 #include "yacl/math/mpint/mp_int.h"
 #include "zkp/bulletproofs/generators.h"
-#include "zkp/bulletproofs/range_proof/messages.h"
+#include "zkp/bulletproofs/range_proof_mpc/messages.h"
 #include "zkp/bulletproofs/util.h" // Include for Poly2, VecPoly1, ScalarExp, etc.
 #include "yacl/base/exception.h"   // Include for yacl::Exception
 #include "absl/strings/substitute.h" // Include for Abseil string formatting

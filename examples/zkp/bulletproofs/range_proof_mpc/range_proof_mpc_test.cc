@@ -1,4 +1,4 @@
-#include "zkp/bulletproofs/range_proof/range_proof_mpc.h"
+#include "zkp/bulletproofs/range_proof_mpc/range_proof_mpc.h"
 
 #include <gtest/gtest.h>
 
