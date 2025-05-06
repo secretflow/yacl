@@ -18,7 +18,7 @@
 #include <memory>
 #include <vector>
 
-#include "zkp/bulletproofs/simple_transcript.h"
+#include "yacl/crypto/experimental/zkp/bulletproofs/simple_transcript.h"
 
 #include "yacl/base/exception.h"
 #include "yacl/crypto/ecc/ec_point.h"

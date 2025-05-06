@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "zkp/bulletproofs/range_proof/range_proof.h"
+#include "yacl/crypto/experimental/zkp/bulletproofs/range_proof/range_proof.h"
 
 #include <algorithm>
 #include <numeric>  // For std::accumulate
 #include <string>
 #include <vector>
 
-#include "zkp/bulletproofs/util.h"  // Needs definitions for VecPoly1, Poly2, etc.
+#include "yacl/crypto/experimental/zkp/bulletproofs/util.h"  // Needs definitions for VecPoly1, Poly2, etc.
 
 #include "yacl/base/exception.h"
 #include "yacl/crypto/hash/hash_utils.h"  // For HashToCurve, Sha256

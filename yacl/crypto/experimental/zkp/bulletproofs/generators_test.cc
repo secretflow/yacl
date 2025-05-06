@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "zkp/bulletproofs/generators.h"
+#include "yacl/crypto/experimental/zkp/bulletproofs/generators.h"
 
 #include <gtest/gtest.h>
 

@@ -55,7 +55,7 @@ yacl_cc_test(
     srcs = ["generators_test.cc"],
     deps = [
         ":bp_config",
-        ":generators",
+        "//yacl/crypto/experimental/zkp/bulletproofs:generators",
         "@yacl//yacl/base:exception",
         "@yacl//yacl/crypto/ecc",
         "@yacl//yacl/crypto/ecc:ec_point",
@@ -69,7 +69,7 @@ yacl_cc_test(
     srcs = ["simple_transcript_test.cc"],
     deps = [
         ":bp_config",
-        ":simple_transcript",
+        "//yacl/crypto/experimental/zkp/bulletproofs:simple_transcript",
         "@yacl//yacl/base:exception",
         "@yacl//yacl/crypto:openssl_wrappers",
         "@yacl//yacl/crypto/ecc",
@@ -87,7 +87,7 @@ yacl_cc_test(
     srcs = ["util_test.cc"],
     deps = [
         ":bp_config",
-        ":util",
+        "//yacl/crypto/experimental/zkp/bulletproofs:util",
         "@yacl//yacl/base:exception",
         "@yacl//yacl/crypto/ecc",
         "@yacl//yacl/crypto/ecc:ec_point",

@@ -25,9 +25,9 @@ yacl_cc_library(
     hdrs = ["range_proof.h"],
     deps = [
         ":range_proof_config",
-        "//zkp/bulletproofs:generators",
-        "//zkp/bulletproofs:util",
-        "//zkp/bulletproofs/ipa:inner_product_proof",
+        "//yacl/crypto/experimental/zkp/bulletproofs:generators",
+        "//yacl/crypto/experimental/zkp/bulletproofs:util",
+        "//yacl/crypto/experimental/zkp/bulletproofs/ipa:inner_product_proof",
         "@yacl//yacl/crypto:openssl_wrappers",
         "@yacl//yacl/math/mpint",
         "@yacl//yacl/math/mpint:mp_int_enforce",

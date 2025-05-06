@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "zkp/bulletproofs/simple_transcript.h"
+#include "yacl/crypto/experimental/zkp/bulletproofs/simple_transcript.h"
 
 #include <algorithm>
 #include <cstring>

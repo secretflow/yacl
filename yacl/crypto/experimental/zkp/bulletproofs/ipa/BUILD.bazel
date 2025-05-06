@@ -27,9 +27,9 @@ yacl_cc_library(
     hdrs = ["inner_product_proof.h"],
     deps = [
         ":ipa_config",
-        "//zkp/bulletproofs:generators",
-        "//zkp/bulletproofs:simple_transcript",
-        "//zkp/bulletproofs:util",
+        "//yacl/crypto/experimental/zkp/bulletproofs:generators",
+        "//yacl/crypto/experimental/zkp/bulletproofs:simple_transcript",
+        "//yacl/crypto/experimental/zkp/bulletproofs:util",
         "@yacl//yacl/base:byte_container_view",
         "@yacl//yacl/base:exception",
         "@yacl//yacl/crypto/ecc",
@@ -45,7 +45,7 @@ yacl_cc_test(
     srcs = ["inner_product_proof_test.cc"],
     deps = [
         ":ipa_config",
-        "//zkp/bulletproofs/ipa:inner_product_proof",
+        "//yacl/crypto/experimental/zkp/bulletproofs/ipa:inner_product_proof",
         "@yacl//yacl/base:byte_container_view",
         "@yacl//yacl/base:exception",
         "@yacl//yacl/crypto:openssl_wrappers",

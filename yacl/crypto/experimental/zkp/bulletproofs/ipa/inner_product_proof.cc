@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "zkp/bulletproofs/ipa/inner_product_proof.h"
+#include "yacl/crypto/experimental/zkp/bulletproofs/ipa/inner_product_proof.h"
 
 #include <algorithm>
 #include <cassert>
@@ -20,7 +20,7 @@
 #include <cstring>
 #include <stdexcept>
 
-#include "zkp/bulletproofs/util.h"  // For exponentiation helpers
+#include "yacl/crypto/experimental/zkp/bulletproofs/util.h"  // For exponentiation helpers
 
 namespace examples::zkp {
 

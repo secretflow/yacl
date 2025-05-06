@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "zkp/bulletproofs/ipa/inner_product_proof.h"
+#include "yacl/crypto/experimental/zkp/bulletproofs/ipa/inner_product_proof.h"
 
 #include <gtest/gtest.h>
 
@@ -20,8 +20,8 @@
 #include <vector>
 
 #include "ipa_config.h"
-#include "zkp/bulletproofs/simple_transcript.h"  // For SimpleTranscript
-#include "zkp/bulletproofs/util.h"               // For helpers
+#include "yacl/crypto/experimental/zkp/bulletproofs/simple_transcript.h"  // For SimpleTranscript
+#include "yacl/crypto/experimental/zkp/bulletproofs/util.h"               // For helpers
 
 #include "yacl/base/exception.h"
 #include "yacl/crypto/ecc/ecc_spi.h"  // For EcGroupFactory, EcGroup
