@@ -12,16 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "zkp/bulletproofs/range_proof/range_proof.h"
+
 #include <gtest/gtest.h>
+
 #include <limits>  // For UINT64_MAX
 #include <memory>
 #include <vector>
+
 #include "range_proof_config.h"
 #include "zkp/bulletproofs/simple_transcript.h"  // For SimpleTranscript
+
 #include "yacl/crypto/ecc/ecc_spi.h"  // For EcGroupFactory, EcGroup
 #include "yacl/crypto/rand/rand.h"    // For random scalars and bytes
-#include "zkp/bulletproofs/range_proof/range_proof.h"
-
 
 namespace examples::zkp {
 namespace {

@@ -12,17 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "zkp/bulletproofs/util.h"
+
 #include <gtest/gtest.h>
+
 #include <memory>
 #include <stdexcept>  // Include for stdexcept
 #include <vector>
+
 #include "bp_config.h"
+
 #include "yacl/base/exception.h"       // Include for yacl::Exception
 #include "yacl/crypto/ecc/ec_point.h"  // For EcGroupFactory
 #include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/math/mpint/mp_int.h"
-#include "zkp/bulletproofs/util.h"
-
 
 // Bring types and specific functions into scope for the test file
 namespace examples::zkp {

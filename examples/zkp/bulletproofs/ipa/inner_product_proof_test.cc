@@ -125,11 +125,11 @@ class InnerProductProofTest : public ::testing::Test {
 
     InnerProductProof proof;
     ASSERT_NO_THROW({
-      proof = InnerProductProof::Create(
-          prover_transcript, curve_, Q, ipp_G_factors,
-          ipp_H_factors,  // Pass factors
-          G_vec, H_vec,   // Pass original G, H bases
-          a_vec, b_vec);  // Pass witnesses
+      proof =
+          InnerProductProof::Create(prover_transcript, curve_, Q, ipp_G_factors,
+                                    ipp_H_factors,  // Pass factors
+                                    G_vec, H_vec,   // Pass original G, H bases
+                                    a_vec, b_vec);  // Pass witnesses
     });
 
     // 3. Verifier: Verify proof
@@ -157,9 +157,9 @@ class InnerProductProofTest : public ::testing::Test {
     SimpleTranscript verifier_transcript2(transcript_label);
     bool result2 = false;
     ASSERT_NO_THROW({
-      result2 = deserialized_proof.Verify(verifier_transcript2, curve_,
-                                          ipp_G_factors, ipp_H_factors, P, Q,
-                                          G_vec, H_vec);
+      result2 =
+          deserialized_proof.Verify(verifier_transcript2, curve_, ipp_G_factors,
+                                    ipp_H_factors, P, Q, G_vec, H_vec);
     });
     ASSERT_TRUE(result2) << "IPP verification failed after serde for n=" << n;
   }
