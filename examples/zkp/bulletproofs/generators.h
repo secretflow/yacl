@@ -17,18 +17,20 @@
 #include <cstdint>
 #include <memory>
 #include <vector>
+
+#include "zkp/bulletproofs/util.h"
+
 #include "yacl/base/exception.h"
 #include "yacl/crypto/ecc/ec_point.h"
 #include "yacl/crypto/ecc/ecc_spi.h"
-#include "yacl/math/mpint/mp_int.h"
 #include "yacl/crypto/hash/hash_utils.h"
-#include "zkp/bulletproofs/util.h"
+#include "yacl/math/mpint/mp_int.h"
 
 namespace examples::zkp {
 
 /**
  * @brief Represents a pair of base points for Pedersen commitments.
- * 
+ *
  * The Bulletproofs implementation and API is designed to support
  * pluggable bases for Pedersen commitments.
  */
@@ -39,21 +41,18 @@ class PedersenGens {
   std::shared_ptr<yacl::crypto::EcGroup> curve_;
   explicit PedersenGens(std::shared_ptr<yacl::crypto::EcGroup> curve)
       : curve_(curve) {
-        B = curve_->GetGenerator();
-        B_blinding = curve_->HashToCurve(yacl::crypto::HashToCurveStrategy::Autonomous, "B_blinding");
-      }
+    B = curve_->GetGenerator();
+    B_blinding = curve_->HashToCurve(
+        yacl::crypto::HashToCurveStrategy::Autonomous, "B_blinding");
+  }
 
-  yacl::crypto::EcPoint Commit(
-      const yacl::math::MPInt& value,
-      const yacl::math::MPInt& blinding) const {
+  yacl::crypto::EcPoint Commit(const yacl::math::MPInt& value,
+                               const yacl::math::MPInt& blinding) const {
     return MultiScalarMul(curve_, {value, blinding}, {B, B_blinding});
   }
 
-
-    // Return the shared_ptr by value
-  std::shared_ptr<yacl::crypto::EcGroup> GetCurve() const {
-    return curve_;
-  }
+  // Return the shared_ptr by value
+  std::shared_ptr<yacl::crypto::EcGroup> GetCurve() const { return curve_; }
 };
 
 /**
@@ -63,24 +62,23 @@ class GeneratorsChain {
  public:
   /**
    * @brief Creates a chain of generators, determined by the hash of label
-   * 
+   *
    * @param curve The elliptic curve group
    * @param label The seed label
    */
-  GeneratorsChain(
-      std::shared_ptr<yacl::crypto::EcGroup> curve,
-      const std::string& label);
+  GeneratorsChain(std::shared_ptr<yacl::crypto::EcGroup> curve,
+                  const std::string& label);
 
   /**
    * @brief Advances the generator chain n times, discarding the results
-   * 
+   *
    * @param n Number of steps to advance
    */
   void FastForward(size_t n);
 
   /**
    * @brief Get the next point in the chain
-   * 
+   *
    * @return yacl::crypto::EcPoint The next point
    */
   yacl::crypto::EcPoint Next();
@@ -104,20 +102,18 @@ class BulletproofGens {
  public:
   /**
    * @brief Construct a new Bulletproof Gens object
-   * 
+   *
    * @param curve The elliptic curve group
    * @param gens_capacity Number of generators to precompute for each party
    * @param party_capacity Maximum number of parties for aggregated proofs
    */
-  BulletproofGens(
-      std::shared_ptr<yacl::crypto::EcGroup> curve,
-      size_t gens_capacity,
-      size_t party_capacity);
+  BulletproofGens(std::shared_ptr<yacl::crypto::EcGroup> curve,
+                  size_t gens_capacity, size_t party_capacity);
 
   /**
    * @brief Returns j-th share of generators, with an appropriate
    * slice of vectors G and H for the j-th range proof.
-   * 
+   *
    * @param j Party index
    * @return BulletproofGensShare Share for party j
    */
@@ -126,7 +122,7 @@ class BulletproofGens {
   /**
    * @brief Increases the generators' capacity to the amount specified.
    * If less than or equal to the current capacity, does nothing.
-   * 
+   *
    * @param new_capacity New capacity
    */
   void IncreaseCapacity(size_t new_capacity);
@@ -154,7 +150,9 @@ class BulletproofGens {
   // Getters
   size_t gens_capacity() const { return gens_capacity_; }
   size_t party_capacity() const { return party_capacity_; }
-  const std::shared_ptr<yacl::crypto::EcGroup>& GetCurve() const { return curve_; }
+  const std::shared_ptr<yacl::crypto::EcGroup>& GetCurve() const {
+    return curve_;
+  }
 
  private:
   std::shared_ptr<yacl::crypto::EcGroup> curve_;
@@ -192,4 +190,4 @@ class BulletproofGensShare {
   size_t share_;
 };
 
-} // namespace examples::zkp
+}  // namespace examples::zkp

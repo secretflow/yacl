@@ -12,22 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "zkp/bulletproofs/util.h"
 
 #include <gtest/gtest.h>
-#include <vector>
+
 #include <memory>
-#include <stdexcept> // Include for stdexcept
+#include <stdexcept>  // Include for stdexcept
+#include <vector>
+
 #include "bp_config.h"
+
+#include "yacl/base/exception.h"       // Include for yacl::Exception
+#include "yacl/crypto/ecc/ec_point.h"  // For EcGroupFactory
 #include "yacl/crypto/ecc/ecc_spi.h"
-#include "yacl/crypto/ecc/ec_point.h" // For EcGroupFactory
 #include "yacl/math/mpint/mp_int.h"
-#include "yacl/base/exception.h" // Include for yacl::Exception
-#include "zkp/bulletproofs/util.h"
 
 // Bring types and specific functions into scope for the test file
 namespace examples::zkp {
 namespace {
-
 
 using yacl::math::MPInt;
 
@@ -47,9 +49,9 @@ class UtilTest : public ::testing::Test {
   }
 
   void CheckEcAvailable() {
-      if (!ec_available_) {
-          GTEST_SKIP() << "Skipping test because EC operations are not available";
-      }
+    if (!ec_available_) {
+      GTEST_SKIP() << "Skipping test because EC operations are not available";
+    }
   }
 
   std::shared_ptr<yacl::crypto::EcGroup> curve_;
@@ -79,16 +81,13 @@ TEST_F(UtilTest, AddVecTest) {
   CheckEcAvailable();
   std::vector<MPInt> a = {MPInt(1), MPInt(10), order_ - MPInt(1)};
   std::vector<MPInt> b = {MPInt(4), MPInt(5), MPInt(2)};
-  std::vector<MPInt> expected = {
-      MPInt(5).Mod(order_),
-      MPInt(15).Mod(order_),
-      MPInt(1).Mod(order_)
-  };
+  std::vector<MPInt> expected = {MPInt(5).Mod(order_), MPInt(15).Mod(order_),
+                                 MPInt(1).Mod(order_)};
 
   std::vector<MPInt> result = examples::zkp::AddVec(a, b, curve_);
   ASSERT_EQ(result.size(), expected.size());
   for (size_t i = 0; i < result.size(); ++i) {
-      EXPECT_EQ(result[i], expected[i]) << "Mismatch at index " << i;
+    EXPECT_EQ(result[i], expected[i]) << "Mismatch at index " << i;
   }
 
   std::vector<MPInt> c = {MPInt(1)};
@@ -100,17 +99,13 @@ TEST_F(UtilTest, ExpIterVectorTest) {
   CheckEcAvailable();
   MPInt base(3);
   size_t n = 4;
-  std::vector<MPInt> expected = {
-      MPInt(1).Mod(order_),
-      MPInt(3).Mod(order_),
-      MPInt(9).Mod(order_),
-      MPInt(27).Mod(order_)
-  };
+  std::vector<MPInt> expected = {MPInt(1).Mod(order_), MPInt(3).Mod(order_),
+                                 MPInt(9).Mod(order_), MPInt(27).Mod(order_)};
 
   std::vector<MPInt> result = examples::zkp::ExpIterVector(base, n, curve_);
   ASSERT_EQ(result.size(), expected.size());
   for (size_t i = 0; i < result.size(); ++i) {
-      EXPECT_EQ(result[i], expected[i]) << "Mismatch at index " << i;
+    EXPECT_EQ(result[i], expected[i]) << "Mismatch at index " << i;
   }
 
   EXPECT_TRUE(examples::zkp::ExpIterVector(base, 0, curve_).empty());
@@ -184,7 +179,6 @@ TEST_F(UtilTest, VecPoly1InnerProductTest) {
   MPInt expected_t1 = inner_sum.SubMod(expected_t0, order_);
   expected_t1 = expected_t1.SubMod(expected_t2, order_);
 
-
   examples::zkp::Poly2 result_poly = L.InnerProduct(R, curve_);
 
   EXPECT_EQ(result_poly.t0, expected_t0);
@@ -192,10 +186,10 @@ TEST_F(UtilTest, VecPoly1InnerProductTest) {
   EXPECT_EQ(result_poly.t2, expected_t2);
 }
 
-} // namespace
-} // namespace examples::zkp
+}  // namespace
+}  // namespace examples::zkp
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

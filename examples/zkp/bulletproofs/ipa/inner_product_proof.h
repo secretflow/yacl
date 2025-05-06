@@ -18,24 +18,22 @@
 #include <memory>
 #include <vector>
 
+#include "zkp/bulletproofs/simple_transcript.h"
+
 #include "yacl/base/exception.h"
 #include "yacl/crypto/ecc/ec_point.h"
 #include "yacl/math/mpint/mp_int.h"
-#include "zkp/bulletproofs/simple_transcript.h"
 
 namespace examples::zkp {
 
 /**
  * @brief Error codes for Inner Product Proof
  */
-enum class ProofError {
-  VerificationError,
-  FormatError
-};
+enum class ProofError { VerificationError, FormatError };
 
 /**
  * @brief Inner Product Proof
- * 
+ *
  * This is a proof of knowledge of vectors a and b such that:
  * P = <a,G> + <b,H> + <a,b>Q
  * where G and H are vectors of points, and Q is a point.
@@ -46,35 +44,33 @@ class InnerProductProof {
    * @brief Default constructor
    */
   InnerProductProof() = default;
-  
+
   /**
    * @brief Constructor with all parameters
-   * 
+   *
    * @param L_vec Vector of L points
-   * @param R_vec Vector of R points 
+   * @param R_vec Vector of R points
    * @param a Final a value
    * @param b Final b value
    */
-  InnerProductProof(
-      std::vector<yacl::crypto::EcPoint> L_vec,
-      std::vector<yacl::crypto::EcPoint> R_vec,
-      yacl::math::MPInt a,
-      yacl::math::MPInt b) 
-    : L_vec_(std::move(L_vec)), 
-      R_vec_(std::move(R_vec)), 
-      a_(std::move(a)), 
-      b_(std::move(b)) {}
-  
+  InnerProductProof(std::vector<yacl::crypto::EcPoint> L_vec,
+                    std::vector<yacl::crypto::EcPoint> R_vec,
+                    yacl::math::MPInt a, yacl::math::MPInt b)
+      : L_vec_(std::move(L_vec)),
+        R_vec_(std::move(R_vec)),
+        a_(std::move(a)),
+        b_(std::move(b)) {}
+
   /**
    * @brief Creates an inner product proof
-   * 
+   *
    * @param transcript The transcript to append the proof to
    * @param curve The elliptic curve to use
    * @param Q The point Q
-   * @param G_factors Scalar factors for G points 
+   * @param G_factors Scalar factors for G points
    * @param H_factors Scalar factors for H points
    * @param G_vec Vector of G points
-   * @param H_vec Vector of H points 
+   * @param H_vec Vector of H points
    * @param a_vec Vector a
    * @param b_vec Vector b
    * @return InnerProductProof The generated proof
@@ -91,26 +87,26 @@ class InnerProductProof {
       std::vector<yacl::math::MPInt> b_vec);
 
   /**
-   * @brief Computes verification scalars for combined multiscalar multiplication
-   * 
+   * @brief Computes verification scalars for combined multiscalar
+   * multiplication
+   *
    * @param n Length of the vectors in the original proof
    * @param transcript The transcript to read challenges from
    * @param curve The elliptic curve to use
    * @return std::tuple<...> (challenges_sq, challenges_inv_sq, s)
    */
-  std::tuple<std::vector<yacl::math::MPInt>, 
-             std::vector<yacl::math::MPInt>, 
-             std::vector<yacl::math::MPInt>> VerificationScalars(
-      size_t n,
-      SimpleTranscript* transcript,
+  std::tuple<std::vector<yacl::math::MPInt>, std::vector<yacl::math::MPInt>,
+             std::vector<yacl::math::MPInt>>
+  VerificationScalars(
+      size_t n, SimpleTranscript* transcript,
       const std::shared_ptr<yacl::crypto::EcGroup>& curve) const;
 
   /**
    * @brief Verifies the inner product proof
-   * 
+   *
    * @param n Length of the vectors
    * @param transcript The transcript to read challenges from
-   * @param curve The elliptic curve to use 
+   * @param curve The elliptic curve to use
    * @param G_factors Scalar factors for G points
    * @param H_factors Scalar factors for H points
    * @param P The commitment P = <a,G> + <b,H> + <a,b>Q
@@ -119,26 +115,24 @@ class InnerProductProof {
    * @param H Vector of H points
    * @return true if the proof verifies, false otherwise
    */
-  bool Verify(
-      SimpleTranscript* transcript,
-      const std::shared_ptr<yacl::crypto::EcGroup>& curve,
-      const std::vector<yacl::math::MPInt>& G_factors,
-      const std::vector<yacl::math::MPInt>& H_factors,
-      const yacl::crypto::EcPoint& P,
-      const yacl::crypto::EcPoint& Q,
-      const std::vector<yacl::crypto::EcPoint>& G,
-      const std::vector<yacl::crypto::EcPoint>& H) const;
+  bool Verify(SimpleTranscript* transcript,
+              const std::shared_ptr<yacl::crypto::EcGroup>& curve,
+              const std::vector<yacl::math::MPInt>& G_factors,
+              const std::vector<yacl::math::MPInt>& H_factors,
+              const yacl::crypto::EcPoint& P, const yacl::crypto::EcPoint& Q,
+              const std::vector<yacl::crypto::EcPoint>& G,
+              const std::vector<yacl::crypto::EcPoint>& H) const;
 
   /**
    * @brief Returns the size in bytes required to serialize the proof
-   * 
+   *
    * @return size_t The size in bytes
    */
   size_t SerializedSize() const;
 
   /**
    * @brief Serializes the proof into a byte vector
-   * 
+   *
    * @param curve The elliptic curve to use for point serialization
    * @return std::vector<uint8_t> The serialized proof
    */
@@ -147,7 +141,7 @@ class InnerProductProof {
 
   /**
    * @brief Deserializes the proof from a byte array
-   * 
+   *
    * @param bytes The serialized proof
    * @param curve The elliptic curve to use for point deserialization
    * @return InnerProductProof The deserialized proof
@@ -170,9 +164,9 @@ class InnerProductProof {
 
 /**
  * @brief Computes the inner product of two vectors
- * 
+ *
  * @param a First vector
- * @param b Second vector 
+ * @param b Second vector
  * @return yacl::math::MPInt The inner product <a,b>
  */
 yacl::math::MPInt InnerProduct(
@@ -182,7 +176,7 @@ yacl::math::MPInt InnerProduct(
 
 /**
  * @brief Helper for optimized multi-scalar multiplication
- * 
+ *
  * @param curve The elliptic curve
  * @param scalars Vector of scalar values
  * @param points Vector of points
@@ -193,4 +187,4 @@ yacl::crypto::EcPoint MultiScalarMul(
     const std::vector<yacl::math::MPInt>& scalars,
     const std::vector<yacl::crypto::EcPoint>& points);
 
-} // namespace examples::zkp
+}  // namespace examples::zkp

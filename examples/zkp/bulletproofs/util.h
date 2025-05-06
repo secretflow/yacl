@@ -16,8 +16,8 @@
 
 #include <vector>
 
-#include "yacl/math/mpint/mp_int.h"
 #include "yacl/crypto/ecc/ecc_spi.h"
+#include "yacl/math/mpint/mp_int.h"
 
 namespace examples::zkp {
 
@@ -35,7 +35,8 @@ class Poly2 {
   yacl::math::MPInt t2;
 
   // Constructor
-  Poly2(yacl::math::MPInt t0_val, yacl::math::MPInt t1_val, yacl::math::MPInt t2_val);
+  Poly2(yacl::math::MPInt t0_val, yacl::math::MPInt t1_val,
+        yacl::math::MPInt t2_val);
 
   // Default constructor (initializes to zero)
   Poly2();
@@ -48,10 +49,10 @@ class Poly2 {
    * @param curve The elliptic curve group providing the field order.
    * @return yacl::math::MPInt The result t(x) mod order.
    */
-  yacl::math::MPInt Eval(const yacl::math::MPInt& x,
-                       const std::shared_ptr<yacl::crypto::EcGroup>& curve) const;
+  yacl::math::MPInt Eval(
+      const yacl::math::MPInt& x,
+      const std::shared_ptr<yacl::crypto::EcGroup>& curve) const;
 };
-
 
 /**
  * @brief Represents a vector of degree-1 polynomials, where the i-th entry is
@@ -59,11 +60,12 @@ class Poly2 {
  */
 class VecPoly1 {
  public:
-  std::vector<yacl::math::MPInt> vec0; // Constant terms
-  std::vector<yacl::math::MPInt> vec1; // Linear terms
+  std::vector<yacl::math::MPInt> vec0;  // Constant terms
+  std::vector<yacl::math::MPInt> vec1;  // Linear terms
 
   // Constructor
-  VecPoly1(std::vector<yacl::math::MPInt> v0, std::vector<yacl::math::MPInt> v1);
+  VecPoly1(std::vector<yacl::math::MPInt> v0,
+           std::vector<yacl::math::MPInt> v1);
 
   // Default constructor
   VecPoly1() = default;
@@ -77,8 +79,8 @@ class VecPoly1 {
   static VecPoly1 Zero(size_t n);
 
   /**
-   * @brief Computes the inner product of two VecPoly1 vectors, resulting in a Poly2.
-   * Uses the Karatsuba-style trick: t1 = <l0+l1, r0+r1> - t0 - t2.
+   * @brief Computes the inner product of two VecPoly1 vectors, resulting in a
+   * Poly2. Uses the Karatsuba-style trick: t1 = <l0+l1, r0+r1> - t0 - t2.
    * Performs calculations modulo the curve order.
    *
    * @param rhs The right-hand side VecPoly1.
@@ -96,24 +98,24 @@ class VecPoly1 {
    * @param curve The elliptic curve group providing the field order.
    * @return std::vector<yacl::math::MPInt> Vector of evaluated results.
    */
-  std::vector<yacl::math::MPInt> Eval(const yacl::math::MPInt& x,
-                                      const std::shared_ptr<yacl::crypto::EcGroup>& curve) const;
+  std::vector<yacl::math::MPInt> Eval(
+      const yacl::math::MPInt& x,
+      const std::shared_ptr<yacl::crypto::EcGroup>& curve) const;
 
   /**
    * @brief Destructor to clear sensitive scalar data.
    */
   ~VecPoly1();
 
-  // Delete copy operations to prevent accidental copying of potentially large vectors
+  // Delete copy operations to prevent accidental copying of potentially large
+  // vectors
   VecPoly1(const VecPoly1&) = delete;
   VecPoly1& operator=(const VecPoly1&) = delete;
 
   // Allow move operations
   VecPoly1(VecPoly1&&) = default;
   VecPoly1& operator=(VecPoly1&&) = default;
-
 };
-
 
 //----------------------------------------
 // Standalone Utility Functions
@@ -129,9 +131,10 @@ class VecPoly1 {
  * @return yacl::math::MPInt Inner product result modulo order.
  * @throws yacl::Exception if vectors have different sizes.
  */
-yacl::math::MPInt InnerProduct(const std::vector<yacl::math::MPInt>& a,
-                               const std::vector<yacl::math::MPInt>& b,
-                               const std::shared_ptr<yacl::crypto::EcGroup>& curve);
+yacl::math::MPInt InnerProduct(
+    const std::vector<yacl::math::MPInt>& a,
+    const std::vector<yacl::math::MPInt>& b,
+    const std::shared_ptr<yacl::crypto::EcGroup>& curve);
 
 /**
  * @brief Adds two scalar vectors element-wise modulo the curve order.
@@ -143,33 +146,36 @@ yacl::math::MPInt InnerProduct(const std::vector<yacl::math::MPInt>& a,
  * @return std::vector<yacl::math::MPInt> Resultant vector.
  * @throws yacl::Exception if vectors have different sizes.
  */
-std::vector<yacl::math::MPInt> AddVec(const std::vector<yacl::math::MPInt>& a,
-                                      const std::vector<yacl::math::MPInt>& b,
-                                      const std::shared_ptr<yacl::crypto::EcGroup>& curve);
+std::vector<yacl::math::MPInt> AddVec(
+    const std::vector<yacl::math::MPInt>& a,
+    const std::vector<yacl::math::MPInt>& b,
+    const std::shared_ptr<yacl::crypto::EcGroup>& curve);
 
 /**
- * @brief Create a vector containing powers of a scalar: [base^0, base^1, ..., base^(n-1)] mod order.
+ * @brief Create a vector containing powers of a scalar: [base^0, base^1, ...,
+ * base^(n-1)] mod order.
  *
  * @param base Base scalar.
  * @param n Number of powers to generate.
  * @param curve The elliptic curve group providing the field order.
  * @return std::vector<yacl::math::MPInt> Vector of powers modulo order.
  */
-std::vector<yacl::math::MPInt> ExpIterVector(const yacl::math::MPInt& base,
-                                           size_t n,
-                                           const std::shared_ptr<yacl::crypto::EcGroup>& curve);
+std::vector<yacl::math::MPInt> ExpIterVector(
+    const yacl::math::MPInt& base, size_t n,
+    const std::shared_ptr<yacl::crypto::EcGroup>& curve);
 
 /**
- * @brief Calculate the sum of powers: base^0 + base^1 + ... + base^(n-1) mod order.
+ * @brief Calculate the sum of powers: base^0 + base^1 + ... + base^(n-1) mod
+ * order.
  *
  * @param base Base scalar.
  * @param n Number of terms.
  * @param curve The elliptic curve group providing the field order.
  * @return yacl::math::MPInt Sum of powers modulo order.
  */
-yacl::math::MPInt SumOfPowers(const yacl::math::MPInt& base,
-                              size_t n,
-                              const std::shared_ptr<yacl::crypto::EcGroup>& curve);
+yacl::math::MPInt SumOfPowers(
+    const yacl::math::MPInt& base, size_t n,
+    const std::shared_ptr<yacl::crypto::EcGroup>& curve);
 
 /**
  * @brief Calculate scalar exponentiation: base^exp mod order.
@@ -179,9 +185,9 @@ yacl::math::MPInt SumOfPowers(const yacl::math::MPInt& base,
  * @param curve The elliptic curve group providing the field order.
  * @return yacl::math::MPInt Result modulo order.
  */
-yacl::math::MPInt ScalarExp(const yacl::math::MPInt& base,
-                            size_t exp,
-                            const std::shared_ptr<yacl::crypto::EcGroup>& curve);
+yacl::math::MPInt ScalarExp(
+    const yacl::math::MPInt& base, size_t exp,
+    const std::shared_ptr<yacl::crypto::EcGroup>& curve);
 
 /**
  * @brief Utility function to compute floor(log2(x)).
@@ -194,11 +200,13 @@ yacl::crypto::EcPoint MultiScalarMul(
     const std::vector<yacl::crypto::EcPoint>& points);
 
 // Helper to create a dummy EcPoint
-yacl::crypto::EcPoint CreateDummyPoint(const std::shared_ptr<yacl::crypto::EcGroup>& curve);
+yacl::crypto::EcPoint CreateDummyPoint(
+    const std::shared_ptr<yacl::crypto::EcGroup>& curve);
 
 // Helper to create a dummy MPInt scalar
-yacl::math::MPInt CreateDummyScalar(const std::shared_ptr<yacl::crypto::EcGroup>& curve);
+yacl::math::MPInt CreateDummyScalar(
+    const std::shared_ptr<yacl::crypto::EcGroup>& curve);
 
 size_t NextPowerOfTwo(size_t n);
 
-} // namespace examples::zkp
+}  // namespace examples::zkp

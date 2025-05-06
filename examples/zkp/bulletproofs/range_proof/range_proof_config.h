@@ -28,6 +28,4 @@ namespace examples::zkp {
 inline constexpr const char* kRangeProofEcName = "secp256k1";
 inline constexpr const char* kRangeProofEcLib = "openssl";
 
-
-
-}  // namespace examples::zkp 
+}  // namespace examples::zkp

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 load("@rules_cc//cc:defs.bzl", "cc_library")
+
 # Import yacl_cc_library
 load("@yacl//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
 
@@ -29,9 +30,8 @@ COMMON_COPTS = [
 yacl_cc_library(
     name = "range_proof_config",
     hdrs = ["range_proof_config.h"],
-    copts = COMMON_COPTS
+    copts = COMMON_COPTS,
 )
-
 
 yacl_cc_library(
     name = "range_proof",
@@ -44,7 +44,7 @@ yacl_cc_library(
         "//zkp/bulletproofs:util",
         "//zkp/bulletproofs/ipa:inner_product_proof",
         "@yacl//yacl/crypto:openssl_wrappers",
-        "@yacl//yacl/math/mpint:mpint",
+        "@yacl//yacl/math/mpint",
         "@yacl//yacl/math/mpint:mp_int_enforce",
     ],
 )
@@ -57,7 +57,7 @@ yacl_cc_test(
         ":range_proof",
         ":range_proof_config",
         "@yacl//yacl/crypto:openssl_wrappers",
-        "@yacl//yacl/math/mpint:mpint",
+        "@yacl//yacl/math/mpint",
         "@yacl//yacl/math/mpint:mp_int_enforce",
     ],
 )

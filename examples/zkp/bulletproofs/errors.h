@@ -14,11 +14,11 @@
 
 #pragma once
 
-#include <string>
-#include <vector>
-#include <stdexcept>
-#include <variant>
 #include <optional>
+#include <stdexcept>
+#include <string>
+#include <variant>
+#include <vector>
 
 namespace yacl::crypto::bulletproofs {
 
@@ -109,7 +109,7 @@ class MPCError : public std::runtime_error {
   };
 
   explicit MPCError(ErrorType type, const std::vector<size_t>& bad_shares = {})
-      : std::runtime_error(GetErrorMessage(type, bad_shares)), 
+      : std::runtime_error(GetErrorMessage(type, bad_shares)),
         type_(type),
         bad_shares_(bad_shares) {}
 
@@ -117,8 +117,8 @@ class MPCError : public std::runtime_error {
   const std::vector<size_t>& GetBadShares() const { return bad_shares_; }
 
  private:
-  static std::string GetErrorMessage(ErrorType type, 
-                                   const std::vector<size_t>& bad_shares) {
+  static std::string GetErrorMessage(ErrorType type,
+                                     const std::vector<size_t>& bad_shares) {
     switch (type) {
       case ErrorType::MaliciousDealer:
         return "Dealer gave a malicious challenge value.";
@@ -160,28 +160,22 @@ inline ProofError MPCErrorToProofError(const MPCError& e) {
     case MPCError::ErrorType::InvalidGeneratorsLength:
       return ProofError(ProofError::ErrorType::InvalidGeneratorsLength);
     default:
-      return ProofError(ProofError::ErrorType::ProvingError, 
-                       std::string(e.what()));
+      return ProofError(ProofError::ErrorType::ProvingError,
+                        std::string(e.what()));
   }
 }
 
 // Result type for operations that can fail
-template<typename T = void>
+template <typename T = void>
 class Result {
  public:
   // Construct a successful result
-  static Result<T> Ok(const T& value) {
-    return Result<T>(value);
-  }
+  static Result<T> Ok(const T& value) { return Result<T>(value); }
 
-  static Result<T> Ok(T&& value) {
-    return Result<T>(std::move(value));
-  }
+  static Result<T> Ok(T&& value) { return Result<T>(std::move(value)); }
 
   // Construct an error result
-  static Result<T> Err(const ProofError& error) {
-    return Result<T>(error);
-  }
+  static Result<T> Err(const ProofError& error) { return Result<T>(error); }
 
   // Check if result is successful
   bool IsOk() const { return !error_.has_value(); }
@@ -219,12 +213,10 @@ class Result {
 };
 
 // Specialization for void
-template<>
+template <>
 class Result<void> {
  public:
-  static Result<void> Ok() {
-    return Result<void>();
-  }
+  static Result<void> Ok() { return Result<void>(); }
 
   static Result<void> Err(const ProofError& error) {
     return Result<void>(error);
@@ -246,4 +238,4 @@ class Result<void> {
   std::optional<ProofError> error_;
 };
 
-} // namespace yacl::crypto::bulletproofs 
+}  // namespace yacl::crypto::bulletproofs

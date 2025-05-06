@@ -20,11 +20,12 @@
 #include <string>
 #include <string_view>
 #include <vector>
+
 #include "yacl/base/exception.h"
 #include "yacl/crypto/ecc/ec_point.h"
+#include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/crypto/hash/hash_utils.h"
 #include "yacl/math/mpint/mp_int.h"
-#include "yacl/crypto/ecc/ecc_spi.h"
 
 namespace examples::zkp {
 
@@ -37,7 +38,7 @@ enum class TranscriptError {
 
 /**
  * @brief A simple transcript for zero-knowledge proof protocols
- * 
+ *
  * This class provides functionality similar to Merlin transcripts used in
  * the Bulletproofs paper, but simplified to use YACL cryptographic primitives.
  */
@@ -45,14 +46,14 @@ class SimpleTranscript {
  public:
   /**
    * @brief Construct a new SimpleTranscript with an optional initial message
-   * 
+   *
    * @param label Optional label to initialize the transcript
    */
   explicit SimpleTranscript(std::string_view label = "");
 
   /**
    * @brief Append a domain separator for an n-bit, m-party range proof
-   * 
+   *
    * @param n The number of bits in the range proof
    * @param m The number of parties
    */
@@ -60,7 +61,7 @@ class SimpleTranscript {
 
   /**
    * @brief Append a domain separator for a length-n inner product proof
-   * 
+   *
    * @param n The length of the inner product
    */
   void InnerproductDomainSep(uint64_t n);
@@ -82,7 +83,7 @@ class SimpleTranscript {
 
   /**
    * @brief Append a scalar with the given label
-   * 
+   *
    * @param label The label for the scalar
    * @param scalar The scalar value to append
    */
@@ -90,41 +91,42 @@ class SimpleTranscript {
 
   /**
    * @brief Append a point with the given label
-   * 
+   *
    * @param label The label for the point
    * @param point The elliptic curve point to append
    * @param curve The elliptic curve group (needed for serialization)
    */
-  void AppendPoint(std::string_view label, 
-                  const yacl::crypto::EcPoint& point,
-                  const std::shared_ptr<yacl::crypto::EcGroup>& curve);
+  void AppendPoint(std::string_view label, const yacl::crypto::EcPoint& point,
+                   const std::shared_ptr<yacl::crypto::EcGroup>& curve);
 
   /**
-   * @brief Check that a point is not the identity, then append it to the transcript
-   * 
+   * @brief Check that a point is not the identity, then append it to the
+   * transcript
+   *
    * @param label The label for the point
    * @param point The elliptic curve point to validate and append
    * @param curve The elliptic curve group
    * @return true if the point was valid and appended
    * @throw yacl::Exception if the point is the identity
    */
-  void ValidateAndAppendPoint(std::string_view label,
-                             const yacl::crypto::EcPoint& point,
-                             const std::shared_ptr<yacl::crypto::EcGroup>& curve);
+  void ValidateAndAppendPoint(
+      std::string_view label, const yacl::crypto::EcPoint& point,
+      const std::shared_ptr<yacl::crypto::EcGroup>& curve);
 
   /**
    * @brief Compute a labeled challenge scalar
-   * 
+   *
    * @param label The label for the challenge
    * @param curve The elliptic curve group (to get the order)
    * @return A scalar challenge derived from the transcript state
    */
-  yacl::math::MPInt ChallengeScalar(std::string_view label,
-                                  const std::shared_ptr<yacl::crypto::EcGroup>& curve);
+  yacl::math::MPInt ChallengeScalar(
+      std::string_view label,
+      const std::shared_ptr<yacl::crypto::EcGroup>& curve);
 
   /**
    * @brief Append a message to the transcript
-   * 
+   *
    * @param label The label for the message
    * @param message The message data
    */
@@ -132,7 +134,7 @@ class SimpleTranscript {
 
   /**
    * @brief Append a uint64_t value to the transcript
-   * 
+   *
    * @param label The label for the value
    * @param value The value to append
    */
@@ -140,7 +142,7 @@ class SimpleTranscript {
 
   /**
    * @brief Get challenge bytes from the transcript
-   * 
+   *
    * @param label The label for the challenge
    * @param dest Buffer to receive the challenge bytes
    * @param length Length of the buffer
@@ -155,4 +157,4 @@ class SimpleTranscript {
   void UpdateState(const std::vector<uint8_t>& data);
 };
 
-} // namespace examples::zkp
+}  // namespace examples::zkp

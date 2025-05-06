@@ -29,7 +29,7 @@ COMMON_COPTS = [
 yacl_cc_library(
     name = "ipa_config",
     hdrs = ["ipa_config.h"],
-    copts = COMMON_COPTS
+    copts = COMMON_COPTS,
 )
 
 yacl_cc_library(
@@ -38,17 +38,17 @@ yacl_cc_library(
     hdrs = ["inner_product_proof.h"],
     copts = COMMON_COPTS,
     deps = [
-        "//zkp/bulletproofs:simple_transcript",
-        "//zkp/bulletproofs:generators",
         ":ipa_config",
+        "//zkp/bulletproofs:generators",
+        "//zkp/bulletproofs:simple_transcript",
         "//zkp/bulletproofs:util",
         "@yacl//yacl/base:byte_container_view",
         "@yacl//yacl/base:exception",
-        "@yacl//yacl/crypto/ecc:ecc",
+        "@yacl//yacl/crypto/ecc",
         "@yacl//yacl/crypto/ecc:ec_point",
-        "@yacl//yacl/crypto/hash:hash_utils",
         "@yacl//yacl/crypto/hash:hash_interface",
-        "@yacl//yacl/math/mpint:mpint",
+        "@yacl//yacl/crypto/hash:hash_utils",
+        "@yacl//yacl/math/mpint",
     ],
 )
 
@@ -57,8 +57,8 @@ yacl_cc_test(
     srcs = ["inner_product_proof_test.cc"],
     copts = COMMON_COPTS,
     deps = [
-        "//zkp/bulletproofs/ipa:inner_product_proof",
         ":ipa_config",
+        "//zkp/bulletproofs/ipa:inner_product_proof",
         "@yacl//yacl/base:byte_container_view",
         "@yacl//yacl/base:exception",
         "@yacl//yacl/crypto:openssl_wrappers",
@@ -70,9 +70,3 @@ yacl_cc_test(
         "@yacl//yacl/utils:scope_guard",
     ],
 )
-
-
-
-
-
-

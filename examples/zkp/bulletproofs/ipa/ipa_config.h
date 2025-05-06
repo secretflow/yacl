@@ -20,5 +20,4 @@ namespace examples::zkp {
 inline constexpr const char* kIpaEcName = "secp256k1";
 inline constexpr const char* kIpaEcLib = "openssl";
 
-
 }  // namespace examples::zkp

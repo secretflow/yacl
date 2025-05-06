@@ -35,10 +35,10 @@ yacl_cc_library(
         "@yacl//yacl/base:buffer",
         "@yacl//yacl/base:byte_container_view",
         "@yacl//yacl/base:exception",
-        "@yacl//yacl/crypto/hash:hash_utils",
-        "@yacl//yacl/crypto/ecc:ecc",
+        "@yacl//yacl/crypto/ecc",
         "@yacl//yacl/crypto/ecc:ec_point",
-        "@yacl//yacl/math/mpint:mpint",
+        "@yacl//yacl/crypto/hash:hash_utils",
+        "@yacl//yacl/math/mpint",
     ],
 )
 
@@ -48,20 +48,20 @@ yacl_cc_library(
     hdrs = ["generators.h"],
     copts = COMMON_COPTS,
     deps = [
-        "//zkp/sigma:pedersen_commit",
         ":util",
+        "//zkp/sigma:pedersen_commit",
         "@yacl//yacl/base:exception",
-        "@yacl//yacl/crypto/ecc:ecc",
+        "@yacl//yacl/crypto/ecc",
         "@yacl//yacl/crypto/ecc:ec_point",
-        "@yacl//yacl/math/mpint:mpint",
         "@yacl//yacl/crypto/hash:hash_utils",
+        "@yacl//yacl/math/mpint",
     ],
 )
 
 yacl_cc_library(
     name = "bp_config",
     hdrs = ["bp_config.h"],
-    copts = COMMON_COPTS
+    copts = COMMON_COPTS,
 )
 
 yacl_cc_test(
@@ -69,13 +69,13 @@ yacl_cc_test(
     srcs = ["generators_test.cc"],
     copts = COMMON_COPTS,
     deps = [
-        ":generators",
         ":bp_config",
+        ":generators",
         "@yacl//yacl/base:exception",
-        "@yacl//yacl/crypto/ecc:ecc",
+        "@yacl//yacl/crypto/ecc",
         "@yacl//yacl/crypto/ecc:ec_point",
-        "@yacl//yacl/math/mpint:mpint",
         "@yacl//yacl/crypto/hash:hash_utils",
+        "@yacl//yacl/math/mpint",
     ],
 )
 
@@ -84,19 +84,18 @@ yacl_cc_test(
     srcs = ["simple_transcript_test.cc"],
     copts = COMMON_COPTS,
     deps = [
-        ":simple_transcript",
         ":bp_config",
+        ":simple_transcript",
         "@yacl//yacl/base:exception",
-        "@yacl//yacl/crypto/hash:hash_utils",
         "@yacl//yacl/crypto:openssl_wrappers",
         "@yacl//yacl/crypto/ecc",
+        "@yacl//yacl/crypto/hash:hash_utils",
         "@yacl//yacl/crypto/rand",
         "@yacl//yacl/crypto/tools:ro",
         "@yacl//yacl/math/mpint",
         "@yacl//yacl/math/mpint:mp_int_enforce",
         "@yacl//yacl/utils:scope_guard",
     ],
-
 )
 
 yacl_cc_test(
@@ -104,18 +103,15 @@ yacl_cc_test(
     srcs = ["util_test.cc"],
     copts = COMMON_COPTS,
     deps = [
-        ":util",
         ":bp_config",
+        ":util",
         "@yacl//yacl/base:exception",
-        "@yacl//yacl/crypto/ecc:ecc",
+        "@yacl//yacl/crypto/ecc",
         "@yacl//yacl/crypto/ecc:ec_point",
         "@yacl//yacl/crypto/hash:hash_utils",
-        "@yacl//yacl/math/mpint:mpint",
-        "@yacl//yacl/math/mpint:mp_int_enforce"
-        ],
-
-    
-
+        "@yacl//yacl/math/mpint",
+        "@yacl//yacl/math/mpint:mp_int_enforce",
+    ],
 )
 
 yacl_cc_library(
@@ -125,17 +121,10 @@ yacl_cc_library(
     copts = COMMON_COPTS,
     deps = [
         "@yacl//yacl/base:exception",
-        "@yacl//yacl/crypto/ecc:ecc",
+        "@yacl//yacl/crypto/ecc",
         "@yacl//yacl/crypto/ecc:ec_point",
         "@yacl//yacl/crypto/hash:hash_utils",
-        "@yacl//yacl/math/mpint:mpint",
+        "@yacl//yacl/math/mpint",
         "@yacl//yacl/math/mpint:mp_int_enforce",
     ],
 )
-
-
-
-
-
-
-
