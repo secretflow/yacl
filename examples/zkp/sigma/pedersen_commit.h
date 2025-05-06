@@ -87,9 +87,7 @@ class PedersenCommit {
     return ctx;
   }
 
-  const std::shared_ptr<EcGroup> GetGroup() const {
-    return group_ref_;
-  }
+  const std::shared_ptr<EcGroup> GetGroup() const { return group_ref_; }
 
  private:
   const std::shared_ptr<EcGroup> group_ref_;
