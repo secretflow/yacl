@@ -126,7 +126,7 @@ class InnerProductProofTest : public ::testing::Test {
     InnerProductProof proof;
     ASSERT_NO_THROW({
       proof = InnerProductProof::Create(
-          &prover_transcript, curve_, Q, ipp_G_factors,
+          prover_transcript, curve_, Q, ipp_G_factors,
           ipp_H_factors,  // Pass factors
           G_vec, H_vec,   // Pass original G, H bases
           a_vec, b_vec);  // Pass witnesses
@@ -136,7 +136,7 @@ class InnerProductProofTest : public ::testing::Test {
     SimpleTranscript verifier_transcript(transcript_label);
     bool result = false;
     ASSERT_NO_THROW({
-      result = proof.Verify(&verifier_transcript, curve_, ipp_G_factors,
+      result = proof.Verify(verifier_transcript, curve_, ipp_G_factors,
                             ipp_H_factors,  // Verifier needs factors too
                             P, Q, G_vec,
                             H_vec);  // Verifier uses original G, H bases
@@ -157,7 +157,7 @@ class InnerProductProofTest : public ::testing::Test {
     SimpleTranscript verifier_transcript2(transcript_label);
     bool result2 = false;
     ASSERT_NO_THROW({
-      result2 = deserialized_proof.Verify(&verifier_transcript2, curve_,
+      result2 = deserialized_proof.Verify(verifier_transcript2, curve_,
                                           ipp_G_factors, ipp_H_factors, P, Q,
                                           G_vec, H_vec);
     });

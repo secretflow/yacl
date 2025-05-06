@@ -25,7 +25,7 @@
 namespace examples::zkp {
 
 InnerProductProof InnerProductProof::Create(
-    SimpleTranscript* transcript,
+    SimpleTranscript& transcript,
     const std::shared_ptr<yacl::crypto::EcGroup>& curve,
     const yacl::crypto::EcPoint& Q,
     const std::vector<yacl::math::MPInt>& G_factors,  // Added G_factors
@@ -123,9 +123,9 @@ InnerProductProof InnerProductProof::Create(
 
     // Get challenge x
     // TODO: Check if AppendPoint needs compressed format
-    transcript->AppendPoint("L", L, curve);
-    transcript->AppendPoint("R", R, curve);
-    yacl::math::MPInt x = transcript->ChallengeScalar("u", curve);  //
+    transcript.AppendPoint("L", L, curve);
+    transcript.AppendPoint("R", R, curve);
+    yacl::math::MPInt x = transcript.ChallengeScalar("u", curve);  //
     yacl::math::MPInt x_inv = x.InvertMod(order);
 
     // Update vectors for next round (modify originals in the range [lo, mid))
@@ -180,7 +180,7 @@ std::tuple<std::vector<yacl::math::MPInt>, std::vector<yacl::math::MPInt>,
            std::vector<yacl::math::MPInt>>
 InnerProductProof::VerificationScalars(
     size_t n,  // The original vector length (vector size = n)
-    SimpleTranscript* transcript,
+    SimpleTranscript& transcript,
     const std::shared_ptr<yacl::crypto::EcGroup>& curve) const {
   size_t lg_n = L_vec_.size();  // Number of rounds = log2(n)
 
@@ -196,7 +196,7 @@ InnerProductProof::VerificationScalars(
                                                         // and matches lg_n
   YACL_ENFORCE(R_vec_.size() == lg_n, "L_vec and R_vec size mismatch");
 
-  transcript->InnerproductDomainSep(n);
+  transcript.InnerproductDomainSep(n);
 
   // --- 1. Recompute challenges u_i from transcript ---
   std::vector<yacl::math::MPInt> challenges(lg_n);
@@ -207,10 +207,10 @@ InnerProductProof::VerificationScalars(
 #endif
   for (size_t i = 0; i < lg_n; ++i) {
     // Append points in the same order as prover
-    transcript->AppendPoint("L", L_vec_[i], curve);
-    transcript->AppendPoint("R", R_vec_[i], curve);
+    transcript.AppendPoint("L", L_vec_[i], curve);
+    transcript.AppendPoint("R", R_vec_[i], curve);
     // Recompute challenge for this round
-    challenges[i] = transcript->ChallengeScalar("u", curve);
+    challenges[i] = transcript.ChallengeScalar("u", curve);
     challenges_inv[i] =
         challenges[i].InvertMod(curve->GetOrder());  // Compute inverse now
 #if DEBUG_IPP
@@ -278,7 +278,7 @@ InnerProductProof::VerificationScalars(
 }
 
 bool InnerProductProof::Verify(
-    SimpleTranscript* transcript,
+    SimpleTranscript& transcript,
     const std::shared_ptr<yacl::crypto::EcGroup>& curve,
     const std::vector<yacl::math::MPInt>& G_factors,
     const std::vector<yacl::math::MPInt>& H_factors,
@@ -298,9 +298,9 @@ bool InnerProductProof::Verify(
     std::vector<yacl::math::MPInt> challenges;
     challenges.reserve(lg_n);
     for (size_t i = 0; i < lg_n; ++i) {
-      transcript->AppendPoint("L", L_vec_[i], curve);
-      transcript->AppendPoint("R", R_vec_[i], curve);
-      challenges.push_back(transcript->ChallengeScalar("u", curve));
+      transcript.AppendPoint("L", L_vec_[i], curve);
+      transcript.AppendPoint("R", R_vec_[i], curve);
+      challenges.push_back(transcript.ChallengeScalar("u", curve));
     }
 
     auto inv_challenges = challenges;

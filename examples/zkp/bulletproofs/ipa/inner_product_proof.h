@@ -76,7 +76,7 @@ class InnerProductProof {
    * @return InnerProductProof The generated proof
    */
   static InnerProductProof Create(
-      SimpleTranscript* transcript,
+      SimpleTranscript& transcript,
       const std::shared_ptr<yacl::crypto::EcGroup>& curve,
       const yacl::crypto::EcPoint& Q,
       const std::vector<yacl::math::MPInt>& G_factors,
@@ -98,7 +98,7 @@ class InnerProductProof {
   std::tuple<std::vector<yacl::math::MPInt>, std::vector<yacl::math::MPInt>,
              std::vector<yacl::math::MPInt>>
   VerificationScalars(
-      size_t n, SimpleTranscript* transcript,
+      size_t n, SimpleTranscript& transcript,
       const std::shared_ptr<yacl::crypto::EcGroup>& curve) const;
 
   /**
@@ -115,7 +115,7 @@ class InnerProductProof {
    * @param H Vector of H points
    * @return true if the proof verifies, false otherwise
    */
-  bool Verify(SimpleTranscript* transcript,
+  bool Verify(SimpleTranscript& transcript,
               const std::shared_ptr<yacl::crypto::EcGroup>& curve,
               const std::vector<yacl::math::MPInt>& G_factors,
               const std::vector<yacl::math::MPInt>& H_factors,

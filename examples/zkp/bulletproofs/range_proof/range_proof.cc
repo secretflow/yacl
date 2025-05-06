@@ -238,7 +238,7 @@ RangeProof RangeProof::GenerateProof(
   // 13. Create Inner Product Proof
   // Note: Pass G_vec, H_vec directly (size n already)
   InnerProductProof ipp_proof =
-      InnerProductProof::Create(&transcript, curve, Q,
+      InnerProductProof::Create(transcript, curve, Q,
                                 ipp_G_factors,  // Factors for G
                                 ipp_H_factors,  // Factors for H
                                 G_vec, H_vec,  // The generators derived earlier
@@ -375,7 +375,7 @@ bool RangeProof::Verify(SimpleTranscript& transcript,
   // Verify IPP (ipp_proof_ is the member variable)
   // The C++ IPP Verify function needs the transcript to derive IPP challenges
   // and check the final equation.
-  bool ipp_result = ipp_proof_.Verify(&transcript, curve, ipp_G_factors,
+  bool ipp_result = ipp_proof_.Verify(transcript, curve, ipp_G_factors,
                                       ipp_H_factors, P_plus_tx_Q, Q, G_vec,
                                       H_vec);  // IPP uses the same G/H vectors
 
