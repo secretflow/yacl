@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "zkp/sigma/pedersen_commit.h"
+#include "zkp/pedersen_commit.h"
 
 #include "gtest/gtest.h"
 

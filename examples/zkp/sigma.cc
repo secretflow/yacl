@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "zkp/sigma/sigma.h"
+#include "zkp/sigma.h"
 
 #include "yacl/crypto/tools/ro.h"
 #include "yacl/utils/parallel.h"

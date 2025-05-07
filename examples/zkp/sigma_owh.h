@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "zkp/sigma/sigma_config.h"
+#include "zkp/sigma_config.h"
 
 #include "yacl/crypto/ecc/group_sketch.h"
 #include "yacl/crypto/rand/rand.h"

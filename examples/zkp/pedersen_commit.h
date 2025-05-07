@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "zkp/sigma/sigma_owh.h"
+#include "zkp/sigma_owh.h"
 
 #include "yacl/crypto/hash/hash_utils.h"
 
@@ -86,8 +86,6 @@ class PedersenCommit {
     static PedersenCommit ctx(group);
     return ctx;
   }
-
-  const std::shared_ptr<EcGroup> GetGroup() const { return group_ref_; }
 
  private:
   const std::shared_ptr<EcGroup> group_ref_;

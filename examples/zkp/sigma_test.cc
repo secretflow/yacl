@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/experimental/zkp/sigma/sigma.h"
+#include "zkp/sigma.h"
 
 #include "gtest/gtest.h"
 
