@@ -156,7 +156,7 @@ InnerProductProof::VerificationScalars(
     const std::shared_ptr<yacl::crypto::EcGroup>& curve) const {
   size_t lg_n = L_vec_.size();  // Number of rounds = log2(n)
 
-#if DEBUG_IPP
+#if SPDLOG_INFO
   std::cout << "\n--- InnerProductProof::VerificationScalars Start (n=" << n
             << ", lg_n=" << lg_n << ") ---" << std::endl;
 #endif
@@ -174,7 +174,7 @@ InnerProductProof::VerificationScalars(
   std::vector<yacl::math::MPInt> challenges(lg_n);
   std::vector<yacl::math::MPInt> challenges_inv(lg_n);  // Store inverses too
 
-#if DEBUG_IPP
+#if SPDLOG_INFO
   std::cout << "Recomputing challenges..." << std::endl;
 #endif
   for (size_t i = 0; i < lg_n; ++i) {
@@ -185,7 +185,7 @@ InnerProductProof::VerificationScalars(
     challenges[i] = transcript.ChallengeScalar("u", curve);
     challenges_inv[i] =
         challenges[i].InvertMod(curve->GetOrder());  // Compute inverse now
-#if DEBUG_IPP
+#if SPDLOG_INFO
     std::cout << "  u_" << (i + 1) << " = " << challenges[i] << ", u_inv_"
               << (i + 1) << " = " << challenges_inv[i] << std::endl;
 #endif
@@ -209,7 +209,7 @@ InnerProductProof::VerificationScalars(
   }
   s[0] = s_0;
 
-#if DEBUG_IPP
+#if SPDLOG_INFO
   std::cout << "Computing s vector (size " << n << ")..." << std::endl;
   std::cout << "  s[0] = " << s[0] << std::endl;
 #endif
@@ -234,14 +234,14 @@ InnerProductProof::VerificationScalars(
     // Calculate s[i] = s[prev_i] * u_sq_for_level
     s.at(i) = s.at(prev_i).MulMod(u_sq_for_level, curve->GetOrder());
 
-#if DEBUG_IPP >= 2  // Only print s vector for higher debug levels
+#if SPDLOG_INFO >= 2  // Only print s vector for higher debug levels
     // Correct the debug print to show the challenge index used
     std::cout << "  s[" << i << "] = s[" << prev_i << "] * challenges_sq["
               << challenge_idx << "] = " << s[i] << std::endl;
 #endif
   }
 
-#if DEBUG_IPP
+#if SPDLOG_INFO
   std::cout << "--- InnerProductProof::VerificationScalars End ---"
             << std::endl;
 #endif
