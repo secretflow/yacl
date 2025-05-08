@@ -21,6 +21,7 @@
 #include <stdexcept>
 
 #include "yacl/crypto/experimental/zkp/bulletproofs/util.h"  // For exponentiation helpers
+#include "yacl/crypto/experimental/zkp/bulletproofs/errors.h"
 
 namespace examples::zkp {
 
@@ -349,8 +350,8 @@ bool InnerProductProof::Verify(
       std::cout << "P mismatch" << std::endl;
       return false;
     }
-  } catch (const std::exception& e) {
-    std::cout << "Error: " << e.what() << std::endl;
+  } catch (const ProofError& e) {
+    std::cout << "Caught ProofError (Type " << static_cast<int>(e.GetType()) << "): " << e.what() << std::endl;
     return false;
   }
 }
