@@ -356,11 +356,6 @@ bool InnerProductProof::Verify(
   }
 }
 
-size_t InnerProductProof::SerializedSize() const {
-  size_t point_size = 32;  // Typical compressed EC point size
-  return (L_vec_.size() * 2 + 2) * point_size;
-}
-
 yacl::Buffer InnerProductProof::ToBytes(
     const std::shared_ptr<yacl::crypto::EcGroup>& curve) const {
   yacl::Buffer bytes;

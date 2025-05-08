@@ -46,6 +46,7 @@ yacl_cc_test(
     srcs = ["inner_product_proof_test.cc"],
     deps = [
         ":ipa_config",
+        "//yacl/crypto/experimental/zkp/bulletproofs:generators",
         "//yacl/crypto/experimental/zkp/bulletproofs/ipa:inner_product_proof",
         "@yacl//yacl/base:byte_container_view",
         "@yacl//yacl/base:exception",

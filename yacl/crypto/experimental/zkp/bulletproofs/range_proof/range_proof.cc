@@ -245,7 +245,7 @@ RangeProof RangeProof::GenerateProof(
                     ipp_proof);
 }
 
-// --- Verify (Mirrors Rust) ---
+// --- Verify---
 bool RangeProof::Verify(SimpleTranscript& transcript,
                         const std::shared_ptr<yacl::crypto::EcGroup>& curve,
                         size_t n) const {
@@ -304,7 +304,7 @@ bool RangeProof::Verify(SimpleTranscript& transcript,
   // 4. IPP Verification
   // Calculate P_final = A + x*S -z*G_sum + <h_prime_scalars, H_prime_vec> +
   // (w*t_x - e_blinding)*B_blinding where H'_i = H_i * y^-i and
-  // h_prime_scalar_i = z + zz * 2^i
+  // h_prime_scalar_i = z + zz * (2*y_inv)^i
 
   // Recompute P + t(x)Q = P + t(x)w B_blinding
 
@@ -324,17 +324,6 @@ bool RangeProof::Verify(SimpleTranscript& transcript,
   for (size_t i = 0; i < n; ++i) {
     h_scalars.emplace_back(z.AddMod(zz.MulMod(exp_two_over_y[i], order), order));
   }
-
-  /**
-  let P_plus_tx_Q = &self.A
-          + &ristretto::vartime::multiscalar_mult(
-              [w * self.t_x - self.e_blinding, x, -z]
-                  .iter()
-                  .cloned()
-                  .chain(H_scalars),
-              [B_blinding, self.S, G_sum].iter().chain(H.iter()),
-          );
-   */
 
   std::vector<yacl::math::MPInt> msm_scalars;
   std::vector<yacl::crypto::EcPoint> msm_points;
@@ -364,7 +353,6 @@ bool RangeProof::Verify(SimpleTranscript& transcript,
   yacl::crypto::EcPoint Q = curve->Mul(B_blinding, w);
 
   // IPP Factors
-  std::vector<yacl::math::MPInt> ipp_G_factors(n, one);
   std::vector<yacl::math::MPInt> ipp_H_factors =
       ExpIterVector(y_inv, n, curve);  // H factors are y^-i
 

@@ -26,37 +26,9 @@
 #include "yacl/crypto/experimental/zkp/bulletproofs/simple_transcript.h"  // For SimpleTranscript
 #include "yacl/crypto/experimental/zkp/bulletproofs/util.h"  // For helpers
 #include "yacl/crypto/rand/rand.h"  // For random scalars/points
-
+#include "yacl/crypto/experimental/zkp/bulletproofs/generators.h"
 namespace examples::zkp {
 namespace {
-
-// Helper to create generators based on hashing base points (matches
-// range_proof.rs)
-std::vector<yacl::crypto::EcPoint> MakeGeneratorsFromHashedBase(
-    const std::string& base_seed, size_t n,
-    const std::shared_ptr<yacl::crypto::EcGroup>& curve) {
-  yacl::crypto::EcPoint base_point = curve->HashToCurve(
-      yacl::crypto::HashToCurveStrategy::Autonomous, base_seed);
-
-  std::vector<yacl::crypto::EcPoint> generators(n);
-  if (n == 0) return generators;
-
-  // Seed for first generator: hash of base_point's compressed bytes
-  yacl::Buffer base_bytes = curve->SerializePoint(base_point);  // Compressed
-  generators[0] =
-      curve->HashToCurve(yacl::crypto::HashToCurveStrategy::Autonomous,
-                         yacl::ByteContainerView(base_bytes));
-
-  // Generate subsequent points by hashing previous one's compressed bytes
-  for (size_t i = 1; i < n; ++i) {
-    yacl::Buffer prev_bytes =
-        curve->SerializePoint(generators[i - 1]);  // Compressed
-    generators[i] =
-        curve->HashToCurve(yacl::crypto::HashToCurveStrategy::Autonomous,
-                           yacl::ByteContainerView(prev_bytes));
-  }
-  return generators;
-}
 
 class InnerProductProofTest : public ::testing::Test {
  protected:
@@ -72,9 +44,11 @@ class InnerProductProofTest : public ::testing::Test {
     auto transcript_label = "innerproducttest";
     yacl::math::MPInt one(1);
 
-    // Generators G, H derived like in range_proof.rs
-    auto G_vec = MakeGeneratorsFromHashedBase("hello", n, curve_);
-    auto H_vec = MakeGeneratorsFromHashedBase("there", n, curve_);
+    // Generators G, H 
+    BulletproofGens gens(curve_, n, 1);
+    BulletproofGensShare bgs = gens.Share(0);
+    auto G_vec = bgs.G(n);
+    auto H_vec = bgs.H(n);
 
     // Random Q point
     yacl::crypto::EcPoint Q = curve_->HashToCurve(
@@ -118,8 +92,7 @@ class InnerProductProofTest : public ::testing::Test {
 
     // 2. Prover: Create proof
     SimpleTranscript prover_transcript(transcript_label);
-    // Factors for IPP Create: G=1, H=y^-i
-    std::vector<yacl::math::MPInt> ipp_G_factors(n, one);
+    // Factors for IPP Create: H=y^-i
     std::vector<yacl::math::MPInt> ipp_H_factors =
         y_inv_pows;  // H factors are y^-i
 

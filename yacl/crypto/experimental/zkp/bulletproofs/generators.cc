@@ -24,7 +24,7 @@ namespace examples::zkp {
 GeneratorsChain::GeneratorsChain(std::shared_ptr<yacl::crypto::EcGroup> curve,
                                  const std::string& label)
     : curve_(std::move(curve)) {
-  // Create a Sha256 context
+  // Create a Shake256 context
   std::string domain_sep = "GeneratorsChain";
 
   // Initialize with domain separator and label
@@ -33,7 +33,7 @@ GeneratorsChain::GeneratorsChain(std::shared_ptr<yacl::crypto::EcGroup> curve,
   init_input.insert(init_input.end(), label.begin(), label.end());
 
   // Initialize state with hash of input
-  state_ = yacl::crypto::Sha256(
+  state_ = yacl::crypto::Shake256(
       yacl::ByteContainerView(init_input.data(), init_input.size()));
 }
 
@@ -55,7 +55,7 @@ yacl::crypto::EcPoint GeneratorsChain::Next() {
 
   // Get 64 bytes of output to use for the point generation
   auto uniform_bytes =
-      yacl::crypto::Sha256(yacl::ByteContainerView(seed.data(), seed.size()));
+      yacl::crypto::Shake256(yacl::ByteContainerView(seed.data(), seed.size()));
 
   // Convert to a point on the curve
   return curve_->HashToCurve(yacl::crypto::HashToCurveStrategy::Autonomous,
