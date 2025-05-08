@@ -236,7 +236,6 @@ RangeProof RangeProof::GenerateProof(
   // Note: Pass G_vec, H_vec directly (size n already)
   InnerProductProof ipp_proof =
       InnerProductProof::Create(transcript, curve, Q,
-                                ipp_G_factors,  // Factors for G
                                 ipp_H_factors,  // Factors for H
                                 G_vec, H_vec,  // The generators derived earlier
                                 ipp_a_vec, ipp_b_vec);

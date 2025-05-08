@@ -74,7 +74,6 @@ class InnerProductProof {
       SimpleTranscript& transcript,
       const std::shared_ptr<yacl::crypto::EcGroup>& curve,
       const yacl::crypto::EcPoint& Q,
-      const std::vector<yacl::math::MPInt>& G_factors,
       const std::vector<yacl::math::MPInt>& H_factors,
       std::vector<yacl::crypto::EcPoint> G_vec,
       std::vector<yacl::crypto::EcPoint> H_vec,

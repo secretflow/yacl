@@ -28,7 +28,6 @@ InnerProductProof InnerProductProof::Create(
     SimpleTranscript& transcript,
     const std::shared_ptr<yacl::crypto::EcGroup>& curve,
     const yacl::crypto::EcPoint& Q,
-    const std::vector<yacl::math::MPInt>& G_factors,  // Added G_factors
     const std::vector<yacl::math::MPInt>& H_factors,
     std::vector<yacl::crypto::EcPoint> G_vec,  // Pass by value
     std::vector<yacl::crypto::EcPoint> H_vec,  // Pass by value
@@ -41,7 +40,7 @@ InnerProductProof InnerProductProof::Create(
   // Validation
   YACL_ENFORCE(n > 0 && (n & (n - 1)) == 0, "n must be a power of 2 and > 0");
   YACL_ENFORCE(H_vec.size() == n && a_vec.size() == n && b_vec.size() == n &&
-                   G_factors.size() == n && H_factors.size() == n,
+               H_factors.size() == n,
                "Vector size mismatch");
 
   // Apply H_factors to H_vec initially - Modify H_vec in place
@@ -74,12 +73,6 @@ InnerProductProof InnerProductProof::Create(
     std::vector<yacl::crypto::EcPoint> H_L(H_vec.begin(), H_vec.begin() + n);
     std::vector<yacl::crypto::EcPoint> H_R(H_vec.begin() + n,
                                            H_vec.begin() + 2 * n);
-    // Factors (read only from original vector)
-    std::vector<yacl::math::MPInt> G_fact_L(G_factors.begin(),
-                                            G_factors.begin() + n);
-    std::vector<yacl::math::MPInt> G_fact_R(G_factors.begin() + n,
-                                            G_factors.begin() + 2 * n);
-    // H factors already applied to H_vec
 
     // Compute c_L and c_R
     yacl::math::MPInt c_L = InnerProduct(a_L, b_R, curve);
@@ -103,7 +96,7 @@ InnerProductProof InnerProductProof::Create(
     yacl::crypto::EcPoint L = MultiScalarMul(curve, L_scalars, L_points);
     L_vec_out.emplace_back(L);
 
-    // Compute R = <a_R, G_L * G_fact_L> + <b_L, H_R> + c_R * Q
+    // Compute R = <a_R, G_L> + <b_L, H_R> + c_R * Q
     std::vector<yacl::math::MPInt> R_scalars;
     R_scalars.reserve(n + n + 1);
     std::vector<yacl::crypto::EcPoint> R_points;
@@ -136,7 +129,7 @@ InnerProductProof InnerProductProof::Create(
       // b = b_L * x_inv + b_R * x
       b_L[i] =
           b_L[i].MulMod(x_inv, order).AddMod(b_R[i].MulMod(x, order), order);
-      // G = G_L * (x_inv * G_fact_L) + G_R * (x * G_fact_R) <- Careful with
+      // G = G_L * x_inv + G_R * x <- Careful with
       // factors G_new = G_L*x_inv + G_R*x (This matches  if factors are 1)
       // Let's compute the updated points without factors here, assuming factors
       // are applied outside/in verify

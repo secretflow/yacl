@@ -126,7 +126,7 @@ class InnerProductProofTest : public ::testing::Test {
     InnerProductProof proof;
     ASSERT_NO_THROW({
       proof =
-          InnerProductProof::Create(prover_transcript, curve_, Q, ipp_G_factors,
+          InnerProductProof::Create(prover_transcript, curve_, Q,
                                     ipp_H_factors,  // Pass factors
                                     G_vec, H_vec,   // Pass original G, H bases
                                     a_vec, b_vec);  // Pass witnesses
