@@ -20,8 +20,8 @@
 #include <cstring>
 #include <stdexcept>
 
-#include "yacl/crypto/experimental/zkp/bulletproofs/util.h"  // For exponentiation helpers
 #include "yacl/crypto/experimental/zkp/bulletproofs/errors.h"
+#include "yacl/crypto/experimental/zkp/bulletproofs/util.h"  // For exponentiation helpers
 
 namespace examples::zkp {
 
@@ -41,7 +41,7 @@ InnerProductProof InnerProductProof::Create(
   // Validation
   YACL_ENFORCE(n > 0 && (n & (n - 1)) == 0, "n must be a power of 2 and > 0");
   YACL_ENFORCE(H_vec.size() == n && a_vec.size() == n && b_vec.size() == n &&
-               H_factors.size() == n,
+                   H_factors.size() == n,
                "Vector size mismatch");
 
   // Apply H_factors to H_vec initially - Modify H_vec in place
@@ -351,7 +351,8 @@ bool InnerProductProof::Verify(
       return false;
     }
   } catch (const ProofError& e) {
-    std::cout << "Caught ProofError (Type " << static_cast<int>(e.GetType()) << "): " << e.what() << std::endl;
+    std::cout << "Caught ProofError (Type " << static_cast<int>(e.GetType())
+              << "): " << e.what() << std::endl;
     return false;
   }
 }

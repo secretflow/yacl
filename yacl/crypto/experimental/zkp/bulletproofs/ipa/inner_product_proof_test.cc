@@ -23,10 +23,10 @@
 
 #include "yacl/base/exception.h"
 #include "yacl/crypto/ecc/ecc_spi.h"  // For EcGroupFactory, EcGroup
+#include "yacl/crypto/experimental/zkp/bulletproofs/generators.h"
 #include "yacl/crypto/experimental/zkp/bulletproofs/simple_transcript.h"  // For SimpleTranscript
 #include "yacl/crypto/experimental/zkp/bulletproofs/util.h"  // For helpers
 #include "yacl/crypto/rand/rand.h"  // For random scalars/points
-#include "yacl/crypto/experimental/zkp/bulletproofs/generators.h"
 namespace examples::zkp {
 namespace {
 
@@ -44,7 +44,7 @@ class InnerProductProofTest : public ::testing::Test {
     auto transcript_label = "innerproducttest";
     yacl::math::MPInt one(1);
 
-    // Generators G, H 
+    // Generators G, H
     BulletproofGens gens(curve_, n, 1);
     BulletproofGensShare bgs = gens.Share(0);
     auto G_vec = bgs.G(n);

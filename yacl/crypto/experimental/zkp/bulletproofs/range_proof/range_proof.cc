@@ -322,7 +322,8 @@ bool RangeProof::Verify(SimpleTranscript& transcript,
   std::vector<yacl::math::MPInt> h_scalars;
   h_scalars.reserve(n);
   for (size_t i = 0; i < n; ++i) {
-    h_scalars.emplace_back(z.AddMod(zz.MulMod(exp_two_over_y[i], order), order));
+    h_scalars.emplace_back(
+        z.AddMod(zz.MulMod(exp_two_over_y[i], order), order));
   }
 
   std::vector<yacl::math::MPInt> msm_scalars;
