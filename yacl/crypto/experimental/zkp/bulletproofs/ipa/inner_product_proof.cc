@@ -91,17 +91,17 @@ InnerProductProof InnerProductProof::Create(
     std::vector<yacl::crypto::EcPoint> L_points;
     L_points.reserve(n + n + 1);
     for (size_t i = 0; i < n; ++i) {
-      L_scalars.push_back(a_L[i]);
-      L_points.push_back(G_R[i]);
+      L_scalars.emplace_back(a_L[i]);
+      L_points.emplace_back(G_R[i]);
     }
     for (size_t i = 0; i < n; ++i) {
-      L_scalars.push_back(b_R[i]);
-      L_points.push_back(H_L[i]);
+      L_scalars.emplace_back(b_R[i]);
+      L_points.emplace_back(H_L[i]);
     }
-    L_scalars.push_back(c_L);
-    L_points.push_back(Q);
+    L_scalars.emplace_back(c_L);
+    L_points.emplace_back(Q);
     yacl::crypto::EcPoint L = MultiScalarMul(curve, L_scalars, L_points);
-    L_vec_out.push_back(L);
+    L_vec_out.emplace_back(L);
 
     // Compute R = <a_R, G_L * G_fact_L> + <b_L, H_R> + c_R * Q
     std::vector<yacl::math::MPInt> R_scalars;
@@ -109,17 +109,17 @@ InnerProductProof InnerProductProof::Create(
     std::vector<yacl::crypto::EcPoint> R_points;
     R_points.reserve(n + n + 1);
     for (size_t i = 0; i < n; ++i) {
-      R_scalars.push_back(a_R[i]);
-      R_points.push_back(G_L[i]);
+      R_scalars.emplace_back(a_R[i]);
+      R_points.emplace_back(G_L[i]);
     }
     for (size_t i = 0; i < n; ++i) {
-      R_scalars.push_back(b_L[i]);
-      R_points.push_back(H_R[i]);
+      R_scalars.emplace_back(b_L[i]);
+      R_points.emplace_back(H_R[i]);
     }
-    R_scalars.push_back(c_R);
-    R_points.push_back(Q);
+    R_scalars.emplace_back(c_R);
+    R_points.emplace_back(Q);
     yacl::crypto::EcPoint R = MultiScalarMul(curve, R_scalars, R_points);
-    R_vec_out.push_back(R);
+    R_vec_out.emplace_back(R);
 
     // Get challenge x
     // TODO: Check if AppendPoint needs compressed format
@@ -278,7 +278,7 @@ bool InnerProductProof::Verify(
     for (size_t i = 0; i < lg_n; ++i) {
       transcript.AppendPoint("L", L_vec_[i], curve);
       transcript.AppendPoint("R", R_vec_[i], curve);
-      challenges.push_back(transcript.ChallengeScalar("u", curve));
+      challenges.emplace_back(transcript.ChallengeScalar("u", curve));
     }
 
     auto inv_challenges = challenges;
@@ -333,7 +333,7 @@ bool InnerProductProof::Verify(
     }
 
     std::vector<yacl::math::MPInt> msm_scalars;
-    msm_scalars.push_back(a_.MulMod(b_, order));
+    msm_scalars.emplace_back(a_.MulMod(b_, order));
     msm_scalars.insert(msm_scalars.end(), a_times_s.begin(), a_times_s.end());
     msm_scalars.insert(msm_scalars.end(), h_times_b_div_s.begin(),
                        h_times_b_div_s.end());
@@ -342,7 +342,7 @@ bool InnerProductProof::Verify(
                        neg_x_inv_sq.end());
 
     std::vector<yacl::crypto::EcPoint> msm_points;
-    msm_points.push_back(Q);
+    msm_points.emplace_back(Q);
     msm_points.insert(msm_points.end(), G.begin(), G.end());
     msm_points.insert(msm_points.end(), H.begin(), H.end());
     msm_points.insert(msm_points.end(), L_vec_.begin(), L_vec_.end());
@@ -459,7 +459,7 @@ InnerProductProof InnerProductProof::FromBytes(
       throw yacl::Exception("Invalid proof format: truncated point data");
     }
 
-    L_vec.push_back(curve->DeserializePoint(
+    L_vec.emplace_back(curve->DeserializePoint(
         yacl::ByteContainerView(bytes.data() + pos, L_size)));
     pos += L_size;
 
@@ -476,7 +476,7 @@ InnerProductProof InnerProductProof::FromBytes(
       throw yacl::Exception("Invalid proof format: truncated point data");
     }
 
-    R_vec.push_back(curve->DeserializePoint(
+    R_vec.emplace_back(curve->DeserializePoint(
         yacl::ByteContainerView(bytes.data() + pos, R_size)));
     pos += R_size;
   }

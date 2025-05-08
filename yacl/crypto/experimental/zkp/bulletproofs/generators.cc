@@ -102,7 +102,7 @@ void BulletproofGens::IncreaseCapacity(size_t new_capacity) {
 
     // Generate new G points
     for (size_t j = gens_capacity_; j < new_capacity; j++) {
-      G_vec_[i].push_back(g_chain.Next());
+      G_vec_[i].emplace_back(g_chain.Next());
     }
 
     // Generate H generators
@@ -114,7 +114,7 @@ void BulletproofGens::IncreaseCapacity(size_t new_capacity) {
 
     // Generate new H points
     for (size_t j = gens_capacity_; j < new_capacity; j++) {
-      H_vec_[i].push_back(h_chain.Next());
+      H_vec_[i].emplace_back(h_chain.Next());
     }
   }
 
@@ -154,7 +154,7 @@ std::vector<yacl::crypto::EcPoint> BulletproofGens::GetAllG(size_t n,
 
   for (size_t party_idx = 0; party_idx < m; party_idx++) {
     for (size_t gen_idx = 0; gen_idx < n; gen_idx++) {
-      result.push_back(G_vec_[party_idx][gen_idx]);
+      result.emplace_back(G_vec_[party_idx][gen_idx]);
     }
   }
 
@@ -176,7 +176,7 @@ std::vector<yacl::crypto::EcPoint> BulletproofGens::GetAllH(size_t n,
 
   for (size_t party_idx = 0; party_idx < m; party_idx++) {
     for (size_t gen_idx = 0; gen_idx < n; gen_idx++) {
-      result.push_back(H_vec_[party_idx][gen_idx]);
+      result.emplace_back(H_vec_[party_idx][gen_idx]);
     }
   }
 

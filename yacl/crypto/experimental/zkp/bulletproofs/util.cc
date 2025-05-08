@@ -160,7 +160,7 @@ std::vector<yacl::math::MPInt> ExpIterVector(
   yacl::math::MPInt current(1);
   const auto& order = curve->GetOrder();
   for (size_t i = 0; i < n; ++i) {
-    result.push_back(current);
+    result.emplace_back(current);
     current = current.MulMod(base, order);
   }
 

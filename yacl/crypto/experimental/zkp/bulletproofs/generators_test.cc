@@ -140,8 +140,8 @@ TEST_F(GeneratorsTest, AggregatedGensIterMatches) {
       const auto& party_H = bp_gens.GetHParty(i);
 
       for (size_t j = 0; j < n; j++) {
-        flat_G.push_back(party_G[j]);
-        flat_H.push_back(party_H[j]);
+        flat_G.emplace_back(party_G[j]);
+        flat_H.emplace_back(party_H[j]);
       }
     }
 

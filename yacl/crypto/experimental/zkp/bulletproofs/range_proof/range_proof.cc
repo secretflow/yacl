@@ -146,15 +146,15 @@ RangeProof RangeProof::GenerateProof(
   s_scalars.reserve(1 + 2 * n);
   std::vector<yacl::crypto::EcPoint> s_points;
   s_points.reserve(1 + 2 * n);
-  s_scalars.push_back(s_blinding);
-  s_points.push_back(B_blinding);
+  s_scalars.emplace_back(s_blinding);
+  s_points.emplace_back(B_blinding);
   for (size_t i = 0; i < n; ++i) {
     s_L[i].RandomLtN(order, &s_L[i]);
     s_R[i].RandomLtN(order, &s_R[i]);
-    s_scalars.push_back(s_L[i]);
-    s_points.push_back(G_vec[i]);
-    s_scalars.push_back(s_R[i]);
-    s_points.push_back(H_vec[i]);
+    s_scalars.emplace_back(s_L[i]);
+    s_points.emplace_back(G_vec[i]);
+    s_scalars.emplace_back(s_R[i]);
+    s_points.emplace_back(H_vec[i]);
   }
   yacl::crypto::EcPoint S = MultiScalarMul(curve, s_scalars, s_points);
 
@@ -323,7 +323,7 @@ bool RangeProof::Verify(SimpleTranscript& transcript,
   std::vector<yacl::math::MPInt> h_scalars;
   h_scalars.reserve(n);
   for (size_t i = 0; i < n; ++i) {
-    h_scalars.push_back(z.AddMod(zz.MulMod(exp_two_over_y[i], order), order));
+    h_scalars.emplace_back(z.AddMod(zz.MulMod(exp_two_over_y[i], order), order));
   }
 
   /**
@@ -343,18 +343,18 @@ bool RangeProof::Verify(SimpleTranscript& transcript,
   msm_points.reserve(3 + n);
 
   yacl::math::MPInt scalar1 = w.MulMod(t_x_, order).SubMod(e_blinding_, order);
-  msm_scalars.push_back(scalar1);
-  msm_points.push_back(B_blinding);
+  msm_scalars.emplace_back(scalar1);
+  msm_points.emplace_back(B_blinding);
 
-  msm_scalars.push_back(x);
-  msm_points.push_back(S_);
+  msm_scalars.emplace_back(x);
+  msm_points.emplace_back(S_);
 
-  msm_scalars.push_back(z.MulMod(minus_one, order));
-  msm_points.push_back(G_sum);
+  msm_scalars.emplace_back(z.MulMod(minus_one, order));
+  msm_points.emplace_back(G_sum);
 
   for (size_t i = 0; i < n; ++i) {
-    msm_scalars.push_back(h_scalars[i]);
-    msm_points.push_back(H_vec[i]);
+    msm_scalars.emplace_back(h_scalars[i]);
+    msm_points.emplace_back(H_vec[i]);
   }
 
   yacl::crypto::EcPoint P_plus_tx_Q =

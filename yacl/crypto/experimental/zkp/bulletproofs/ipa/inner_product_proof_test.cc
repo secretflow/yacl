@@ -105,15 +105,15 @@ class InnerProductProofTest : public ::testing::Test {
     std::vector<yacl::crypto::EcPoint> P_points;
     P_points.reserve(2 * n + 1);
     for (size_t i = 0; i < n; ++i) {
-      P_scalars.push_back(a_vec[i]);
-      P_points.push_back(G_vec[i]);
+      P_scalars.emplace_back(a_vec[i]);
+      P_points.emplace_back(G_vec[i]);
     }
     for (size_t i = 0; i < n; ++i) {
-      P_scalars.push_back(b_vec[i]);
-      P_points.push_back(H_prime_vec[i]);
+      P_scalars.emplace_back(b_vec[i]);
+      P_points.emplace_back(H_prime_vec[i]);
     }  // Use H' here
-    P_scalars.push_back(c);
-    P_points.push_back(Q);
+    P_scalars.emplace_back(c);
+    P_points.emplace_back(Q);
     yacl::crypto::EcPoint P = MultiScalarMul(curve_, P_scalars, P_points);
 
     // 2. Prover: Create proof

@@ -100,7 +100,7 @@ void SimpleTranscript::AppendMessage(std::string_view label,
   std::vector<uint8_t> data;
 
   // Append the label length as a byte
-  data.push_back(static_cast<uint8_t>(label.size()));
+  data.emplace_back(static_cast<uint8_t>(label.size()));
 
   // Append the label
   data.insert(data.end(), label.begin(), label.end());
@@ -141,11 +141,11 @@ void SimpleTranscript::ChallengeBytes(std::string_view label, uint8_t* dest,
                  challenge_indicator + strlen(challenge_indicator));
 
   // Append the label
-  request.push_back(static_cast<uint8_t>(label.size()));
+  request.emplace_back(static_cast<uint8_t>(label.size()));
   request.insert(request.end(), label.begin(), label.end());
 
   // Append the length requested
-  request.push_back(static_cast<uint8_t>(length));
+  request.emplace_back(static_cast<uint8_t>(length));
 
   // Update state with the challenge request
   UpdateState(request);
