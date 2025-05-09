@@ -84,8 +84,9 @@ class GeneratorsChain {
 
  private:
   std::shared_ptr<yacl::crypto::EcGroup> curve_;
-  std::vector<uint8_t> state_;
+  yacl::crypto::Shake256Hash hash_;
   size_t counter_ = 0;
+  std::string label_;
 };
 
 /**

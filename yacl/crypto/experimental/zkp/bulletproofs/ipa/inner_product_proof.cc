@@ -157,10 +157,8 @@ InnerProductProof::VerificationScalars(
     const std::shared_ptr<yacl::crypto::EcGroup>& curve) const {
   size_t lg_n = L_vec_.size();  // Number of rounds = log2(n)
 
-#if SPDLOG_INFO
-  std::cout << "\n--- InnerProductProof::VerificationScalars Start (n=" << n
-            << ", lg_n=" << lg_n << ") ---" << std::endl;
-#endif
+  SPDLOG_DEBUG("InnerProductProof::VerificationScalars Start (n={}, lg_n={})",
+               n, lg_n);
 
   // --- Basic Checks ---
   YACL_ENFORCE(lg_n < 32, "Inner product proof too large (lg_n >= 32)");
@@ -175,9 +173,8 @@ InnerProductProof::VerificationScalars(
   std::vector<yacl::math::MPInt> challenges(lg_n);
   std::vector<yacl::math::MPInt> challenges_inv(lg_n);  // Store inverses too
 
-#if SPDLOG_INFO
-  std::cout << "Recomputing challenges..." << std::endl;
-#endif
+  SPDLOG_DEBUG("Recomputing challenges...");
+
   for (size_t i = 0; i < lg_n; ++i) {
     // Append points in the same order as prover
     transcript.AppendPoint("L", L_vec_[i], curve);
@@ -186,10 +183,8 @@ InnerProductProof::VerificationScalars(
     challenges[i] = transcript.ChallengeScalar("u", curve);
     challenges_inv[i] =
         challenges[i].InvertMod(curve->GetOrder());  // Compute inverse now
-#if SPDLOG_INFO
-    std::cout << "  u_" << (i + 1) << " = " << challenges[i] << ", u_inv_"
-              << (i + 1) << " = " << challenges_inv[i] << std::endl;
-#endif
+    SPDLOG_DEBUG("  u_{} = {}, u_inv_{} = {}", i + 1, challenges[i], i + 1,
+                 challenges_inv[i]);
   }
 
   // --- 2. Compute squares of challenges and inverses ---
@@ -210,10 +205,8 @@ InnerProductProof::VerificationScalars(
   }
   s[0] = s_0;
 
-#if SPDLOG_INFO
-  std::cout << "Computing s vector (size " << n << ")..." << std::endl;
-  std::cout << "  s[0] = " << s[0] << std::endl;
-#endif
+  SPDLOG_DEBUG("Computing s vector (size {})...", n);
+  SPDLOG_DEBUG("  s[0] = {}", s[0]);
 
   for (size_t i = 1; i < n; ++i) {
     // Find the 0-based index of the highest set bit of i
@@ -235,17 +228,11 @@ InnerProductProof::VerificationScalars(
     // Calculate s[i] = s[prev_i] * u_sq_for_level
     s.at(i) = s.at(prev_i).MulMod(u_sq_for_level, curve->GetOrder());
 
-#if SPDLOG_INFO >= 2  // Only print s vector for higher debug levels
-    // Correct the debug print to show the challenge index used
-    std::cout << "  s[" << i << "] = s[" << prev_i << "] * challenges_sq["
-              << challenge_idx << "] = " << s[i] << std::endl;
-#endif
+    SPDLOG_DEBUG("  s[{}] = s[{}] * challenges_sq[{}] = {}", i, prev_i,
+                 challenge_idx, s[i]);
   }
 
-#if SPDLOG_INFO
-  std::cout << "--- InnerProductProof::VerificationScalars End ---"
-            << std::endl;
-#endif
+  SPDLOG_DEBUG("--- InnerProductProof::VerificationScalars End ---");
 
   return {challenges_sq, challenges_inv_sq, s};
 }
@@ -257,14 +244,13 @@ bool InnerProductProof::Verify(
     const yacl::crypto::EcPoint& P, const yacl::crypto::EcPoint& Q,
     const std::vector<yacl::crypto::EcPoint>& G,
     const std::vector<yacl::crypto::EcPoint>& H) const {
-  std::cout << "InnerProductProof::Verify" << std::endl;
+  SPDLOG_DEBUG("InnerProductProof::Verify");
 
   try {
     size_t lg_n = L_vec_.size();
     size_t n = 1ULL << lg_n;
     auto order = curve->GetOrder();
-    std::cout << "Verifying proof with n=" << n << ", lg_n=" << lg_n
-              << std::endl;
+    SPDLOG_DEBUG("Verifying proof with n={}, lg_n={}", n, lg_n);
 
     // --- 1. Recompute challenges u_i from transcript ---
     std::vector<yacl::math::MPInt> challenges;
@@ -344,15 +330,15 @@ bool InnerProductProof::Verify(
 
     auto expect_P = MultiScalarMul(curve, msm_scalars, msm_points);
     if (curve->PointEqual(expect_P, P)) {
-      std::cout << "P match" << std::endl;
+      SPDLOG_DEBUG("P match");
       return true;
     } else {
-      std::cout << "P mismatch" << std::endl;
+      SPDLOG_DEBUG("P mismatch");
       return false;
     }
   } catch (const ProofError& e) {
-    std::cout << "Caught ProofError (Type " << static_cast<int>(e.GetType())
-              << "): " << e.what() << std::endl;
+    SPDLOG_DEBUG("Caught ProofError (Type {}): {}",
+                 static_cast<int>(e.GetType()), e.what());
     return false;
   }
 }

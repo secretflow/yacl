@@ -24,17 +24,9 @@ namespace examples::zkp {
 GeneratorsChain::GeneratorsChain(std::shared_ptr<yacl::crypto::EcGroup> curve,
                                  const std::string& label)
     : curve_(std::move(curve)) {
-  // Create a Shake256 context
-  std::string domain_sep = "GeneratorsChain";
-
-  // Initialize with domain separator and label
-  std::vector<uint8_t> init_input;
-  init_input.insert(init_input.end(), domain_sep.begin(), domain_sep.end());
-  init_input.insert(init_input.end(), label.begin(), label.end());
-
-  // Initialize state with hash of input
-  state_ = yacl::crypto::Shake256(
-      yacl::ByteContainerView(init_input.data(), init_input.size()));
+  // Initialize the Shake256Hash with the label
+  hash_.Reset();
+  hash_.Update(label);
 }
 
 void GeneratorsChain::FastForward(size_t n) {
@@ -43,21 +35,25 @@ void GeneratorsChain::FastForward(size_t n) {
 }
 
 yacl::crypto::EcPoint GeneratorsChain::Next() {
-  // Create a unique seed for this position
-  std::string seed = std::string(state_.begin(), state_.end());
+  // Combine the label and counter to generate a unique seed
+  std::ostringstream seed_stream;
+  seed_stream << label_ << counter_;
+  std::string seed = seed_stream.str();
 
-  // Append counter to state
-  std::string counter_bytes = std::to_string(counter_);
-  seed.append(counter_bytes);
+  // Update the hash with the seed
+  hash_.Reset();
+  hash_.Update(seed);
 
-  // Increment counter for next call
+  // Generate 64 bytes of output using Shake256Hash
+  /***
+  TODO: use stream read of Shake256Hash instead of CumulativeHash
+  ***/
+  auto uniform_bytes = hash_.CumulativeHash(64);
+
+  // Increment the counter for the next call
   counter_++;
 
-  // Get 64 bytes of output to use for the point generation
-  auto uniform_bytes =
-      yacl::crypto::Shake256(yacl::ByteContainerView(seed.data(), seed.size()));
-
-  // Convert to a point on the curve
+  // Convert the output to a point on the curve
   return curve_->HashToCurve(yacl::crypto::HashToCurveStrategy::Autonomous,
                              yacl::ByteContainerView(uniform_bytes));
 }
