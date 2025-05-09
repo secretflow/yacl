@@ -35,20 +35,16 @@ void GeneratorsChain::FastForward(size_t n) {
 }
 
 yacl::crypto::EcPoint GeneratorsChain::Next() {
-  // Combine the label and counter to generate a unique seed
-  std::ostringstream seed_stream;
-  seed_stream << label_ << counter_;
-  std::string seed = seed_stream.str();
-
-  // Update the hash with the seed
-  hash_.Reset();
-  hash_.Update(seed);
-
   // Generate 64 bytes of output using Shake256Hash
   /***
   TODO: use stream read of Shake256Hash instead of CumulativeHash
   ***/
-  auto uniform_bytes = hash_.CumulativeHash(64);
+
+  size_t start_byte = counter_ * 64;
+  size_t end_byte = start_byte + 64;
+  auto full_hash = hash_.CumulativeHash(end_byte);
+  std::vector<uint8_t> uniform_bytes(full_hash.begin() + start_byte,
+                                     full_hash.begin() + end_byte);
 
   // Increment the counter for the next call
   counter_++;

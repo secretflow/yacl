@@ -92,12 +92,7 @@ class RangeProofDirectTest : public ::testing::Test {
 
     // Add debug printing
     if (!verification_result) {
-      std::cout << "Verification failed for n=" << n << ", v=" << v
-                << std::endl;
-      // Optionally serialize proof parts for debugging
-      // std::cout << "Proof V: " << curve_->SerializePoint(proof.GetV()) <<
-      // std::endl;
-      // ...
+      SPDLOG_DEBUG("Verification failed for n={}, v={}", n, v);
     }
 
     ASSERT_TRUE(verification_result)
