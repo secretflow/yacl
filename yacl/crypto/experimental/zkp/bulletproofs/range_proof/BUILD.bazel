@@ -1,0 +1,48 @@
+# Copyright 2025 @yangjucai.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("@yacl//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
+
+yacl_cc_library(
+    name = "range_proof_config",
+    hdrs = ["range_proof_config.h"],
+)
+
+yacl_cc_library(
+    name = "range_proof",
+    srcs = ["range_proof.cc"],
+    hdrs = ["range_proof.h"],
+    deps = [
+        ":range_proof_config",
+        "//yacl/crypto/experimental/zkp/bulletproofs:generators",
+        "//yacl/crypto/experimental/zkp/bulletproofs:util",
+        "//yacl/crypto/experimental/zkp/bulletproofs/ipa:inner_product_proof",
+        "@yacl//yacl/crypto:openssl_wrappers",
+        "@yacl//yacl/crypto/rand",
+        "@yacl//yacl/math/mpint",
+        "@yacl//yacl/math/mpint:mp_int_enforce",
+    ],
+)
+
+yacl_cc_test(
+    name = "range_proof_test",
+    srcs = ["range_proof_test.cc"],
+    deps = [
+        ":range_proof",
+        ":range_proof_config",
+        "@yacl//yacl/crypto:openssl_wrappers",
+        "@yacl//yacl/math/mpint",
+        "@yacl//yacl/math/mpint:mp_int_enforce",
+    ],
+)
