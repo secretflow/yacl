@@ -19,7 +19,6 @@
 #include "absl/types/span.h"
 #include "examples/gc/mitccrh.h"
 #include "fmt/format.h"
-#include "spdlog/spdlog.h"
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/dynamic_bitset.h"
@@ -51,12 +50,13 @@ class GarblerAES {
   std::vector<uint128_t> gb_value;
   yacl::io::BFCircuit circ_;
 
-  uint128_t table[36663][2];
+  // The number of and gate is 6400
+  uint128_t table[6400][2];
 
   uint128_t input;
   uint128_t input_EV;
-
-  int num_ot = 128;
+  int send_bytes = 0;
+  int num_ot = 128;  // input bit of evaluator
   uint128_t all_one_uint128_t_ = ~static_cast<__uint128_t>(0);
   uint128_t select_mask_[2] = {0, all_one_uint128_t_};
   yacl::crypto::OtSendStore ot_send =
@@ -83,21 +83,13 @@ class GarblerAES {
     kernel0.eval_rot(lctx, num_ot, &ot_send);
 
     // delta, inv_constant, start_point
-    uint128_t tmp[3];
-
-    for (int i = 0; i < 3; i++) {
-      std::random_device rd;
-      std::mt19937_64 eng(rd());
-      std::uniform_int_distribution<uint64_t> distr;
-
-      uint64_t high = distr(eng);
-      uint64_t low = distr(eng);
-
-      tmp[i] = MakeUint128(high, low);
-    }
+    auto tmp = yacl::crypto::SecureRandVec<uint128_t>(3);
     tmp[0] = tmp[0] | 1;
-    lctx->Send(1, yacl::ByteContainerView(tmp, sizeof(uint128_t) * 3), "tmp");
-    SPDLOG_INFO("tmpSend");
+    lctx->Send(1,
+               yacl::ByteContainerView(static_cast<void*>(tmp.data()),
+                                       sizeof(uint128_t) * 3),
+               "tmp");
+    send_bytes += sizeof(uint128_t) * 3;
 
     delta = tmp[0];
     inv_constant = tmp[1] ^ delta;
@@ -112,7 +104,6 @@ class GarblerAES {
     wires_.resize(circ_.nw);
 
     input = yacl::crypto::FastRandU128();
-    SPDLOG_INFO("input of garbler: {}", input);
 
     yacl::dynamic_bitset<uint128_t> bi_val;
     bi_val.append(input);
@@ -122,15 +113,9 @@ class GarblerAES {
       num_of_input_wires += circ_.niw[i];
     }
 
+    auto rands = yacl::crypto::SecureRandVec<uint128_t>(num_of_input_wires);
     for (int i = 0; i < num_of_input_wires; i++) {
-      std::random_device rd;
-      std::mt19937_64 eng(rd());
-      std::uniform_int_distribution<uint64_t> distr;
-
-      uint64_t high = distr(eng);
-      uint64_t low = distr(eng);
-
-      gb_value[i] = MakeUint128(high, low);
+      gb_value[i] = rands[i];
     }
 
     for (size_t i = 0; i < circ_.niw[0]; i++) {
@@ -140,15 +125,7 @@ class GarblerAES {
     lctx->Send(
         1, yacl::ByteContainerView(wires_.data(), sizeof(uint128_t) * num_ot),
         "garbleInput1");
-
-    SPDLOG_INFO("sendInput1");
-
-    // onlineOT();
-
-    yacl::Buffer r = lctx->Recv(1, "Input1");
-
-    const uint128_t* buffer_data = r.data<const uint128_t>();
-    input_EV = *buffer_data;
+    send_bytes += sizeof(uint128_t) * num_ot;
 
     return input;
   }
@@ -188,6 +165,7 @@ class GarblerAES {
     return W0;
   }
   void GB() {
+    int and_num = 0;
     for (size_t i = 0; i < circ_.gates.size(); i++) {
       auto gate = circ_.gates[i];
       switch (gate.op) {
@@ -200,8 +178,9 @@ class GarblerAES {
         case yacl::io::BFCircuit::Op::AND: {
           const auto& iw0 = gb_value.operator[](gate.iw[0]);
           const auto& iw1 = gb_value.operator[](gate.iw[1]);
-          gb_value[gate.ow[0]] =
-              GBAND(iw0, iw0 ^ delta, iw1, iw1 ^ delta, table[i], &mitccrh);
+          gb_value[gate.ow[0]] = GBAND(iw0, iw0 ^ delta, iw1, iw1 ^ delta,
+                                       table[and_num], &mitccrh);
+          and_num++;
           break;
         }
         case yacl::io::BFCircuit::Op::INV: {
@@ -229,10 +208,9 @@ class GarblerAES {
   }
 
   void sendTable() {
-    lctx->Send(1,
-               yacl::ByteContainerView(table, sizeof(uint128_t) * 2 * circ_.ng),
+    lctx->Send(1, yacl::ByteContainerView(table, sizeof(uint128_t) * 2 * 6400),
                "table");
-    SPDLOG_INFO("sendTable");
+    send_bytes += sizeof(uint128_t) * 2 * 6400;
   }
   uint128_t decode() {
     size_t index = wires_.size();
@@ -242,14 +220,11 @@ class GarblerAES {
     const uint128_t* buffer_data = r.data<const uint128_t>();
 
     memcpy(wires_.data() + start, buffer_data, sizeof(uint128_t) * num_ot);
-    SPDLOG_INFO("recvOutput");
 
     // decode
     std::vector<uint128_t> result(1);
     finalize(absl::MakeSpan(result));
-    SPDLOG_INFO("MPC结果：{}", ReverseBytes(result[0]));
-    SPDLOG_INFO("明文结果：{}",
-                Aes128(ReverseBytes(input), ReverseBytes(input_EV)));
+
     return result[0];
   }
 
@@ -291,5 +266,6 @@ class GarblerAES {
         lctx->NextRank(),
         ByteContainerView(batch_send.data(), sizeof(uint128_t) * num_ot * 2),
         "");
+    send_bytes += sizeof(uint128_t) * num_ot * 2;
   }
 };

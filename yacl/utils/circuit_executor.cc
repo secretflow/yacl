@@ -66,7 +66,7 @@ void PlainExecutor::Exec() {
   for (const auto& gate : circ_->gates) {
     switch (gate.op) {
       case io::BFCircuit::Op::XOR: {
-        const auto& iw0 = wires_.operator[](gate.iw[0]);  // 取到具体值
+        const auto& iw0 = wires_.operator[](gate.iw[0]);
         const auto& iw1 = wires_.operator[](gate.iw[1]);
         wires_.set(gate.ow[0], PlaintextCore::xor_gate(iw0, iw1));
         break;

@@ -112,7 +112,6 @@ inline T FastRandBits(uint64_t len) {
   return RandBits<T>(len, true);
 }
 
-
 // Generate rand bits in a secure but slow way
 template <typename T = dynamic_bitset<uint128_t>,
           std::enable_if_t<IsSupportedBitVectorType<T>::value, bool> = true>

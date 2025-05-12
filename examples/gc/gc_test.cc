@@ -44,9 +44,7 @@ TEST(GCTest, SHA256Test) {
   thread1.get();
   thread2.get();
 
-  std::string pth =
-      fmt::format("{0}/yacl/io/circuit/data/{1}.txt",
-                  std::filesystem::current_path().string(), "sha256");
+  std::string pth = fmt::format("yacl/io/circuit/data/{0}.txt", "sha256");
   yacl::io::CircuitReader reader(pth);
   reader.ReadMeta();
   reader.ReadAllGates();
@@ -72,6 +70,8 @@ TEST(GCTest, SHA256Test) {
   EXPECT_EQ(sha256_result.size(), gc_result.size());
   EXPECT_TRUE(
       std::equal(gc_result.begin(), gc_result.end(), sha256_result.begin()));
+  delete garbler;
+  delete evaluator;
 }
 
 TEST(GCTest, AESTest) {
@@ -85,9 +85,7 @@ TEST(GCTest, AESTest) {
   thread1.get();
   thread2.get();
 
-  std::string pth =
-      fmt::format("{0}/yacl/io/circuit/data/{1}.txt",
-                  std::filesystem::current_path().string(), "aes_128");
+  std::string pth = fmt::format("yacl/io/circuit/data/{0}.txt", "aes_128");
   yacl::io::CircuitReader reader(pth);
   reader.ReadMeta();
   reader.ReadAllGates();
@@ -118,6 +116,8 @@ TEST(GCTest, AESTest) {
   uint128_t gc_result = garbler->decode();
   auto aes = Aes128(ReverseBytes(key), ReverseBytes(message));
   EXPECT_EQ(ReverseBytes(gc_result), aes);
+  delete garbler;
+  delete evaluator;
 }
 
 }  // namespace examples::gc

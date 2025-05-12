@@ -18,7 +18,6 @@
 
 #include "examples/gc/mitccrh.h"
 #include "fmt/format.h"
-#include "spdlog/spdlog.h"
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/int128.h"
@@ -42,9 +41,11 @@ class EvaluatorSHA256 {
   yacl::io::BFCircuit circ_;
   std::shared_ptr<yacl::link::Context> lctx;
 
-  uint128_t table[135073][2];
+  // The number of and gate is 22573
+  uint128_t table[22573][2];
   uint128_t input;
-  int num_ot = 768;
+  int num_ot = 768;  // input bit
+  int send_bytes = 0;
 
   uint128_t all_one_uint128_t = ~static_cast<__uint128_t>(0);
   uint128_t select_mask[2] = {0, all_one_uint128_t};
@@ -66,7 +67,6 @@ class EvaluatorSHA256 {
     yacl::Buffer r = lctx->Recv(0, "tmp");
     const uint128_t* buffer_data = r.data<const uint128_t>();
     memcpy(tmp, buffer_data, sizeof(uint128_t) * 3);
-    SPDLOG_INFO("tmpRecv");
 
     delta = tmp[0];
     inv_constant = tmp[1];
@@ -85,21 +85,17 @@ class EvaluatorSHA256 {
     const uint128_t* buffer_data = r.data<const uint128_t>();
 
     memcpy(wires_.data(), buffer_data, sizeof(uint128_t) * num_ot);
-
-    SPDLOG_INFO("recvInput1");
   }
   void recvTable() {
     yacl::Buffer r = lctx->Recv(0, "table");
     const uint128_t* buffer_data = r.data<const uint128_t>();
     int k = 0;
-    for (size_t i = 0; i < circ_.ng; i++) {
+    for (size_t i = 0; i < 22573; i++) {
       for (int j = 0; j < 2; j++) {
         table[i][j] = buffer_data[k];
         k++;
       }
     }
-
-    SPDLOG_INFO("recvTable");
   }
 
   uint128_t EVAND(uint128_t A, uint128_t B, const uint128_t* table_item,
@@ -125,6 +121,7 @@ class EvaluatorSHA256 {
   }
 
   void EV() {
+    int table_cursor = 0;
     for (size_t i = 0; i < circ_.gates.size(); i++) {
       auto gate = circ_.gates[i];
       switch (gate.op) {
@@ -137,7 +134,8 @@ class EvaluatorSHA256 {
         case yacl::io::BFCircuit::Op::AND: {
           const auto& iw0 = wires_.operator[](gate.iw[0]);
           const auto& iw1 = wires_.operator[](gate.iw[1]);
-          wires_[gate.ow[0]] = EVAND(iw0, iw1, table[i], &mitccrh);
+          wires_[gate.ow[0]] = EVAND(iw0, iw1, table[table_cursor], &mitccrh);
+          table_cursor++;
           break;
         }
         case yacl::io::BFCircuit::Op::INV: {
@@ -170,6 +168,7 @@ class EvaluatorSHA256 {
         0,
         yacl::ByteContainerView(wires_.data() + start, sizeof(uint128_t) * 256),
         "output");
-    SPDLOG_INFO("sendOutput");
+
+    send_bytes = sizeof(uint128_t) * 256;
   }
 };

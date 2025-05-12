@@ -11,9 +11,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+#include <chrono>
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/int128.h"
+
+using std::chrono::high_resolution_clock;
+using std::chrono::time_point;
 
 // get the Least Significant Bit of uint128_t
 inline bool getLSB(const uint128_t& x) { return (x & 1) == 1; }
@@ -27,4 +31,14 @@ uint128_t ReverseBytes(uint128_t x) {
   }
   std::memcpy(&ret, buf.data(), buf.size());
   return ret;
+}
+
+inline time_point<high_resolution_clock> clock_start() {
+  return high_resolution_clock::now();
+}
+
+inline double time_from(const time_point<high_resolution_clock>& s) {
+  return std::chrono::duration_cast<std::chrono::microseconds>(
+             high_resolution_clock::now() - s)
+      .count();
 }

@@ -17,7 +17,6 @@
 
 #include "examples/gc/mitccrh.h"
 #include "fmt/format.h"
-#include "spdlog/spdlog.h"
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/dynamic_bitset.h"
@@ -52,9 +51,11 @@ class EvaluatorAES {
   yacl::io::BFCircuit circ_;
   std::shared_ptr<yacl::link::Context> lctx;
 
-  uint128_t table[36663][2];
+  // The number of and gate is 6400
+  uint128_t table[6400][2];
   uint128_t input;
-  int num_ot = 128;
+  int num_ot = 128;  // input bit of evaluator
+  int send_bytes = 0;
   uint128_t all_one_uint128_t = ~static_cast<uint128_t>(0);
   uint128_t select_mask[2] = {0, all_one_uint128_t};
 
@@ -87,7 +88,6 @@ class EvaluatorAES {
     yacl::Buffer r = lctx->Recv(0, "tmp");
     const uint128_t* buffer_data = r.data<const uint128_t>();
     memcpy(tmp, buffer_data, sizeof(uint128_t) * 3);
-    SPDLOG_INFO("tmpRecv");
 
     delta = tmp[0];
     inv_constant = tmp[1];
@@ -104,7 +104,7 @@ class EvaluatorAES {
     yacl::dynamic_bitset<uint128_t> bi_val;
 
     input = yacl::crypto::FastRandU128();
-    SPDLOG_INFO("input of evaluator: {}", input);
+
     bi_val.append(input);
 
     yacl::Buffer r = lctx->Recv(0, "garbleInput1");
@@ -113,24 +113,18 @@ class EvaluatorAES {
 
     memcpy(wires_.data(), buffer_data, sizeof(uint128_t) * num_ot);
 
-    SPDLOG_INFO("recvInput1");
-
-    lctx->Send(0, yacl::ByteContainerView(&input, sizeof(uint128_t)), "Input1");
-
     return input;
   }
   void recvTable() {
     yacl::Buffer r = lctx->Recv(0, "table");
     const uint128_t* buffer_data = r.data<const uint128_t>();
     int k = 0;
-    for (size_t i = 0; i < circ_.ng; i++) {
+    for (size_t i = 0; i < 6400; i++) {
       for (int j = 0; j < 2; j++) {
         table[i][j] = buffer_data[k];
         k++;
       }
     }
-
-    SPDLOG_INFO("recvTable");
   }
 
   uint128_t EVAND(uint128_t A, uint128_t B, const uint128_t* table_item,
@@ -156,6 +150,7 @@ class EvaluatorAES {
   }
 
   void EV() {
+    int and_num = 0;
     for (size_t i = 0; i < circ_.gates.size(); i++) {
       auto gate = circ_.gates[i];
       switch (gate.op) {
@@ -168,7 +163,8 @@ class EvaluatorAES {
         case yacl::io::BFCircuit::Op::AND: {
           const auto& iw0 = wires_.operator[](gate.iw[0]);
           const auto& iw1 = wires_.operator[](gate.iw[1]);
-          wires_[gate.ow[0]] = EVAND(iw0, iw1, table[i], &mitccrh);
+          wires_[gate.ow[0]] = EVAND(iw0, iw1, table[and_num], &mitccrh);
+          and_num++;
           break;
         }
         case yacl::io::BFCircuit::Op::INV: {
@@ -201,7 +197,7 @@ class EvaluatorAES {
                yacl::ByteContainerView(wires_.data() + start,
                                        sizeof(uint128_t) * num_ot),
                "output");
-    SPDLOG_INFO("sendOutput");
+    send_bytes += sizeof(uint128_t) * num_ot;
   }
   void onLineOT() {
     yacl::dynamic_bitset<uint128_t> choices;
@@ -214,6 +210,7 @@ class EvaluatorAES {
     lctx->Send(
         0, yacl::ByteContainerView(masked_choices.data(), sizeof(uint128_t)),
         "masked_choice");
+    send_bytes += sizeof(uint128_t);
 
     auto buf = lctx->Recv(lctx->NextRank(), "");
     std::vector<OtMsgPair> batch_recv(num_ot);

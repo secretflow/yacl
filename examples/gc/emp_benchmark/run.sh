@@ -1,4 +1,8 @@
 #!/bin/bash
+set -e
+
+echo -e "Please run \033[32mconda deactivate\033[0m to deactivate the conda environment and prevent Boost from being overridden."
+sleep 1
 
 OS_TYPE="$(uname)"
 
@@ -7,17 +11,38 @@ if [ "$OS_TYPE" == "Darwin" ]; then
     brew list openssl || brew install openssl
     brew list pkg-config || brew install pkg-config
     brew list cmake || brew install cmake
+    brew list boost || brew install boost
+    brew list gmp || brew install gmp
+
 elif [ "$OS_TYPE" == "Linux" ]; then
     if command -v apt-get >/dev/null; then
         # Ubuntu/Debian 系统
         sudo apt-get update
         sudo apt-get install -y software-properties-common
-        sudo apt-get install -y cmake git build-essential libssl-dev pkg-config
+        sudo apt-get install -y \
+            cmake \
+            git \
+            build-essential \
+            libssl-dev \
+            pkg-config \
+            libgmp-dev \
+            libboost-all-dev
+
     elif command -v yum >/dev/null; then
         # RHEL / CentOS / Fedora
-        sudo yum install -y python3 gcc make git cmake gcc-c++ openssl-devel
+        sudo yum install -y \
+            python3 \
+            gcc \
+            make \
+            git \
+            cmake \
+            gcc-c++ \
+            openssl-devel \
+            gmp-devel \
+            boost-devel
+
     else
-        echo "当前 Linux 发行版不受支持，请手动安装 cmake、git 和 libssl-dev"
+        echo "当前 Linux 发行版不受支持，请手动安装 cmake、git、libssl-dev、libgmp-dev 和 libboost"
         exit 1
     fi
 else
@@ -63,6 +88,16 @@ cd ..
 bash aes_run.sh
 bash sha256_run.sh
 
+echo "ABY Test"
 
-
-
+git clone https://github.com/encryptogroup/ABY.git
+cd ABY
+git checkout d8e69414d091cafc007e65a03ef30768ebaf723d
+cp ../ABY_aes_test.patch ./
+git apply ABY_aes_test.patch
+mkdir build
+cd build
+cmake .. -DABY_BUILD_EXE=On
+make
+cd ..
+bash run_aes.sh

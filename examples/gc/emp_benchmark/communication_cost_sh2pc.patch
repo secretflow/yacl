@@ -1,6 +1,6 @@
 diff --git a/aes_run.sh b/aes_run.sh
 new file mode 100644
-index 0000000..20df3b7
+index 0000000..f3f672d
 --- /dev/null
 +++ b/aes_run.sh
 @@ -0,0 +1,126 @@
@@ -48,13 +48,13 @@ index 0000000..20df3b7
 +    send_rounds_1=$(grep "party 1: send rounds:" output1.log | awk '{print $5}' | tr -d ';')
 +    recv_rounds_1=$(grep "recv rounds:" output1.log | awk '{print $8}' | tr -d ';')
 +    send_bytes_1=$(grep "party 1: send bytes:" output1.log | awk '{print $5}' | tr -d ';')
-+    recv_bytes_1=$(grep "recv bytes:" output1.log | awk '{print $5}' | tr -d ';')
++    recv_bytes_1=$(grep "recv bytes:" output1.log | awk '{print $8}' | tr -d ';')
 +
 +    # 解析 party 2 数据（清理分号）
 +    send_rounds_2=$(grep "party 2: send rounds:" output2.log | awk '{print $5}' | tr -d ';')
 +    recv_rounds_2=$(grep "recv rounds:" output2.log | awk '{print $8}' | tr -d ';')
 +    send_bytes_2=$(grep "party 2: send bytes:" output2.log | awk '{print $5}' | tr -d ';')
-+    recv_bytes_2=$(grep "recv bytes:" output2.log | awk '{print $5}' | tr -d ';')
++    recv_bytes_2=$(grep "recv bytes:" output2.log | awk '{print $8}' | tr -d ';')
 +    computation_time_2=$(grep "Time for Computation:" output2.log | awk '{print $4}' | tr -d ';')
 +    reading_time_2=$(grep "Time for Reading File and Creating Circuits:" output2.log | awk '{print $8}' | tr -d ';')
 +
@@ -130,10 +130,9 @@ index 0000000..20df3b7
 +rm output1.log
 +rm output2.log
 +echo "Results saved to ./build/aes_result.log"
-\ No newline at end of file
 diff --git a/sha256_run.sh b/sha256_run.sh
 new file mode 100644
-index 0000000..d49c3c6
+index 0000000..b262352
 --- /dev/null
 +++ b/sha256_run.sh
 @@ -0,0 +1,127 @@
@@ -181,13 +180,13 @@ index 0000000..d49c3c6
 +    send_rounds_1=$(grep "party 1: send rounds:" output1.log | awk '{print $5}' | tr -d ';')
 +    recv_rounds_1=$(grep "recv rounds:" output1.log | awk '{print $8}' | tr -d ';')
 +    send_bytes_1=$(grep "party 1: send bytes:" output1.log | awk '{print $5}' | tr -d ';')
-+    recv_bytes_1=$(grep "recv bytes:" output1.log | awk '{print $5}' | tr -d ';')
++    recv_bytes_1=$(grep "recv bytes:" output1.log | awk '{print $8}' | tr -d ';')
 +
 +    # 解析 party 2 数据（清理分号）
 +    send_rounds_2=$(grep "party 2: send rounds:" output2.log | awk '{print $5}' | tr -d ';')
 +    recv_rounds_2=$(grep "recv rounds:" output2.log | awk '{print $8}' | tr -d ';')
 +    send_bytes_2=$(grep "party 2: send bytes:" output2.log | awk '{print $5}' | tr -d ';')
-+    recv_bytes_2=$(grep "recv bytes:" output2.log | awk '{print $5}' | tr -d ';')
++    recv_bytes_2=$(grep "recv bytes:" output2.log | awk '{print $8}' | tr -d ';')
 +    computation_time_2=$(grep "Time for Computation:" output2.log | awk '{print $4}' | tr -d ';')
 +    reading_time_2=$(grep "Time for Reading File and Creating Circuits:" output2.log | awk '{print $8}' | tr -d ';')
 +
@@ -227,7 +226,7 @@ index 0000000..d49c3c6
 +}
 +
 +
-+echo "Emp-tool AES Total Results after 100 Iterations:"
++echo "Emp-tool SHA256 Total Results after 100 Iterations:"
 +echo "Party 1:"
 +echo "  Send Rounds: $total_send_rounds_1"
 +echo "  Recv Rounds: $total_recv_rounds_1"
