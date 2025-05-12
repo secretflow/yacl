@@ -235,15 +235,16 @@ RangeProof RangeProof::GenerateProof(
 
   // 13. Create Inner Product Proof
   // Note: Pass G_vec, H_vec directly (size n already)
-  InnerProductProof ipp_proof =
-      InnerProductProof::Create(transcript, curve, Q,
-                                ipp_H_factors,  // Factors for H
-                                std::move(G_vec), std::move(H_vec),  // The generators derived earlier
-                                std::move(ipp_a_vec), std::move(ipp_b_vec));
+  InnerProductProof ipp_proof = InnerProductProof::Create(
+      transcript, curve, Q,
+      ipp_H_factors,                       // Factors for H
+      std::move(G_vec), std::move(H_vec),  // The generators derived earlier
+      std::move(ipp_a_vec), std::move(ipp_b_vec));
 
   // 14. Construct final RangeProof
-  return RangeProof(std::move(V), std::move(A), std::move(S), std::move(T_1), std::move(T_2), std::move(t_x), std::move(t_x_blinding), std::move(e_blinding),
-                    std::move(ipp_proof));
+  return RangeProof(std::move(V), std::move(A), std::move(S), std::move(T_1),
+                    std::move(T_2), std::move(t_x), std::move(t_x_blinding),
+                    std::move(e_blinding), std::move(ipp_proof));
 }
 
 // --- Verify---
@@ -464,8 +465,9 @@ RangeProof RangeProof::FromBytes(
   InnerProductProof ipp_proof = InnerProductProof::FromBytes(
       ipp_data, curve);  // Assuming IPP has FromBytes
 
-  return RangeProof(std::move(V), std::move(A), std::move(S), std::move(T_1), std::move(T_2), std::move(t_x), std::move(t_x_blinding), std::move(e_blinding),
-                    std::move(ipp_proof));
+  return RangeProof(std::move(V), std::move(A), std::move(S), std::move(T_1),
+                    std::move(T_2), std::move(t_x), std::move(t_x_blinding),
+                    std::move(e_blinding), std::move(ipp_proof));
 }
 
 }  // namespace examples::zkp

@@ -146,7 +146,8 @@ InnerProductProof InnerProductProof::Create(
   }
 
   // Return final proof
-  return InnerProductProof(std::move(L_vec_out), std::move(R_vec_out), std::move(a_vec[0]), std::move(b_vec[0]));
+  return InnerProductProof(std::move(L_vec_out), std::move(R_vec_out),
+                           std::move(a_vec[0]), std::move(b_vec[0]));
 }
 
 std::tuple<std::vector<yacl::math::MPInt>, std::vector<yacl::math::MPInt>,
@@ -493,7 +494,8 @@ InnerProductProof InnerProductProof::FromBytes(
   a = a.Mod(curve->GetOrder());
   b = b.Mod(curve->GetOrder());
 
-  return InnerProductProof(std::move(L_vec), std::move(R_vec), std::move(a), std::move(b));
+  return InnerProductProof(std::move(L_vec), std::move(R_vec), std::move(a),
+                           std::move(b));
 }
 
 }  // namespace examples::zkp
