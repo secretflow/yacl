@@ -46,12 +46,12 @@ class RangeProof {
   /**
    * @brief Constructor matching the  struct fields.
    */
-  RangeProof(const yacl::crypto::EcPoint& V, const yacl::crypto::EcPoint& A,
-             const yacl::crypto::EcPoint& S, const yacl::crypto::EcPoint& T_1,
-             const yacl::crypto::EcPoint& T_2, const yacl::math::MPInt& t_x,
-             const yacl::math::MPInt& t_x_blinding,
-             const yacl::math::MPInt& e_blinding,
-             const InnerProductProof& ipp_proof);  // Use the YACL IPP type
+  RangeProof(const yacl::crypto::EcPoint V, const yacl::crypto::EcPoint A,
+             const yacl::crypto::EcPoint S, const yacl::crypto::EcPoint T_1,
+             const yacl::crypto::EcPoint T_2, const yacl::math::MPInt t_x,
+             const yacl::math::MPInt t_x_blinding,
+             const yacl::math::MPInt e_blinding,
+             const InnerProductProof ipp_proof);  // Use the YACL IPP type
 
   // --- Single-Party Direct Proof Methods (based on provided  code) ---
 

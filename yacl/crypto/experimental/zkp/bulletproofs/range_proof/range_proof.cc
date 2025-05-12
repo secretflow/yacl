@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <numeric>  // For std::accumulate
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "yacl/base/exception.h"
@@ -28,22 +29,22 @@ namespace examples::zkp {
 
 // --- RangeProof Constructor ---
 RangeProof::RangeProof(
-    const yacl::crypto::EcPoint& V, const yacl::crypto::EcPoint& A,
-    const yacl::crypto::EcPoint& S, const yacl::crypto::EcPoint& T_1,
-    const yacl::crypto::EcPoint& T_2, const yacl::math::MPInt& t_x,
-    const yacl::math::MPInt& t_x_blinding, const yacl::math::MPInt& e_blinding,
-    const InnerProductProof& ipp_proof)  // Use YACL IPP type
-    : V_(V),
-      A_(A),
-      S_(S),
-      T_1_(T_1),
-      T_2_(T_2),
-      t_x_(t_x),
-      t_x_blinding_(t_x_blinding),
-      e_blinding_(e_blinding),
-      ipp_proof_(ipp_proof) {}
+    const yacl::crypto::EcPoint V, const yacl::crypto::EcPoint A,
+    const yacl::crypto::EcPoint S, const yacl::crypto::EcPoint T_1,
+    const yacl::crypto::EcPoint T_2, const yacl::math::MPInt t_x,
+    const yacl::math::MPInt t_x_blinding, const yacl::math::MPInt e_blinding,
+    const InnerProductProof ipp_proof)  // Use YACL IPP type
+    : V_(std::move(V)),
+      A_(std::move(A)),
+      S_(std::move(S)),
+      T_1_(std::move(T_1)),
+      T_2_(std::move(T_2)),
+      t_x_(std::move(t_x)),
+      t_x_blinding_(std::move(t_x_blinding)),
+      e_blinding_(std::move(e_blinding)),
+      ipp_proof_(std::move(ipp_proof)) {}
 
-// --- Static Helper: MakeGenerators (Mirrors Rust) ---
+// --- Static Helper: MakeGenerators ---
 std::vector<yacl::crypto::EcPoint> RangeProof::MakeGenerators(
     const yacl::crypto::EcPoint& base_point, size_t n,
     const std::shared_ptr<yacl::crypto::EcGroup>& curve) {
@@ -237,12 +238,12 @@ RangeProof RangeProof::GenerateProof(
   InnerProductProof ipp_proof =
       InnerProductProof::Create(transcript, curve, Q,
                                 ipp_H_factors,  // Factors for H
-                                G_vec, H_vec,  // The generators derived earlier
-                                ipp_a_vec, ipp_b_vec);
+                                std::move(G_vec), std::move(H_vec),  // The generators derived earlier
+                                std::move(ipp_a_vec), std::move(ipp_b_vec));
 
   // 14. Construct final RangeProof
-  return RangeProof(V, A, S, T_1, T_2, t_x, t_x_blinding, e_blinding,
-                    ipp_proof);
+  return RangeProof(std::move(V), std::move(A), std::move(S), std::move(T_1), std::move(T_2), std::move(t_x), std::move(t_x_blinding), std::move(e_blinding),
+                    std::move(ipp_proof));
 }
 
 // --- Verify---
@@ -463,8 +464,8 @@ RangeProof RangeProof::FromBytes(
   InnerProductProof ipp_proof = InnerProductProof::FromBytes(
       ipp_data, curve);  // Assuming IPP has FromBytes
 
-  return RangeProof(V, A, S, T_1, T_2, t_x, t_x_blinding, e_blinding,
-                    ipp_proof);
+  return RangeProof(std::move(V), std::move(A), std::move(S), std::move(T_1), std::move(T_2), std::move(t_x), std::move(t_x_blinding), std::move(e_blinding),
+                    std::move(ipp_proof));
 }
 
 }  // namespace examples::zkp

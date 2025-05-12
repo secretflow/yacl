@@ -146,7 +146,7 @@ InnerProductProof InnerProductProof::Create(
   }
 
   // Return final proof
-  return InnerProductProof(L_vec_out, R_vec_out, a_vec[0], b_vec[0]);
+  return InnerProductProof(std::move(L_vec_out), std::move(R_vec_out), std::move(a_vec[0]), std::move(b_vec[0]));
 }
 
 std::tuple<std::vector<yacl::math::MPInt>, std::vector<yacl::math::MPInt>,
@@ -261,16 +261,16 @@ bool InnerProductProof::Verify(
       challenges.emplace_back(transcript.ChallengeScalar("u", curve));
     }
 
-    auto inv_challenges = challenges;
+    std::vector<yacl::math::MPInt> inv_challenges(lg_n);
     yacl::math::MPInt allinv(1);
     for (size_t i = 0; i < lg_n; ++i) {
-      inv_challenges[i] = inv_challenges[i].InvertMod(order);
+      inv_challenges[i] = challenges[i].InvertMod(order);
       allinv = allinv.MulMod(inv_challenges[i], order);
     }
 
-    auto challenges_sq = challenges;
+    std::vector<yacl::math::MPInt> challenges_sq(lg_n);
     for (size_t i = 0; i < lg_n; ++i) {
-      challenges_sq[i] = challenges_sq[i].MulMod(challenges_sq[i], order);
+      challenges_sq[i] = challenges[i].MulMod(challenges[i], order);
     }
 
     // --- 3. Compute s vector ---
@@ -300,15 +300,15 @@ bool InnerProductProof::Verify(
           H_factors[i].MulMod(b_, order).MulMod(inv_s[i], order);
     }
 
-    std::vector<yacl::math::MPInt> neg_x_sq = challenges_sq;
+    std::vector<yacl::math::MPInt> neg_x_sq(lg_n);
     for (size_t i = 0; i < lg_n; ++i) {
-      neg_x_sq[i] = neg_x_sq[i].MulMod(yacl::math::MPInt(-1), order);
+      neg_x_sq[i] = challenges_sq[i].MulMod(yacl::math::MPInt(-1), order);
     }
 
-    std::vector<yacl::math::MPInt> neg_x_inv_sq = inv_challenges;
+    std::vector<yacl::math::MPInt> neg_x_inv_sq(lg_n);
     for (size_t i = 0; i < lg_n; ++i) {
-      neg_x_inv_sq[i] = neg_x_inv_sq[i]
-                            .MulMod(neg_x_inv_sq[i], order)
+      neg_x_inv_sq[i] = inv_challenges[i]
+                            .MulMod(inv_challenges[i], order)
                             .MulMod(yacl::math::MPInt(-1), order);
     }
 
@@ -493,7 +493,7 @@ InnerProductProof InnerProductProof::FromBytes(
   a = a.Mod(curve->GetOrder());
   b = b.Mod(curve->GetOrder());
 
-  return InnerProductProof(L_vec, R_vec, a, b);
+  return InnerProductProof(std::move(L_vec), std::move(R_vec), std::move(a), std::move(b));
 }
 
 }  // namespace examples::zkp
