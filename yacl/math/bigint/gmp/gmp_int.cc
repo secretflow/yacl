@@ -594,7 +594,16 @@ yacl::Buffer GMPInt::ToBytes(size_t byte_len, Endian endian) const {
 
 void GMPInt::ToBytes(unsigned char* buf, size_t buf_len, Endian endian) const {
   size_t byte_count = (gmp_.mpz_sizeinbase_(z_, 2) + 7) / 8;
-  YACL_ENFORCE_GE(buf_len, byte_count, "Buffer is too small");
+  if (buf_len < byte_count) {
+    std::vector<unsigned char> tmp(byte_count);
+    ToBytes(tmp.data(), byte_count, endian);
+    if (endian == Endian::little) {
+      memcpy(buf, tmp.data(), buf_len);
+    } else {
+      memcpy(buf, tmp.data() + byte_count - buf_len, buf_len);
+    }
+    return;
+  }
   memset(buf, 0, buf_len);
   int endianness = endian == Endian::big ? 1 : -1;
   if (endian == Endian::little) {
