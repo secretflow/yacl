@@ -1,0 +1,138 @@
+# Copyright 2024 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("@yacl//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test", "yacl_cc_binary",)
+
+package(default_visibility = ["//visibility:public"])
+
+yacl_cc_library(
+    name = "mitccrh",
+    hdrs = [
+        "mitccrh.h",
+    ],
+    deps = [
+        ":utils",
+        "//yacl/crypto/aes:aes_opt",
+    ],
+)
+
+yacl_cc_library(
+    name = "utils",
+    hdrs = ["utils.h"],
+    deps = [
+        "//yacl/base:byte_container_view",
+        "//yacl/base:int128",
+    ],
+)
+
+yacl_cc_library(
+    name = "aes_128_garbler",
+    hdrs = [
+        "aes_128_garbler.h",
+    ],
+    deps = [
+        ":mitccrh",
+        "//yacl/base:byte_container_view",
+        "//yacl/io/circuit:bristol_fashion",
+        "//yacl/kernel:ot_kernel",
+    ],
+)
+
+yacl_cc_library(
+    name = "sha256_garbler",
+    hdrs = [
+        "sha256_garbler.h",
+    ],
+    deps = [
+        ":mitccrh",
+        "//yacl/base:byte_container_view",
+        "//yacl/io/circuit:bristol_fashion",
+    ],
+)
+
+yacl_cc_library(
+    name = "sha256_evaluator",
+    hdrs = [
+        "sha256_evaluator.h",
+    ],
+    deps = [
+        ":mitccrh",
+        "//yacl/base:byte_container_view",
+        "//yacl/io/circuit:bristol_fashion",
+    ],
+)
+
+yacl_cc_library(
+    name = "aes_128_evaluator",
+    hdrs = [
+        "aes_128_evaluator.h",
+    ],
+    deps = [
+        ":mitccrh",
+        "//yacl/base:byte_container_view",
+        "//yacl/io/circuit:bristol_fashion",
+        "//yacl/kernel:ot_kernel",
+    ],
+)
+
+yacl_cc_test(
+    name = "gc_test",
+    srcs = ["gc_test.cc"],
+    copts = [
+        "-mavx",
+        "-maes",
+        "-mpclmul",
+    ],
+    data = ["//yacl/io/circuit:circuit_data"],
+    deps = [
+        ":aes_128_evaluator",
+        ":aes_128_garbler",
+        ":sha256_evaluator",
+        ":sha256_garbler",
+    ],
+)
+
+cc_binary(
+    name = "sha_run",
+    srcs = ["sha_run.cc"],
+    copts = [
+        "-mavx",
+        "-maes",
+        "-mpclmul",
+    ],
+    data = ["//yacl/io/circuit:circuit_data"],
+    deps = [
+        ":aes_128_evaluator",
+        ":aes_128_garbler",
+        ":sha256_garbler",
+        ":sha256_evaluator",
+        "//yacl/crypto/block_cipher:symmetric_crypto",
+    ],
+)
+
+cc_binary(
+    name = "aes_run",
+    srcs = ["aes_run.cc"],
+    copts = [
+        "-mavx",
+        "-maes",
+        "-mpclmul",
+    ],
+    data = ["//yacl/io/circuit:circuit_data"],
+    deps = [
+        ":aes_128_evaluator",
+        ":aes_128_garbler",
+        "//yacl/crypto/block_cipher:symmetric_crypto",
+    ],
+)

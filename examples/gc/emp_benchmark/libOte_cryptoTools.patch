@@ -1,0 +1,18 @@
+diff --git a/thirdparty/linux/boost.get b/thirdparty/linux/boost.get
+index 3e86ed8..bcd2f12 100644
+--- a/thirdparty/linux/boost.get
++++ b/thirdparty/linux/boost.get
+@@ -3,10 +3,10 @@
+ set -e
+ 
+ if [ ! -d boost ]; then
+-    wget -c 'http://sourceforge.net/projects/boost/files/boost/1.59.0/boost_1_59_0.tar.bz2/download' -O ./boost_1_59_0.tar.bz2
+-    tar xfj boost_1_59_0.tar.bz2
++    wget -c 'http://sourceforge.net/projects/boost/files/boost/1.59.0/boost_1_59_0.tar.gz/download' -O ./boost_1_59_0.tar.gz
++    tar -xf boost_1_59_0.tar.gz
+     mv boost_1_59_0 boost
+-    rm  boost_1_59_0.tar.bz2
++    rm  boost_1_59_0.tar.gz
+ fi
+ 
+ cd ./boost
