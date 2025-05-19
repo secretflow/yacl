@@ -16,8 +16,8 @@
 #include <iterator>
 
 #include "gflags/gflags.h"
-#include "examples/psi/cpp/ecdh_psi.h"
-#include "examples/psi/cpp/main_utils.h"
+#include "psi/cpp/ecdh_psi.h"
+#include "psi/cpp/main_utils.h"
 
 #include "yacl/link/context.h"
 #include "yacl/utils/serialize.h"
