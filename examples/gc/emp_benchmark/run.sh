@@ -1,4 +1,19 @@
 #!/bin/bash
+#
+# Copyright 2025 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 set -e
 
 echo -e "Please run \033[32mconda deactivate\033[0m to deactivate the conda environment and prevent Boost from being overridden."
@@ -42,11 +57,11 @@ elif [ "$OS_TYPE" == "Linux" ]; then
             boost-devel
 
     else
-        echo "当前 Linux 发行版不受支持，请手动安装 cmake、git、libssl-dev、libgmp-dev 和 libboost"
+        echo "The current Linux distribution is not supported. Please manually install cmake, git, libssl-dev, libgmp-dev, and libboost."
         exit 1
     fi
 else
-    echo "当前系统 ($OS_TYPE) 不支持！"
+    echo "The current system ($OS_TYPE) is not supported!"
     exit 1
 fi
 
