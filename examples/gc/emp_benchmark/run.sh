@@ -87,7 +87,7 @@ cd ..
 
 bash aes_run.sh
 bash sha256_run.sh
-
+cd ..
 echo "ABY Test"
 
 git clone https://github.com/encryptogroup/ABY.git

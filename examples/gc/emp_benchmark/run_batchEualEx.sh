@@ -18,10 +18,10 @@ cd thirdparty/linux
 bash all.get
 cd ../../..  
 
-cmake  -G "Unix Makefiles"
+cmake  -G "Unix Makefiles" -DBOOST_ROOT=cryptoTools/thirdparty/linux/boost   -DBoost_NO_SYSTEM_PATHS=ON   -DBoost_USE_STATIC_LIBS=ON
 make
 
-cd ../..
+cd ..
 # pwd
 git clone https://github.com/osu-crypto/batchDualEx.git
 cd ./batchDualEx
