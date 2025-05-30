@@ -108,7 +108,7 @@ class GarblerSHA256 {
 
     auto rands = yacl::crypto::SecureRandVec<uint128_t>(num_of_input_wires);
     for (int i = 0; i < num_of_input_wires; i++) {
-            gb_value[i] = rands[i];
+      gb_value[i] = rands[i];
     }
 
     for (int i = 0; i < 768; i++) {
