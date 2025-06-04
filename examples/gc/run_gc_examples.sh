@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 #
 # Copyright 2025 Ant Group Co., Ltd.
 #
@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-mkdir -p _build/gettext &&
-make gettext &&
-sphinx-intl update -p _build/gettext -l zh_CN &&
-echo "po files has been updated. Please update po files in locales folder."
+bash ycal_run_gc_aes.sh
+pwd
+bash ycal_run_gc_sha.sh

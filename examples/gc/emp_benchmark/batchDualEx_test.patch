@@ -1,0 +1,455 @@
+diff --git a/FrontEnd/Main.cpp b/FrontEnd/Main.cpp
+index ac09818..2dbb8d0 100644
+--- a/FrontEnd/Main.cpp
++++ b/FrontEnd/Main.cpp
+@@ -37,11 +37,12 @@ using namespace osuCrypto;
+ void Eval(Circuit& cir, u64 numExe, u64 bucketSize, u64 numOpened, u64 numConcurrentSetups, u64 numConcurrentEvals, u64 numThreadsPerEval,
+     bool v, 
+     bool timefiles,
+-    Timer& timer);
++    Timer& timer, int role);
+ 
+ 
+ void pingTest(Endpoint& netMgr, Role role)
+-{
++{   
++    std::cout << "PINGTEST" << std::endl;
+     u64 count = 100;
+     std::array<u8, 131072> oneMB;
+ 
+@@ -174,7 +175,7 @@ void commandLineMain(int argc, const char** argv)
+     );
+ 
+     opt.add(
+-        "128",
++        "1",
+         0,
+         1,
+         0,
+@@ -184,7 +185,7 @@ void commandLineMain(int argc, const char** argv)
+     );
+ 
+     opt.add(
+-        "4",
++        "1",
+         0,
+         1,
+         0,
+@@ -206,7 +207,7 @@ void commandLineMain(int argc, const char** argv)
+ 
+ 
+     opt.add(
+-        "./circuits/AES-non-expanded.txt",
++        "./circuits/AES-expanded.txt",
+         0,
+         1,
+         0,
+@@ -224,7 +225,7 @@ void commandLineMain(int argc, const char** argv)
+         "--ping");
+ 
+     opt.add(
+-        "4",
++        "2",
+         0,
+         1,
+         0,
+@@ -242,7 +243,7 @@ void commandLineMain(int argc, const char** argv)
+         "--evalConcurrently");
+ 
+     opt.add(
+-        "",
++        "1",
+         0,
+         1,
+         0,
+@@ -296,7 +297,7 @@ void commandLineMain(int argc, const char** argv)
+     opt.get("-f")->getString(file);
+     verbose = opt.get("-v")->isSet;
+     timefiles = opt.get("-l")->isSet;
+-
++    // std::cout << file << std::endl;
+     if (opt.get("-c")->isSet)
+     {
+         opt.get("-c")->getInt(temp); numThreadsPerEval = static_cast<u64>(temp);
+@@ -373,7 +374,8 @@ void commandLineMain(int argc, const char** argv)
+             numThreadsPerEval,
+             verbose,
+             timefiles,
+-            timer);
++            timer,
++            (int)role);
+ 
+         return;
+     }
+@@ -402,7 +404,7 @@ void commandLineMain(int argc, const char** argv)
+ 
+     PRNG prng(_mm_set_epi64x(0, role));
+ 
+-    std::cout << "Initializing..." << std::endl;
++    // std::cout << "Initializing..." << std::endl;
+ 
+     auto initStart = timer.setTimePoint("Init Start");
+ 
+@@ -485,12 +487,13 @@ void commandLineMain(int argc, const char** argv)
+     actor.printTimes("./timeFile");
+ 
+     //std::cout << "initTime " << std::chrono::duration_cast<std::chrono::milliseconds>(initFinish - initStart).count() << " ms" << std::endl;
+-    std::cout << "Done. " << std::endl << std::endl;
+-    std::cout << "total offline   = " << offlineTotal / 1000.0 << " ms" << std::endl;
+-    std::cout << "total online    = " << onlineTotal / 1000.0 << " ms" << std::endl;
+-    std::cout << "offline / eval  = " << offlineTotal / numExec / 1000.0 << " ms" << std::endl;
+-    std::cout << "online / eval   = " << onlineTotal / numExec / 1000.0 << " ms" << std::endl;
+-
++    // std::cout << "Done. " << std::endl << std::endl;
++    std::cout << "party " << role << " total offline   = " << offlineTotal / 1000.0 << " ms" << std::endl;
++    std::cout << "party " << role << " total online    = " << onlineTotal / 1000.0 << " ms" << std::endl;
++    std::cout << "party " << role << " offline / eval  = " << offlineTotal / numExec / 1000.0 << " ms" << std::endl;
++    std::cout << "party " << role << " online / eval   = " << onlineTotal / numExec / 1000.0 << " ms" << std::endl;
++    std::cout << "party " << role << " send            = " <<  actor.mTotalBytesSent << " bytes" << std::endl;
++    std::cout << "party " << role << " rev             = " <<  actor.mTotalBytesRecv << " bytes" << std::endl;
+     if (verbose)
+     {
+ 
+@@ -538,7 +541,8 @@ void Eval(
+     u64 numThreadsPerEval,
+     bool verbose,
+     bool timefiles,
+-    Timer& timer)
++    Timer& timer,
++    int role)
+ {
+     u64 psiSecParam = 40;
+ 
+@@ -643,10 +647,10 @@ void Eval(
+     thrd.join();
+ 
+     std::cout << "Done. " << std::endl << std::endl;
+-    std::cout << "total offline   = " << std::chrono::duration_cast<std::chrono::microseconds>(initFinish - initStart).count() / 1000.0 << " ms" << std::endl;
+-    std::cout << "total online    = " << std::chrono::duration_cast<std::chrono::microseconds>(finished - initFinish).count() / 1000.0 << " ms" << std::endl;
+-    std::cout << "time/eval       = " << std::chrono::duration_cast<std::chrono::microseconds>(finished - initFinish).count() / numExe / 1000.0 << " ms" << std::endl;
+-    std::cout << "min eval time   = " << std::chrono::duration_cast<std::chrono::microseconds>(min).count() / 1000.0 << " ms" << std::endl << std::endl << std::endl;
++    std::cout << role << "total offline   = " << std::chrono::duration_cast<std::chrono::microseconds>(initFinish - initStart).count() / 1000.0 << " ms" << std::endl;
++    std::cout << role << "total online    = " << std::chrono::duration_cast<std::chrono::microseconds>(finished - initFinish).count() / 1000.0 << " ms" << std::endl;
++    std::cout << role << "time/eval       = " << std::chrono::duration_cast<std::chrono::microseconds>(finished - initFinish).count() / numExe / 1000.0 << " ms" << std::endl;
++    std::cout << role << "min eval time   = " << std::chrono::duration_cast<std::chrono::microseconds>(min).count() / 1000.0 << " ms" << std::endl << std::endl << std::endl;
+ 
+     if (verbose)
+     {
+diff --git a/batchDualEx_aes.sh b/batchDualEx_aes.sh
+new file mode 100644
+index 0000000..5c3546b
+--- /dev/null
++++ b/batchDualEx_aes.sh
+@@ -0,0 +1,66 @@
++#!/bin/bash
++
++EXECUTABLE="./bin/frontend.exe"
++RUNS=100  # 改成你想要运行的次数
++
++# 初始化总计变量
++total_send_0=0
++total_recv_0=0
++total_time_0=0
++
++total_send_1=0
++total_recv_1=0
++total_time_1=0
++
++echo -e "=== AES TEST $RUNS Runs Batch 1 ==="
++
++# 输出进度条函数
++print_progress() {
++    local progress=$1
++    local total=$2
++    local width=50
++    local filled=$((progress * width / total))
++    local empty=$((width - filled))
++    printf "\rProgress: ["
++    for ((i = 0; i < filled; i++)); do printf "#"; done
++    for ((i = 0; i < empty; i++)); do printf " "; done
++    printf "] %d/%d" "$progress" "$total"
++}
++
++for i in $(seq 1 $RUNS); do
++    print_progress "$i" "$RUNS"
++    OUTPUT=$( ( $EXECUTABLE -r 0 & $EXECUTABLE -r 1; wait ) 2>&1 )
++
++    # 提取 party 0 数据
++    recv_0=$(echo "$OUTPUT" | grep "party 0 rev" | cut -d '=' -f2 | awk '{print $1}')
++    send_0=$(echo "$OUTPUT" | grep "party 0 send" | cut -d '=' -f2 | awk '{print $1}')
++    time_0=$(echo "$OUTPUT" | grep "party 0 total offline" | awk '{print $(NF-1)}')
++    time_on_0=$(echo "$OUTPUT" | grep "party 0 total online" | awk '{print $(NF-1)}')
++
++    # 提取 party 1 数据
++    recv_1=$(echo "$OUTPUT" | grep "party 1 rev" | cut -d '=' -f2 | awk '{print $1}')
++    send_1=$(echo "$OUTPUT" | grep "party 1 send" | cut -d '=' -f2 | awk '{print $1}')
++    time_1=$(echo "$OUTPUT" | grep "party 1 total offline" | awk '{print $(NF-1)}')
++    time_on_1=$(echo "$OUTPUT" | grep "party 0 total online" | awk '{print $(NF-1)}')
++
++    # 累加
++    total_send_0=$((total_send_0 + send_0))
++    total_recv_0=$((total_recv_0 + recv_0))
++    total_time_0=$(echo "$total_time_0 + $time_0 + $time_on_0" | bc)
++
++    total_send_1=$((total_send_1 + send_1))
++    total_recv_1=$((total_recv_1 + recv_1))
++    total_time_1=$(echo "$total_time_1 + $time_1 + $time_on_1" | bc)
++done
++
++echo -e "\n\n=== AES TEST After $RUNS Runs ==="
++echo "Party 0: Total Send = ${total_send_0} bytes, Total Recv = ${total_recv_0} bytes, Total Time = ${total_time_0} ms"
++echo "Party 1: Total Send = ${total_recv_0} bytes, Total Recv = ${total_send_0} bytes, Total Time = ${total_time_1} ms"
++
++{
++    echo -e "=== AES TEST $RUNS Runs Batch 1 ==="
++    echo "Party 0: Total Send = ${total_send_0} bytes, Total Recv = ${total_recv_0} bytes, Total Time = ${total_time_0} ms"
++    echo "Party 1: Total Send = ${total_recv_0} bytes, Total Recv = ${total_send_0} bytes, Total Time = ${total_time_1} ms"
++} > ./bin/aes_result.log
++
++echo "Result is saved in ./bin/aes_result.log"
+\ No newline at end of file
+diff --git a/batchDualEx_sha256.sh b/batchDualEx_sha256.sh
+new file mode 100644
+index 0000000..ce5d822
+--- /dev/null
++++ b/batchDualEx_sha256.sh
+@@ -0,0 +1,66 @@
++#!/bin/bash
++
++EXECUTABLE="./bin/frontend.exe"
++RUNS=100  # 改成你想要运行的次数
++
++# 初始化总计变量
++total_send_0=0
++total_recv_0=0
++total_time_0=0
++
++total_send_1=0
++total_recv_1=0
++total_time_1=0
++
++echo -e "\n=== SHA256 TEST $RUNS Runs Batch 1 ==="
++
++# 输出进度条函数
++print_progress() {
++    local progress=$1
++    local total=$2
++    local width=50
++    local filled=$((progress * width / total))
++    local empty=$((width - filled))
++    printf "\rProgress: ["
++    for ((i = 0; i < filled; i++)); do printf "#"; done
++    for ((i = 0; i < empty; i++)); do printf " "; done
++    printf "] %d/%d" "$progress" "$total"
++}
++
++for i in $(seq 1 $RUNS); do
++    print_progress "$i" "$RUNS"
++    OUTPUT=$( ( $EXECUTABLE -r 0 & $EXECUTABLE -r 1; wait ) 2>&1 )
++
++    # 提取 party 0 数据
++    recv_0=$(echo "$OUTPUT" | grep "party 0 rev" | cut -d '=' -f2 | awk '{print $1}')
++    send_0=$(echo "$OUTPUT" | grep "party 0 send" | cut -d '=' -f2 | awk '{print $1}')
++    time_0=$(echo "$OUTPUT" | grep "party 0 total offline" | awk '{print $(NF-1)}')
++    time_on_0=$(echo "$OUTPUT" | grep "party 0 total online" | awk '{print $(NF-1)}')
++
++    # 提取 party 1 数据
++    recv_1=$(echo "$OUTPUT" | grep "party 1 rev" | cut -d '=' -f2 | awk '{print $1}')
++    send_1=$(echo "$OUTPUT" | grep "party 1 send" | cut -d '=' -f2 | awk '{print $1}')
++    time_1=$(echo "$OUTPUT" | grep "party 1 total offline" | awk '{print $(NF-1)}')
++    time_on_1=$(echo "$OUTPUT" | grep "party 0 total online" | awk '{print $(NF-1)}')
++
++    # 累加
++    total_send_0=$((total_send_0 + send_0))
++    total_recv_0=$((total_recv_0 + recv_0))
++    total_time_0=$(echo "$total_time_0 + $time_0 + $time_on_0" | bc)
++
++    total_send_1=$((total_send_1 + send_1))
++    total_recv_1=$((total_recv_1 + recv_1))
++    total_time_1=$(echo "$total_time_1 + $time_1 + $time_on_1" | bc)
++done
++
++echo -e "\n\n=== SHA256 TEST After $RUNS Runs ==="
++echo "Party 0: Total Send = ${total_send_0} bytes, Total Recv = ${total_recv_0} bytes, Total Time = ${total_time_0} ms"
++echo "Party 1: Total Send = ${total_recv_0} bytes, Total Recv = ${total_send_0} bytes, Total Time = ${total_time_1} ms"
++
++{
++    echo -e "\n=== SHA256 TEST $RUNS Runs Batch 1 ==="
++    echo "Party 0: Total Send = ${total_send_0} bytes, Total Recv = ${total_recv_0} bytes, Total Time = ${total_time_0} ms"
++    echo "Party 1: Total Send = ${total_recv_0} bytes, Total Recv = ${total_send_0} bytes, Total Time = ${total_time_1} ms"
++} > ./bin/sha256_result.log
++
++echo "Result is saved in ./bin/sha256_result.log"
+\ No newline at end of file
+diff --git a/libBDX/DualEx/Bucket.cpp b/libBDX/DualEx/Bucket.cpp
+index 8758056..065ebd4 100644
+--- a/libBDX/DualEx/Bucket.cpp
++++ b/libBDX/DualEx/Bucket.cpp
+@@ -70,7 +70,11 @@ namespace osuCrypto
+ 
+ 			mOutputs[i].resize(cir.Outputs().size());
+ 		}
+-		std::shuffle(mPSIInputPermutes.begin(), mPSIInputPermutes.end(), prng);
++		// std::shuffle(mPSIInputPermutes.begin(), mPSIInputPermutes.end(), prng);
++		for (u64 i = mPSIInputPermutes.size() - 1; i > 0; --i) {
++			u64 j = prng.get<u64>() % (i + 1);
++			std::swap(mPSIInputPermutes[i], mPSIInputPermutes[j]);
++		}
+ 
+ 		mTheirPermutes.resize(bucketSize - 1);
+ 		BitVector delta(theirKProbe.encodingSize());
+diff --git a/libBDX/DualEx/DualExActor.cpp b/libBDX/DualEx/DualExActor.cpp
+index c71b5a8..8f0801f 100644
+--- a/libBDX/DualEx/DualExActor.cpp
++++ b/libBDX/DualEx/DualExActor.cpp
+@@ -115,6 +115,8 @@ namespace osuCrypto
+                 PRNG prng2(seed);
+                 Channel chl = mNetMgr.addChannel("OTRecv" + ToString(t), "OTSend" + ToString(t));
+                 mOTRecv[t].Extend(bases[t], numOTExtPer, prng2, chl, mOTRecvDoneIdx[t]);
++                mTotalBytesSent += chl.getTotalDataSent();
++                mTotalBytesRecv += chl.getTotalDataRecv();
+                 chl.close();
+             });
+         }
+@@ -125,7 +127,8 @@ namespace osuCrypto
+             bases[numInit - 1][i][1] = extenders[i][1].get<block>();
+         }
+         mOTRecv[numInit - 1].Extend(bases[numInit - 1], numOTExtPer, prng, chl, mOTRecvDoneIdx[numInit - 1]);
+-
++        mTotalBytesSent += chl.getTotalDataSent();
++        mTotalBytesRecv += chl.getTotalDataRecv();
+         chl.close();
+ 
+         for (auto& thrd : thrds)
+@@ -169,6 +172,8 @@ namespace osuCrypto
+                 PRNG prng2(seed);
+                 Channel chl = mNetMgr.addChannel("OTSend" + ToString(t), "OTRecv" + ToString(t));
+                 mOTSend[t].Extend(bases[t], baseOTsReceiver_inputs, numOTExtPer, prng2, chl, mOTSendDoneIdx[t]);
++                mTotalBytesSent += chl.getTotalDataSent();
++                mTotalBytesRecv += chl.getTotalDataRecv();
+                 chl.close();
+             });
+         }
+@@ -178,6 +183,8 @@ namespace osuCrypto
+             bases[numInit - 1][i] = extenders[i].get<block>();
+         }
+         mOTSend[numInit - 1].Extend(bases[numInit - 1], baseOTsReceiver_inputs, numOTExtPer, prng, chl, mOTSendDoneIdx[numInit - 1]);
++        mTotalBytesSent += chl.getTotalDataSent();
++        mTotalBytesRecv += chl.getTotalDataRecv();
+         chl.close();
+ 
+         for (auto& thrd : thrds)
+@@ -392,7 +399,8 @@ namespace osuCrypto
+ #endif
+ 
+         mOnlineProm.set_value();
+-
++        mTotalBytesSent += chl.getTotalDataSent();
++        mTotalBytesRecv += chl.getTotalDataRecv();
+         chl.close();
+ 
+     }
+@@ -455,6 +463,8 @@ namespace osuCrypto
+                     evalThreadLoop(i, numThreadsPerEval, j, numParallelEval, prng, chl);// , mPSIRecvChls[j], mPsiChannelLocks[0][j].get());
+ 
+                     // all done :)
++                    mTotalBytesSent += chl.getTotalDataSent();
++                    mTotalBytesRecv += chl.getTotalDataRecv();
+                     chl.close();
+                 });
+ 
+@@ -470,6 +480,8 @@ namespace osuCrypto
+                     sendCircuitInputLoop(i, numThreadsPerEval, j, numParallelEval, chl);
+ 
+                     // all done :)
++                    mTotalBytesSent += chl.getTotalDataSent();
++                    mTotalBytesRecv += chl.getTotalDataRecv();
+                     chl.close();
+                 });
+             }
+@@ -656,6 +668,8 @@ namespace osuCrypto
+         //std::cout << "receive " + ToString(initThrdIdx) + " kprobe Done" << std::endl;
+ 
+         // all done :)
++        mTotalBytesSent += chl.getTotalDataSent();
++        mTotalBytesRecv += chl.getTotalDataRecv();
+         chl.close();
+ 
+         timer.setTimePoint("bucketing_done");
+@@ -791,7 +805,8 @@ namespace osuCrypto
+         {
+             mBuckets[bcktIdx].initKProbeInputSend(mCircuit, chl, mTheirKProbe, prng, mRole, mIndexArray);
+         }
+-
++        mTotalBytesSent += chl.getTotalDataSent();
++        mTotalBytesRecv += chl.getTotalDataRecv();
+         chl.close();
+     }
+ 
+diff --git a/libBDX/DualEx/DualExActor.h b/libBDX/DualEx/DualExActor.h
+index 39ef744..7e623d9 100644
+--- a/libBDX/DualEx/DualExActor.h
++++ b/libBDX/DualEx/DualExActor.h
+@@ -45,6 +45,8 @@ namespace osuCrypto
+ 		const u64 mNumExe, mBucketSize, mNumOpened,mNumCircuits, mPsiSecParam;
+ 		std::atomic<bool> mCnCCommitRecvDone;
+ 		std::vector<Bucket> mBuckets;
++		u64 mTotalBytesSent = 0;
++		u64 mTotalBytesRecv = 0;
+ 		//std::atomic<u64> mEvalIdx;
+ 
+ 		//PRNG mPrng;
+diff --git a/libBDXTests/AsyncPSI_Tests.cpp b/libBDXTests/AsyncPSI_Tests.cpp
+index f4e0bb8..3dafb13 100644
+--- a/libBDXTests/AsyncPSI_Tests.cpp
++++ b/libBDXTests/AsyncPSI_Tests.cpp
+@@ -156,7 +156,11 @@ void AsyncPsi_FullSet_Test_Impl()
+ 		sendSet[i] = recvSet[i] = prng.get<block>();
+ 	}
+ 
+-	std::shuffle(sendSet.begin(), sendSet.end(), prng);
++	// std::shuffle(sendSet.begin(), sendSet.end(), prng);
++	for (u64 i = sendSet.size() - 1; i > 0; --i) {
++		u64 j = prng.get<u64>() % (i + 1);
++		std::swap(sendSet[i], sendSet[j]);
++	}
+ 
+ 
+ 	std::string name("psi");
+diff --git a/libBDXTests/PSI_Tests.cpp b/libBDXTests/PSI_Tests.cpp
+index d0f506f..eb1dcd9 100644
+--- a/libBDXTests/PSI_Tests.cpp
++++ b/libBDXTests/PSI_Tests.cpp
+@@ -159,8 +159,11 @@ void Psi_FullSet_Test_Impl()
+ 		sendSet[i] = recvSet[i] = prng.get<block>();
+ 	}
+ 
+-	std::shuffle(sendSet.begin(), sendSet.end(), prng);
+-
++	// std::shuffle(sendSet.begin(), sendSet.end(), prng);
++	for (u64 i = sendSet.size() - 1; i > 0; --i) {
++		u64 j = prng.get<u64>() % (i + 1);
++		std::swap(sendSet[i], sendSet[j]);
++	}
+ 
+ 	std::string name("psi");
+ 	//NetworkManager netMgr0("localhost", 1212, 4, true);
+diff --git a/run_batchDualEx.sh b/run_batchDualEx.sh
+new file mode 100644
+index 0000000..b5fb23f
+--- /dev/null
++++ b/run_batchDualEx.sh
+@@ -0,0 +1,13 @@
++#!/bin/bash
++
++# 要修改的 C++ 文件
++# ./FrontEnd/Main.cpp
++bash batchDualEx_aes.sh
++target_file="./FrontEnd/Main.cpp"  # 替换为你的目标文件名
++sed -i 's|"\./circuits/AES-expanded\.txt"|"./circuits/sha-256.txt"|g' "$target_file"
++echo "替换完成：./circuits/AES-expanded.txt -> sha-256.txt"
++make > tmp.log
++rm tmp.log
++bash batchDualEx_sha256.sh
++
++

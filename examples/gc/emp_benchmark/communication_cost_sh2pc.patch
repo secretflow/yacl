@@ -1,0 +1,471 @@
+diff --git a/aes_run.sh b/aes_run.sh
+new file mode 100644
+index 0000000..f3f672d
+--- /dev/null
++++ b/aes_run.sh
+@@ -0,0 +1,126 @@
++#!/bin/bash
++cd build
++
++# 初始化变量
++total_send_rounds_1=0
++total_recv_rounds_1=0
++total_send_bytes_1=0
++total_recv_bytes_1=0
++total_send_rounds_2=0
++total_recv_rounds_2=0
++total_send_bytes_2=0
++total_recv_bytes_2=0
++total_computation_time_1=0
++total_reading_time_1=0
++total_computation_time_2=0
++total_reading_time_2=0
++
++
++# 运行 100 次循环
++total=100
++PROGRESS_WIDTH=20
++echo "==================================AES BEGIN========================================="
++echo "Total Iteration: $total, Batch Size 1"
++for ((i=1; i<=total; i++)); do
++    # 计算进度条
++    percent=$((i * 100 / total))
++    progress=$(( (i * PROGRESS_WIDTH) / total ))
++    remaining=$((PROGRESS_WIDTH - progress))
++    bar=$(printf "%-${PROGRESS_WIDTH}s" "$(printf '█%.0s' $(seq 1 $progress))")
++    echo -ne "\r[ ${bar// / } ] $percent% ($i/$total) Running iteration $i...          "
++
++    # 启动进程
++    port=$((1234 + i))
++    # echo -ne "\r[$bar] $percent% ($i/$total) Running iteration $i..."
++    ./bin/test_circuit_file_aes 1 1234 > output1.log&
++    ./bin/test_circuit_file_aes 2 1234 > output2.log 2>&1
++    wait
++
++    # 解析 party 1 数据（清理分号）
++    computation_time_1=$(grep "Time for Computation:" output1.log | awk '{print $4}' | tr -d ';')
++    reading_time_1=$(grep "Time for Reading File and Creating Circuits:" output1.log | awk '{print $8}' | tr -d ';')
++    send_rounds_1=$(grep "party 1: send rounds:" output1.log | awk '{print $5}' | tr -d ';')
++    recv_rounds_1=$(grep "recv rounds:" output1.log | awk '{print $8}' | tr -d ';')
++    send_bytes_1=$(grep "party 1: send bytes:" output1.log | awk '{print $5}' | tr -d ';')
++    recv_bytes_1=$(grep "recv bytes:" output1.log | awk '{print $8}' | tr -d ';')
++
++    # 解析 party 2 数据（清理分号）
++    send_rounds_2=$(grep "party 2: send rounds:" output2.log | awk '{print $5}' | tr -d ';')
++    recv_rounds_2=$(grep "recv rounds:" output2.log | awk '{print $8}' | tr -d ';')
++    send_bytes_2=$(grep "party 2: send bytes:" output2.log | awk '{print $5}' | tr -d ';')
++    recv_bytes_2=$(grep "recv bytes:" output2.log | awk '{print $8}' | tr -d ';')
++    computation_time_2=$(grep "Time for Computation:" output2.log | awk '{print $4}' | tr -d ';')
++    reading_time_2=$(grep "Time for Reading File and Creating Circuits:" output2.log | awk '{print $8}' | tr -d ';')
++
++    # 累加数据
++    total_send_rounds_1=$((total_send_rounds_1 + send_rounds_1))
++    total_recv_rounds_1=$((total_recv_rounds_1 + recv_rounds_1))
++    total_send_bytes_1=$((total_send_bytes_1 + send_bytes_1))
++    total_recv_bytes_1=$((total_recv_bytes_1 + recv_bytes_1))
++    total_computation_time_1=$((total_computation_time_1 + computation_time_1))
++    total_reading_time_1=$((total_reading_time_1 + reading_time_1))
++
++    total_send_rounds_2=$((total_send_rounds_2 + send_rounds_2))
++    total_recv_rounds_2=$((total_recv_rounds_2 + recv_rounds_2))
++    total_send_bytes_2=$((total_send_bytes_2 + send_bytes_2))
++    total_recv_bytes_2=$((total_recv_bytes_2 + recv_bytes_2))
++    total_computation_time_2=$((total_computation_time_2 + computation_time_2))
++    total_reading_time_2=$((total_reading_time_2 + reading_time_2))
++done
++
++convert_to_kb() {
++    local bytes=$1
++    if [ "$bytes" -gt 1024 ]; then
++        echo "$((bytes / 1024)) KB"
++    else
++        echo "$bytes B"
++    fi
++}
++
++convert_to_ms() {
++    local times=$1
++    if [ "$times" -gt 100000000 ]; then
++        echo "$((times / 1000000)) ms"
++    else
++        echo "$times ns"
++    fi
++}
++
++
++echo "Emp-tool AES Total Results after 100 Iterations:"
++echo "Party 1:"
++echo "  Send Rounds: $total_send_rounds_1"
++echo "  Recv Rounds: $total_recv_rounds_1"
++echo "  Send Bytes: $(convert_to_kb $total_send_bytes_1)"
++echo "  Recv Bytes: $(convert_to_kb $total_recv_bytes_1)"
++echo "  Time for Reading File and Creating Circuits: $(convert_to_ms $total_reading_time_1)"
++echo "  Time for Computation: $(convert_to_ms $total_computation_time_1)"
++echo "Party 2:"
++echo "  Send Rounds: $total_send_rounds_2"
++echo "  Recv Rounds: $total_recv_rounds_2"
++echo "  Send Bytes: $(convert_to_kb $total_send_bytes_2)"
++echo "  Recv Bytes: $(convert_to_kb $total_recv_bytes_2)"
++echo "  Time for Reading File and Creating Circuits: $(convert_to_ms $total_reading_time_2)"
++echo "  Time for Computation: $(convert_to_ms $total_computation_time_2)"
++
++{
++    echo "Emp-tool AES Total Results after 100 Iterations:"
++    echo "Party 1:"
++    echo "  Send Rounds: $total_send_rounds_1"
++    echo "  Recv Rounds: $total_recv_rounds_1"
++    echo "  Send Bytes: $(convert_to_kb $total_send_bytes_1)"
++    echo "  Recv Bytes: $(convert_to_kb $total_recv_bytes_1)"
++    echo "  Time for Reading File and Creating Circuits: $(convert_to_ms $total_reading_time_1)"
++    echo "  Time for Computation: $(convert_to_ms $total_computation_time_1)"
++    echo "Party 2:"
++    echo "  Send Rounds: $total_send_rounds_2"
++    echo "  Recv Rounds: $total_recv_rounds_2"
++    echo "  Send Bytes: $(convert_to_kb $total_send_bytes_2)"
++    echo "  Recv Bytes: $(convert_to_kb $total_recv_bytes_2)"
++    echo "  Time for Reading File and Creating Circuits: $(convert_to_ms $total_reading_time_2)"
++    echo "  Time for Computation: $(convert_to_ms $total_computation_time_2)"
++} > aes_result.log
++
++rm output1.log
++rm output2.log
++echo "Results saved to ./build/aes_result.log"
+diff --git a/sha256_run.sh b/sha256_run.sh
+new file mode 100644
+index 0000000..b262352
+--- /dev/null
++++ b/sha256_run.sh
+@@ -0,0 +1,127 @@
++#!/bin/bash
++cd build
++
++# 初始化变量
++total_send_rounds_1=0
++total_recv_rounds_1=0
++total_send_bytes_1=0
++total_recv_bytes_1=0
++total_send_rounds_2=0
++total_recv_rounds_2=0
++total_send_bytes_2=0
++total_recv_bytes_2=0
++total_computation_time_1=0
++total_reading_time_1=0
++total_computation_time_2=0
++total_reading_time_2=0
++
++
++# 运行 100 次循环
++total=100
++PROGRESS_WIDTH=20
++echo "==================================SHA256 BEGIN========================================="
++echo "Total Iteration: $total, Batch Size 1"
++for ((i=1; i<=total; i++)); do
++    # 计算进度条
++    percent=$((i * 100 / total))
++    progress=$(( (i * PROGRESS_WIDTH) / total ))
++    remaining=$((PROGRESS_WIDTH - progress))
++    bar=$(printf "%-${PROGRESS_WIDTH}s" "$(printf '█%.0s' $(seq 1 $progress))")
++    echo -ne "\r[ ${bar// / } ] $percent% ($i/$total) Running iteration $i...          "
++
++    # 启动进程
++    port=$((1234 + i))
++    # echo -ne "\r[$bar] $percent% ($i/$total) Running iteration $i..."
++    ./bin/test_circuit_file_sha256 1 1234 > output1.log&
++    ./bin/test_circuit_file_sha256 2 1234 > output2.log 2>&1
++    wait
++
++    # 解析 party 1 数据（清理分号）
++    computation_time_1=$(grep "Time for Computation:" output1.log | awk '{print $4}' | tr -d ';')
++    reading_time_1=$(grep "Time for Reading File and Creating Circuits:" output1.log | awk '{print $8}' | tr -d ';')
++    send_rounds_1=$(grep "party 1: send rounds:" output1.log | awk '{print $5}' | tr -d ';')
++    recv_rounds_1=$(grep "recv rounds:" output1.log | awk '{print $8}' | tr -d ';')
++    send_bytes_1=$(grep "party 1: send bytes:" output1.log | awk '{print $5}' | tr -d ';')
++    recv_bytes_1=$(grep "recv bytes:" output1.log | awk '{print $8}' | tr -d ';')
++
++    # 解析 party 2 数据（清理分号）
++    send_rounds_2=$(grep "party 2: send rounds:" output2.log | awk '{print $5}' | tr -d ';')
++    recv_rounds_2=$(grep "recv rounds:" output2.log | awk '{print $8}' | tr -d ';')
++    send_bytes_2=$(grep "party 2: send bytes:" output2.log | awk '{print $5}' | tr -d ';')
++    recv_bytes_2=$(grep "recv bytes:" output2.log | awk '{print $8}' | tr -d ';')
++    computation_time_2=$(grep "Time for Computation:" output2.log | awk '{print $4}' | tr -d ';')
++    reading_time_2=$(grep "Time for Reading File and Creating Circuits:" output2.log | awk '{print $8}' | tr -d ';')
++
++    # 累加数据
++    total_send_rounds_1=$((total_send_rounds_1 + send_rounds_1))
++    total_recv_rounds_1=$((total_recv_rounds_1 + recv_rounds_1))
++    total_send_bytes_1=$((total_send_bytes_1 + send_bytes_1))
++    total_recv_bytes_1=$((total_recv_bytes_1 + recv_bytes_1))
++    total_computation_time_1=$((total_computation_time_1 + computation_time_1))
++    total_reading_time_1=$((total_reading_time_1 + reading_time_1))
++
++    total_send_rounds_2=$((total_send_rounds_2 + send_rounds_2))
++    total_recv_rounds_2=$((total_recv_rounds_2 + recv_rounds_2))
++    total_send_bytes_2=$((total_send_bytes_2 + send_bytes_2))
++    total_recv_bytes_2=$((total_recv_bytes_2 + recv_bytes_2))
++    total_computation_time_2=$((total_computation_time_2 + computation_time_2))
++    total_reading_time_2=$((total_reading_time_2 + reading_time_2))
++done
++
++# 转换 bytes 为 KB（如果超过 1024）
++convert_to_kb() {
++    local bytes=$1
++    if [ "$bytes" -gt 1024 ]; then
++        echo "$((bytes / 1024)) KB"
++    else
++        echo "$bytes B"
++    fi
++}
++
++convert_to_ms() {
++    local times=$1
++    if [ "$times" -gt 100000000 ]; then
++        echo "$((times / 1000000)) ms"
++    else
++        echo "$times ns"
++    fi
++}
++
++
++echo "Emp-tool SHA256 Total Results after 100 Iterations:"
++echo "Party 1:"
++echo "  Send Rounds: $total_send_rounds_1"
++echo "  Recv Rounds: $total_recv_rounds_1"
++echo "  Send Bytes: $(convert_to_kb $total_send_bytes_1)"
++echo "  Recv Bytes: $(convert_to_kb $total_recv_bytes_1)"
++echo "  Time for Reading File and Creating Circuits: $(convert_to_ms $total_reading_time_1)"
++echo "  Time for Computation: $(convert_to_ms $total_computation_time_1)"
++echo "Party 2:"
++echo "  Send Rounds: $total_send_rounds_2"
++echo "  Recv Rounds: $total_recv_rounds_2"
++echo "  Send Bytes: $(convert_to_kb $total_send_bytes_2)"
++echo "  Recv Bytes: $(convert_to_kb $total_recv_bytes_2)"
++echo "  Time for Reading File and Creating Circuits: $(convert_to_ms $total_reading_time_2)"
++echo "  Time for Computation: $(convert_to_ms $total_computation_time_2)"
++
++{
++    echo "Emp-tool AES Total Results after 100 Iterations:"
++    echo "Party 1:"
++    echo "  Send Rounds: $total_send_rounds_1"
++    echo "  Recv Rounds: $total_recv_rounds_1"
++    echo "  Send Bytes: $(convert_to_kb $total_send_bytes_1)"
++    echo "  Recv Bytes: $(convert_to_kb $total_recv_bytes_1)"
++    echo "  Time for Reading File and Creating Circuits: $(convert_to_ms $total_reading_time_1)"
++    echo "  Time for Computation: $(convert_to_ms $total_computation_time_1)"
++    echo "Party 2:"
++    echo "  Send Rounds: $total_send_rounds_2"
++    echo "  Recv Rounds: $total_recv_rounds_2"
++    echo "  Send Bytes: $(convert_to_kb $total_send_bytes_2)"
++    echo "  Recv Bytes: $(convert_to_kb $total_recv_bytes_2)"
++    echo "  Time for Reading File and Creating Circuits: $(convert_to_ms $total_reading_time_2)"
++    echo "  Time for Computation: $(convert_to_ms $total_computation_time_2)"
++} > sha256_result.log
++
++rm output1.log
++rm output2.log
++echo "Results saved to ./build/sha256_result.log"
+\ No newline at end of file
+diff --git a/test/CMakeLists.txt b/test/CMakeLists.txt
+index d4d81ac..213a101 100644
+--- a/test/CMakeLists.txt
++++ b/test/CMakeLists.txt
+@@ -22,5 +22,7 @@ IF(${ENABLE_FLOAT})
+ add_test_case_with_run(float)
+ ENDIF(${ENABLE_FLOAT})
+ add_test_case_with_run(circuit_file)
++add_test_case_with_run(circuit_file_aes)
++add_test_case_with_run(circuit_file_sha256)
+ add_test_case_with_run(example)
+ add_test_case_with_run(repeat)
+diff --git a/test/circuit_file_aes.cpp b/test/circuit_file_aes.cpp
+new file mode 100644
+index 0000000..7c44ad3
+--- /dev/null
++++ b/test/circuit_file_aes.cpp
+@@ -0,0 +1,74 @@
++#include "emp-sh2pc/emp-sh2pc.h"
++using namespace emp;
++using namespace std;
++const string circuit_file_location = macro_xstr(EMP_CIRCUIT_PATH);
++
++int port, party;
++string file = circuit_file_location + "/bristol_fashion/aes_128.txt";
++
++vector<Bit> cat_vector(vector<Bit> key, vector<Bit> plaintext)
++{
++	vector<Bit> result = key;
++	result.insert(result.end(), plaintext.begin(), plaintext.end());
++	return result;
++}
++
++string bits2string(vector<Bit> bits)
++{
++	string result;
++	for (const Bit &b : bits)
++	{
++		result += b.reveal<bool>() ? '1' : '0';
++	}
++	return result;
++}
++
++string reverse_string(string str)
++{
++	reverse(str.begin(), str.end());
++	return str;
++}
++
++void test()
++{
++	std::srand(static_cast<unsigned int>(
++		std::chrono::system_clock::now().time_since_epoch().count()));
++	auto start1 = clock_start();
++	BristolFashion cf(file.c_str());
++	cout << "Time for Reading File and Creating Circuits: " << time_from(start1) << endl;
++
++	vector<Bit> key(128);
++	for (auto &bit : key)
++	{
++		bit = (rand() % 2) == 1;
++	}
++
++	vector<Bit> plaintext(128);
++	for (auto &bit : plaintext)
++	{
++		bit = (rand() % 2) == 1;
++	}
++	cout << "key      : " << bits2string(key) << endl;
++	cout << "plaintext: " << bits2string(plaintext) << endl;
++
++	vector<Bit> bit_vec = cat_vector(key, plaintext);
++	Integer a(bit_vec);
++
++	Integer c(128, 1, PUBLIC);
++	auto start2 = clock_start();
++	cf.compute((block *)c.bits.data(), (block *)a.bits.data());
++	cout << "ciphertext: " << reverse_string(c.reveal<string>()) << endl;
++	cout << "Time for Computation: " << time_from(start2) << endl;
++}
++int main(int argc, char **argv)
++{
++	parse_party_and_port(argv, &party, &port);
++	NetIO *io = new NetIO(party == ALICE ? nullptr : "127.0.0.1", port);
++
++	setup_semi_honest(io, party);
++	test();
++	cout << "party " << party << ": send rounds: " << io->send_rounds << "; recv rounds: " << io->recv_rounds << endl;
++	cout << "party " << party << ": send bytes: " << io->send_bytes << "; recv bytes: " << io->recv_bytes << endl;
++	finalize_semi_honest();
++	delete io;
++}
+diff --git a/test/circuit_file_sha256.cpp b/test/circuit_file_sha256.cpp
+new file mode 100644
+index 0000000..7925096
+--- /dev/null
++++ b/test/circuit_file_sha256.cpp
+@@ -0,0 +1,107 @@
++#include <ctime>
++#include <chrono>
++#include "emp-sh2pc/emp-sh2pc.h"
++using namespace emp;
++using namespace std;
++const string circuit_file_location = macro_xstr(EMP_CIRCUIT_PATH);
++
++int port, party;
++string file = circuit_file_location + "/bristol_fashion/sha256.txt";
++
++vector<Bit> cat_vector(vector<Bit> key, vector<Bit> plaintext)
++{
++    vector<Bit> result = key;
++    result.insert(result.end(), plaintext.begin(), plaintext.end());
++    return result;
++}
++
++string bits2string(vector<Bit> bits)
++{
++    string result;
++    for (const Bit &b : bits)
++    {
++        result += b.reveal<bool>() ? '1' : '0';
++    }
++    return result;
++}
++
++string reverse_string(string str)
++{
++    reverse(str.begin(), str.end());
++    return str;
++}
++
++string bits2hexString(vector<Bit> bits)
++{
++    stringstream ss;
++    for (size_t i = 0; i < bits.size(); i += 4)
++    {
++        int hex_value = 0;
++        for (size_t j = 0; j < 4 && i + j < bits.size(); ++j)
++        {
++            hex_value = (hex_value << 1) | bits[i + j].reveal<bool>();
++        }
++        ss << hex << hex_value;
++    }
++    return ss.str();
++}
++
++string biString2hexString(string str)
++{
++    stringstream ss;
++    int len = str.length();
++    while (len % 4 != 0)
++    {
++        str = '0' + str;
++        len++;
++    }
++    for (int i = 0; i < len; i += 4)
++    {
++        string byte_str = str.substr(i, 4);
++        int byte_val = stoi(byte_str, nullptr, 2);
++        ss << hex << setw(1) << setfill('0') << byte_val;
++    }
++
++    return ss.str();
++}
++
++void test()
++{
++    std::srand(static_cast<unsigned int>(
++        std::chrono::system_clock::now().time_since_epoch().count()));
++    auto start1 = clock_start();
++    BristolFashion cf(file.c_str());
++    cout << "Time for Reading File and Creating Circuits: " << time_from(start1) << endl;
++    vector<Bit> message_block(512);
++    vector<Bit> hash_state(256);
++    for (auto &bit : message_block)
++    {
++        bit = (rand() % 2) == 1;
++    }
++    for (auto &bit : hash_state)
++    {
++        bit = (rand() % 2) == 1;
++    }
++
++    cout << "message block: 0x" << bits2hexString(message_block) << endl;
++    cout << "hash state   : 0x" << bits2hexString(hash_state) << endl;
++    Integer a(cat_vector(message_block, hash_state));
++
++    Integer c(256, 0, PUBLIC);
++    auto start2 = clock_start();
++    cf.compute((block *)c.bits.data(), (block *)a.bits.data());
++    cout << "ciphertext   : 0x" << biString2hexString(c.reveal<string>()) << endl;
++    cout << "Time for Computation: " << time_from(start2) << endl;
++}
++int main(int argc, char **argv)
++{
++    parse_party_and_port(argv, &party, &port);
++    NetIO *io = new NetIO(party == ALICE ? nullptr : "127.0.0.1", port);
++
++    setup_semi_honest(io, party);
++    test();
++    cout << "party " << party << ": send rounds: " << io->send_rounds << "; recv rounds: " << io->recv_rounds << endl;
++    cout << "party " << party << ": send bytes: " << io->send_bytes << "; recv bytes: " << io->recv_bytes << endl;
++    finalize_semi_honest();
++    delete io;
++}

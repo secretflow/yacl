@@ -1,0 +1,182 @@
+diff --git a/run_aes.sh b/run_aes.sh
+new file mode 100644
+index 0000000..da61da4
+--- /dev/null
++++ b/run_aes.sh
+@@ -0,0 +1,72 @@
++#!/bin/bash
++
++cd build
++# 输出文件路径
++output_file="aes_test_output.txt"
++
++# 清空输出文件
++echo "Running AES Test..." > $output_file
++echo "----------------------------------------" >> $output_file
++
++# 统计总和的变量
++total_computing_time_0=0
++total_computing_time_1=0
++total_received_data_0=0
++total_received_data_1=0
++total_sent_data_0=0
++total_sent_data_1=0
++
++echo "--------------- AES Test Batch 1 ------------------------"
++# 运行 100 次，并添加进度条
++for i in {1..100}
++do
++    # 显示进度条
++    progress=$((i * 100 / 100))  # 计算进度
++    printf "\rProgress: ["
++    for ((j=0; j<progress; j+=2)); do printf "="; done
++    for ((j=progress; j<100; j+=2)); do printf " "; done
++    printf "] %d%%" $progress
++
++    # 运行程序并获取输出
++    output=$(LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu ./bin/aes_test -r 0 & LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu ./bin/aes_test -r 1)
++    
++    # 提取 party 0 和 party 1 的数据
++    computing_time_0=$(echo "$output" | grep -oP '0 computing time: \K[0-9]+\.[0-9]+')
++    computing_time_1=$(echo "$output" | grep -oP '1 computing time: \K[0-9]+\.[0-9]+')
++    
++    rev_data_0=$(echo "$output" | grep -oP '0 rev data: \K[0-9]+')
++    rev_data_1=$(echo "$output" | grep -oP '1 rev data: \K[0-9]+')
++    
++    send_data_0=$(echo "$output" | grep -oP '0 send data: \K[0-9]+')
++    send_data_1=$(echo "$output" | grep -oP '1 send data: \K[0-9]+')
++
++    # 累加数据
++    total_computing_time_0=$(echo "$total_computing_time_0 + $computing_time_0" | bc)
++    total_computing_time_1=$(echo "$total_computing_time_1 + $computing_time_1" | bc)
++    total_received_data_0=$(echo "$total_received_data_0 + $rev_data_0" | bc)
++    total_received_data_1=$(echo "$total_received_data_1 + $rev_data_1" | bc)
++    total_sent_data_0=$(echo "$total_sent_data_0 + $send_data_0" | bc)
++    total_sent_data_1=$(echo "$total_sent_data_1 + $send_data_1" | bc)
++
++    # 输出每次运行的结果到文件，时间单位转化为毫秒
++    echo "Iteration $i: " >> $output_file
++    echo "  Party 0: Computing Time = $(echo "$computing_time_0" | bc) ms, Received Data = $rev_data_0 bytes, Sent Data = $send_data_0 bytes" >> $output_file
++    echo "  Party 1: Computing Time = $(echo "$computing_time_1" | bc) ms, Received Data = $rev_data_1 bytes, Sent Data = $send_data_1 bytes" >> $output_file
++    echo "----------------------------------------" >> $output_file
++    
++    # 延时以模拟每次测试的时间，方便查看进度条（可以根据实际运行时间调整）
++    # sleep 0.1
++done
++
++# 输出总的统计结果到文件，时间单位转化为毫秒
++echo "----------------------------------------" >> $output_file
++echo "Total Results:" >> $output_file
++echo "Total Computing Time for Party 0: $(echo "$total_computing_time_0" | bc) ms" >> $output_file
++echo "Total Computing Time for Party 1: $(echo "$total_computing_time_1" | bc) ms" >> $output_file
++echo "Total Received Data for Party 0: $total_received_data_0 bytes" >> $output_file
++echo "Total Received Data for Party 1: $total_received_data_1 bytes" >> $output_file
++echo "Total Sent Data for Party 0: $total_sent_data_0 bytes" >> $output_file
++echo "Total Sent Data for Party 1: $total_sent_data_1 bytes" >> $output_file
++
++# 提示完成
++echo "Test completed. Results saved to $output_file"
+diff --git a/src/examples/aes/aes_test.cpp b/src/examples/aes/aes_test.cpp
+index 63acd6f..4ebdd6d 100644
+--- a/src/examples/aes/aes_test.cpp
++++ b/src/examples/aes/aes_test.cpp
+@@ -69,7 +69,7 @@ int32_t read_test_options(int32_t* argcp, char*** argvp, e_role* role, uint32_t*
+ 
+ int main(int argc, char** argv) {
+ 	e_role role;
+-	uint32_t bitlen = 32, nvals = 1, secparam = 128, nthreads = 1;
++	uint32_t bitlen = 128, nvals = 8, secparam = 128, nthreads = 1;
+ 	uint16_t port = 7766;
+ 	std::string address = "127.0.0.1";
+ 	bool verbose = false;
+diff --git a/src/examples/aes/common/aescircuit.cpp b/src/examples/aes/common/aescircuit.cpp
+index 7c89fd8..2a12240 100644
+--- a/src/examples/aes/common/aescircuit.cpp
++++ b/src/examples/aes/common/aescircuit.cpp
+@@ -15,6 +15,7 @@
+             along with this program. If not, see <http://www.gnu.org/licenses/>.
+  \brief		Implementation of AESCiruit
+  */
++#include <chrono>
+ #include "aescircuit.h"
+ #include "../../../abycore/circuit/booleancircuits.h"
+ #include "../../../abycore/sharing/sharing.h"
+@@ -26,14 +27,13 @@ static uint32_t* pos_odd;
+ 
+ int32_t test_aes_circuit(e_role role, const std::string& address, uint16_t port, seclvl seclvl, uint32_t nvals, uint32_t nthreads,
+ 		e_mt_gen_alg mt_alg, e_sharing sharing, [[maybe_unused]] bool verbose, bool use_vec_ands, bool expand_in_sfe, bool client_only) {
+-	uint32_t bitlen = 32;
++	uint32_t bitlen = 128;
+ 	uint32_t aes_key_bits;
+ 	ABYParty* party = new ABYParty(role, address, port, seclvl, bitlen, nthreads, mt_alg, 4000000);
+ 	std::vector<Sharing*>& sharings = party->GetSharings();
+ 
+ 	crypto* crypt = new crypto(seclvl.symbits, (uint8_t*) const_seed);
+ 	CBitVector input, key, verify;
+-
+ 	//ids that are required for the vector_and optimization
+ 	if(use_vec_ands) {
+ 		pos_even = (uint32_t*) malloc(sizeof(uint32_t) * nvals);
+@@ -45,14 +45,16 @@ int32_t test_aes_circuit(e_role role, const std::string& address, uint16_t port,
+ 	}
+ 
+ 	aes_key_bits = crypt->get_aes_key_bytes() * 8;
++	// std::cout << aes_key_bits << std::endl;
+ 	input.Create(AES_BITS * nvals, crypt);
++	std::cout << input.GetSize() << std::endl;
+ 	verify.Create(AES_BITS * nvals);
+ 	key.CreateBytes(AES_EXP_KEY_BYTES);
+ 
+-	uint8_t aes_test_key[AES_KEY_BYTES];
+-	srand(7438);
+-	for(uint32_t i = 0; i < AES_KEY_BYTES; i++) {
+-		aes_test_key[i] = (uint8_t) (rand() % 256);
++	uint8_t aes_test_key[AES_KEY_BYTES * 8];
++	// srand(7438);
++	for(uint32_t i = 0; i < AES_KEY_BYTES * 8; i++) {
++		aes_test_key[i] = (uint8_t) (rand() % 2);
+ 	}
+ 	uint8_t expanded_key[AES_EXP_KEY_BYTES];
+ 	ExpandKey(expanded_key, aes_test_key);
+@@ -90,7 +92,6 @@ int32_t test_aes_circuit(e_role role, const std::string& address, uint16_t port,
+ 		if(nyao_rev_circs > 0) {
+ 			s_ciphertext_yao_rev = BuildAESCircuit(s_in_yao_rev, s_key_yao_rev, (BooleanCircuit*) yao_rev_circ, use_vec_ands);
+ 		}
+-
+ 		party->ExecCircuit();
+ 
+ 		output = s_ciphertext_yao->get_clear_value_ptr();
+@@ -131,7 +132,6 @@ int32_t test_aes_circuit(e_role role, const std::string& address, uint16_t port,
+ 
+ 		out.SetBytes(output, 0L, (uint64_t) AES_BYTES * nvals);
+ 	}
+-
+ 	verify_AES_encryption(input.GetArr(), key.GetArr(), nvals, verify.GetArr(), crypt);
+ 
+ #ifndef BATCH
+@@ -155,13 +155,18 @@ int32_t test_aes_circuit(e_role role, const std::string& address, uint16_t port,
+ #ifndef BATCH
+ 	std::cout << "all tests succeeded" << std::endl;
+ #else
+-	std::cout << party->GetTiming(P_SETUP) << "\t" << party->GetTiming(P_GARBLE) << "\t" << party->GetTiming(P_ONLINE) << "\t" << party->GetTiming(P_TOTAL) <<
+-			"\t" << party->GetSentData(P_TOTAL) + party->GetReceivedData(P_TOTAL) << "\t";
+-	if(sharing == S_YAO_REV) {
+-		std::cout << sharings[S_YAO]->GetNumNonLinearOperations() +sharings[S_YAO_REV]->GetNumNonLinearOperations() << "\t" << sharings[S_YAO]->GetMaxCommunicationRounds()<< std::endl;
+-	} else  {
+-		std::cout << sharings[sharing]->GetNumNonLinearOperations()	<< "\t" << sharings[sharing]->GetMaxCommunicationRounds()<< std::endl;
+-	}
++	std::cout << "role: " << role << std::endl;
++	// std::cout << party->GetTiming(P_SETUP) << "\t" << party->GetTiming(P_GARBLE) << "\t" << party->GetTiming(P_ONLINE) << "\t" << party->GetTiming(P_TOTAL) <<
++	// 		"\t" << party->GetSentData(P_TOTAL) + party->GetReceivedData(P_TOTAL) << std::endl;
++	std::cout << role << " computing time: " << party->GetTiming(P_GARBLE) + party->GetTiming(P_ONLINE) << std::endl;
++	std::cout << role << " rev data: " << party->GetReceivedData(P_TOTAL) << std::endl;
++	std::cout << role << " send data: " << party->GetSentData(P_TOTAL) << std::endl;
++
++	// if(sharing == S_YAO_REV) {
++	// 	std::cout << sharings[S_YAO]->GetNumNonLinearOperations() +sharings[S_YAO_REV]->GetNumNonLinearOperations() << "\t" << sharings[S_YAO]->GetMaxCommunicationRounds()<< std::endl;
++	// } else  {
++	// 	std::cout << sharings[sharing]->GetNumNonLinearOperations()	<< "\t" << sharings[sharing]->GetMaxCommunicationRounds()<< std::endl;
++	// }
+ #endif
+ 	delete crypt;
+ 	delete party;
