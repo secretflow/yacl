@@ -3,7 +3,7 @@ Research
 
 Yacl is also designed for cryptography researchers. We notice that junior (or early-career) cryptography researchers have been constantly finding it difficult to demonstrate their new ideas, or run emperical benchmarks.
 
-Desite the **ECC, Random, and Secure Computation** introduced in `Develop Section <../develop/index.html>`_. Yacl has provided the following tools for cryptographic researchers.
+Desite the **ECC, Random, and Secure Computation** introduced in `Develop Section <../develop/index>`_. Yacl has provided the following tools for cryptographic researchers.
 
 .. note::
 

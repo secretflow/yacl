@@ -35,9 +35,9 @@ msgid ""
 "repositories. Yacl is designed to be a **low-level** library that could "
 "be either integrated into a big **secure system**, or used in a "
 "standalone way for a **quick POC** (see: `Develop "
-"<src/develop/index.html>`_), or even help with your "
+"<src/develop/index>`_), or even help with your "
 "**security/cryptography research** (see: `Research "
-"<src/research/index.html>`_)."
+"<src/research/index>`_)."
 msgstr ""
 
 #: ../../index.rst:6
@@ -45,7 +45,7 @@ msgid ""
 "**About Cryptography Modules:** The crypto modules in Yacl implement many"
 " state-of-art secure computation protocols, including primitives like OT,"
 " VOLE, TPRE, and tools like PRG, RO. Check the full list of Yacl's "
-"`supported algorithms list <src/algorithms.html>`_."
+"`supported algorithms list <src/algorithms>`_."
 msgstr ""
 
 #: ../../index.rst:7

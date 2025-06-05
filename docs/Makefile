@@ -1,4 +1,4 @@
-# Copyright 2024 Ant Group Co., Ltd.
+# Copyright 2025 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,23 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Minimal makefile for Sphinx documentation
-#
+.PHONY: build
+build:
+	secretflow-doctools build --lang en --lang zh_CN
 
-# You can set these variables from the command line, and also
-# from the environment for the first two.
-SPHINXOPTS    ?=
-SPHINXBUILD   ?= sphinx-build
-SOURCEDIR     = .
-BUILDDIR      = _build
+.PHONY: translations
+translations:
+	secretflow-doctools update-translations --lang zh_CN
 
-# Put it first so that "make" without argument is like "make help".
-help:
-	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
+.PHONY: preview
+preview:
+	secretflow-doctools preview
 
-.PHONY: help Makefile
-
-# Catch-all target: route all unknown targets to Sphinx using the new
-# "make mode" option.  $(O) is meant as a shortcut for $(SPHINXOPTS).
-%: Makefile
-	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
+.PHONY: clean
+clean:
+	secretflow-doctools clean
