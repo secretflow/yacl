@@ -25,9 +25,7 @@
 #include "yacl/link/context.h"
 #include "yacl/link/factory.h"
 
-using namespace std;
-using namespace yacl;
-using namespace yacl::crypto;
+namespace yacl {
 
 class EvaluatorSHA256 {
  public:
@@ -66,6 +64,8 @@ class EvaluatorSHA256 {
     uint128_t tmp[3];
     yacl::Buffer r = lctx->Recv(0, "tmp");
     const uint128_t* buffer_data = r.data<const uint128_t>();
+    YACL_ENFORCE((size_t)r.size() >= sizeof(uint128_t) * 3,
+                 "Received insufficient data for tmp");
     memcpy(tmp, buffer_data, sizeof(uint128_t) * 3);
 
     delta = tmp[0];
@@ -83,19 +83,13 @@ class EvaluatorSHA256 {
     yacl::Buffer r = lctx->Recv(0, "garbleInput1");
 
     const uint128_t* buffer_data = r.data<const uint128_t>();
-
+    YACL_ENFORCE((size_t)r.size() >= sizeof(uint128_t) * num_ot,
+                 "Received insufficient data for garbled input");
     memcpy(wires_.data(), buffer_data, sizeof(uint128_t) * num_ot);
   }
   void recvTable() {
     yacl::Buffer r = lctx->Recv(0, "table");
-    const uint128_t* buffer_data = r.data<const uint128_t>();
-    int k = 0;
-    for (size_t i = 0; i < 22573; i++) {
-      for (int j = 0; j < 2; j++) {
-        table[i][j] = buffer_data[k];
-        k++;
-      }
-    }
+    memcpy(table, r.data<const uint128_t>(), 22573 * 2 * sizeof(uint128_t));
   }
 
   uint128_t EVAND(uint128_t A, uint128_t B, const uint128_t* table_item,
@@ -172,3 +166,5 @@ class EvaluatorSHA256 {
     send_bytes = sizeof(uint128_t) * 256;
   }
 };
+
+}  // namespace yacl

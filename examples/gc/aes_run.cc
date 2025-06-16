@@ -23,8 +23,6 @@
 
 #include "yacl/crypto/block_cipher/symmetric_crypto.h"
 
-using namespace std;
-
 int aes_garbler_send_bytes = 0;
 int aes_evaluator_send_bytes = 0;
 int aes_compute_time = 0;
@@ -70,7 +68,7 @@ void aes_performance() {
 
     evaluator->sendOutput();
 
-    uint128_t gc_result = garbler->decode();
+    [[maybe_unused]] uint128_t gc_result = garbler->decode();
     aes_compute_time += time_from(start1);
     aes_garbler_send_bytes += garbler->send_bytes;
     aes_evaluator_send_bytes += evaluator->send_bytes;

@@ -229,7 +229,7 @@ class GarblerAES {
   }
 
   template <typename T>
-  void finalize(absl::Span<T>& outputs) {
+  void finalize(absl::Span<T> outputs) {
     size_t index = wires_.size();
 
     for (size_t i = 0; i < circ_.nov; ++i) {

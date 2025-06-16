@@ -89,11 +89,14 @@ yacl_cc_library(
 yacl_cc_test(
     name = "gc_test",
     srcs = ["gc_test.cc"],
-    copts = [
-        "-mavx",
-        "-maes",
-        "-mpclmul",
-    ],
+    copts = select({
+        "@platforms//cpu:aarch64": ["-O3"],
+        "//conditions:default": [
+            "-mavx",
+            "-maes",
+            "-mpclmul",
+        ],
+    }),
     data = ["//yacl/io/circuit:circuit_data"],
     deps = [
         ":aes_128_evaluator",
@@ -106,11 +109,14 @@ yacl_cc_test(
 cc_binary(
     name = "sha_run",
     srcs = ["sha_run.cc"],
-    copts = [
-        "-mavx",
-        "-maes",
-        "-mpclmul",
-    ],
+    copts = select({
+        "@platforms//cpu:aarch64": ["-O3"],
+        "//conditions:default": [
+            "-mavx",
+            "-maes",
+            "-mpclmul",
+        ],
+    }),
     data = ["//yacl/io/circuit:circuit_data"],
     deps = [
         ":aes_128_evaluator",
@@ -124,11 +130,14 @@ cc_binary(
 cc_binary(
     name = "aes_run",
     srcs = ["aes_run.cc"],
-    copts = [
-        "-mavx",
-        "-maes",
-        "-mpclmul",
-    ],
+    copts = select({
+        "@platforms//cpu:aarch64": ["-O3"],
+        "//conditions:default": [
+            "-mavx",
+            "-maes",
+            "-mpclmul",
+        ],
+    }),
     data = ["//yacl/io/circuit:circuit_data"],
     deps = [
         ":aes_128_evaluator",
