@@ -25,8 +25,7 @@
 
 #include "yacl/crypto/block_cipher/symmetric_crypto.h"
 
-using namespace std;
-
+namespace yacl {
 int sha_garbler_send_bytes = 0;
 int sha_evaluator_send_bytes = 0;
 
@@ -51,7 +50,7 @@ void sha_performance() {
   circ_ = reader.StealCirc();
 
   for (int i = 0; i < 1; i++) {
-    vector<uint8_t> sha256_result;
+    std::vector<uint8_t> sha256_result;
 
     auto start1 = clock_start();
     sha256_result = garbler->inputProcess(*circ_);
@@ -66,7 +65,7 @@ void sha_performance() {
 
     evaluator->sendOutput();
 
-    vector<uint8_t> gc_result = garbler->decode();
+    std::vector<uint8_t> gc_result = garbler->decode();
     sha_compute_time += time_from(start1);
     sha_garbler_send_bytes += garbler->send_bytes;
     sha_evaluator_send_bytes += evaluator->send_bytes;
@@ -75,15 +74,17 @@ void sha_performance() {
   delete garbler;
   delete evaluator;
 }
+}  // namespace yacl
 
 int main() {
-  sha_performance();
+  yacl::sha_performance();
 
-  cout << "SHA_performance:" << endl;
-  std::cout << "Garbler send: " << sha_garbler_send_bytes << " bytes" << "  "
-            << endl;
-  std::cout << "Evaluator send: " << sha_evaluator_send_bytes << " bytes"
-            << "  " << endl;
-  cout << "Time for Computing: " << sha_compute_time << "us" << endl;
-  cout << endl;
+  std::cout << "SHA_performance:" << std::endl;
+  std::cout << "Garbler send: " << yacl::sha_garbler_send_bytes << " bytes"
+            << "  " << std::endl;
+  std::cout << "Evaluator send: " << yacl::sha_evaluator_send_bytes << " bytes"
+            << "  " << std::endl;
+  std::cout << "Time for Computing: " << yacl::sha_compute_time << "us"
+            << std::endl;
+  std::cout << std::endl;
 }

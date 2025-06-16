@@ -27,6 +27,8 @@
 
 namespace examples::gc {
 
+using namespace yacl;
+
 inline uint128_t Aes128(uint128_t k, uint128_t m) {
   crypto::SymmetricCrypto enc(crypto::SymmetricCrypto::CryptoType::AES128_ECB,
                               k);
@@ -50,7 +52,7 @@ TEST(GCTest, SHA256Test) {
   reader.ReadAllGates();
   circ_ = reader.StealCirc();
 
-  vector<uint8_t> sha256_result;
+  std::vector<uint8_t> sha256_result;
   thread1 = std::async([&] { sha256_result = garbler->inputProcess(*circ_); });
   thread2 = std::async([&] { evaluator->inputProcess(*circ_); });
   thread1.get();
@@ -65,7 +67,7 @@ TEST(GCTest, SHA256Test) {
 
   evaluator->sendOutput();
 
-  vector<uint8_t> gc_result = garbler->decode();
+  std::vector<uint8_t> gc_result = garbler->decode();
 
   EXPECT_EQ(sha256_result.size(), gc_result.size());
   EXPECT_TRUE(

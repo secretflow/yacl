@@ -29,8 +29,7 @@
 #include "yacl/link/context.h"
 #include "yacl/link/factory.h"
 
-using namespace std;
-using namespace yacl;
+namespace yacl {
 
 inline uint128_t Aes128(uint128_t k, uint128_t m) {
   crypto::SymmetricCrypto enc(crypto::SymmetricCrypto::CryptoType::AES128_ECB,
@@ -59,8 +58,8 @@ class GarblerAES {
   int num_ot = 128;  // input bit of evaluator
   uint128_t all_one_uint128_t_ = ~static_cast<__uint128_t>(0);
   uint128_t select_mask_[2] = {0, all_one_uint128_t_};
-  yacl::crypto::OtSendStore ot_send =
-      OtSendStore(num_ot, yacl::crypto::OtStoreType::Normal);
+  crypto::OtSendStore ot_send =
+      crypto::OtSendStore(num_ot, yacl::crypto::OtStoreType::Normal);
 
   void setup() {
     size_t world_size = 2;
@@ -269,3 +268,5 @@ class GarblerAES {
     send_bytes += sizeof(uint128_t) * num_ot * 2;
   }
 };
+
+}  // namespace yacl

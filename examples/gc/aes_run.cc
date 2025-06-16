@@ -23,6 +23,8 @@
 
 #include "yacl/crypto/block_cipher/symmetric_crypto.h"
 
+namespace yacl {
+
 int aes_garbler_send_bytes = 0;
 int aes_evaluator_send_bytes = 0;
 int aes_compute_time = 0;
@@ -76,13 +78,15 @@ void aes_performance() {
   delete garbler;
   delete evaluator;
 }
+}  // namespace yacl
 
 int main() {
-  aes_performance();
-  cout << "AES_performance:" << endl;
-  std::cout << "Garbler send: " << aes_garbler_send_bytes << " bytes" << "  "
-            << endl;
-  std::cout << "Evaluator send: " << aes_evaluator_send_bytes << " bytes"
-            << "  " << endl;
-  cout << "Time for Computing: " << aes_compute_time << "us" << endl;
+  yacl::aes_performance();
+  std::cout << "AES_performance:" << std::endl;
+  std::cout << "Garbler send: " << yacl::aes_garbler_send_bytes << " bytes"
+            << "  " << std::endl;
+  std::cout << "Evaluator send: " << yacl::aes_evaluator_send_bytes << " bytes"
+            << "  " << std::endl;
+  std::cout << "Time for Computing: " << yacl::aes_compute_time << "us"
+            << std::endl;
 }

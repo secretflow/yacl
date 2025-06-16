@@ -16,9 +16,6 @@
 #include "yacl/base/byte_container_view.h"
 #include "yacl/base/int128.h"
 
-using std::chrono::high_resolution_clock;
-using std::chrono::time_point;
-
 // get the Least Significant Bit of uint128_t
 inline bool getLSB(const uint128_t& x) { return (x & 1) == 1; }
 
@@ -33,12 +30,14 @@ inline uint128_t ReverseBytes(uint128_t x) {
   return ret;
 }
 
-inline time_point<high_resolution_clock> clock_start() {
-  return high_resolution_clock::now();
+inline std::chrono::time_point<std::chrono::high_resolution_clock>
+clock_start() {
+  return std::chrono::high_resolution_clock::now();
 }
 
-inline double time_from(const time_point<high_resolution_clock>& s) {
+inline double time_from(
+    const std::chrono::time_point<std::chrono::high_resolution_clock>& s) {
   return std::chrono::duration_cast<std::chrono::microseconds>(
-             high_resolution_clock::now() - s)
+             std::chrono::high_resolution_clock::now() - s)
       .count();
 }

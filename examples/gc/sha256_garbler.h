@@ -29,8 +29,7 @@
 #include "yacl/link/context.h"
 #include "yacl/link/factory.h"
 
-using namespace std;
-using namespace yacl;
+namespace yacl {
 
 class GarblerSHA256 {
  public:
@@ -49,7 +48,7 @@ class GarblerSHA256 {
 
   uint128_t input;
   uint128_t input_EV;
-  vector<uint8_t> message;
+  std::vector<uint8_t> message;
 
   int num_ot = 768;  // input bit
   int send_bytes = 0;
@@ -88,7 +87,7 @@ class GarblerSHA256 {
     mitccrh.setS(start_point);
   }
 
-  vector<uint8_t> inputProcess(yacl::io::BFCircuit& param_circ_) {
+  std::vector<uint8_t> inputProcess(yacl::io::BFCircuit& param_circ_) {
     circ_ = param_circ_;
     gb_value.resize(circ_.nw);
     wires_.resize(circ_.nw);
@@ -206,7 +205,7 @@ class GarblerSHA256 {
     send_bytes += sizeof(uint128_t) * 2 * 22573;
   }
 
-  vector<uint8_t> decode() {
+  std::vector<uint8_t> decode() {
     size_t index = wires_.size();
     int start = index - circ_.now[0];
 
@@ -247,3 +246,4 @@ class GarblerSHA256 {
     }
   }
 };
+}  // namespace yacl

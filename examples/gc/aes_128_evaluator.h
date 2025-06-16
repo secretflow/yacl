@@ -27,17 +27,11 @@
 #include "yacl/link/context.h"
 #include "yacl/link/factory.h"
 
-using namespace std;
-using namespace yacl;
-using namespace yacl::crypto;
-
-namespace {
+namespace yacl {
 
 using OtMsg = uint128_t;
 using OtMsgPair = std::array<OtMsg, 2>;
 using OtChoices = dynamic_bitset<uint128_t>;
-
-}  // namespace
 
 class EvaluatorAES {
  public:
@@ -59,8 +53,8 @@ class EvaluatorAES {
   uint128_t all_one_uint128_t = ~static_cast<uint128_t>(0);
   uint128_t select_mask[2] = {0, all_one_uint128_t};
 
-  yacl::crypto::OtRecvStore ot_recv =
-      OtRecvStore(num_ot, yacl::crypto::OtStoreType::Normal);
+  crypto::OtRecvStore ot_recv =
+      crypto::OtRecvStore(num_ot, yacl::crypto::OtStoreType::Normal);
 
   void setup() {
     size_t world_size = 2;
@@ -221,3 +215,5 @@ class EvaluatorAES {
     }
   }
 };
+
+}  // namespace yacl
