@@ -22,7 +22,7 @@ using std::chrono::time_point;
 // get the Least Significant Bit of uint128_t
 inline bool getLSB(const uint128_t& x) { return (x & 1) == 1; }
 
-uint128_t ReverseBytes(uint128_t x) {
+inline uint128_t ReverseBytes(uint128_t x) {
   auto byte_view = yacl::ByteContainerView(&x, sizeof(x));
   uint128_t ret = 0;
   auto buf = std::vector<uint8_t>(sizeof(ret));

@@ -75,7 +75,7 @@ class EvaluatorSHA256 {
     mitccrh.setS(start_point);
   }
 
-  void inputProcess(yacl::io::BFCircuit param_circ_) {
+  void inputProcess(yacl::io::BFCircuit& param_circ_) {
     circ_ = param_circ_;
     gb_value.resize(circ_.nw);
     wires_.resize(circ_.nw);

@@ -98,7 +98,7 @@ class GarblerAES {
     mitccrh.setS(start_point);
   }
 
-  uint128_t inputProcess(yacl::io::BFCircuit param_circ_) {
+  uint128_t inputProcess(yacl::io::BFCircuit& param_circ_) {
     circ_ = param_circ_;
     gb_value.resize(circ_.nw);
     wires_.resize(circ_.nw);
@@ -229,7 +229,7 @@ class GarblerAES {
   }
 
   template <typename T>
-  void finalize(absl::Span<T> outputs) {
+  void finalize(absl::Span<T>& outputs) {
     size_t index = wires_.size();
 
     for (size_t i = 0; i < circ_.nov; ++i) {

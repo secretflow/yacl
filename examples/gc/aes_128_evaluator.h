@@ -96,7 +96,7 @@ class EvaluatorAES {
     mitccrh.setS(start_point);
   }
 
-  uint128_t inputProcess(yacl::io::BFCircuit param_circ_) {
+  uint128_t inputProcess(yacl::io::BFCircuit& param_circ_) {
     circ_ = param_circ_;
     gb_value.resize(circ_.nw);
     wires_.resize(circ_.nw);
