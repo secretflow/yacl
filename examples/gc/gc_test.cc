@@ -38,8 +38,8 @@ inline uint128_t Aes128(uint128_t k, uint128_t m) {
 TEST(GCTest, SHA256Test) {
   std::shared_ptr<yacl::io::BFCircuit> circ_;
 
-  GarblerSHA256* garbler = new GarblerSHA256();
-  EvaluatorSHA256* evaluator = new EvaluatorSHA256();
+  auto garbler = std::make_unique<GarblerSHA256>();
+  auto evaluator = std::make_unique<EvaluatorSHA256>();
 
   std::future<void> thread1 = std::async([&] { garbler->setup(); });
   std::future<void> thread2 = std::async([&] { evaluator->setup(); });
@@ -72,15 +72,13 @@ TEST(GCTest, SHA256Test) {
   EXPECT_EQ(sha256_result.size(), gc_result.size());
   EXPECT_TRUE(
       std::equal(gc_result.begin(), gc_result.end(), sha256_result.begin()));
-  delete garbler;
-  delete evaluator;
 }
 
 TEST(GCTest, AESTest) {
   std::shared_ptr<yacl::io::BFCircuit> circ_;
 
-  GarblerAES* garbler = new GarblerAES();
-  EvaluatorAES* evaluator = new EvaluatorAES();
+  auto garbler = std::make_unique<GarblerAES>();
+  auto evaluator = std::make_unique<EvaluatorAES>();
 
   std::future<void> thread1 = std::async([&] { garbler->setup(); });
   std::future<void> thread2 = std::async([&] { evaluator->setup(); });
@@ -118,8 +116,6 @@ TEST(GCTest, AESTest) {
   uint128_t gc_result = garbler->decode();
   auto aes = Aes128(ReverseBytes(key), ReverseBytes(message));
   EXPECT_EQ(ReverseBytes(gc_result), aes);
-  delete garbler;
-  delete evaluator;
 }
 
 }  // namespace examples::gc
