@@ -1,9 +1,9 @@
 YACL Documentation
 ===============================
 
-YACL (Yet Another Common Cryptography Library) is a sub-project of `SecretFlow <https://github.com/secretflow/>`_, it is a C++ library that provides cryptography, network and io modules for other SecretFlow repositories. Yacl is designed to be a **low-level** library that could be either integrated into a big **secure system**, or used in a standalone way for a **quick POC** (see: `Develop <src/develop/index.html>`_), or even help with your **security/cryptography research** (see: `Research <src/research/index.html>`_).
+YACL (Yet Another Common Cryptography Library) is a sub-project of `SecretFlow <https://github.com/secretflow/>`_, it is a C++ library that provides cryptography, network and io modules for other SecretFlow repositories. Yacl is designed to be a **low-level** library that could be either integrated into a big **secure system**, or used in a standalone way for a **quick POC** (see: `Develop <src/develop/index>`_), or even help with your **security/cryptography research** (see: `Research <src/research/index>`_).
 
-- **About Cryptography Modules:** The crypto modules in Yacl implement many state-of-art secure computation protocols, including primitives like OT, VOLE, TPRE, and tools like PRG, RO. Check the full list of Yacl's `supported algorithms list <src/algorithms.html>`_.
+- **About Cryptography Modules:** The crypto modules in Yacl implement many state-of-art secure computation protocols, including primitives like OT, VOLE, TPRE, and tools like PRG, RO. Check the full list of Yacl's `supported algorithms list <src/algorithms>`_.
 - **About Network ("link") Modules:** The network ("link") module in Yacl uses `BRPC <https://brpc.apache.org/>`_ to handle network. And we also provide a "mocked" in-memory link.
 - **About IO Modules:** Yacl also provides many io modules for kv storage, file io, `bristol circuits <https://nigelsmart.github.io/MPC-Circuits/>`_, and so on.
 
