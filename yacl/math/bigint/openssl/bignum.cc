@@ -497,6 +497,17 @@ yacl::Buffer BigNum::ToBytes(size_t byte_len, Endian endian) const {
 }
 
 void BigNum::ToBytes(unsigned char* buf, size_t buf_len, Endian endian) const {
+  size_t byte_count = BN_num_bytes(bn_.get());
+  if (buf_len < byte_count) {
+    std::vector<unsigned char> tmp(byte_count);
+    ToBytes(tmp.data(), byte_count, endian);
+    if (endian == Endian::little) {
+      memcpy(buf, tmp.data(), buf_len);
+    } else {
+      memcpy(buf, tmp.data() + byte_count - buf_len, buf_len);
+    }
+    return;
+  }
   memset(buf, 0, buf_len);
   if (endian == Endian::big) {
     OSSL_RET_NOT_MINUS_1(BN_bn2binpad(bn_.get(), buf, buf_len));

@@ -1041,6 +1041,34 @@ TEST_P(BigIntArithTest, ToBytes) {
   BigInt b("-1234567890", 10, lib_);
 
   {
+    uint8_t buf;
+    a.ToBytes(reinterpret_cast<unsigned char*>(&buf), 1, Endian::native);
+    EXPECT_EQ(buf, 210);
+    b.ToBytes(reinterpret_cast<unsigned char*>(&buf), 1, Endian::native);
+    EXPECT_EQ(buf, 46);
+  }
+  {
+    uint8_t buf;
+    a.ToBytes(reinterpret_cast<unsigned char*>(&buf), 1, Endian::big);
+    EXPECT_EQ(buf, 210);
+    b.ToBytes(reinterpret_cast<unsigned char*>(&buf), 1, Endian::big);
+    EXPECT_EQ(buf, 46);
+  }
+  {
+    uint16_t buf;
+    a.ToBytes(reinterpret_cast<unsigned char*>(&buf), 2, Endian::native);
+    EXPECT_EQ(buf, 722);
+    b.ToBytes(reinterpret_cast<unsigned char*>(&buf), 2, Endian::native);
+    EXPECT_EQ(buf, 64814);
+  }
+  {
+    uint16_t buf;
+    a.ToBytes(reinterpret_cast<unsigned char*>(&buf), 2, Endian::big);
+    EXPECT_EQ(buf, 53762);
+    b.ToBytes(reinterpret_cast<unsigned char*>(&buf), 2, Endian::big);
+    EXPECT_EQ(buf, 12029);
+  }
+  {
     uint32_t buf;
     a.ToBytes(reinterpret_cast<unsigned char*>(&buf), 4, Endian::native);
     EXPECT_EQ(buf, 1234567890);

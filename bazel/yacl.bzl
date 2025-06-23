@@ -23,6 +23,7 @@ WARNING_FLAGS = [
     "-Wall",
     "-Wextra",
     "-Werror",
+    "-Wno-deprecated-declarations",  # HACK for macos
 ]
 
 # set `SPDLOG_ACTIVE_LEVEL=1(SPDLOG_LEVEL_DEBUG)` to enable debug level log

@@ -32,10 +32,10 @@ msgstr ""
 #: ../../src/research/index.rst:6
 msgid ""
 "Desite the **ECC, Random, and Secure Computation** introduced in `Develop"
-" Section <../develop/index.html>`_. Yacl has provided the following tools"
+" Section <../develop/index>`_. Yacl has provided the following tools"
 " for cryptographic researchers."
 msgstr ""
-"尽管在 `开发部分 <../develop/index.html>`_ 中介绍了 **椭圆曲线密码学、随机数和安全计算** 。YACL 仍为密码学研究人员提供了以下工具。"
+"尽管在 `开发部分 <../develop/index>`_ 中介绍了 **椭圆曲线密码学、随机数和安全计算** 。YACL 仍为密码学研究人员提供了以下工具。"
 
 #: ../../src/research/index.rst:10
 msgid ""

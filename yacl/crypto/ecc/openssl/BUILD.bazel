@@ -25,6 +25,8 @@ yacl_cc_library(
     hdrs = [
         "openssl_group.h",
     ],
+    # HACK fix macos m1 build
+    copts = ["-Wno-error=vla"],
     deps = [
         "//yacl/crypto:openssl_wrappers",
         "//yacl/crypto/ecc:spi",
