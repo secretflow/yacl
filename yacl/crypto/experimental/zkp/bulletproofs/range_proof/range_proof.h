@@ -99,9 +99,10 @@ class RangeProof {
       size_t n, size_t m, const yacl::math::MPInt& y,
       const yacl::math::MPInt& z,
       const std::shared_ptr<yacl::crypto::EcGroup>& curve);
+    
 
 
-    // Proof components
+ private:
     yacl::crypto::EcPoint A_;
     yacl::crypto::EcPoint S_;
     yacl::crypto::EcPoint T_1_;
@@ -110,10 +111,6 @@ class RangeProof {
     yacl::math::MPInt t_x_blinding_;
     yacl::math::MPInt e_blinding_;
     InnerProductProof ipp_proof_;
-
-
- private:
-  
 
   
 };
