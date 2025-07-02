@@ -16,124 +16,153 @@
 
 #include <gtest/gtest.h>
 
-#include <limits>  // For UINT64_MAX
+#include <limits>
 #include <memory>
 #include <vector>
 
 #include "range_proof_config.h"
 
-#include "yacl/crypto/ecc/ecc_spi.h"  // For EcGroupFactory, EcGroup
-#include "yacl/crypto/experimental/zkp/bulletproofs/simple_transcript.h"  // For SimpleTranscript
-#include "yacl/crypto/rand/rand.h"  // For random scalars and bytes
+#include "yacl/crypto/ecc/ecc_spi.h"
+#include "yacl/crypto/experimental/zkp/bulletproofs/generators.h"
+#include "yacl/crypto/experimental/zkp/bulletproofs/simple_transcript.h"
+#include "yacl/crypto/rand/rand.h"
 
 namespace examples::zkp {
 namespace {
 
-// Helper to generate random value in range [0, 2^n - 2] for testing
-// Matches  test range [0, (1 << (n-1)) -1], adjusting for n=64
-// Let's actually match the range used in  tests: [0, 2^(n-1) - 1]
-uint64_t GenerateRandomValueInRange(size_t n) {
-  if (n == 0) return 0;
-  //  test uses gen_range(0, (1 << (n - 1)) - 1);
-  // This means the max value is 2^(n-1) - 2.
-  // If n=1, max value is 2^0 - 2 = -1 -> range is just 0.
-  // If n=8, max value is 2^7 - 2 = 126. Range [0, 126].
-  // If n=64, max value is 2^63 - 2.
-  if (n == 1) return 0;
-
-  uint64_t upper_bound_exclusive;
-  if (n - 1 >= 64) {  // If n=64 or more (though we restrict n<=64)
-    upper_bound_exclusive = std::numeric_limits<uint64_t>::
-        max();  // 2^64 - 1
-                // Need 2^63 - 1 for the actual upper bound (exclusive)
-                // This is hard to represent perfectly, just generate < 2^63
-    upper_bound_exclusive = 1ULL << 63;  // Max value generated will be 2^63 - 1
-  } else {
-    upper_bound_exclusive = 1ULL << (n - 1);
-  }
-
-  if (upper_bound_exclusive <= 1) return 0;  // Handle n=1 case
-
-  yacl::math::MPInt v_mp;
-  // Generate random number < upper_bound_exclusive
-  v_mp.RandomLtN(yacl::math::MPInt(upper_bound_exclusive), &v_mp);
-  return v_mp.Get<uint64_t>();
-}
-
-class RangeProofDirectTest : public ::testing::Test {
+class RangeProofTest : public ::testing::Test {
  protected:
   void SetUp() override {
     curve_ = yacl::crypto::EcGroupFactory::Instance().Create(
         kRangeProofEcName, yacl::ArgLib = kRangeProofEcLib);
   }
 
-  // Helper to run create/verify for a given bitsize n
-  void TestGenerateAndVerify(size_t n) {
-    // Generate value and blinding
-    uint64_t v = GenerateRandomValueInRange(n);  // Use helper for range
-    yacl::math::MPInt v_blinding;
-    v_blinding.RandomLtN(curve_->GetOrder(), &v_blinding);
+  // It creates a proof for `m` values of `n` bits each, and verifies it.
+  void TestCreateAndVerifyHelper(size_t n, size_t m) {
+    // 1. Setup: Generators are accessible to both Prover and Verifier.
+    // The party_capacity must be at least m.
+    const size_t max_parties = 8;
+    YACL_ENFORCE(m <= max_parties, "Test party size exceeds max capacity");
+    BulletproofGens bp_gens(curve_, 64, max_parties);
+    PedersenGens pc_gens(curve_);
 
-    // Prover side
-    SimpleTranscript prover_transcript("RangeproofTest");  // Match  label
-    RangeProof proof;
-    ASSERT_NO_THROW({
-      proof = RangeProof::GenerateProof(prover_transcript, curve_, n, v,
-                                        v_blinding);
-    });
+    yacl::Buffer proof_bytes;
+    std::vector<yacl::crypto::EcPoint> value_commitments;
 
-    // Verifier side
-    SimpleTranscript verifier_transcript(
-        "RangeproofTest");  // MUST use same label
-    bool verification_result = false;
-    ASSERT_NO_THROW({
-      verification_result = proof.Verify(verifier_transcript, curve_, n);
-    });
+    // 2. Prover's scope
+    {
+      SimpleTranscript prover_transcript("AggregatedRangeProofTest");
 
-    // Add debug printing
-    if (!verification_result) {
-      SPDLOG_DEBUG("Verification failed for n={}, v={}", n, v);
+      // 2.1. Create witness data
+      std::vector<uint64_t> values;
+      std::vector<yacl::math::MPInt> blindings;
+      uint64_t max_value = (n == 64) ? UINT64_MAX - 1 : (1ULL << n);
+      if (max_value == 0) max_value = 1; // Handle n=0 case for RandomLtN
+
+      for (size_t i = 0; i < m; ++i) {
+        yacl::math::MPInt v_mp;
+        v_mp.RandomLtN(yacl::math::MPInt(max_value), &v_mp);
+        values.push_back(v_mp.Get<uint64_t>());
+        blindings.push_back(CreateDummyScalar(curve_));
+      }
+
+      // 2.2. Create the proof
+      auto prove_res = RangeProof::ProveMultiple(&prover_transcript, curve_,
+                                                 bp_gens, pc_gens, values,
+                                                 blindings, n);
+      ASSERT_TRUE(prove_res.IsOk());
+      auto prove_pair = std::move(prove_res).TakeValue();
+      RangeProof proof = std::move(prove_pair.first);
+      value_commitments = std::move(prove_pair.second);
+
+      // 2.3. Serialize the proof
+      // std::cout << "prover proof: " << (proof.t_x_.ToHexString()) << std::endl;
+      proof_bytes = proof.ToBytes(curve_);
     }
 
-    ASSERT_TRUE(verification_result)
-        << "Verification failed for n=" << n << ", v=" << v;
-
-    // Test Serialization/Deserialization
-    yacl::Buffer proof_bytes;
-    ASSERT_NO_THROW({ proof_bytes = proof.ToBytes(curve_); });
-    ASSERT_NE(proof_bytes.size(), 0);
-
-    RangeProof deserialized_proof;
-    ASSERT_NO_THROW(
-        { deserialized_proof = RangeProof::FromBytes(curve_, proof_bytes); });
-
-    // Verify deserialized proof
-    SimpleTranscript verifier_transcript2("RangeproofTest");
-    bool verification_result2 = false;
-    ASSERT_NO_THROW({
-      verification_result2 =
-          deserialized_proof.Verify(verifier_transcript2, curve_, n);
-    });
-    ASSERT_TRUE(verification_result2)
-        << "Verification failed after serde for n=" << n;
+    // 3. Verifier's scope
+    {
+      // 3.1. Deserialize the proof
+      RangeProof proof = RangeProof::FromBytes(curve_, proof_bytes);
+      // std::cout << "verifier proof: " << (proof.t_x_.ToHexString()) << std::endl;
+      // 3.2. Verify with a fresh transcript
+      SimpleTranscript verifier_transcript("AggregatedRangeProofTest");
+      bool verify_ok = proof.VerifyMultiple(&verifier_transcript, curve_, bp_gens,
+                                            pc_gens, value_commitments, n);
+      
+      // Add a helpful message in case of failure
+      if (!verify_ok) {
+        FAIL() << "Proof verification failed for n=" << n << ", m=" << m;
+      }
+      ASSERT_TRUE(verify_ok);
+    }
   }
 
   std::shared_ptr<yacl::crypto::EcGroup> curve_;
 };
 
-// Test cases for different bit sizes matching  tests
-TEST_F(RangeProofDirectTest, CreateAndVerify8) { TestGenerateAndVerify(8); }
 
-TEST_F(RangeProofDirectTest, CreateAndVerify16) { TestGenerateAndVerify(16); }
+TEST_F(RangeProofTest, CreateAndVerify_n32_m1) {
+  TestCreateAndVerifyHelper(32, 1);
+}
 
-TEST_F(RangeProofDirectTest, CreateAndVerify32) { TestGenerateAndVerify(32); }
+TEST_F(RangeProofTest, CreateAndVerify_n32_m2) {
+  TestCreateAndVerifyHelper(32, 2);
+}
 
-TEST_F(RangeProofDirectTest, CreateAndVerify64) { TestGenerateAndVerify(64); }
+TEST_F(RangeProofTest, CreateAndVerify_n32_m4) {
+  TestCreateAndVerifyHelper(32, 4);
+}
+
+TEST_F(RangeProofTest, CreateAndVerify_n32_m8) {
+  TestCreateAndVerifyHelper(32, 8);
+}
+
+TEST_F(RangeProofTest, CreateAndVerify_n64_m1) {
+  TestCreateAndVerifyHelper(64, 1);
+}
+
+TEST_F(RangeProofTest, CreateAndVerify_n64_m2) {
+  TestCreateAndVerifyHelper(64, 2);
+}
+
+TEST_F(RangeProofTest, CreateAndVerify_n64_m4) {
+  TestCreateAndVerifyHelper(64, 4);
+}
+
+TEST_F(RangeProofTest, CreateAndVerify_n64_m8) {
+  TestCreateAndVerifyHelper(64, 8);
+}
+
+
+TEST_F(RangeProofTest, TestDelta) {
+    const size_t n = 256;
+    yacl::math::MPInt y = CreateDummyScalar(curve_);
+    yacl::math::MPInt z = CreateDummyScalar(curve_);
+    const auto& order = curve_->GetOrder();
+
+    yacl::math::MPInt z2 = z.MulMod(z, order);
+    yacl::math::MPInt z3 = z2.MulMod(z, order);
+    yacl::math::MPInt power_g(0);
+    yacl::math::MPInt exp_y(1);
+    yacl::math::MPInt exp_2(1);
+
+    for(size_t i = 0; i < n; ++i) {
+        power_g = power_g.AddMod((z.SubMod(z2, order)).MulMod(exp_y, order), order);
+        power_g = power_g.SubMod(z3.MulMod(exp_2, order), order);
+        exp_y = exp_y.MulMod(y, order);
+        exp_2 = exp_2.AddMod(exp_2, order);
+    }
+    
+    // Call the actual Delta function for m=1
+    yacl::math::MPInt delta_val = RangeProof::Delta(n, 1, y, z, curve_);
+
+    EXPECT_EQ(power_g, delta_val);
+}
 
 }  // namespace
 }  // namespace examples::zkp
 
-// Boilerplate main function for Google Test
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
