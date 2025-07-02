@@ -56,6 +56,8 @@ class InnerProductProof {
         a_(std::move(a)),
         b_(std::move(b)) {}
 
+
+
   /**
    * @brief Creates an inner product proof
    *
@@ -74,6 +76,7 @@ class InnerProductProof {
       SimpleTranscript& transcript,
       const std::shared_ptr<yacl::crypto::EcGroup>& curve,
       const yacl::crypto::EcPoint& Q,
+      const std::vector<yacl::math::MPInt>& G_factors,
       const std::vector<yacl::math::MPInt>& H_factors,
       std::vector<yacl::crypto::EcPoint> G_vec,
       std::vector<yacl::crypto::EcPoint> H_vec,
@@ -111,6 +114,7 @@ class InnerProductProof {
    */
   bool Verify(SimpleTranscript& transcript,
               const std::shared_ptr<yacl::crypto::EcGroup>& curve,
+              const std::vector<yacl::math::MPInt>& G_factors,
               const std::vector<yacl::math::MPInt>& H_factors,
               const yacl::crypto::EcPoint& P, const yacl::crypto::EcPoint& Q,
               const std::vector<yacl::crypto::EcPoint>& G,

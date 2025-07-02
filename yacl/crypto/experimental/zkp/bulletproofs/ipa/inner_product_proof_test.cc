@@ -38,7 +38,6 @@ class InnerProductProofTest : public ::testing::Test {
     order_ = curve_->GetOrder();
   }
 
-  // Replicates the test logic from Rust
   void TestHelperCreate(size_t n) {
     // 1. Setup
     auto transcript_label = "innerproducttest";
@@ -92,6 +91,9 @@ class InnerProductProofTest : public ::testing::Test {
 
     // 2. Prover: Create proof
     SimpleTranscript prover_transcript(transcript_label);
+
+    // G_factors
+    std::vector<yacl::math::MPInt> G_factors(n, one);  // G factors are 1s
     // Factors for IPP Create: H=y^-i
     std::vector<yacl::math::MPInt> ipp_H_factors =
         y_inv_pows;  // H factors are y^-i
@@ -100,6 +102,7 @@ class InnerProductProofTest : public ::testing::Test {
     ASSERT_NO_THROW({
       proof =
           InnerProductProof::Create(prover_transcript, curve_, Q,
+                                    G_factors,  // G factors are 1s
                                     ipp_H_factors,  // Pass factors
                                     G_vec, H_vec,   // Pass original G, H bases
                                     a_vec, b_vec);  // Pass witnesses
@@ -110,6 +113,7 @@ class InnerProductProofTest : public ::testing::Test {
     bool result = false;
     ASSERT_NO_THROW({
       result = proof.Verify(verifier_transcript, curve_,
+                            G_factors,
                             ipp_H_factors,  // Verifier needs factors too
                             P, Q, G_vec,
                             H_vec);  // Verifier uses original G, H bases
@@ -130,7 +134,7 @@ class InnerProductProofTest : public ::testing::Test {
     SimpleTranscript verifier_transcript2(transcript_label);
     bool result2 = false;
     ASSERT_NO_THROW({
-      result2 = deserialized_proof.Verify(verifier_transcript2, curve_,
+      result2 = deserialized_proof.Verify(verifier_transcript2, curve_,G_factors,
                                           ipp_H_factors, P, Q, G_vec, H_vec);
     });
     ASSERT_TRUE(result2) << "IPP verification failed after serde for n=" << n;

@@ -134,6 +134,14 @@ class SimpleTranscript {
    */
   void ChallengeBytes(std::string_view label, uint8_t* dest, size_t length);
 
+  /**
+   * @brief Get a const reference to the internal state of the transcript.
+   * FOR DEBUGGING PURPOSES ONLY.
+   *
+   * @return const std::vector<uint8_t>& The internal state hash.
+   */
+  const std::vector<uint8_t>& GetState() const { return state_; }
+
  private:
   // The internal state of the transcript
   std::vector<uint8_t> state_;

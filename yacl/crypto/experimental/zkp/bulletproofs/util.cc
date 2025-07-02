@@ -20,6 +20,10 @@
 #include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/math/mpint/mp_int.h"
 
+
+
+
+
 namespace examples::zkp {
 
 //-------------------- Poly2 Implementation --------------------
@@ -111,8 +115,10 @@ VecPoly1::~VecPoly1() {}  // Destructor body can be empty
 //----------------------------------------
 
 yacl::math::MPInt InnerProduct(
-    const std::vector<yacl::math::MPInt>& a,
-    const std::vector<yacl::math::MPInt>& b,
+    // const std::vector<yacl::math::MPInt>& a,
+    // const std::vector<yacl::math::MPInt>& b,
+    absl::Span<const yacl::math::MPInt> a,
+    absl::Span<const yacl::math::MPInt> b,
     const std::shared_ptr<yacl::crypto::EcGroup>& curve) {
   YACL_ENFORCE(curve != nullptr, "Curve cannot be null");
   YACL_ENFORCE(a.size() == b.size(),
@@ -199,19 +205,7 @@ yacl::math::MPInt ScalarExp(
   return base.PowMod(exp_mp, curve->GetOrder());
 }
 
-size_t FloorLog2(size_t x) {
-  if (x == 0) return 0;
-#if defined(__GNUC__) || defined(__clang__)
-  return (sizeof(unsigned long long) * 8 - 1) -
-         __builtin_clzll(static_cast<unsigned long long>(x));
-#else
-  size_t result = 0;
-  while (x >>= 1) {
-    ++result;
-  }
-  return result;
-#endif
-}
+
 
 yacl::crypto::EcPoint MultiScalarMul(
     const std::shared_ptr<yacl::crypto::EcGroup>& curve,

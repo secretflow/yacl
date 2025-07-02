@@ -44,7 +44,21 @@ class ProofError : public std::runtime_error {
     // This error occurs when inputs are the incorrect length for the proof.
     InvalidInputLength,
     // This error results from an internal error during proving.
-    ProvingError
+    ProvingError,
+    // This error occurs when the dealer is given the wrong number of
+    // bit commitments.
+    WrongNumBitCommitments,
+    // This error occurs when the dealer is given the wrong number of
+    // polynomial commitments.
+    WrongNumPolyCommitments,
+    // This error occurs when the dealer is given the wrong number of
+    // proof shares.
+    WrongNumProofShares,
+    // This error occurs when one or more parties submit malformed
+    // proof shares.
+    MalformedProofShares,
+    // This error occurs when the dealer gives a zero challenge.
+    MaliciousDealer
   };
 
   explicit ProofError(ErrorType type, const std::string& msg = "")
@@ -58,7 +72,7 @@ class ProofError : public std::runtime_error {
       case ErrorType::VerificationError:
         return "Proof verification failed.";
       case ErrorType::FormatError:
-        return "Proof data could not be parsed.";
+        return "Proof data could not be parsed: " + msg;
       case ErrorType::WrongNumBlindingFactors:
         return "Wrong number of blinding factors supplied.";
       case ErrorType::InvalidBitsize:
@@ -71,6 +85,16 @@ class ProofError : public std::runtime_error {
         return "Invalid input size, incorrect input length for proof";
       case ErrorType::ProvingError:
         return "Internal error during proof creation: " + msg;
+      case ErrorType::WrongNumBitCommitments:
+        return "Wrong number of bit commitments.";
+      case ErrorType::WrongNumPolyCommitments:
+        return "Wrong number of poly commitments.";
+      case ErrorType::WrongNumProofShares:
+        return "Wrong number of proof shares.";
+      case ErrorType::MalformedProofShares:
+        return "Malformed proof shares from parties: " + msg;
+      case ErrorType::MaliciousDealer:
+        return "Dealer gave a malicious challenge value.";
     }
     return "Unknown error";
   }
@@ -84,28 +108,27 @@ class Result {
  public:
   // Construct a successful result
   static Result<T> Ok(const T& value) { return Result<T>(value); }
-
   static Result<T> Ok(T&& value) { return Result<T>(std::move(value)); }
 
   // Construct an error result
   static Result<T> Err(const ProofError& error) { return Result<T>(error); }
 
   // Check if result is successful
-  bool IsOk() const { return !error_.has_value(); }
+  bool IsOk() const { return value_.has_value(); }
 
   // Get the value (must check IsOk() first)
   const T& Value() const {
     if (!IsOk()) {
       throw std::runtime_error("Attempted to get value from error result");
     }
-    return value_;
+    return *value_;
   }
 
   T&& TakeValue() && {
     if (!IsOk()) {
       throw std::runtime_error("Attempted to take value from error result");
     }
-    return std::move(value_);
+    return std::move(*value_);
   }
 
   // Get the error (must check !IsOk() first)
@@ -117,37 +140,16 @@ class Result {
   }
 
  private:
-  explicit Result(const T& value) : value_(value) {}
-  explicit Result(T&& value) : value_(std::move(value)) {}
-  explicit Result(const ProofError& error) : error_(error) {}
+  // Constructor for success
+  explicit Result(const T& value) : value_(value), error_(std::nullopt) {}
+  explicit Result(T&& value) : value_(std::move(value)), error_(std::nullopt) {}
 
-  T value_;
-  std::optional<ProofError> error_;
-};
+  // Constructor for error
+  explicit Result(const ProofError& error) : value_(std::nullopt), error_(error) {}
 
-// Specialization for void
-template <>
-class Result<void> {
- public:
-  static Result<void> Ok() { return Result<void>(); }
-
-  static Result<void> Err(const ProofError& error) {
-    return Result<void>(error);
-  }
-
-  bool IsOk() const { return !error_.has_value(); }
-
-  const ProofError& Error() const {
-    if (IsOk()) {
-      throw std::runtime_error("Attempted to get error from successful result");
-    }
-    return *error_;
-  }
-
- private:
-  Result() = default;
-  explicit Result(const ProofError& error) : error_(error) {}
-
+  // `value_` is optional because it doesn't exist in an error state.
+  std::optional<T> value_;
+  // `error_` is optional because it doesn't exist in a success state.
   std::optional<ProofError> error_;
 };
 

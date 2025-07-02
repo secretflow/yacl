@@ -18,6 +18,13 @@
 
 #include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/math/mpint/mp_int.h"
+#include "absl/types/span.h"
+
+#include <cstdint>
+#ifdef _MSC_VER
+#include <intrin.h>
+#endif
+
 
 namespace examples::zkp {
 
@@ -132,8 +139,10 @@ class VecPoly1 {
  * @throws yacl::Exception if vectors have different sizes.
  */
 yacl::math::MPInt InnerProduct(
-    const std::vector<yacl::math::MPInt>& a,
-    const std::vector<yacl::math::MPInt>& b,
+    // const std::vector<yacl::math::MPInt>& a,
+    // const std::vector<yacl::math::MPInt>& b,
+    absl::Span<const yacl::math::MPInt> a,
+    absl::Span<const yacl::math::MPInt> b,
     const std::shared_ptr<yacl::crypto::EcGroup>& curve);
 
 /**
@@ -192,7 +201,31 @@ yacl::math::MPInt ScalarExp(
 /**
  * @brief Utility function to compute floor(log2(x)).
  */
-size_t FloorLog2(size_t x);
+inline size_t FloorLog2(size_t n) {
+    if (n == 0) {
+        // Returning -1 for size_t is problematic. Throwing is safer.
+        YACL_THROW("FloorLog2 of 0 is undefined.");
+    }
+#if defined(__GNUC__) || defined(__clang__)
+    // __builtin_clzll expects unsigned long long. size_t might be smaller/larger.
+    // Let's be safe with casting.
+    return (sizeof(unsigned long long) * 8 - 1) - __builtin_clzll(static_cast<unsigned long long>(n));
+#elif defined(_MSC_VER)
+    unsigned long index;
+    // _BitScanReverse64 expects __int64.
+    if (_BitScanReverse64(&index, static_cast<unsigned __int64>(n))) {
+        return index;
+    }
+    YACL_THROW("FloorLog2 failed for a non-zero number, this should not happen.");
+#else
+    // Portable but slower fallback
+    size_t log = 0;
+    while ((static_cast<size_t>(1) << (log + 1)) <= n && (log + 1) < sizeof(size_t) * 8) {
+        log++;
+    }
+    return log;
+#endif
+}
 
 yacl::crypto::EcPoint MultiScalarMul(
     const std::shared_ptr<yacl::crypto::EcGroup>& curve,
