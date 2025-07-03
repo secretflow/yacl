@@ -142,6 +142,21 @@ class SimpleTranscript {
    */
   const std::vector<uint8_t>& GetState() const { return state_; }
 
+  /**
+   * @brief Append a domain separator for a constraint system.
+   */
+  void R1csDomainSep();
+
+  /**
+   * @brief Commit a domain separator for a CS without randomized constraints.
+   */
+  void R1cs1phaseDomainSep();
+
+  /**
+   * @brief Commit a domain separator for a CS with randomized constraints.
+   */
+  void R1cs2phaseDomainSep();
+
  private:
   // The internal state of the transcript
   std::vector<uint8_t> state_;

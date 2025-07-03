@@ -1,0 +1,143 @@
+# Copyright 2025 @yangjucai.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("@yacl//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
+
+
+yacl_cc_library(
+    name = "r1cs_config",
+    hdrs = ["r1cs_config.h"],
+)
+
+yacl_cc_library(
+    name = "r1cs_linear_combination",
+    srcs = ["r1cs_linear_combination.cc"],
+    hdrs = ["r1cs_linear_combination.h"],
+    deps = [
+        "@yacl//yacl/math/mpint",
+    ],
+)
+
+yacl_cc_library(
+    name = "r1cs_constraint_system",
+    hdrs = [
+        "r1cs_constraint_system.h",
+        "r1cs_metrics.h",
+    ],
+    deps = [
+        "//yacl/crypto/experimental/zkp/bulletproofs:errors",
+        "//yacl/crypto/experimental/zkp/bulletproofs:generators",
+        "//yacl/crypto/experimental/zkp/bulletproofs:simple_transcript",
+        "//yacl/crypto/experimental/zkp/bulletproofs:util",
+        "//yacl/crypto/experimental/zkp/bulletproofs/ipa:inner_product_proof",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/crypto:openssl_wrappers",
+        "@yacl//yacl/crypto/rand",
+        "@yacl//yacl/math/mpint",
+        "@yacl//yacl/math/mpint:mp_int_enforce",
+        ":r1cs_linear_combination",
+    ],
+)
+
+yacl_cc_library(
+    name = "r1cs_proof",
+    srcs = ["r1cs_proof.cc"],
+    hdrs = ["r1cs_proof.h"],
+    deps = [
+        "//yacl/crypto/experimental/zkp/bulletproofs:errors",
+        "//yacl/crypto/experimental/zkp/bulletproofs:generators",
+        "//yacl/crypto/experimental/zkp/bulletproofs:simple_transcript",
+        "//yacl/crypto/experimental/zkp/bulletproofs:util",
+        "//yacl/crypto/experimental/zkp/bulletproofs/ipa:inner_product_proof",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/crypto:openssl_wrappers",
+        "@yacl//yacl/crypto/rand",
+        "@yacl//yacl/math/mpint",
+        "@yacl//yacl/math/mpint:mp_int_enforce",
+    ],
+)
+
+yacl_cc_library(
+    name = "r1cs_prover",
+    srcs = ["r1cs_prover.cc"],
+    hdrs = ["r1cs_prover.h"],
+    deps = [
+        "//yacl/crypto/experimental/zkp/bulletproofs:errors",
+        "//yacl/crypto/experimental/zkp/bulletproofs:generators",
+        "//yacl/crypto/experimental/zkp/bulletproofs:simple_transcript",
+        "//yacl/crypto/experimental/zkp/bulletproofs:util",
+        "//yacl/crypto/experimental/zkp/bulletproofs/ipa:inner_product_proof",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/crypto:openssl_wrappers",
+        "@yacl//yacl/crypto/rand",
+        "@yacl//yacl/math/mpint",
+        "@yacl//yacl/math/mpint:mp_int_enforce",
+        ":r1cs_constraint_system",
+        ":r1cs_proof",
+    ],
+)
+
+yacl_cc_library(
+    name = "r1cs_verifier",
+    srcs = ["r1cs_verifier.cc"],
+    hdrs = ["r1cs_verifier.h"],
+    deps = [
+        "//yacl/crypto/experimental/zkp/bulletproofs:errors",
+        "//yacl/crypto/experimental/zkp/bulletproofs:generators",
+        "//yacl/crypto/experimental/zkp/bulletproofs:simple_transcript",
+        "//yacl/crypto/experimental/zkp/bulletproofs:util",
+        "//yacl/crypto/experimental/zkp/bulletproofs/ipa:inner_product_proof",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/crypto:openssl_wrappers",
+        "@yacl//yacl/crypto/rand",
+        "@yacl//yacl/math/mpint",
+        "@yacl//yacl/math/mpint:mp_int_enforce",
+        ":r1cs_constraint_system",
+        ":r1cs_proof",
+    ],
+)
+
+yacl_cc_library(
+    name = "r1cs",
+    deps = [
+        ":r1cs_constraint_system",
+        ":r1cs_linear_combination",
+        ":r1cs_proof",
+        ":r1cs_prover",
+        ":r1cs_verifier",
+    ],
+)
+
+yacl_cc_test(
+    name = "r1cs_test",
+    srcs = ["r1cs_test.cc"],
+    deps = [
+        "//yacl/crypto/experimental/zkp/bulletproofs:errors",
+        "//yacl/crypto/experimental/zkp/bulletproofs:generators",
+        "//yacl/crypto/experimental/zkp/bulletproofs:simple_transcript",
+        "//yacl/crypto/experimental/zkp/bulletproofs:util",
+        "//yacl/crypto/experimental/zkp/bulletproofs/ipa:inner_product_proof",
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/crypto:openssl_wrappers",
+        "@yacl//yacl/crypto/rand",
+        "@yacl//yacl/math/mpint",
+        "@yacl//yacl/math/mpint:mp_int_enforce",
+        ":r1cs_constraint_system",
+        ":r1cs_linear_combination",
+        ":r1cs_proof",
+        ":r1cs_prover",
+        ":r1cs_verifier",
+        ":r1cs_config",
+    ],
+)

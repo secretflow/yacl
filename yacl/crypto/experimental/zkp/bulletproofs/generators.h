@@ -67,6 +67,10 @@ class PedersenGens {
   yacl::crypto::EcPoint B;
   yacl::crypto::EcPoint B_blinding;
 
+  std::shared_ptr<yacl::crypto::EcGroup> GetCurve() const {
+    return curve_;
+  }
+
  private:
   std::shared_ptr<yacl::crypto::EcGroup> curve_;
 };
@@ -107,6 +111,8 @@ class BulletproofGensShare {
 
   std::vector<yacl::crypto::EcPoint> G(size_t n) const;
   std::vector<yacl::crypto::EcPoint> H(size_t n) const;
+  std::vector<yacl::crypto::EcPoint> GetAllG(size_t n, size_t m) const;
+  std::vector<yacl::crypto::EcPoint> GetAllH(size_t n, size_t m) const;
 
  private:
   const BulletproofGens& gens_;

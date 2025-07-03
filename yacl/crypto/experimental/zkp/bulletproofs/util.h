@@ -242,4 +242,29 @@ yacl::math::MPInt CreateDummyScalar(
 
 size_t NextPowerOfTwo(size_t n);
 
+
+// Represents a vector of polynomials of degree 3
+struct VecPoly3 {
+    std::vector<yacl::math::MPInt> T0, T1, T2, T3;
+    VecPoly3(size_t n) : T0(n), T1(n), T2(n), T3(n) {}
+
+    // Evaluate all polynomials at x
+    std::vector<yacl::math::MPInt> Eval(const yacl::math::MPInt& x,
+                                      const std::shared_ptr<yacl::crypto::EcGroup>& curve) const;
+};
+
+// Represents a polynomial of degree 6
+struct Poly6 {
+    yacl::math::MPInt T0, T1, T2, T3, T4, T5, T6;
+    Poly6() : T0(0), T1(0), T2(0), T3(0), T4(0), T5(0), T6(0) {}
+
+    yacl::math::MPInt Eval(const yacl::math::MPInt& x,
+                         const std::shared_ptr<yacl::crypto::EcGroup>& curve) const;
+};
+
+// Special inner product for R1CS polynomials
+Poly6 SpecialInnerProduct(const VecPoly3& l, const VecPoly3& r,
+                          const std::shared_ptr<yacl::crypto::EcGroup>& curve);
+                          
+
 }  // namespace examples::zkp

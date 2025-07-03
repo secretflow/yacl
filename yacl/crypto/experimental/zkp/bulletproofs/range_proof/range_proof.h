@@ -112,7 +112,7 @@ class RangeProof {
     yacl::math::MPInt e_blinding_;
     InnerProductProof ipp_proof_;
 
-  
+
 };
 
 }  // namespace examples::zkp

@@ -203,4 +203,44 @@ std::vector<yacl::crypto::EcPoint> BulletproofGensShare::H(size_t n) const {
                                             party_H.begin() + n);
 }
 
+std::vector<yacl::crypto::EcPoint> BulletproofGensShare::GetAllG(
+    size_t n, size_t m) const {
+  YACL_ENFORCE(n <= gens_.gens_capacity_,
+               "Requested more generators than available");
+  YACL_ENFORCE(m <= gens_.party_capacity_,
+               "Requested more parties than available");
+
+  std::vector<yacl::crypto::EcPoint> result;
+  result.reserve(n * m);
+
+  for (size_t party_idx = 0; party_idx < m; party_idx++) {
+    const auto& party_G = gens_.G_vec_[party_idx];
+    for (size_t gen_idx = 0; gen_idx < n; gen_idx++) {
+      result.emplace_back(party_G[gen_idx]);
+    }
+  }
+
+  return result;
+}
+
+std::vector<yacl::crypto::EcPoint> BulletproofGensShare::GetAllH(
+    size_t n, size_t m) const {
+  YACL_ENFORCE(n <= gens_.gens_capacity_,
+               "Requested more generators than available");
+  YACL_ENFORCE(m <= gens_.party_capacity_,
+               "Requested more parties than available");
+
+  std::vector<yacl::crypto::EcPoint> result;
+  result.reserve(n * m);
+
+  for (size_t party_idx = 0; party_idx < m; party_idx++) {
+    const auto& party_H = gens_.H_vec_[party_idx];
+    for (size_t gen_idx = 0; gen_idx < n; gen_idx++) {
+      result.emplace_back(party_H[gen_idx]);
+    }
+  }
+
+  return result;
+}
+
 }  // namespace examples::zkp
