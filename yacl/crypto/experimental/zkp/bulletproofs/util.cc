@@ -232,6 +232,7 @@ yacl::crypto::EcPoint MultiScalarMul(
   return result;
 }
 
+
 // Helper to create a dummy EcPoint
 yacl::crypto::EcPoint CreateDummyPoint(
     const std::shared_ptr<yacl::crypto::EcGroup>& curve) {

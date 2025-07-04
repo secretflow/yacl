@@ -265,6 +265,6 @@ struct Poly6 {
 // Special inner product for R1CS polynomials
 Poly6 SpecialInnerProduct(const VecPoly3& l, const VecPoly3& r,
                           const std::shared_ptr<yacl::crypto::EcGroup>& curve);
-                          
+
 
 }  // namespace examples::zkp

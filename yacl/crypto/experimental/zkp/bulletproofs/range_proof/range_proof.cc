@@ -28,11 +28,11 @@ Result<PartyAwaitingPosition> Party::New(
     const yacl::math::MPInt& v_blinding, size_t n) {
   if (!(n == 8 || n == 16 || n == 32 || n == 64)) {
     return Result<PartyAwaitingPosition>::Err(
-        ProofError(ProofError::ErrorType::InvalidBitsize));
+        ProofError(ProofError::Code::InvalidBitsize));
   }
   if (bp_gens->gens_capacity() < n) {
     return Result<PartyAwaitingPosition>::Err(
-        ProofError(ProofError::ErrorType::InvalidGeneratorsLength));
+        ProofError(ProofError::Code::InvalidGeneratorsLength));
   }
 
   yacl::crypto::EcPoint V = pc_gens->Commit(yacl::math::MPInt(v), v_blinding);
@@ -57,7 +57,7 @@ PartyAwaitingPosition::AssignPosition(
     const std::shared_ptr<yacl::crypto::EcGroup>& curve, size_t j) {
   if (bp_gens_->party_capacity() <= j) {
     return Result<std::pair<PartyAwaitingBitChallenge, BitCommitment>>::Err(
-        ProofError(ProofError::ErrorType::InvalidGeneratorsLength));
+        ProofError(ProofError::Code::InvalidGeneratorsLength));
   }
 
   auto bgs = bp_gens_->Share(j);
@@ -188,7 +188,7 @@ Result<ProofShare> PartyAwaitingPolyChallenge::ApplyChallenge(
     const PolyChallenge& pc) {
   if (pc.x.IsZero()) {
     return Result<ProofShare>::Err(
-        ProofError(ProofError::ErrorType::MaliciousDealer));
+        ProofError(ProofError::Code::MaliciousDealer));
   }
   const auto& order = curve->GetOrder();
   Poly2 t_blinding_poly(offset_zz_.MulMod(v_blinding_, order), t_1_blinding_,
@@ -209,16 +209,16 @@ Result<DealerAwaitingBitCommitments> Dealer::New(
     SimpleTranscript* transcript, size_t n, size_t m) {
   if (!(n == 8 || n == 16 || n == 32 || n == 64)) {
     return Result<DealerAwaitingBitCommitments>::Err(
-        ProofError(ProofError::ErrorType::InvalidBitsize));
+        ProofError(ProofError::Code::InvalidBitsize));
   }
   size_t m_power_of_2 = NextPowerOfTwo(m);
   if (m == 0 || m != m_power_of_2) {
     return Result<DealerAwaitingBitCommitments>::Err(
-        ProofError(ProofError::ErrorType::InvalidAggregation));
+        ProofError(ProofError::Code::InvalidAggregation));
   }
   if (bp_gens->gens_capacity() < n || bp_gens->party_capacity() < m) {
     return Result<DealerAwaitingBitCommitments>::Err(
-        ProofError(ProofError::ErrorType::InvalidGeneratorsLength));
+        ProofError(ProofError::Code::InvalidGeneratorsLength));
   }
   transcript->RangeProofDomainSep(n, m);
   return Result<DealerAwaitingBitCommitments>::Ok(
@@ -240,7 +240,7 @@ DealerAwaitingBitCommitments::ReceiveBitCommitments(
     const std::vector<BitCommitment>& bit_commitments) {
   if (m_ != bit_commitments.size()) {
     return Result<std::pair<DealerAwaitingPolyCommitments, BitChallenge>>::Err(
-        ProofError(ProofError::ErrorType::WrongNumBitCommitments));
+        ProofError(ProofError::Code::WrongNumBitCommitments));
   }
 
   for (const auto& vc : bit_commitments) {
@@ -290,7 +290,7 @@ DealerAwaitingPolyCommitments::ReceivePolyCommitments(
     const std::vector<PolyCommitment>& poly_commitments) {
   if (m_ != poly_commitments.size()) {
     return Result<std::pair<DealerAwaitingProofShares, PolyChallenge>>::Err(
-        ProofError(ProofError::ErrorType::WrongNumPolyCommitments));
+        ProofError(ProofError::Code::WrongNumPolyCommitments));
   }
   
   yacl::crypto::EcPoint T_1 = curve->MulBase(yacl::math::MPInt(0));
@@ -342,7 +342,7 @@ Result<RangeProof> DealerAwaitingProofShares::AssembleShares(
     const std::vector<ProofShare>& proof_shares) {
   if (m_ != proof_shares.size()) {
     return Result<RangeProof>::Err(
-        ProofError(ProofError::ErrorType::WrongNumProofShares));
+        ProofError(ProofError::Code::WrongNumProofShares));
   }
 
   const auto& order = curve->GetOrder();
@@ -457,7 +457,7 @@ RangeProof::ProveMultiple(SimpleTranscript* transcript,
   if (values.size() != blindings.size()) {
     return Result<
         std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>>>::Err(
-        ProofError(ProofError::ErrorType::WrongNumBlindingFactors));
+        ProofError(ProofError::Code::WrongNumBlindingFactors));
   }
   size_t m = values.size();
 

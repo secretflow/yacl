@@ -135,20 +135,20 @@ R1CSVerifier::FlattenedConstraints(const yacl::math::MPInt& z) const {
     return {wL, wR, wO, wV, wc};
 }
 
-
 Result<void, R1CSError> R1CSVerifier::Verify(const R1CSProof& proof,
                                   const PedersenGens* pc_gens,
                                   const BulletproofGens* bp_gens) const {
   auto non_const_this = const_cast<R1CSVerifier*>(this);
   auto curve = pc_gens->GetCurve();
-  auto order = curve->GetOrder();
+  const auto& order = curve->GetOrder(); // Get order once
 
+  // Replay transcript from the beginning
   transcript_->AppendU64("m", V_.size());
-
   size_t n1 = num_vars_;
-  transcript_->ValidateAndAppendPoint("A_I1", proof.A_I1, curve);
-  transcript_->ValidateAndAppendPoint("A_O1", proof.A_O1, curve);
-  transcript_->ValidateAndAppendPoint("S1", proof.S1, curve);
+  
+  transcript_->AppendPoint("A_I1", proof.A_I1, curve);
+  transcript_->AppendPoint("A_O1", proof.A_O1, curve);
+  transcript_->AppendPoint("S1", proof.S1, curve);
 
   auto res = non_const_this->CreateRandomizedConstraints();
   if (!res.IsOk()) { return res; }
@@ -159,18 +159,18 @@ Result<void, R1CSError> R1CSVerifier::Verify(const R1CSProof& proof,
   YACL_ENFORCE(bp_gens->gens_capacity() >= padded_n, "Invalid generators length");
   auto gens_share = bp_gens->Share(0);
 
-  transcript_->ValidateAndAppendPoint("A_I2", proof.A_I2, curve);
-  transcript_->ValidateAndAppendPoint("A_O2", proof.A_O2, curve);
-  transcript_->ValidateAndAppendPoint("S2", proof.S2, curve);
+  transcript_->AppendPoint("A_I2", proof.A_I2, curve);
+  transcript_->AppendPoint("A_O2", proof.A_O2, curve);
+  transcript_->AppendPoint("S2", proof.S2, curve);
 
   auto y = transcript_->ChallengeScalar("y", curve);
   auto z = transcript_->ChallengeScalar("z", curve);
 
-  transcript_->ValidateAndAppendPoint("T_1", proof.T_1, curve);
-  transcript_->ValidateAndAppendPoint("T_3", proof.T_3, curve);
-  transcript_->ValidateAndAppendPoint("T_4", proof.T_4, curve);
-  transcript_->ValidateAndAppendPoint("T_5", proof.T_5, curve);
-  transcript_->ValidateAndAppendPoint("T_6", proof.T_6, curve);
+  transcript_->AppendPoint("T_1", proof.T_1, curve);
+  transcript_->AppendPoint("T_3", proof.T_3, curve);
+  transcript_->AppendPoint("T_4", proof.T_4, curve);
+  transcript_->AppendPoint("T_5", proof.T_5, curve);
+  transcript_->AppendPoint("T_6", proof.T_6, curve);
 
   auto u = transcript_->ChallengeScalar("u", curve);
   auto x = transcript_->ChallengeScalar("x", curve);
@@ -199,40 +199,47 @@ Result<void, R1CSError> R1CSVerifier::Verify(const R1CSProof& proof,
   msm_scalars.reserve(msm_size);
   msm_points.reserve(msm_size);
 
-  auto x_sq = x * x;
-  auto x_3 = x_sq * x;
-  auto x_4 = x_sq * x_sq;
-  auto x_5 = x_4 * x;
-  auto x_6 = x_3 * x_3;
+  auto x_sq = x.MulMod(x, order);
+  auto x_3 = x_sq.MulMod(x, order);
   
   msm_scalars.push_back(x); msm_points.push_back(proof.A_I1);
   msm_scalars.push_back(x_sq); msm_points.push_back(proof.A_O1);
   msm_scalars.push_back(x_3); msm_points.push_back(proof.S1);
-  msm_scalars.push_back(u * x); msm_points.push_back(proof.A_I2);
-  msm_scalars.push_back(u * x_sq); msm_points.push_back(proof.A_O2);
-  msm_scalars.push_back(u * x_3); msm_points.push_back(proof.S2);
+  msm_scalars.push_back(u.MulMod(x, order)); msm_points.push_back(proof.A_I2);
+  msm_scalars.push_back(u.MulMod(x_sq, order)); msm_points.push_back(proof.A_O2);
+  msm_scalars.push_back(u.MulMod(x_3, order)); msm_points.push_back(proof.S2);
 
-  auto r_x_sq = r * x_sq;
-  for (const auto& wV_i : wV) { msm_scalars.push_back(r_x_sq * wV_i); }
+  auto r_x_sq = r.MulMod(x_sq, order);
+  for (const auto& wV_i : wV) { msm_scalars.push_back(r_x_sq.MulMod(wV_i, order)); }
   msm_points.insert(msm_points.end(), V_.begin(), V_.end());
 
-  msm_scalars.push_back(r * x);   msm_points.push_back(proof.T_1);
-  msm_scalars.push_back(r * x_3); msm_points.push_back(proof.T_3);
-  msm_scalars.push_back(r * x_4); msm_points.push_back(proof.T_4);
-  msm_scalars.push_back(r * x_5); msm_points.push_back(proof.T_5);
-  msm_scalars.push_back(r * x_6); msm_points.push_back(proof.T_6);
+  auto x_4 = x_sq.MulMod(x_sq, order);
+  auto x_5 = x_4.MulMod(x, order);
+  auto x_6 = x_3.MulMod(x_3, order);
+  msm_scalars.push_back(r.MulMod(x, order));   msm_points.push_back(proof.T_1);
+  msm_scalars.push_back(r.MulMod(x_3, order)); msm_points.push_back(proof.T_3);
+  msm_scalars.push_back(r.MulMod(x_4, order)); msm_points.push_back(proof.T_4);
+  msm_scalars.push_back(r.MulMod(x_5, order)); msm_points.push_back(proof.T_5);
+  msm_scalars.push_back(r.MulMod(x_6, order)); msm_points.push_back(proof.T_6);
   
   auto y_inv = y.InvertMod(order);
   auto y_inv_pows = ExpIterVector(y_inv, padded_n, curve);
   std::vector<yacl::math::MPInt> yneg_wR(n);
-  for(size_t i=0; i<n; ++i) { yneg_wR[i] = wR[i] * y_inv_pows[i]; }
+  for(size_t i=0; i<n; ++i) { yneg_wR[i] = wR[i].MulMod(y_inv_pows[i], order); }
   auto delta = InnerProduct(absl::MakeSpan(wL), absl::MakeSpan(yneg_wR), curve);
   
-  msm_scalars.push_back(w * (proof.t_x - a_ipp * b_ipp) + r * (x_sq * (wc + delta) - proof.t_x));
+  // B and B_blinding terms
+  auto term1 = w.MulMod(proof.t_x.SubMod(a_ipp.MulMod(b_ipp, order), order), order);
+  auto term2 = x_sq.MulMod(wc.AddMod(delta, order), order);
+  term2 = r.MulMod(term2.SubMod(proof.t_x, order), order);
+  msm_scalars.push_back(term1.AddMod(term2, order));
   msm_points.push_back(pc_gens->B);
-  msm_scalars.push_back(-proof.e_blinding - r * proof.t_x_blinding);
+  
+  auto term3 = -proof.e_blinding;
+  term3 = term3.SubMod(r.MulMod(proof.t_x_blinding, order), order);
+  msm_scalars.push_back(term3.Mod(order));
   msm_points.push_back(pc_gens->B_blinding);
-
+  
   auto s_rev = s; std::reverse(s_rev.begin(), s_rev.end());
   
   size_t n2 = n - n1;
@@ -241,12 +248,12 @@ Result<void, R1CSError> R1CSVerifier::Verify(const R1CSProof& proof,
   if (n2 + pad > 0) {
       u_for_g.insert(u_for_g.end(), n2 + pad, u);
   }
-
-  // FIX: Replace insert with push_back loops for G, H, and IPP terms
+  
   auto G_padded = gens_share.G(padded_n);
   for (size_t i = 0; i < padded_n; ++i) {
     auto wR_i = (i < n) ? yneg_wR[i] : yacl::math::MPInt(0);
-    msm_scalars.push_back(u_for_g[i] * (x * wR_i - a_ipp * s[i]));
+    auto g_s = x.MulMod(wR_i, order).SubMod(a_ipp.MulMod(s[i], order), order);
+    msm_scalars.push_back(u_for_g[i].MulMod(g_s, order));
     msm_points.push_back(G_padded[i]);
   }
   
@@ -254,7 +261,11 @@ Result<void, R1CSError> R1CSVerifier::Verify(const R1CSProof& proof,
   for (size_t i = 0; i < padded_n; ++i) {
     auto wL_i = (i < n) ? wL[i] : yacl::math::MPInt(0);
     auto wO_i = (i < n) ? wO[i] : yacl::math::MPInt(0);
-    msm_scalars.push_back(u_for_g[i] * (y_inv_pows[i] * (x * wL_i + wO_i - b_ipp * s_rev[i]) - 1));
+    auto h_s = x.MulMod(wL_i, order).AddMod(wO_i, order);
+    h_s = h_s.SubMod(b_ipp.MulMod(s_rev[i], order), order);
+    h_s = y_inv_pows[i].MulMod(h_s, order);
+    h_s = h_s.SubMod(yacl::math::MPInt(1), order);
+    msm_scalars.push_back(u_for_g[i].MulMod(h_s, order));
     msm_points.push_back(H_padded[i]);
   }
   
