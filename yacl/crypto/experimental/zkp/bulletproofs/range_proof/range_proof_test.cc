@@ -57,7 +57,7 @@ class RangeProofTest : public ::testing::Test {
       std::vector<uint64_t> values;
       std::vector<yacl::math::MPInt> blindings;
       uint64_t max_value = (n == 64) ? UINT64_MAX - 1 : (1ULL << n);
-      if (max_value == 0) max_value = 1; // Handle n=0 case for RandomLtN
+      if (max_value == 0) max_value = 1;  // Handle n=0 case for RandomLtN
 
       for (size_t i = 0; i < m; ++i) {
         yacl::math::MPInt v_mp;
@@ -67,9 +67,8 @@ class RangeProofTest : public ::testing::Test {
       }
 
       // 2.2. Create the proof
-      auto prove_res = RangeProof::ProveMultiple(&prover_transcript, curve_,
-                                                 bp_gens, pc_gens, values,
-                                                 blindings, n);
+      auto prove_res = RangeProof::ProveMultiple(
+          &prover_transcript, curve_, bp_gens, pc_gens, values, blindings, n);
       ASSERT_TRUE(prove_res.IsOk());
       auto prove_pair = std::move(prove_res).TakeValue();
       RangeProof proof = std::move(prove_pair.first);
@@ -85,9 +84,9 @@ class RangeProofTest : public ::testing::Test {
       RangeProof proof = RangeProof::FromBytes(curve_, proof_bytes);
       // 3.2. Verify with a fresh transcript
       SimpleTranscript verifier_transcript("AggregatedRangeProofTest");
-      bool verify_ok = proof.VerifyMultiple(&verifier_transcript, curve_, bp_gens,
-                                            pc_gens, value_commitments, n);
-      
+      bool verify_ok = proof.VerifyMultiple(
+          &verifier_transcript, curve_, bp_gens, pc_gens, value_commitments, n);
+
       // Add a helpful message in case of failure
       if (!verify_ok) {
         FAIL() << "Proof verification failed for n=" << n << ", m=" << m;
@@ -98,7 +97,6 @@ class RangeProofTest : public ::testing::Test {
 
   std::shared_ptr<yacl::crypto::EcGroup> curve_;
 };
-
 
 TEST_F(RangeProofTest, CreateAndVerify_n32_m1) {
   TestCreateAndVerifyHelper(32, 1);
@@ -132,30 +130,29 @@ TEST_F(RangeProofTest, CreateAndVerify_n64_m8) {
   TestCreateAndVerifyHelper(64, 8);
 }
 
-
 TEST_F(RangeProofTest, TestDelta) {
-    const size_t n = 256;
-    yacl::math::MPInt y = CreateDummyScalar(curve_);
-    yacl::math::MPInt z = CreateDummyScalar(curve_);
-    const auto& order = curve_->GetOrder();
+  const size_t n = 256;
+  yacl::math::MPInt y = CreateDummyScalar(curve_);
+  yacl::math::MPInt z = CreateDummyScalar(curve_);
+  const auto& order = curve_->GetOrder();
 
-    yacl::math::MPInt z2 = z.MulMod(z, order);
-    yacl::math::MPInt z3 = z2.MulMod(z, order);
-    yacl::math::MPInt power_g(0);
-    yacl::math::MPInt exp_y(1);
-    yacl::math::MPInt exp_2(1);
+  yacl::math::MPInt z2 = z.MulMod(z, order);
+  yacl::math::MPInt z3 = z2.MulMod(z, order);
+  yacl::math::MPInt power_g(0);
+  yacl::math::MPInt exp_y(1);
+  yacl::math::MPInt exp_2(1);
 
-    for(size_t i = 0; i < n; ++i) {
-        power_g = power_g.AddMod((z.SubMod(z2, order)).MulMod(exp_y, order), order);
-        power_g = power_g.SubMod(z3.MulMod(exp_2, order), order);
-        exp_y = exp_y.MulMod(y, order);
-        exp_2 = exp_2.AddMod(exp_2, order);
-    }
-    
-    // Call the actual Delta function for m=1
-    yacl::math::MPInt delta_val = RangeProof::Delta(n, 1, y, z, curve_);
+  for (size_t i = 0; i < n; ++i) {
+    power_g = power_g.AddMod((z.SubMod(z2, order)).MulMod(exp_y, order), order);
+    power_g = power_g.SubMod(z3.MulMod(exp_2, order), order);
+    exp_y = exp_y.MulMod(y, order);
+    exp_2 = exp_2.AddMod(exp_2, order);
+  }
 
-    EXPECT_EQ(power_g, delta_val);
+  // Call the actual Delta function for m=1
+  yacl::math::MPInt delta_val = RangeProof::Delta(n, 1, y, z, curve_);
+
+  EXPECT_EQ(power_g, delta_val);
 }
 
 }  // namespace

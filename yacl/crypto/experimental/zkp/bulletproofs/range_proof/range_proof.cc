@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "yacl/crypto/experimental/zkp/bulletproofs/range_proof/range_proof.h"
+
 #include "yacl/crypto/experimental/zkp/bulletproofs/range_proof/range_proof_internal.h"
 #include "yacl/crypto/rand/rand.h"
 
@@ -20,12 +21,13 @@
 namespace examples::zkp {
 using namespace ::examples::zkp::internal;
 
-
 // Party Implementation
 // ===================================
-Result<PartyAwaitingPosition> Party::New(
-    const BulletproofGens* bp_gens, const PedersenGens* pc_gens, uint64_t v,
-    const yacl::math::MPInt& v_blinding, size_t n) {
+Result<PartyAwaitingPosition> Party::New(const BulletproofGens* bp_gens,
+                                         const PedersenGens* pc_gens,
+                                         uint64_t v,
+                                         const yacl::math::MPInt& v_blinding,
+                                         size_t n) {
   if (!(n == 8 || n == 16 || n == 32 || n == 64)) {
     return Result<PartyAwaitingPosition>::Err(
         ProofError(ProofError::Code::InvalidBitsize));
@@ -36,8 +38,8 @@ Result<PartyAwaitingPosition> Party::New(
   }
 
   yacl::crypto::EcPoint V = pc_gens->Commit(yacl::math::MPInt(v), v_blinding);
-  return Result<PartyAwaitingPosition>::Ok(PartyAwaitingPosition(
-      bp_gens, pc_gens, n, v, v_blinding, std::move(V)));
+  return Result<PartyAwaitingPosition>::Ok(
+      PartyAwaitingPosition(bp_gens, pc_gens, n, v, v_blinding, std::move(V)));
 }
 
 PartyAwaitingPosition::PartyAwaitingPosition(const BulletproofGens* bp_gens,
@@ -95,10 +97,9 @@ PartyAwaitingPosition::AssignPosition(
   yacl::crypto::EcPoint S = MultiScalarMul(curve, S_scalars, S_points);
 
   BitCommitment bit_commitment{V_, A, S};
-  PartyAwaitingBitChallenge next_state(n_, v_, std::move(v_blinding_), j,
-                                       pc_gens_, std::move(a_blinding),
-                                       std::move(s_blinding), std::move(s_L),
-                                       std::move(s_R));
+  PartyAwaitingBitChallenge next_state(
+      n_, v_, std::move(v_blinding_), j, pc_gens_, std::move(a_blinding),
+      std::move(s_blinding), std::move(s_L), std::move(s_R));
 
   return Result<std::pair<PartyAwaitingBitChallenge, BitCommitment>>::Ok(
       {std::move(next_state), bit_commitment});
@@ -129,7 +130,8 @@ PartyAwaitingBitChallenge::ApplyChallenge(
 
   yacl::math::MPInt y_jn = ScalarExp(vc.y, j_ * n_, curve);
   yacl::math::MPInt offset_z = ScalarExp(vc.z, j_, curve);
-  yacl::math::MPInt offset_zz = vc.z.MulMod(vc.z, order).MulMod(offset_z, order);
+  yacl::math::MPInt offset_zz =
+      vc.z.MulMod(vc.z, order).MulMod(offset_z, order);
 
   VecPoly1 l_poly = VecPoly1::Zero(n_);
   VecPoly1 r_poly = VecPoly1::Zero(n_);
@@ -170,9 +172,9 @@ PartyAwaitingBitChallenge::ApplyChallenge(
 
 PartyAwaitingPolyChallenge::PartyAwaitingPolyChallenge(
     yacl::math::MPInt v_blinding, yacl::math::MPInt a_blinding,
-    yacl::math::MPInt s_blinding, yacl::math::MPInt offset_zz,
-    VecPoly1 l_poly, VecPoly1 r_poly, Poly2 t_poly,
-    yacl::math::MPInt t_1_blinding, yacl::math::MPInt t_2_blinding)
+    yacl::math::MPInt s_blinding, yacl::math::MPInt offset_zz, VecPoly1 l_poly,
+    VecPoly1 r_poly, Poly2 t_poly, yacl::math::MPInt t_1_blinding,
+    yacl::math::MPInt t_2_blinding)
     : v_blinding_(std::move(v_blinding)),
       a_blinding_(std::move(a_blinding)),
       s_blinding_(std::move(s_blinding)),
@@ -204,9 +206,10 @@ Result<ProofShare> PartyAwaitingPolyChallenge::ApplyChallenge(
 
 // Dealer Implementation
 // ===================================
-Result<DealerAwaitingBitCommitments> Dealer::New(
-    const BulletproofGens* bp_gens, const PedersenGens* pc_gens,
-    SimpleTranscript* transcript, size_t n, size_t m) {
+Result<DealerAwaitingBitCommitments> Dealer::New(const BulletproofGens* bp_gens,
+                                                 const PedersenGens* pc_gens,
+                                                 SimpleTranscript* transcript,
+                                                 size_t n, size_t m) {
   if (!(n == 8 || n == 16 || n == 32 || n == 64)) {
     return Result<DealerAwaitingBitCommitments>::Err(
         ProofError(ProofError::Code::InvalidBitsize));
@@ -261,19 +264,18 @@ DealerAwaitingBitCommitments::ReceiveBitCommitments(
   bit_challenge.y = transcript_->ChallengeScalar("y", curve);
   bit_challenge.z = transcript_->ChallengeScalar("z", curve);
 
-  DealerAwaitingPolyCommitments next_state(
-      n_, m_, transcript_, bp_gens_, pc_gens_,
-      bit_challenge, bit_commitments, A, S);
+  DealerAwaitingPolyCommitments next_state(n_, m_, transcript_, bp_gens_,
+                                           pc_gens_, bit_challenge,
+                                           bit_commitments, A, S);
   return Result<std::pair<DealerAwaitingPolyCommitments, BitChallenge>>::Ok(
       {std::move(next_state), bit_challenge});
 }
 
 DealerAwaitingPolyCommitments::DealerAwaitingPolyCommitments(
     size_t n, size_t m, SimpleTranscript* transcript,
-    const BulletproofGens* bp_gens,
-    const PedersenGens* pc_gens, BitChallenge bit_challenge,
-    std::vector<BitCommitment> bit_commitments, yacl::crypto::EcPoint A,
-    yacl::crypto::EcPoint S)
+    const BulletproofGens* bp_gens, const PedersenGens* pc_gens,
+    BitChallenge bit_challenge, std::vector<BitCommitment> bit_commitments,
+    yacl::crypto::EcPoint A, yacl::crypto::EcPoint S)
     : n_(n),
       m_(m),
       transcript_(transcript),
@@ -292,7 +294,7 @@ DealerAwaitingPolyCommitments::ReceivePolyCommitments(
     return Result<std::pair<DealerAwaitingProofShares, PolyChallenge>>::Err(
         ProofError(ProofError::Code::WrongNumPolyCommitments));
   }
-  
+
   yacl::crypto::EcPoint T_1 = curve->MulBase(yacl::math::MPInt(0));
   yacl::crypto::EcPoint T_2 = curve->MulBase(yacl::math::MPInt(0));
   for (const auto& pc : poly_commitments) {
@@ -307,21 +309,19 @@ DealerAwaitingPolyCommitments::ReceivePolyCommitments(
   poly_challenge.x = transcript_->ChallengeScalar("x", curve);
 
   DealerAwaitingProofShares next_state(
-      n_, m_, transcript_, bp_gens_, pc_gens_,
-      bit_challenge_, std::move(bit_commitments_), poly_challenge,
-      poly_commitments, A_, S_, T_1, T_2);
+      n_, m_, transcript_, bp_gens_, pc_gens_, bit_challenge_,
+      std::move(bit_commitments_), poly_challenge, poly_commitments, A_, S_,
+      T_1, T_2);
   return Result<std::pair<DealerAwaitingProofShares, PolyChallenge>>::Ok(
       {std::move(next_state), poly_challenge});
 }
 
 DealerAwaitingProofShares::DealerAwaitingProofShares(
     size_t n, size_t m, SimpleTranscript* transcript,
-    const BulletproofGens* bp_gens,
-    const PedersenGens* pc_gens,
-    BitChallenge bit_challenge,
-    std::vector<BitCommitment> bit_commitments, PolyChallenge poly_challenge,
-    std::vector<PolyCommitment> poly_commitments, yacl::crypto::EcPoint A,
-    yacl::crypto::EcPoint S, yacl::crypto::EcPoint T_1,
+    const BulletproofGens* bp_gens, const PedersenGens* pc_gens,
+    BitChallenge bit_challenge, std::vector<BitCommitment> bit_commitments,
+    PolyChallenge poly_challenge, std::vector<PolyCommitment> poly_commitments,
+    yacl::crypto::EcPoint A, yacl::crypto::EcPoint S, yacl::crypto::EcPoint T_1,
     yacl::crypto::EcPoint T_2)
     : n_(n),
       m_(m),
@@ -371,29 +371,25 @@ Result<RangeProof> DealerAwaitingProofShares::AssembleShares(
     r_vec.insert(r_vec.end(), ps.r_vec.begin(), ps.r_vec.end());
   }
 
-  std::vector<yacl::math::MPInt> G_factors(n_ * m_, yacl::math::MPInt(1));  // G factors are 1s
+  std::vector<yacl::math::MPInt> G_factors(
+      n_ * m_, yacl::math::MPInt(1));  // G factors are 1s
 
   InnerProductProof ipp_proof = InnerProductProof::Create(
       *transcript_, curve, Q, G_factors, H_factors, bp_gens_->GetAllG(n_, m_),
       bp_gens_->GetAllH(n_, m_), std::move(l_vec), std::move(r_vec));
-  
-  return Result<RangeProof>::Ok(RangeProof(A_, S_, T_1_, T_2_, t_x,
-                                           t_x_blinding, e_blinding,
-                                           std::move(ipp_proof)));
-}
 
+  return Result<RangeProof>::Ok(RangeProof(
+      A_, S_, T_1_, T_2_, t_x, t_x_blinding, e_blinding, std::move(ipp_proof)));
+}
 
 // RangeProof method implementations
 // ===================================
 
-RangeProof::RangeProof(const yacl::crypto::EcPoint A,
-                       const yacl::crypto::EcPoint S,
-                       const yacl::crypto::EcPoint T_1,
-                       const yacl::crypto::EcPoint T_2,
-                       const yacl::math::MPInt t_x,
-                       const yacl::math::MPInt t_x_blinding,
-                       const yacl::math::MPInt e_blinding,
-                       InnerProductProof ipp_proof)
+RangeProof::RangeProof(
+    const yacl::crypto::EcPoint A, const yacl::crypto::EcPoint S,
+    const yacl::crypto::EcPoint T_1, const yacl::crypto::EcPoint T_2,
+    const yacl::math::MPInt t_x, const yacl::math::MPInt t_x_blinding,
+    const yacl::math::MPInt e_blinding, InnerProductProof ipp_proof)
     : A_(std::move(A)),
       S_(std::move(S)),
       T_1_(std::move(T_1)),
@@ -404,8 +400,7 @@ RangeProof::RangeProof(const yacl::crypto::EcPoint A,
       ipp_proof_(std::move(ipp_proof)) {}
 
 yacl::math::MPInt RangeProof::Delta(
-    size_t n, size_t m, const yacl::math::MPInt& y,
-    const yacl::math::MPInt& z,
+    size_t n, size_t m, const yacl::math::MPInt& y, const yacl::math::MPInt& z,
     const std::shared_ptr<yacl::crypto::EcGroup>& curve) {
   const auto& order = curve->GetOrder();
   yacl::math::MPInt two(2);
@@ -455,44 +450,38 @@ RangeProof::ProveMultiple(SimpleTranscript* transcript,
                           const std::vector<yacl::math::MPInt>& blindings,
                           size_t n) {
   if (values.size() != blindings.size()) {
-    return Result<
-        std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>>>::Err(
-        ProofError(ProofError::Code::WrongNumBlindingFactors));
+    return Result<std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>>>::
+        Err(ProofError(ProofError::Code::WrongNumBlindingFactors));
   }
   size_t m = values.size();
 
   auto dealer_res = Dealer::New(&bp_gens, &pc_gens, transcript, n, m);
   if (!dealer_res.IsOk()) {
-    return Result<
-        std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>>>::Err(
-        dealer_res.Error());
+    return Result<std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>>>::
+        Err(dealer_res.Error());
   }
   auto dealer1 = std::move(dealer_res).TakeValue();
 
   std::vector<PartyAwaitingPosition> parties;
   parties.reserve(m);
   for (size_t j = 0; j < m; ++j) {
-    auto party_res = Party::New(&bp_gens, &pc_gens, values[j],
-                                     blindings[j], n);
+    auto party_res = Party::New(&bp_gens, &pc_gens, values[j], blindings[j], n);
     if (!party_res.IsOk()) {
-      return Result<
-          std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>>>::Err(
-          party_res.Error());
+      return Result<std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>>>::
+          Err(party_res.Error());
     }
     parties.push_back(std::move(party_res).TakeValue());
   }
 
-
   std::vector<PartyAwaitingBitChallenge> parties2;
-  std::vector<BitCommitment> bit_commitments; 
+  std::vector<BitCommitment> bit_commitments;
   parties2.reserve(m);
   bit_commitments.reserve(m);
   for (size_t j = 0; j < m; ++j) {
     auto res = parties[j].AssignPosition(curve, j);
     if (!res.IsOk()) {
-      return Result<
-          std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>>>::Err(
-          res.Error());
+      return Result<std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>>>::
+          Err(res.Error());
     }
     auto value = std::move(res).TakeValue();
     parties2.push_back(std::move(value.first));
@@ -504,13 +493,11 @@ RangeProof::ProveMultiple(SimpleTranscript* transcript,
   for (const auto& bc : bit_commitments) {
     value_commitments.push_back(bc.V_j);
   }
-  
 
   auto dealer2_res = dealer1.ReceiveBitCommitments(curve, bit_commitments);
   if (!dealer2_res.IsOk()) {
-    return Result<
-        std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>>>::Err(
-        dealer2_res.Error());
+    return Result<std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>>>::
+        Err(dealer2_res.Error());
   }
   auto dealer2_pair = std::move(dealer2_res).TakeValue();
   auto dealer2 = std::move(dealer2_pair.first);
@@ -528,9 +515,8 @@ RangeProof::ProveMultiple(SimpleTranscript* transcript,
 
   auto dealer3_res = dealer2.ReceivePolyCommitments(curve, poly_commitments);
   if (!dealer3_res.IsOk()) {
-    return Result<
-        std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>>>::Err(
-        dealer3_res.Error());
+    return Result<std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>>>::
+        Err(dealer3_res.Error());
   }
   auto dealer3_pair = std::move(dealer3_res).TakeValue();
   auto dealer3 = std::move(dealer3_pair.first);
@@ -541,20 +527,18 @@ RangeProof::ProveMultiple(SimpleTranscript* transcript,
   for (size_t j = 0; j < m; ++j) {
     auto share_res = parties3[j].ApplyChallenge(curve, poly_challenge);
     if (!share_res.IsOk()) {
-      return Result<
-          std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>>>::Err(
-          share_res.Error());
+      return Result<std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>>>::
+          Err(share_res.Error());
     }
     proof_shares.push_back(std::move(share_res).TakeValue());
   }
 
   auto proof_res = dealer3.AssembleShares(curve, proof_shares);
   if (!proof_res.IsOk()) {
-    return Result<
-        std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>>>::Err(
-        proof_res.Error());
+    return Result<std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>>>::
+        Err(proof_res.Error());
   }
-  
+
   return Result<std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>>>::Ok(
       {std::move(proof_res).TakeValue(), std::move(value_commitments)});
 }
@@ -569,13 +553,13 @@ bool RangeProof::VerifyMultiple(
   const auto& order = curve->GetOrder();
 
   if (!(n == 8 || n == 16 || n == 32 || n == 64)) {
-      return false;
+    return false;
   }
   if (bp_gens.gens_capacity() < n) {
-      return false;
+    return false;
   }
   if (bp_gens.party_capacity() < m) {
-      return false;
+    return false;
   }
 
   // Replay transcript
@@ -589,16 +573,13 @@ bool RangeProof::VerifyMultiple(
 
   transcript->ValidateAndAppendPoint("S", S_, curve);
 
-
   yacl::math::MPInt y = transcript->ChallengeScalar("y", curve);
 
   yacl::math::MPInt z = transcript->ChallengeScalar("z", curve);
 
-
   transcript->ValidateAndAppendPoint("T_1", T_1_, curve);
 
   transcript->ValidateAndAppendPoint("T_2", T_2_, curve);
-
 
   yacl::math::MPInt x = transcript->ChallengeScalar("x", curve);
 
@@ -609,7 +590,6 @@ bool RangeProof::VerifyMultiple(
   transcript->AppendScalar("e_blinding", e_blinding_);
 
   yacl::math::MPInt w = transcript->ChallengeScalar("w", curve);
-
 
   yacl::math::MPInt c = CreateDummyScalar(curve);
 
@@ -625,7 +605,7 @@ bool RangeProof::VerifyMultiple(
   const auto& b = ipp_proof_.GetB();
 
   auto powers_of_2 = ExpIterVector(yacl::math::MPInt(2), n, curve);
-  
+
   auto powers_of_z = ExpIterVector(z, m, curve);
 
   std::vector<yacl::math::MPInt> concat_z_and_2;
@@ -639,7 +619,7 @@ bool RangeProof::VerifyMultiple(
   yacl::math::MPInt y_inv = y.InvertMod(order);
   auto y_inv_pows = ExpIterVector(y_inv, n * m, curve);
   yacl::math::MPInt zz = z.MulMod(z, order);
-  
+
   yacl::math::MPInt minus_z = yacl::math::MPInt(0).SubMod(z, order);
 
   auto zPlusMinusZ = z.AddMod(minus_z, order);
@@ -657,7 +637,6 @@ bool RangeProof::VerifyMultiple(
     h_scalars.push_back(z.AddMod(y_inv_pows[i].MulMod(term, order), order));
   }
 
-
   yacl::math::MPInt value_commitment_scalar = c.MulMod(zz, order);
   std::vector<yacl::math::MPInt> vc_scalars;
   for (const auto& p_z : powers_of_z) {
@@ -670,7 +649,6 @@ bool RangeProof::VerifyMultiple(
   basepoint_scalar = basepoint_scalar.AddMod(
       c.MulMod(delta_val.SubMod(t_x_, order), order), order);
 
-
   std::vector<yacl::math::MPInt> msm_scalars;
   msm_scalars.push_back(yacl::math::MPInt(1));
   msm_scalars.push_back(x);
@@ -679,7 +657,8 @@ bool RangeProof::VerifyMultiple(
   msm_scalars.insert(msm_scalars.end(), x_sq.begin(), x_sq.end());
   msm_scalars.insert(msm_scalars.end(), x_inv_sq.begin(), x_inv_sq.end());
 
-  yacl::math::MPInt blinding_term = e_blinding_.AddMod(c.MulMod(t_x_blinding_, order), order);
+  yacl::math::MPInt blinding_term =
+      e_blinding_.AddMod(c.MulMod(t_x_blinding_, order), order);
   msm_scalars.push_back(yacl::math::MPInt(0).SubMod(blinding_term, order));
 
   msm_scalars.push_back(basepoint_scalar);
@@ -718,15 +697,17 @@ yacl::Buffer RangeProof::ToBytes(
   yacl::Buffer S_bytes = curve->SerializePoint(S_);
   yacl::Buffer T1_bytes = curve->SerializePoint(T_1_);
   yacl::Buffer T2_bytes = curve->SerializePoint(T_2_);
-  
+
   std::vector<uint8_t> t_x_bytes(32);
   t_x_.ToMagBytes(t_x_bytes.data(), t_x_bytes.size(), yacl::Endian::little);
-  
+
   std::vector<uint8_t> t_x_blinding_bytes(32);
-  t_x_blinding_.ToMagBytes(t_x_blinding_bytes.data(), t_x_blinding_bytes.size(), yacl::Endian::little);
-  
+  t_x_blinding_.ToMagBytes(t_x_blinding_bytes.data(), t_x_blinding_bytes.size(),
+                           yacl::Endian::little);
+
   std::vector<uint8_t> e_blinding_bytes(32);
-  e_blinding_.ToMagBytes(e_blinding_bytes.data(), e_blinding_bytes.size(), yacl::Endian::little);
+  e_blinding_.ToMagBytes(e_blinding_bytes.data(), e_blinding_bytes.size(),
+                         yacl::Endian::little);
 
   yacl::Buffer ipp_bytes = ipp_proof_.ToBytes(curve);
 
@@ -738,7 +719,7 @@ yacl::Buffer RangeProof::ToBytes(
     std::memcpy(ptr, data.data(), data.size());
     ptr += data.size();
   };
-  
+
   auto write_vec = [&](const std::vector<uint8_t>& data) {
     std::memcpy(ptr, data.data(), data.size());
     ptr += data.size();
@@ -771,7 +752,8 @@ RangeProof RangeProof::FromBytes(
   const char* ptr = reinterpret_cast<const char*>(bytes.data());
 
   auto read_point = [&](size_t& offset) {
-    yacl::crypto::EcPoint p = curve->DeserializePoint({ptr + offset, point_size});
+    yacl::crypto::EcPoint p =
+        curve->DeserializePoint({ptr + offset, point_size});
     offset += point_size;
     return p;
   };
@@ -787,7 +769,7 @@ RangeProof RangeProof::FromBytes(
   yacl::crypto::EcPoint S = read_point(current_offset);
   yacl::crypto::EcPoint T_1 = read_point(current_offset);
   yacl::crypto::EcPoint T_2 = read_point(current_offset);
-  
+
   yacl::math::MPInt t_x = read_scalar(current_offset);
   yacl::math::MPInt t_x_blinding = read_scalar(current_offset);
   yacl::math::MPInt e_blinding = read_scalar(current_offset);

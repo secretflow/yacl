@@ -39,10 +39,8 @@ class RangeProof {
   // Constructor matching the struct fields.
   RangeProof(const yacl::crypto::EcPoint A, const yacl::crypto::EcPoint S,
              const yacl::crypto::EcPoint T_1, const yacl::crypto::EcPoint T_2,
-             const yacl::math::MPInt t_x,
-             const yacl::math::MPInt t_x_blinding,
+             const yacl::math::MPInt t_x, const yacl::math::MPInt t_x_blinding,
              const yacl::math::MPInt e_blinding, InnerProductProof ipp_proof);
-
 
   // Creates a rangeproof for a single value.
   static Result<std::pair<RangeProof, yacl::crypto::EcPoint>> ProveSingle(
@@ -54,10 +52,8 @@ class RangeProof {
   // Verifies a rangeproof for a single value commitment.
   bool VerifySingle(SimpleTranscript* transcript,
                     const std::shared_ptr<yacl::crypto::EcGroup>& curve,
-                    const BulletproofGens& bp_gens,
-                    const PedersenGens& pc_gens,
+                    const BulletproofGens& bp_gens, const PedersenGens& pc_gens,
                     const yacl::crypto::EcPoint& V, size_t n) const;
-
 
   // Creates an aggregated rangeproof for multiple values.
   static Result<std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>>>
@@ -83,34 +79,29 @@ class RangeProof {
       const std::shared_ptr<yacl::crypto::EcGroup>& curve,
       const yacl::ByteContainerView& bytes);
 
-
-    const yacl::crypto::EcPoint& GetA() const { return A_; }
-    const yacl::crypto::EcPoint& GetS() const { return S_; }
-    const yacl::crypto::EcPoint& GetT1() const { return T_1_; }
-    const yacl::crypto::EcPoint& GetT2() const { return T_2_; }
-    const yacl::math::MPInt& GetTx() const { return t_x_; }
-    const yacl::math::MPInt& GetTxBlinding() const { return t_x_blinding_; }
-    const yacl::math::MPInt& GetEBlinding() const { return e_blinding_; }
+  const yacl::crypto::EcPoint& GetA() const { return A_; }
+  const yacl::crypto::EcPoint& GetS() const { return S_; }
+  const yacl::crypto::EcPoint& GetT1() const { return T_1_; }
+  const yacl::crypto::EcPoint& GetT2() const { return T_2_; }
+  const yacl::math::MPInt& GetTx() const { return t_x_; }
+  const yacl::math::MPInt& GetTxBlinding() const { return t_x_blinding_; }
+  const yacl::math::MPInt& GetEBlinding() const { return e_blinding_; }
 
   // Static helper to compute delta for aggregated proofs
   static yacl::math::MPInt Delta(
       size_t n, size_t m, const yacl::math::MPInt& y,
       const yacl::math::MPInt& z,
       const std::shared_ptr<yacl::crypto::EcGroup>& curve);
-    
-
 
  private:
-    yacl::crypto::EcPoint A_;
-    yacl::crypto::EcPoint S_;
-    yacl::crypto::EcPoint T_1_;
-    yacl::crypto::EcPoint T_2_;
-    yacl::math::MPInt t_x_;
-    yacl::math::MPInt t_x_blinding_;
-    yacl::math::MPInt e_blinding_;
-    InnerProductProof ipp_proof_;
-
-
+  yacl::crypto::EcPoint A_;
+  yacl::crypto::EcPoint S_;
+  yacl::crypto::EcPoint T_1_;
+  yacl::crypto::EcPoint T_2_;
+  yacl::math::MPInt t_x_;
+  yacl::math::MPInt t_x_blinding_;
+  yacl::math::MPInt e_blinding_;
+  InnerProductProof ipp_proof_;
 };
 
 }  // namespace examples::zkp

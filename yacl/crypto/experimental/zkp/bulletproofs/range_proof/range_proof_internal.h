@@ -21,11 +21,12 @@
 #include "yacl/crypto/experimental/zkp/bulletproofs/util.h"
 
 // This header contains the internal implementation details (Dealer, Party)
-// for the MPC range proof protocol. It should only be included by range_proof.cc
+// for the MPC range proof protocol. It should only be included by
+// range_proof.cc
 
-namespace examples::zkp{
+namespace examples::zkp {
 
-namespace internal{
+namespace internal {
 
 // MPC Message Structs
 struct BitCommitment {
@@ -63,11 +64,12 @@ class PartyAwaitingPolyChallenge;
 
 class PartyAwaitingBitChallenge {
  public:
-  PartyAwaitingBitChallenge(
-      size_t n, uint64_t v, yacl::math::MPInt v_blinding, size_t j,
-      const PedersenGens* pc_gens, yacl::math::MPInt a_blinding,
-      yacl::math::MPInt s_blinding, std::vector<yacl::math::MPInt> s_L,
-      std::vector<yacl::math::MPInt> s_R);
+  PartyAwaitingBitChallenge(size_t n, uint64_t v, yacl::math::MPInt v_blinding,
+                            size_t j, const PedersenGens* pc_gens,
+                            yacl::math::MPInt a_blinding,
+                            yacl::math::MPInt s_blinding,
+                            std::vector<yacl::math::MPInt> s_L,
+                            std::vector<yacl::math::MPInt> s_R);
 
   std::pair<PartyAwaitingPolyChallenge, PolyCommitment> ApplyChallenge(
       const std::shared_ptr<yacl::crypto::EcGroup>& curve,
@@ -89,8 +91,7 @@ class PartyAwaitingPosition {
  public:
   PartyAwaitingPosition(const BulletproofGens* bp_gens,
                         const PedersenGens* pc_gens, size_t n, uint64_t v,
-                        yacl::math::MPInt v_blinding,
-                        yacl::crypto::EcPoint V);
+                        yacl::math::MPInt v_blinding, yacl::crypto::EcPoint V);
 
   Result<std::pair<PartyAwaitingBitChallenge, BitCommitment>> AssignPosition(
       const std::shared_ptr<yacl::crypto::EcGroup>& curve, size_t j);
@@ -106,11 +107,13 @@ class PartyAwaitingPosition {
 
 class PartyAwaitingPolyChallenge {
  public:
-  PartyAwaitingPolyChallenge(
-      yacl::math::MPInt v_blinding, yacl::math::MPInt a_blinding,
-      yacl::math::MPInt s_blinding, yacl::math::MPInt offset_zz,
-      VecPoly1 l_poly, VecPoly1 r_poly, Poly2 t_poly,
-      yacl::math::MPInt t_1_blinding, yacl::math::MPInt t_2_blinding);
+  PartyAwaitingPolyChallenge(yacl::math::MPInt v_blinding,
+                             yacl::math::MPInt a_blinding,
+                             yacl::math::MPInt s_blinding,
+                             yacl::math::MPInt offset_zz, VecPoly1 l_poly,
+                             VecPoly1 r_poly, Poly2 t_poly,
+                             yacl::math::MPInt t_1_blinding,
+                             yacl::math::MPInt t_2_blinding);
 
   Result<ProofShare> ApplyChallenge(
       const std::shared_ptr<yacl::crypto::EcGroup>& curve,
@@ -130,29 +133,26 @@ class PartyAwaitingPolyChallenge {
 
 class Party {
  public:
-  static Result<PartyAwaitingPosition> New(
-      const BulletproofGens* bp_gens, const PedersenGens* pc_gens, uint64_t v,
-      const yacl::math::MPInt& v_blinding, size_t n);
+  static Result<PartyAwaitingPosition> New(const BulletproofGens* bp_gens,
+                                           const PedersenGens* pc_gens,
+                                           uint64_t v,
+                                           const yacl::math::MPInt& v_blinding,
+                                           size_t n);
 };
-
 
 class DealerAwaitingProofShares;
 
 class DealerAwaitingPolyCommitments {
  public:
-  DealerAwaitingPolyCommitments(size_t n, size_t m,
-                                SimpleTranscript* transcript,
-                                const BulletproofGens* bp_gens,
-                                const PedersenGens* pc_gens,
-                                BitChallenge bit_challenge,
-                                std::vector<BitCommitment> bit_commitments,
-                                yacl::crypto::EcPoint A,
-                                yacl::crypto::EcPoint S);
+  DealerAwaitingPolyCommitments(
+      size_t n, size_t m, SimpleTranscript* transcript,
+      const BulletproofGens* bp_gens, const PedersenGens* pc_gens,
+      BitChallenge bit_challenge, std::vector<BitCommitment> bit_commitments,
+      yacl::crypto::EcPoint A, yacl::crypto::EcPoint S);
 
   Result<std::pair<DealerAwaitingProofShares, PolyChallenge>>
-  ReceivePolyCommitments(
-      const std::shared_ptr<yacl::crypto::EcGroup>& curve,
-      const std::vector<PolyCommitment>& poly_commitments);
+  ReceivePolyCommitments(const std::shared_ptr<yacl::crypto::EcGroup>& curve,
+                         const std::vector<PolyCommitment>& poly_commitments);
 
  private:
   size_t n_;
@@ -173,9 +173,8 @@ class DealerAwaitingBitCommitments {
                                const PedersenGens* pc_gens);
 
   Result<std::pair<DealerAwaitingPolyCommitments, BitChallenge>>
-  ReceiveBitCommitments(
-      const std::shared_ptr<yacl::crypto::EcGroup>& curve,
-      const std::vector<BitCommitment>& bit_commitments);
+  ReceiveBitCommitments(const std::shared_ptr<yacl::crypto::EcGroup>& curve,
+                        const std::vector<BitCommitment>& bit_commitments);
 
  private:
   size_t n_;
@@ -184,7 +183,6 @@ class DealerAwaitingBitCommitments {
   const BulletproofGens* bp_gens_;
   const PedersenGens* pc_gens_;
 };
-
 
 class DealerAwaitingProofShares {
  public:
@@ -198,7 +196,7 @@ class DealerAwaitingProofShares {
                             yacl::crypto::EcPoint A, yacl::crypto::EcPoint S,
                             yacl::crypto::EcPoint T_1,
                             yacl::crypto::EcPoint T_2);
-  
+
   // Assembles the final aggregated RangeProof from the given proof_shares
   Result<RangeProof> AssembleShares(
       const std::shared_ptr<yacl::crypto::EcGroup>& curve,
