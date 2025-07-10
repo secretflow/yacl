@@ -19,7 +19,7 @@
 #include "yacl/crypto/experimental/zkp/bulletproofs/r1cs/r1cs_linear_combination.h"
 #include "yacl/crypto/experimental/zkp/bulletproofs/r1cs/r1cs_metrics.h"
 #include "yacl/crypto/experimental/zkp/bulletproofs/simple_transcript.h"
-#include "yacl/crypto/experimental/zkp/bulletproofs/errors.h" // For R1CSError
+#include "yacl/crypto/experimental/zkp/bulletproofs/errors.h" 
 
 namespace examples::zkp {
 
@@ -48,7 +48,5 @@ class ConstraintSystem {
   virtual void Constrain(LinearCombination lc) = 0;
 };
 
-// This combines RandomizableConstraintSystem and RandomizedConstraintSystem from Rust.
-// We will implement these methods directly in R1CSProver and R1CSVerifier.
 
 } // namespace examples::zkp

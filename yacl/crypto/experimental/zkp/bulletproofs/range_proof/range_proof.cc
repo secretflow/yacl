@@ -568,19 +568,13 @@ bool RangeProof::VerifyMultiple(
   const size_t m = value_commitments.size();
   const auto& order = curve->GetOrder();
 
-  // --- 前置条件检查 ---
   if (!(n == 8 || n == 16 || n == 32 || n == 64)) {
-      // 因为这个函数返回 bool，我们只能返回 false。
-      // 在日志中打印错误会更有帮助。
-      // YACL_LOG(SO_ERROR) << "Verification failed: Invalid bitsize n = " << n;
       return false;
   }
   if (bp_gens.gens_capacity() < n) {
-      // YACL_LOG(SO_ERROR) << "Verification failed: Insufficient generator capacity for n.";
       return false;
   }
   if (bp_gens.party_capacity() < m) {
-      // YACL_LOG(SO_ERROR) << "Verification failed: Insufficient party capacity for m.";
       return false;
   }
 

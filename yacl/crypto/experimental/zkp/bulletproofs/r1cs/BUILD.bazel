@@ -14,7 +14,6 @@
 
 load("@yacl//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
 
-
 yacl_cc_library(
     name = "r1cs_config",
     hdrs = ["r1cs_config.h"],
@@ -36,6 +35,7 @@ yacl_cc_library(
         "r1cs_metrics.h",
     ],
     deps = [
+        ":r1cs_linear_combination",
         "//yacl/crypto/experimental/zkp/bulletproofs:errors",
         "//yacl/crypto/experimental/zkp/bulletproofs:generators",
         "//yacl/crypto/experimental/zkp/bulletproofs:simple_transcript",
@@ -46,7 +46,6 @@ yacl_cc_library(
         "@yacl//yacl/crypto/rand",
         "@yacl//yacl/math/mpint",
         "@yacl//yacl/math/mpint:mp_int_enforce",
-        ":r1cs_linear_combination",
     ],
 )
 
@@ -73,6 +72,8 @@ yacl_cc_library(
     srcs = ["r1cs_prover.cc"],
     hdrs = ["r1cs_prover.h"],
     deps = [
+        ":r1cs_constraint_system",
+        ":r1cs_proof",
         "//yacl/crypto/experimental/zkp/bulletproofs:errors",
         "//yacl/crypto/experimental/zkp/bulletproofs:generators",
         "//yacl/crypto/experimental/zkp/bulletproofs:simple_transcript",
@@ -83,8 +84,6 @@ yacl_cc_library(
         "@yacl//yacl/crypto/rand",
         "@yacl//yacl/math/mpint",
         "@yacl//yacl/math/mpint:mp_int_enforce",
-        ":r1cs_constraint_system",
-        ":r1cs_proof",
     ],
 )
 
@@ -93,6 +92,8 @@ yacl_cc_library(
     srcs = ["r1cs_verifier.cc"],
     hdrs = ["r1cs_verifier.h"],
     deps = [
+        ":r1cs_constraint_system",
+        ":r1cs_proof",
         "//yacl/crypto/experimental/zkp/bulletproofs:errors",
         "//yacl/crypto/experimental/zkp/bulletproofs:generators",
         "//yacl/crypto/experimental/zkp/bulletproofs:simple_transcript",
@@ -103,8 +104,6 @@ yacl_cc_library(
         "@yacl//yacl/crypto/rand",
         "@yacl//yacl/math/mpint",
         "@yacl//yacl/math/mpint:mp_int_enforce",
-        ":r1cs_constraint_system",
-        ":r1cs_proof",
     ],
 )
 
@@ -123,6 +122,12 @@ yacl_cc_test(
     name = "r1cs_test",
     srcs = ["r1cs_test.cc"],
     deps = [
+        ":r1cs_config",
+        ":r1cs_constraint_system",
+        ":r1cs_linear_combination",
+        ":r1cs_proof",
+        ":r1cs_prover",
+        ":r1cs_verifier",
         "//yacl/crypto/experimental/zkp/bulletproofs:errors",
         "//yacl/crypto/experimental/zkp/bulletproofs:generators",
         "//yacl/crypto/experimental/zkp/bulletproofs:simple_transcript",
@@ -133,11 +138,5 @@ yacl_cc_test(
         "@yacl//yacl/crypto/rand",
         "@yacl//yacl/math/mpint",
         "@yacl//yacl/math/mpint:mp_int_enforce",
-        ":r1cs_constraint_system",
-        ":r1cs_linear_combination",
-        ":r1cs_proof",
-        ":r1cs_prover",
-        ":r1cs_verifier",
-        ":r1cs_config",
     ],
 )

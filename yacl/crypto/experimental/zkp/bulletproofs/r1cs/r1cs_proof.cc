@@ -22,7 +22,6 @@
 namespace examples::zkp {
 
 namespace {
-// Corresponds to Rust's consts
 constexpr uint8_t ONE_PHASE_COMMITMENTS = 0;
 constexpr uint8_t TWO_PHASE_COMMITMENTS = 1;
 

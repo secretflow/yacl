@@ -76,7 +76,6 @@ class RangeProofTest : public ::testing::Test {
       value_commitments = std::move(prove_pair.second);
 
       // 2.3. Serialize the proof
-      // std::cout << "prover proof: " << (proof.t_x_.ToHexString()) << std::endl;
       proof_bytes = proof.ToBytes(curve_);
     }
 
@@ -84,7 +83,6 @@ class RangeProofTest : public ::testing::Test {
     {
       // 3.1. Deserialize the proof
       RangeProof proof = RangeProof::FromBytes(curve_, proof_bytes);
-      // std::cout << "verifier proof: " << (proof.t_x_.ToHexString()) << std::endl;
       // 3.2. Verify with a fresh transcript
       SimpleTranscript verifier_transcript("AggregatedRangeProofTest");
       bool verify_ok = proof.VerifyMultiple(&verifier_transcript, curve_, bp_gens,

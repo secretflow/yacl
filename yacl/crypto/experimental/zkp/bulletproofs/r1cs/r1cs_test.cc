@@ -1,14 +1,22 @@
-// yacl/crypto/experimental/zkp/bulletproofs/r1cs/r1cs_test.cc
+// Copyright 2025 @yangjucai.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include "gtest/gtest.h"
-
-// STL and other includes
 #include <algorithm>
 #include <numeric>
 #include <random>
 #include <vector>
-
-// YACL includes
 #include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/crypto/experimental/zkp/bulletproofs/errors.h"
 #include "yacl/crypto/experimental/zkp/bulletproofs/generators.h"
@@ -19,11 +27,10 @@
 #include "yacl/crypto/experimental/zkp/bulletproofs/r1cs/r1cs_prover.h"
 #include "yacl/crypto/experimental/zkp/bulletproofs/r1cs/r1cs_verifier.h"
 #include "yacl/crypto/experimental/zkp/bulletproofs/util.h"
-#include "yacl/crypto/rand/rand.h" // For yacl::crypto::RandBytes
+#include "yacl/crypto/rand/rand.h"
 
 namespace examples::zkp {
 
-// Test Fixture for all R1CS tests
 class R1CSTest : public ::testing::Test {
  protected:
   void SetUp() override {
@@ -59,11 +66,8 @@ class R1CSTest : public ::testing::Test {
     auto* verifier = dynamic_cast<R1CSVerifier*>(cs);
 
     if (prover) {
-      // FIX: Lambda return type MUST match the std::function type exactly.
-      // R1CSProver::RandomizedCallback is std::function<Result<void>(...)>
-      // which defaults to Result<void, ProofError>.
       R1CSProver::RandomizedCallback callback =
-          [k, &x, &y](RandomizedProver* rcs) -> Result<void> { // Note: No R1CSError
+          [k, &x, &y](RandomizedProver* rcs) -> Result<void> { 
         yacl::math::MPInt z = rcs->ChallengeScalar("shuffle challenge");
         auto compute_product =
             [&](const std::vector<Variable>& vars) -> LinearCombination {
@@ -79,8 +83,7 @@ class R1CSTest : public ::testing::Test {
         };
         rcs->Constrain(compute_product(x) - compute_product(y));
         return Result<void>::Ok();
-      };
-      // FIX: Manually handle the error type conversion.
+      };    
       auto res = prover->SpecifyRandomizedConstraints(callback);
       if (res.IsErr()) {
         // Convert the ProofError into an R1CSError for the gadget's return type
@@ -90,7 +93,6 @@ class R1CSTest : public ::testing::Test {
     }
 
     if (verifier) {
-      // FIX: This lambda's return type must also match the verifier's callback.
       R1CSVerifier::RandomizedCallback callback =
           [k, &x, &y](RandomizedVerifier* rcs) -> Result<void, R1CSError> {
         yacl::math::MPInt z = rcs->ChallengeScalar("shuffle challenge");
@@ -109,10 +111,8 @@ class R1CSTest : public ::testing::Test {
         rcs->Constrain(compute_product(x) - compute_product(y));
         return Result<void, R1CSError>::Ok();
       };
-      // FIX: Manually handle the error type conversion.
       auto res = verifier->SpecifyRandomizedConstraints(callback);
       if (res.IsErr()) {
-        // Convert the ProofError into an R1CSError
         return Result<void, R1CSError>::Err(R1CSError(res.Error()));
       }
       return Result<void, R1CSError>::Ok();

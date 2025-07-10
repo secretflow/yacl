@@ -21,7 +21,7 @@
 #include <stdexcept>
 
 #include "yacl/crypto/experimental/zkp/bulletproofs/errors.h"
-#include "yacl/crypto/experimental/zkp/bulletproofs/util.h"  // For exponentiation helpers
+#include "yacl/crypto/experimental/zkp/bulletproofs/util.h" 
 
 namespace examples::zkp {
 
@@ -210,7 +210,7 @@ InnerProductProof::VerificationScalars(
 bool InnerProductProof::Verify(
     SimpleTranscript& transcript,
     const std::shared_ptr<yacl::crypto::EcGroup>& curve,
-    const std::vector<yacl::math::MPInt>& G_factors, // 添加 G_factors
+    const std::vector<yacl::math::MPInt>& G_factors, // G_factors
     const std::vector<yacl::math::MPInt>& H_factors,
     const yacl::crypto::EcPoint& P, const yacl::crypto::EcPoint& Q,
     const std::vector<yacl::crypto::EcPoint>& G,
@@ -222,13 +222,13 @@ bool InnerProductProof::Verify(
     size_t n = G.size();
     const auto& order = curve->GetOrder();
     
-    // 调用 VerificationScalars 获取 s, u_sq, u_inv_sq
+    // VerificationScalars  s, u_sq, u_inv_sq
     auto verification_data = this->VerificationScalars(n, transcript, curve);
     const auto& u_sq = std::get<0>(verification_data);
     const auto& u_inv_sq = std::get<1>(verification_data);
     const auto& s = std::get<2>(verification_data);
 
-    // 计算 g_times_a_times_s = (a * s_i) * G_factor_i
+    // g_times_a_times_s = (a * s_i) * G_factor_i
     std::vector<yacl::math::MPInt> g_times_a_times_s(n);
     for (size_t i = 0; i < n; ++i) {
       g_times_a_times_s[i] = a_.MulMod(s[i], order).MulMod(G_factors[i], order);
@@ -239,13 +239,13 @@ bool InnerProductProof::Verify(
     auto inv_s = s;
     std::reverse(inv_s.begin(), inv_s.end());
 
-    // 计算 h_times_b_div_s = (b * s_inv_i) * H_factor_i
+    // h_times_b_div_s = (b * s_inv_i) * H_factor_i
     std::vector<yacl::math::MPInt> h_times_b_div_s(n);
     for (size_t i = 0; i < n; ++i) {
       h_times_b_div_s[i] = b_.MulMod(inv_s[i], order).MulMod(H_factors[i], order);
     }
 
-    // 计算 -u_i^2 和 -u_inv_i^2
+    // -u_i^2 and -u_inv_i^2
     size_t lg_n = u_sq.size();
     std::vector<yacl::math::MPInt> neg_u_sq(lg_n);
     std::vector<yacl::math::MPInt> neg_u_inv_sq(lg_n);
@@ -254,7 +254,6 @@ bool InnerProductProof::Verify(
       neg_u_inv_sq[i] = yacl::math::MPInt(0).SubMod(u_inv_sq[i], order);
     }
 
-    // 组合所有的标量和点
     std::vector<yacl::math::MPInt> msm_scalars;
     std::vector<yacl::crypto::EcPoint> msm_points;
     // Pre-allocate memory
@@ -281,10 +280,8 @@ bool InnerProductProof::Verify(
     msm_scalars.insert(msm_scalars.end(), neg_u_inv_sq.begin(), neg_u_inv_sq.end());
     msm_points.insert(msm_points.end(), R_vec_.begin(), R_vec_.end());
     
-    // 计算期望的 P
     auto expect_P = MultiScalarMul(curve, msm_scalars, msm_points);
     
-    // 比较 expect_P 和 P
     if (curve->PointEqual(expect_P, P)) {
       SPDLOG_DEBUG("P match");
       return true;

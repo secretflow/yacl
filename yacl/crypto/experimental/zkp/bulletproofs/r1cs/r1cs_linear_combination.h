@@ -21,7 +21,6 @@
 
 namespace examples::zkp {
 
-// Corresponds to Rust's r1cs::Variable enum
 enum class VariableType {
   Committed,
   MultiplierLeft,

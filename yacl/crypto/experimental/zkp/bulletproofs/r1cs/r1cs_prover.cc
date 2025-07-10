@@ -47,7 +47,7 @@ std::tuple<Variable, Variable, Variable> R1CSProver::Multiply(
     LinearCombination left, LinearCombination right) {
   auto l = Eval(left);
   auto r = Eval(right);
-  auto o = l * r; // Note: This doesn't use MulMod, assuming MPInt overload is correct
+  auto o = l * r; 
 
   size_t i = a_L_.size();
   auto l_var = Variable::MultiplierLeft(i);
@@ -174,12 +174,7 @@ R1CSProver::FlattenedConstraints(const yacl::math::MPInt& z) const {
     return {wL, wR, wO, wV};
 }
 
-
-// In r1cs_prover.cc
-
 Result<R1CSProof, R1CSError> R1CSProver::Prove(const BulletproofGens* bp_gens) const {
-  // This const_cast is a bit ugly, but `Prove` should logically consume the prover.
-  // In Rust this is enforced by `(mut self)`. Here we simulate it.
   auto non_const_this = const_cast<R1CSProver*>(this);
   auto curve = pc_gens_->GetCurve();
   auto order = curve->GetOrder();
@@ -199,7 +194,6 @@ Result<R1CSProof, R1CSError> R1CSProver::Prove(const BulletproofGens* bp_gens) c
   auto H1 = gens_share.H(n1);
   
   // A_I1 = <a_L, G> + <a_R, H> + i_blinding1 * B_blinding
-  // ---- CORRECTED MSM CONSTRUCTION ----
   std::vector<yacl::math::MPInt> msm_scalars;
   std::vector<yacl::crypto::EcPoint> msm_points;
   msm_scalars.reserve(1 + a_L_.size() + a_R_.size());
@@ -216,8 +210,8 @@ Result<R1CSProof, R1CSError> R1CSProver::Prove(const BulletproofGens* bp_gens) c
   auto A_I1 = MultiScalarMul(curve, msm_scalars, msm_points);
 
   // A_O1 = <a_O, G> + o_blinding1 * B_blinding
-  // ---- CORRECTED MSM CONSTRUCTION ----
-  msm_scalars.assign({o_blinding1}); // Clear and assign
+
+  msm_scalars.assign({o_blinding1}); 
   msm_points.assign({pc_gens_->B_blinding});
   msm_scalars.insert(msm_scalars.end(), a_O_.begin(), a_O_.end());
   msm_points.insert(msm_points.end(), G1.begin(), G1.end());
@@ -231,7 +225,6 @@ Result<R1CSProof, R1CSError> R1CSProver::Prove(const BulletproofGens* bp_gens) c
   }
   
   // S1 = <s_L1, G> + <s_R1, H> + s_blinding1 * B_blinding
-  // ---- CORRECTED MSM CONSTRUCTION ----
   msm_scalars.assign({s_blinding1});
   msm_points.assign({pc_gens_->B_blinding});
   msm_scalars.insert(msm_scalars.end(), s_L1.begin(), s_L1.end());
@@ -253,7 +246,6 @@ Result<R1CSProof, R1CSError> R1CSProver::Prove(const BulletproofGens* bp_gens) c
   size_t n = a_L_.size();
   size_t n2 = n - n1;
   size_t padded_n = NextPowerOfTwo(n);
-//   size_t pad = padded_n - n;
   
   YACL_ENFORCE(bp_gens->gens_capacity() >= padded_n, "Invalid generators length for padded size");
 
@@ -266,12 +258,10 @@ if (n2 > 0) {
     o_blinding2 = CreateDummyScalar(curve);
     s_blinding2 = CreateDummyScalar(curve);
 
-    // FIX: Get the full generator vectors for the current share first.
+
     auto G_full = gens_share.G(n);
     auto H_full = gens_share.H(n);
 
-    // FIX: Then create sub-vectors (slices) for the second phase.
-    // This correctly mimics the Rust code's G[n1:] and H[n1:].
     std::vector<yacl::crypto::EcPoint> G2(G_full.begin() + n1, G_full.end());
     std::vector<yacl::crypto::EcPoint> H2(H_full.begin() + n1, H_full.end());
     
@@ -319,7 +309,6 @@ if (n2 > 0) {
   transcript_->AppendPoint("A_O2", A_O2, curve);
   transcript_->AppendPoint("S2", S2, curve);
 
-  // ... (rest of the function is unchanged)
   auto y = transcript_->ChallengeScalar("y", curve);
   auto z = transcript_->ChallengeScalar("z", curve);
   

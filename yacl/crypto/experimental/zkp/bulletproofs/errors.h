@@ -20,8 +20,8 @@
 #include <utility>
 #include <vector>
 
-#include "absl/strings/str_join.h" // For joining bad_shares vector
-#include "yacl/base/exception.h"   // For YACL_ENFORCE
+#include "absl/strings/str_join.h"
+#include "yacl/base/exception.h"   
 
 namespace examples::zkp {
 
@@ -40,9 +40,7 @@ class ProofError : public std::runtime_error {
     InvalidAggregation,
     InvalidGeneratorsLength,
     InvalidInputLength,
-    // This error results from an internal error during proving.
     ProvingError,
-    // Errors forwarded from MPCError
     WrongNumBitCommitments,
     WrongNumPolyCommitments,
     WrongNumProofShares,
@@ -98,14 +96,12 @@ class R1CSError : public std::runtime_error {
     VerificationError,
     MissingAssignment,
     GadgetError,
-    // Add any other specific R1CS errors here
     NotImplemented,
   };
 
   explicit R1CSError(Code type, const std::string& msg = "")
       : std::runtime_error(GetErrorMessage(type, msg)), code_(type), msg_(msg) {}
 
-  // Conversion from ProofError
   R1CSError(const ProofError& proof_error);
 
   Code GetCode() const { return code_; }

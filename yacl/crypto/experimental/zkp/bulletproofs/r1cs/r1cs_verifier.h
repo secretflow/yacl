@@ -20,7 +20,6 @@
 
 namespace examples::zkp {
 
-// Forward declaration
 class RandomizedVerifier;
 
 class R1CSVerifier : public ConstraintSystem {
@@ -78,13 +77,10 @@ class RandomizedVerifier {
  public:
   explicit RandomizedVerifier(R1CSVerifier* verifier) : verifier_(verifier) {}
 
-  // Expose a subset of the Verifier's API
   SimpleTranscript* Transcript() { return verifier_->Transcript(); }
   
-  // RandomizedConstraintSystem API
   yacl::math::MPInt ChallengeScalar(absl::string_view label);
 
-  // Allow adding constraints in the second phase
   std::tuple<Variable, Variable, Variable> Multiply(LinearCombination left, LinearCombination right);
   Result<Variable, R1CSError> Allocate(std::optional<yacl::math::MPInt> assignment);
   void Constrain(LinearCombination lc);

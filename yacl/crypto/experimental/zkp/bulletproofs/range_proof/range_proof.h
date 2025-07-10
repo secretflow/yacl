@@ -43,7 +43,6 @@ class RangeProof {
              const yacl::math::MPInt t_x_blinding,
              const yacl::math::MPInt e_blinding, InnerProductProof ipp_proof);
 
-  // --- Single-Party API ---
 
   // Creates a rangeproof for a single value.
   static Result<std::pair<RangeProof, yacl::crypto::EcPoint>> ProveSingle(
@@ -59,7 +58,6 @@ class RangeProof {
                     const PedersenGens& pc_gens,
                     const yacl::crypto::EcPoint& V, size_t n) const;
 
-  // --- Aggregated (Multi-Party) API ---
 
   // Creates an aggregated rangeproof for multiple values.
   static Result<std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>>>

@@ -136,8 +136,6 @@ class Party {
 };
 
 
-// Dealer state machine classes
-// These were previously in mpc/dealer.h
 class DealerAwaitingProofShares;
 
 class DealerAwaitingPolyCommitments {

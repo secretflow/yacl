@@ -20,10 +20,6 @@
 #include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/math/mpint/mp_int.h"
 
-
-
-
-
 namespace examples::zkp {
 
 //-------------------- Poly2 Implementation --------------------

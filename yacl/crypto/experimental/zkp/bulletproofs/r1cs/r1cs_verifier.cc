@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include "yacl/crypto/experimental/zkp/bulletproofs/r1cs/r1cs_verifier.h"
 
 #include <numeric>
@@ -20,9 +19,6 @@
 #include "yacl/crypto/experimental/zkp/bulletproofs/util.h"
 
 namespace examples::zkp {
-
-// R1CSVerifier Implementation
-// ===================================
 
 R1CSVerifier::R1CSVerifier(SimpleTranscript* transcript,
                            std::shared_ptr<yacl::crypto::EcGroup> curve)
@@ -55,7 +51,6 @@ std::tuple<Variable, Variable, Variable> R1CSVerifier::Multiply(
 }
 
 Result<Variable, R1CSError> R1CSVerifier::Allocate(std::optional<yacl::math::MPInt>) {
-  // Verifier doesn't use assignments, just allocates a variable.
   if (!pending_multiplier_.has_value()) {
     size_t i = num_vars_;
     num_vars_++;
@@ -91,7 +86,7 @@ Result<void, R1CSError> R1CSVerifier::SpecifyRandomizedConstraints(RandomizedCal
 }
 
 Result<void, R1CSError> R1CSVerifier::CreateRandomizedConstraints() {
-  pending_multiplier_ = std::nullopt; // Clear pending state
+  pending_multiplier_ = std::nullopt;
   if (deferred_constraints_.empty()) {
     transcript_->R1cs1phaseDomainSep();
   } else {
@@ -140,9 +135,8 @@ Result<void, R1CSError> R1CSVerifier::Verify(const R1CSProof& proof,
                                   const BulletproofGens* bp_gens) const {
   auto non_const_this = const_cast<R1CSVerifier*>(this);
   auto curve = pc_gens->GetCurve();
-  const auto& order = curve->GetOrder(); // Get order once
+  const auto& order = curve->GetOrder(); 
 
-  // Replay transcript from the beginning
   transcript_->AppendU64("m", V_.size());
   size_t n1 = num_vars_;
   
@@ -294,8 +288,6 @@ Result<void, R1CSError> R1CSVerifier::Verify(const R1CSProof& proof,
   return Result<void, R1CSError>::Ok();
 }
 
-// RandomizedVerifier Implementation
-// ===================================
 std::tuple<Variable, Variable, Variable> RandomizedVerifier::Multiply(
     LinearCombination left, LinearCombination right) {
   return verifier_->Multiply(std::move(left), std::move(right));

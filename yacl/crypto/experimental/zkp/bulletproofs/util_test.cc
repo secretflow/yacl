@@ -22,12 +22,12 @@
 
 #include "bp_config.h"
 
-#include "yacl/base/exception.h"       // Include for yacl::Exception
-#include "yacl/crypto/ecc/ec_point.h"  // For EcGroupFactory
+#include "yacl/base/exception.h"      
+#include "yacl/crypto/ecc/ec_point.h"  
 #include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/math/mpint/mp_int.h"
 
-// Bring types and specific functions into scope for the test file
+
 namespace examples::zkp {
 namespace {
 
