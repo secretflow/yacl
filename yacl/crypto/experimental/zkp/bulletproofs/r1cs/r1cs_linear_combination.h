@@ -31,19 +31,27 @@ enum class VariableType {
 
 struct Variable {
   VariableType type;
-  size_t index; // Index for Committed and Multiplier variables
+  size_t index;  // Index for Committed and Multiplier variables
 
   Variable(VariableType type, size_t index = 0) : type(type), index(index) {}
 
   // Factory functions for convenience
-  static Variable Committed(size_t index) { return {VariableType::Committed, index}; }
-  static Variable MultiplierLeft(size_t index) { return {VariableType::MultiplierLeft, index}; }
-  static Variable MultiplierRight(size_t index) { return {VariableType::MultiplierRight, index}; }
-  static Variable MultiplierOutput(size_t index) { return {VariableType::MultiplierOutput, index}; }
+  static Variable Committed(size_t index) {
+    return {VariableType::Committed, index};
+  }
+  static Variable MultiplierLeft(size_t index) {
+    return {VariableType::MultiplierLeft, index};
+  }
+  static Variable MultiplierRight(size_t index) {
+    return {VariableType::MultiplierRight, index};
+  }
+  static Variable MultiplierOutput(size_t index) {
+    return {VariableType::MultiplierOutput, index};
+  }
   static Variable One() { return {VariableType::One, 0}; }
-  
+
   bool operator==(const Variable& other) const {
-      return type == other.type && index == other.index;
+    return type == other.type && index == other.index;
   }
 };
 
@@ -62,10 +70,14 @@ class LinearCombination {
   LinearCombination& operator-=(const LinearCombination& rhs);
   LinearCombination& operator*=(const yacl::math::MPInt& scalar);
 
-  friend LinearCombination operator+(LinearCombination lhs, const LinearCombination& rhs);
-  friend LinearCombination operator-(LinearCombination lhs, const LinearCombination& rhs);
-  friend LinearCombination operator*(LinearCombination lhs, const yacl::math::MPInt& scalar);
-  friend LinearCombination operator*(const yacl::math::MPInt& scalar, LinearCombination rhs);
+  friend LinearCombination operator+(LinearCombination lhs,
+                                     const LinearCombination& rhs);
+  friend LinearCombination operator-(LinearCombination lhs,
+                                     const LinearCombination& rhs);
+  friend LinearCombination operator*(LinearCombination lhs,
+                                     const yacl::math::MPInt& scalar);
+  friend LinearCombination operator*(const yacl::math::MPInt& scalar,
+                                     LinearCombination rhs);
   friend LinearCombination operator-(LinearCombination lc);
 };
 
@@ -75,4 +87,4 @@ LinearCombination operator-(Variable lhs, Variable rhs);
 LinearCombination operator*(Variable lhs, const yacl::math::MPInt& scalar);
 LinearCombination operator*(const yacl::math::MPInt& scalar, Variable rhs);
 
-} // namespace examples::zkp
+}  // namespace examples::zkp

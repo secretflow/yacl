@@ -25,4 +25,4 @@ struct Metrics {
   size_t phase_two_constraints;
 };
 
-} // namespace examples::zkp
+}  // namespace examples::zkp

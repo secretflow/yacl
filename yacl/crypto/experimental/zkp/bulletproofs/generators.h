@@ -67,9 +67,7 @@ class PedersenGens {
   yacl::crypto::EcPoint B;
   yacl::crypto::EcPoint B_blinding;
 
-  std::shared_ptr<yacl::crypto::EcGroup> GetCurve() const {
-    return curve_;
-  }
+  std::shared_ptr<yacl::crypto::EcGroup> GetCurve() const { return curve_; }
 
  private:
   std::shared_ptr<yacl::crypto::EcGroup> curve_;

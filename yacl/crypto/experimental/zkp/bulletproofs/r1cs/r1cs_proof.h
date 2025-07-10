@@ -42,12 +42,15 @@ class R1CSProof {
   InnerProductProof ipp_proof;
 
   // Serialization
-  yacl::Buffer ToBytes(const std::shared_ptr<yacl::crypto::EcGroup>& curve) const;
-  static R1CSProof FromBytes(const yacl::ByteContainerView& bytes,
-                             const std::shared_ptr<yacl::crypto::EcGroup>& curve);
+  yacl::Buffer ToBytes(
+      const std::shared_ptr<yacl::crypto::EcGroup>& curve) const;
+  static R1CSProof FromBytes(
+      const yacl::ByteContainerView& bytes,
+      const std::shared_ptr<yacl::crypto::EcGroup>& curve);
 
  private:
-  bool MissingPhase2Commitments(const std::shared_ptr<yacl::crypto::EcGroup>& curve) const;
+  bool MissingPhase2Commitments(
+      const std::shared_ptr<yacl::crypto::EcGroup>& curve) const;
 };
 
-} // namespace examples::zkp
+}  // namespace examples::zkp

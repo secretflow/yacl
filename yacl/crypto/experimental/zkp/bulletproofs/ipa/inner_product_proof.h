@@ -56,8 +56,6 @@ class InnerProductProof {
         a_(std::move(a)),
         b_(std::move(b)) {}
 
-
-
   /**
    * @brief Creates an inner product proof
    *
@@ -125,13 +123,13 @@ class InnerProductProof {
    *
    * @return size_t The size in bytes
    */
-  size_t SerializedSize(const std::shared_ptr<yacl::crypto::EcGroup>& curve) const {
-        // 2 points per round (L, R) + 2 final scalars (a, b)
-        size_t point_size = curve->GetSerializeLength();
-        size_t scalar_size = 32;
-        return L_vec_.size() * 2 * point_size + 2 * scalar_size;
-}
-
+  size_t SerializedSize(
+      const std::shared_ptr<yacl::crypto::EcGroup>& curve) const {
+    // 2 points per round (L, R) + 2 final scalars (a, b)
+    size_t point_size = curve->GetSerializeLength();
+    size_t scalar_size = 32;
+    return L_vec_.size() * 2 * point_size + 2 * scalar_size;
+  }
 
   /**
    * @brief Serializes the proof into a byte vector

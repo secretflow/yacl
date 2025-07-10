@@ -21,7 +21,8 @@
 #include <vector>
 
 #include "absl/strings/str_join.h"
-#include "yacl/base/exception.h"   
+
+#include "yacl/base/exception.h"
 
 namespace examples::zkp {
 
@@ -49,8 +50,10 @@ class ProofError : public std::runtime_error {
   };
 
   explicit ProofError(Code type, const std::string& msg = "")
-      : std::runtime_error(GetErrorMessage(type, msg)), code_(type), msg_(msg) {}
-  
+      : std::runtime_error(GetErrorMessage(type, msg)),
+        code_(type),
+        msg_(msg) {}
+
   // Conversion from MPCError
   ProofError(const MPCError& mpc_error);
 
@@ -60,7 +63,7 @@ class ProofError : public std::runtime_error {
   static std::string GetErrorMessage(Code type, const std::string& msg);
 
   Code code_;
-  std::string msg_; // Store optional message
+  std::string msg_;  // Store optional message
 };
 
 class MPCError : public std::runtime_error {
@@ -77,10 +80,12 @@ class MPCError : public std::runtime_error {
   };
 
   explicit MPCError(Code type, const std::string& msg = "")
-      : std::runtime_error(GetErrorMessage(type, msg)), code_(type), msg_(msg) {}
+      : std::runtime_error(GetErrorMessage(type, msg)),
+        code_(type),
+        msg_(msg) {}
 
   Code GetCode() const { return code_; }
- 
+
  private:
   static std::string GetErrorMessage(Code type, const std::string& msg);
 
@@ -100,7 +105,9 @@ class R1CSError : public std::runtime_error {
   };
 
   explicit R1CSError(Code type, const std::string& msg = "")
-      : std::runtime_error(GetErrorMessage(type, msg)), code_(type), msg_(msg) {}
+      : std::runtime_error(GetErrorMessage(type, msg)),
+        code_(type),
+        msg_(msg) {}
 
   R1CSError(const ProofError& proof_error);
 
@@ -108,11 +115,10 @@ class R1CSError : public std::runtime_error {
 
  private:
   static std::string GetErrorMessage(Code type, const std::string& msg);
-  
+
   Code code_;
   std::string msg_;
 };
-
 
 // Result type for operations that can fail
 // Generic Result<T> template for non-void types
@@ -141,7 +147,7 @@ class Result {
     YACL_ENFORCE(IsOk(), "Called Value() on an Err result");
     return *value_;
   }
-  
+
   T& Value() & {
     YACL_ENFORCE(IsOk(), "Called Value() on an Err result");
     return *value_;
@@ -151,13 +157,12 @@ class Result {
     YACL_ENFORCE(IsOk(), "Called TakeValue() on an Err result");
     return std::move(*value_);
   }
-  
+
   const E& Error() const {
-      YACL_ENFORCE(IsErr(), "Called Error() on an Ok result");
-      return *error_;
+    YACL_ENFORCE(IsErr(), "Called Error() on an Ok result");
+    return *error_;
   }
 };
-
 
 // Template specialization for Result<void, E>
 template <typename E>
@@ -170,14 +175,16 @@ class Result<void, E> {
 
  public:
   static Result<void, E> Ok() { return Result<void, E>(); }
-  static Result<void, E> Err(E error) { return Result<void, E>(std::move(error)); }
+  static Result<void, E> Err(E error) {
+    return Result<void, E>(std::move(error));
+  }
 
   bool IsOk() const { return !error_.has_value(); }
   bool IsErr() const { return error_.has_value(); }
-  
+
   const E& Error() const {
-      YACL_ENFORCE(IsErr(), "Called Error() on an Ok result");
-      return *error_;
+    YACL_ENFORCE(IsErr(), "Called Error() on an Ok result");
+    return *error_;
   }
 };
 

@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "yacl/crypto/experimental/zkp/bulletproofs/r1cs/r1cs_constraint_system.h"
 #include "yacl/crypto/experimental/zkp/bulletproofs/generators.h"
+#include "yacl/crypto/experimental/zkp/bulletproofs/r1cs/r1cs_constraint_system.h"
 #include "yacl/crypto/experimental/zkp/bulletproofs/r1cs/r1cs_proof.h"
 
 namespace examples::zkp {
@@ -25,15 +25,21 @@ class RandomizedProver;
 class R1CSProver : public ConstraintSystem {
  public:
   R1CSProver(SimpleTranscript* transcript, const PedersenGens* pc_gens);
-  
+
   // High-level witness commitments
-  std::pair<yacl::crypto::EcPoint, Variable> Commit(yacl::math::MPInt v, yacl::math::MPInt v_blinding);
+  std::pair<yacl::crypto::EcPoint, Variable> Commit(
+      yacl::math::MPInt v, yacl::math::MPInt v_blinding);
 
   // ConstraintSystem implementation
   SimpleTranscript* Transcript() override;
-  std::tuple<Variable, Variable, Variable> Multiply(LinearCombination left, LinearCombination right) override;
-  Result<Variable, R1CSError> Allocate(std::optional<yacl::math::MPInt> assignment) override;
-  Result<std::tuple<Variable, Variable, Variable>, R1CSError> AllocateMultiplier(std::optional<std::pair<yacl::math::MPInt, yacl::math::MPInt>> input_assignments) override;
+  std::tuple<Variable, Variable, Variable> Multiply(
+      LinearCombination left, LinearCombination right) override;
+  Result<Variable, R1CSError> Allocate(
+      std::optional<yacl::math::MPInt> assignment) override;
+  Result<std::tuple<Variable, Variable, Variable>, R1CSError>
+  AllocateMultiplier(
+      std::optional<std::pair<yacl::math::MPInt, yacl::math::MPInt>>
+          input_assignments) override;
   Metrics GetMetrics() const override;
   void Constrain(LinearCombination lc) override;
 
@@ -49,7 +55,7 @@ class R1CSProver : public ConstraintSystem {
 
   // Evaluates a linear combination
   yacl::math::MPInt Eval(const LinearCombination& lc) const;
-  
+
   // Helper to create randomized constraints
   Result<void> CreateRandomizedConstraints();
 
@@ -58,10 +64,9 @@ class R1CSProver : public ConstraintSystem {
              std::vector<yacl::math::MPInt>, std::vector<yacl::math::MPInt>>
   FlattenedConstraints(const yacl::math::MPInt& z) const;
 
-
   SimpleTranscript* transcript_;
   const PedersenGens* pc_gens_;
-  
+
   // Witness data
   std::vector<yacl::math::MPInt> v_;
   std::vector<yacl::math::MPInt> v_blinding_;
@@ -83,17 +88,19 @@ class RandomizedProver {
 
   // Expose a subset of the Prover's API
   SimpleTranscript* Transcript() { return prover_->Transcript(); }
-  
+
   // RandomizedConstraintSystem API
   yacl::math::MPInt ChallengeScalar(absl::string_view label);
 
   // Allow adding constraints in the second phase
-  std::tuple<Variable, Variable, Variable> Multiply(LinearCombination left, LinearCombination right);
-  Result<Variable, R1CSError> Allocate(std::optional<yacl::math::MPInt> assignment);
+  std::tuple<Variable, Variable, Variable> Multiply(LinearCombination left,
+                                                    LinearCombination right);
+  Result<Variable, R1CSError> Allocate(
+      std::optional<yacl::math::MPInt> assignment);
   void Constrain(LinearCombination lc);
 
  private:
   R1CSProver* prover_;
 };
 
-} // namespace examples::zkp
+}  // namespace examples::zkp

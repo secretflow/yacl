@@ -16,15 +16,15 @@
 
 #include <functional>
 
+#include "yacl/crypto/experimental/zkp/bulletproofs/errors.h"
 #include "yacl/crypto/experimental/zkp/bulletproofs/r1cs/r1cs_linear_combination.h"
 #include "yacl/crypto/experimental/zkp/bulletproofs/r1cs/r1cs_metrics.h"
 #include "yacl/crypto/experimental/zkp/bulletproofs/simple_transcript.h"
-#include "yacl/crypto/experimental/zkp/bulletproofs/errors.h" 
 
 namespace examples::zkp {
 
 // Forward declarations
-class RandomizedProver; 
+class RandomizedProver;
 class RandomizedVerifier;
 
 // The interface for a constraint system, abstracting over the prover
@@ -38,15 +38,17 @@ class ConstraintSystem {
   virtual std::tuple<Variable, Variable, Variable> Multiply(
       LinearCombination left, LinearCombination right) = 0;
 
-  virtual Result<Variable, R1CSError> Allocate(std::optional<yacl::math::MPInt> assignment) = 0;
+  virtual Result<Variable, R1CSError> Allocate(
+      std::optional<yacl::math::MPInt> assignment) = 0;
 
-  virtual Result<std::tuple<Variable, Variable, Variable>, R1CSError> AllocateMultiplier(
-      std::optional<std::pair<yacl::math::MPInt, yacl::math::MPInt>> input_assignments) = 0;
+  virtual Result<std::tuple<Variable, Variable, Variable>, R1CSError>
+  AllocateMultiplier(
+      std::optional<std::pair<yacl::math::MPInt, yacl::math::MPInt>>
+          input_assignments) = 0;
 
   virtual Metrics GetMetrics() const = 0;
 
   virtual void Constrain(LinearCombination lc) = 0;
 };
 
-
-} // namespace examples::zkp
+}  // namespace examples::zkp
