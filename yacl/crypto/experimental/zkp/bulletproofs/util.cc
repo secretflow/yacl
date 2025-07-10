@@ -201,8 +201,6 @@ yacl::math::MPInt ScalarExp(
   return base.PowMod(exp_mp, curve->GetOrder());
 }
 
-
-
 yacl::crypto::EcPoint MultiScalarMul(
     const std::shared_ptr<yacl::crypto::EcGroup>& curve,
     const std::vector<yacl::math::MPInt>& scalars,
@@ -227,7 +225,6 @@ yacl::crypto::EcPoint MultiScalarMul(
   }
   return result;
 }
-
 
 // Helper to create a dummy EcPoint
 yacl::crypto::EcPoint CreateDummyPoint(
@@ -271,55 +268,59 @@ size_t NextPowerOfTwo(size_t n) {
   return size_t(1) << (total_bits - leading_zeros);
 }
 
-
-std::vector<yacl::math::MPInt> VecPoly3::Eval(const yacl::math::MPInt& x,
+std::vector<yacl::math::MPInt> VecPoly3::Eval(
+    const yacl::math::MPInt& x,
     const std::shared_ptr<yacl::crypto::EcGroup>& curve) const {
-    size_t n = T0.size();
-    std::vector<yacl::math::MPInt> result(n);
-    const auto& order = curve->GetOrder();
-    yacl::math::MPInt x_sq = x.MulMod(x, order);
-    yacl::math::MPInt x_cb = x_sq.MulMod(x, order);
+  size_t n = T0.size();
+  std::vector<yacl::math::MPInt> result(n);
+  const auto& order = curve->GetOrder();
+  yacl::math::MPInt x_sq = x.MulMod(x, order);
+  yacl::math::MPInt x_cb = x_sq.MulMod(x, order);
 
-    for (size_t i = 0; i < n; ++i) {
-        auto term1 = T1[i].MulMod(x, order);
-        auto term2 = T2[i].MulMod(x_sq, order);
-        auto term3 = T3[i].MulMod(x_cb, order);
-        result[i] = T0[i].AddMod(term1, order).AddMod(term2, order).AddMod(term3, order);
-    }
-    return result;
+  for (size_t i = 0; i < n; ++i) {
+    auto term1 = T1[i].MulMod(x, order);
+    auto term2 = T2[i].MulMod(x_sq, order);
+    auto term3 = T3[i].MulMod(x_cb, order);
+    result[i] =
+        T0[i].AddMod(term1, order).AddMod(term2, order).AddMod(term3, order);
+  }
+  return result;
 }
 
-yacl::math::MPInt Poly6::Eval(const yacl::math::MPInt& x,
+yacl::math::MPInt Poly6::Eval(
+    const yacl::math::MPInt& x,
     const std::shared_ptr<yacl::crypto::EcGroup>& curve) const {
-    const auto& order = curve->GetOrder();
-    yacl::math::MPInt x_pows[7];
-    x_pows[0] = yacl::math::MPInt(1); 
-    for (int i=1; i<=6; ++i) {
-        x_pows[i] = x_pows[i-1].MulMod(x, order);
-    }
-    
-    yacl::math::MPInt res = T0;
-    res = res.AddMod(T1.MulMod(x_pows[1], order), order);
-    res = res.AddMod(T2.MulMod(x_pows[2], order), order);
-    res = res.AddMod(T3.MulMod(x_pows[3], order), order);
-    res = res.AddMod(T4.MulMod(x_pows[4], order), order);
-    res = res.AddMod(T5.MulMod(x_pows[5], order), order);
-    res = res.AddMod(T6.MulMod(x_pows[6], order), order);
-    return res;
+  const auto& order = curve->GetOrder();
+  yacl::math::MPInt x_pows[7];
+  x_pows[0] = yacl::math::MPInt(1);
+  for (int i = 1; i <= 6; ++i) {
+    x_pows[i] = x_pows[i - 1].MulMod(x, order);
+  }
+
+  yacl::math::MPInt res = T0;
+  res = res.AddMod(T1.MulMod(x_pows[1], order), order);
+  res = res.AddMod(T2.MulMod(x_pows[2], order), order);
+  res = res.AddMod(T3.MulMod(x_pows[3], order), order);
+  res = res.AddMod(T4.MulMod(x_pows[4], order), order);
+  res = res.AddMod(T5.MulMod(x_pows[5], order), order);
+  res = res.AddMod(T6.MulMod(x_pows[6], order), order);
+  return res;
 }
 
 Poly6 SpecialInnerProduct(const VecPoly3& l, const VecPoly3& r,
                           const std::shared_ptr<yacl::crypto::EcGroup>& curve) {
-    Poly6 p;
-    p.T0 = InnerProduct(l.T0, r.T0, curve);
-    p.T1 = InnerProduct(l.T0, r.T1, curve) + InnerProduct(l.T1, r.T0, curve);
-    p.T2 = InnerProduct(l.T0, r.T2, curve) + InnerProduct(l.T1, r.T1, curve) + InnerProduct(l.T2, r.T0, curve);
-    p.T3 = InnerProduct(l.T0, r.T3, curve) + InnerProduct(l.T1, r.T2, curve) + InnerProduct(l.T2, r.T1, curve) + InnerProduct(l.T3, r.T0, curve);
-    p.T4 = InnerProduct(l.T1, r.T3, curve) + InnerProduct(l.T2, r.T2, curve) + InnerProduct(l.T3, r.T1, curve);
-    p.T5 = InnerProduct(l.T2, r.T3, curve) + InnerProduct(l.T3, r.T2, curve);
-    p.T6 = InnerProduct(l.T3, r.T3, curve);
-    return p;
+  Poly6 p;
+  p.T0 = InnerProduct(l.T0, r.T0, curve);
+  p.T1 = InnerProduct(l.T0, r.T1, curve) + InnerProduct(l.T1, r.T0, curve);
+  p.T2 = InnerProduct(l.T0, r.T2, curve) + InnerProduct(l.T1, r.T1, curve) +
+         InnerProduct(l.T2, r.T0, curve);
+  p.T3 = InnerProduct(l.T0, r.T3, curve) + InnerProduct(l.T1, r.T2, curve) +
+         InnerProduct(l.T2, r.T1, curve) + InnerProduct(l.T3, r.T0, curve);
+  p.T4 = InnerProduct(l.T1, r.T3, curve) + InnerProduct(l.T2, r.T2, curve) +
+         InnerProduct(l.T3, r.T1, curve);
+  p.T5 = InnerProduct(l.T2, r.T3, curve) + InnerProduct(l.T3, r.T2, curve);
+  p.T6 = InnerProduct(l.T3, r.T3, curve);
+  return p;
 }
-
 
 }  // namespace examples::zkp

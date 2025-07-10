@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "gtest/gtest.h"
 #include <algorithm>
 #include <numeric>
 #include <random>
 #include <vector>
+
+#include "gtest/gtest.h"
+
 #include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/crypto/experimental/zkp/bulletproofs/errors.h"
 #include "yacl/crypto/experimental/zkp/bulletproofs/generators.h"
@@ -39,7 +41,6 @@ class R1CSTest : public ::testing::Test {
     pc_gens_ = std::make_shared<PedersenGens>(curve_);
   }
 
-  
   // --------------------------------------------------------------------------
   // Gadget 1: Shuffle Proof
   // --------------------------------------------------------------------------
@@ -50,8 +51,8 @@ class R1CSTest : public ::testing::Test {
   };
 
   Result<void, R1CSError> ShuffleGadget(ConstraintSystem* cs,
-                                         const std::vector<Variable>& x,
-                                         const std::vector<Variable>& y) {
+                                        const std::vector<Variable>& x,
+                                        const std::vector<Variable>& y) {
     YACL_ENFORCE(x.size() == y.size());
     size_t k = x.size();
 
@@ -67,13 +68,13 @@ class R1CSTest : public ::testing::Test {
 
     if (prover) {
       R1CSProver::RandomizedCallback callback =
-          [k, &x, &y](RandomizedProver* rcs) -> Result<void> { 
+          [k, &x, &y](RandomizedProver* rcs) -> Result<void> {
         yacl::math::MPInt z = rcs->ChallengeScalar("shuffle challenge");
         auto compute_product =
             [&](const std::vector<Variable>& vars) -> LinearCombination {
-          auto [_, __, product] = rcs->Multiply(
-              LinearCombination(vars[k - 1]) - z,
-              LinearCombination(vars[k - 2]) - z);
+          auto [_, __, product] =
+              rcs->Multiply(LinearCombination(vars[k - 1]) - z,
+                            LinearCombination(vars[k - 2]) - z);
           for (int i = k - 3; i >= 0; --i) {
             auto [___, ____, next_product] = rcs->Multiply(
                 LinearCombination(product), LinearCombination(vars[i]) - z);
@@ -83,7 +84,7 @@ class R1CSTest : public ::testing::Test {
         };
         rcs->Constrain(compute_product(x) - compute_product(y));
         return Result<void>::Ok();
-      };    
+      };
       auto res = prover->SpecifyRandomizedConstraints(callback);
       if (res.IsErr()) {
         // Convert the ProofError into an R1CSError for the gadget's return type
@@ -98,9 +99,9 @@ class R1CSTest : public ::testing::Test {
         yacl::math::MPInt z = rcs->ChallengeScalar("shuffle challenge");
         auto compute_product =
             [&](const std::vector<Variable>& vars) -> LinearCombination {
-          auto [_, __, product] = rcs->Multiply(
-              LinearCombination(vars[k - 1]) - z,
-              LinearCombination(vars[k - 2]) - z);
+          auto [_, __, product] =
+              rcs->Multiply(LinearCombination(vars[k - 1]) - z,
+                            LinearCombination(vars[k - 2]) - z);
           for (int i = k - 3; i >= 0; --i) {
             auto [___, ____, next_product] = rcs->Multiply(
                 LinearCombination(product), LinearCombination(vars[i]) - z);
@@ -160,7 +161,7 @@ class R1CSTest : public ::testing::Test {
       ASSERT_TRUE(proof_res.IsOk()) << proof_res.Error().what();
       proof = ShuffleProof(std::move(proof_res).TakeValue());
     }
-    
+
     {
       SimpleTranscript verifier_transcript("ShuffleProofTest");
       verifier_transcript.AppendMessage("dom-sep", "ShuffleProof");
@@ -170,12 +171,11 @@ class R1CSTest : public ::testing::Test {
       for (const auto& c : input_commitments)
         input_vars.push_back(verifier.Commit(c));
 
-
       for (const auto& c : output_commitments)
         output_vars.push_back(verifier.Commit(c));
 
       ASSERT_TRUE(ShuffleGadget(&verifier, input_vars, output_vars).IsOk());
-      
+
       auto verify_res =
           verifier.Verify(proof.proof, pc_gens_.get(), bp_gens.get());
       ASSERT_TRUE(verify_res.IsOk()) << verify_res.Error().what();
@@ -193,9 +193,10 @@ class R1CSTest : public ::testing::Test {
     cs->Constrain(c1 + c2 - c_var);
   }
 
-  Result<void, R1CSError> ExampleGadgetRoundtripHelper(
-      uint64_t a1, uint64_t a2, uint64_t b1, uint64_t b2, uint64_t c1,
-      uint64_t c2) {
+  Result<void, R1CSError> ExampleGadgetRoundtripHelper(uint64_t a1, uint64_t a2,
+                                                       uint64_t b1, uint64_t b2,
+                                                       uint64_t c1,
+                                                       uint64_t c2) {
     auto bp_gens = std::make_shared<BulletproofGens>(curve_, 128, 1);
     R1CSProof proof;
     std::vector<yacl::crypto::EcPoint> commitments;
@@ -231,9 +232,10 @@ class R1CSTest : public ::testing::Test {
   // --------------------------------------------------------------------------
   // Gadget 3: Range Proof
   // --------------------------------------------------------------------------
-  Result<void, R1CSError> RangeProofGadget(
-      ConstraintSystem* cs, LinearCombination v,
-      std::optional<uint64_t> v_assignment, size_t n) {
+  Result<void, R1CSError> RangeProofGadget(ConstraintSystem* cs,
+                                           LinearCombination v,
+                                           std::optional<uint64_t> v_assignment,
+                                           size_t n) {
     yacl::math::MPInt exp_2(1);
     for (size_t i = 0; i < n; ++i) {
       std::optional<std::pair<yacl::math::MPInt, yacl::math::MPInt>> assignment;

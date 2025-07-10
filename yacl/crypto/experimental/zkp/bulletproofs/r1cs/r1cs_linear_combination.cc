@@ -24,7 +24,8 @@ LinearCombination::LinearCombination(yacl::math::MPInt scalar) {
   terms.emplace_back(Variable::One(), std::move(scalar));
 }
 
-LinearCombination::LinearCombination(std::vector<std::pair<Variable, yacl::math::MPInt>> terms)
+LinearCombination::LinearCombination(
+    std::vector<std::pair<Variable, yacl::math::MPInt>> terms)
     : terms(std::move(terms)) {}
 
 LinearCombination& LinearCombination::operator+=(const LinearCombination& rhs) {
@@ -39,29 +40,34 @@ LinearCombination& LinearCombination::operator-=(const LinearCombination& rhs) {
   return *this;
 }
 
-LinearCombination& LinearCombination::operator*=(const yacl::math::MPInt& scalar) {
+LinearCombination& LinearCombination::operator*=(
+    const yacl::math::MPInt& scalar) {
   for (auto& term : terms) {
     term.second *= scalar;
   }
   return *this;
 }
 
-LinearCombination operator+(LinearCombination lhs, const LinearCombination& rhs) {
+LinearCombination operator+(LinearCombination lhs,
+                            const LinearCombination& rhs) {
   lhs += rhs;
   return lhs;
 }
 
-LinearCombination operator-(LinearCombination lhs, const LinearCombination& rhs) {
+LinearCombination operator-(LinearCombination lhs,
+                            const LinearCombination& rhs) {
   lhs -= rhs;
   return lhs;
 }
 
-LinearCombination operator*(LinearCombination lhs, const yacl::math::MPInt& scalar) {
+LinearCombination operator*(LinearCombination lhs,
+                            const yacl::math::MPInt& scalar) {
   lhs *= scalar;
   return lhs;
 }
 
-LinearCombination operator*(const yacl::math::MPInt& scalar, LinearCombination rhs) {
+LinearCombination operator*(const yacl::math::MPInt& scalar,
+                            LinearCombination rhs) {
   rhs *= scalar;
   return rhs;
 }
@@ -75,19 +81,19 @@ LinearCombination operator-(LinearCombination lc) {
 
 // Free function operators for convenience
 LinearCombination operator+(Variable lhs, Variable rhs) {
-    return LinearCombination(lhs) + LinearCombination(rhs);
+  return LinearCombination(lhs) + LinearCombination(rhs);
 }
 
 LinearCombination operator-(Variable lhs, Variable rhs) {
-    return LinearCombination(lhs) - LinearCombination(rhs);
+  return LinearCombination(lhs) - LinearCombination(rhs);
 }
 
 LinearCombination operator*(Variable lhs, const yacl::math::MPInt& scalar) {
-    return LinearCombination(lhs) * scalar;
+  return LinearCombination(lhs) * scalar;
 }
 
 LinearCombination operator*(const yacl::math::MPInt& scalar, Variable rhs) {
-    return scalar * LinearCombination(rhs);
+  return scalar * LinearCombination(rhs);
 }
 
-} // namespace examples::zkp
+}  // namespace examples::zkp

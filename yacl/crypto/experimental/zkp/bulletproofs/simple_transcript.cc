@@ -172,9 +172,7 @@ void SimpleTranscript::UpdateState(const std::vector<uint8_t>& data) {
   state_ = std::vector<uint8_t>(new_hash.begin(), new_hash.end());
 }
 
-void SimpleTranscript::R1csDomainSep() {
-  AppendMessage("dom-sep", "r1cs v1");
-}
+void SimpleTranscript::R1csDomainSep() { AppendMessage("dom-sep", "r1cs v1"); }
 
 void SimpleTranscript::R1cs1phaseDomainSep() {
   AppendMessage("dom-sep", "r1cs-1phase");
@@ -183,6 +181,5 @@ void SimpleTranscript::R1cs1phaseDomainSep() {
 void SimpleTranscript::R1cs2phaseDomainSep() {
   AppendMessage("dom-sep", "r1cs-2phase");
 }
-
 
 }  // namespace examples::zkp

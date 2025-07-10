@@ -22,11 +22,10 @@
 
 #include "bp_config.h"
 
-#include "yacl/base/exception.h"      
-#include "yacl/crypto/ecc/ec_point.h"  
+#include "yacl/base/exception.h"
+#include "yacl/crypto/ecc/ec_point.h"
 #include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/math/mpint/mp_int.h"
-
 
 namespace examples::zkp {
 namespace {
