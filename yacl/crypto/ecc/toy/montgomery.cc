@@ -144,7 +144,8 @@ EcPoint ToyXGroup::DeserializePoint(ByteContainerView buf,
 }
 
 EcPoint ToyXGroup::HashToCurve(HashToCurveStrategy strategy,
-                               std::string_view str) const {
+                               std::string_view str,
+                               std::string_view) const {
   auto bits = params_.p.BitCount();
   HashAlgorithm hash_algorithm;
   switch (strategy) {
@@ -187,6 +188,12 @@ EcPoint ToyXGroup::HashToCurve(HashToCurveStrategy strategy,
       absl::BytesToHexString(absl::string_view((char *)buf.data(), buf.size())),
       16);
   return op;
+}
+
+yacl::math::MPInt ToyXGroup::HashToScalar(HashToCurveStrategy,
+                                          std::string_view,
+                                          std::string_view) const {
+    YACL_THROW("HashToScalar not implemented for FourQGroup");
 }
 
 bool ToyXGroup::PointEqual(const EcPoint &p1, const EcPoint &p2) const {

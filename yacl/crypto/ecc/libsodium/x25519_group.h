@@ -60,7 +60,12 @@ class X25519Group : public SodiumGroup {
                            PointOctetFormat format) const override;
 
   EcPoint HashToCurve(HashToCurveStrategy strategy,
-                      std::string_view str) const override;
+                      std::string_view str,
+                      std::string_view dst = "") const override;
+
+  yacl::math::MPInt HashToScalar(HashToCurveStrategy strategy,
+                                 std::string_view str,
+                                 std::string_view dst = "") const override;
 
  private:
   static const unsigned char* CastString(const EcPoint& p);

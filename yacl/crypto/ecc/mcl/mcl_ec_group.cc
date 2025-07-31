@@ -446,7 +446,8 @@ EcPoint MclGroupT<Fp_, Zn_>::HashToStdCurve(HashToCurveStrategy strategy,
 
 template <typename Fp_, typename Zn_>
 EcPoint MclGroupT<Fp_, Zn_>::HashToCurve(HashToCurveStrategy strategy,
-                                         std::string_view str) const {
+                                         std::string_view str,
+                                         std::string_view) const {
   if (mcl_curve_type_ <= MCL_BN_P256) {
     YACL_ENFORCE(HashToCurveStrategy::TryAndIncrement_SHA2 == strategy ||
                      HashToCurveStrategy::Autonomous == strategy,
@@ -460,6 +461,13 @@ EcPoint MclGroupT<Fp_, Zn_>::HashToCurve(HashToCurveStrategy strategy,
   } else {
     return HashToStdCurve(strategy, str);
   }
+}
+
+template <typename Fp_, typename Zn_>
+yacl::math::MPInt MclGroupT<Fp_, Zn_>::HashToScalar(HashToCurveStrategy,
+                                          std::string_view,
+                                          std::string_view) const {
+  YACL_THROW("HashToScalar not implemented for MclGroupT");
 }
 
 // PointEqual 1013ns

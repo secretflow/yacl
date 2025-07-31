@@ -171,7 +171,8 @@ EcPoint X25519Group::DeserializePoint(ByteContainerView buf,
 }
 
 EcPoint X25519Group::HashToCurve(HashToCurveStrategy strategy,
-                                 std::string_view input) const {
+                                 std::string_view input,
+                                 std::string_view) const {
   switch (strategy) {
     case HashToCurveStrategy::Autonomous:
     case HashToCurveStrategy::HashAsPointX_SHA2:
@@ -192,6 +193,12 @@ EcPoint X25519Group::HashToCurve(HashToCurveStrategy strategy,
       YACL_THROW("hash to curve strategy {} not supported",
                  static_cast<int>(strategy));
   }
+}
+
+yacl::math::MPInt X25519Group::HashToScalar(HashToCurveStrategy,
+                                            std::string_view,
+                                            std::string_view) const {
+  YACL_THROW("HashToScalar not implemented for X25519Group");
 }
 
 const unsigned char* X25519Group::CastString(const EcPoint& p) {

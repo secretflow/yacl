@@ -110,8 +110,15 @@ EcPoint Lib25519Group::DeserializePoint(ByteContainerView buf,
 }
 
 EcPoint Lib25519Group::HashToCurve(HashToCurveStrategy,
+                                   std::string_view,
                                    std::string_view) const {
   YACL_THROW("not implemented");
+}
+
+yacl::math::MPInt Lib25519Group::HashToScalar(HashToCurveStrategy,
+                                              std::string_view,
+                                              std::string_view) const {
+  YACL_THROW("HashToScalar not implemented for Lib25519Group");
 }
 
 size_t Lib25519Group::HashPoint(const EcPoint& point) const {
