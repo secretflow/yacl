@@ -275,6 +275,21 @@ std::vector<std::vector<uint8_t>> HashToField(yacl::ByteContainerView msg,
   return ret;
 }
 
+yacl::math::MPInt HashToScalar(yacl::ByteContainerView msg,
+                          size_t l,
+                          HashToCurveCtx &ctx,
+                          const std::string &dst) {
+  std::vector<uint8_t> uniform_bytes =
+      ExpandMessageXmd(msg, ctx, dst, l);
+
+  absl::Span<uint8_t> data = absl::MakeSpan(&uniform_bytes[0], l);
+
+  yacl::math::MPInt e_j;
+  e_j.FromMagBytes(data, yacl::Endian::big);
+
+  return e_j.Mod(ctx.aux["p"]);
+}
+
 bool IsSquare(const yacl::math::MPInt &v, const yacl::math::MPInt &mod) {
   yacl::math::MPInt t1 = mod.SubMod(kMp1, mod);  // mod - 1
   yacl::math::MPInt t2;

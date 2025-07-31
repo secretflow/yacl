@@ -45,4 +45,13 @@ crypto::EcPoint EncodeToCurveP256(yacl::ByteContainerView buffer,
   return p;
 }
 
+yacl::math::MPInt HashToScalarP256(yacl::ByteContainerView buffer,
+                               const std::string &dst) {
+  YACL_ENFORCE((dst.size() >= 16) && (dst.size() <= 255),
+               "domain separation tag length: {} not in 16B-255B", dst.size());
+
+  HashToCurveCtx ctx = GetHashToCurveCtxByName("P-256");
+  return HashToScalar(buffer, 48, ctx, dst);
+}
+
 }  // namespace yacl

@@ -51,4 +51,13 @@ crypto::EcPoint EncodeToCurveP384(yacl::ByteContainerView buffer,
   return p;
 }
 
+yacl::math::MPInt HashToScalarP384(yacl::ByteContainerView buffer,
+                               const std::string &dst) {
+  YACL_ENFORCE((dst.size() >= 16) && (dst.size() <= 255),
+               "domain separation tag length: {} not in 16B-255B", dst.size());
+
+  HashToCurveCtx ctx = GetHashToCurveCtxByName("P-384");
+  return HashToScalar(buffer, 72, ctx, dst);
+}
+
 }  // namespace yacl
