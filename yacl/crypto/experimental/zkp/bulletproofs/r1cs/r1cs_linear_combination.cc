@@ -17,32 +17,32 @@
 namespace examples::zkp {
 
 LinearCombination::LinearCombination(Variable var) {
-  terms.emplace_back(var, yacl::math::MPInt(1));
+  terms_.emplace_back(var, yacl::math::MPInt(1));
 }
 
 LinearCombination::LinearCombination(yacl::math::MPInt scalar) {
-  terms.emplace_back(Variable::One(), std::move(scalar));
+  terms_.emplace_back(Variable::One(), std::move(scalar));
 }
 
 LinearCombination::LinearCombination(
-    std::vector<std::pair<Variable, yacl::math::MPInt>> terms)
-    : terms(std::move(terms)) {}
+    std::vector<std::pair<Variable, yacl::math::MPInt>> terms_)
+    : terms_(std::move(terms_)) {}
 
 LinearCombination& LinearCombination::operator+=(const LinearCombination& rhs) {
-  terms.insert(terms.end(), rhs.terms.begin(), rhs.terms.end());
+  terms_.insert(terms_.end(), rhs.terms_.begin(), rhs.terms_.end());
   return *this;
 }
 
 LinearCombination& LinearCombination::operator-=(const LinearCombination& rhs) {
-  for (const auto& term : rhs.terms) {
-    terms.emplace_back(term.first, -term.second);
+  for (const auto& term : rhs.terms_) {
+    terms_.emplace_back(term.first, -term.second);
   }
   return *this;
 }
 
 LinearCombination& LinearCombination::operator*=(
     const yacl::math::MPInt& scalar) {
-  for (auto& term : terms) {
+  for (auto& term : terms_) {
     term.second *= scalar;
   }
   return *this;
@@ -73,7 +73,7 @@ LinearCombination operator*(const yacl::math::MPInt& scalar,
 }
 
 LinearCombination operator-(LinearCombination lc) {
-  for (auto& term : lc.terms) {
+  for (auto& term : lc.terms_) {
     term.second.NegateInplace();
   }
   return lc;

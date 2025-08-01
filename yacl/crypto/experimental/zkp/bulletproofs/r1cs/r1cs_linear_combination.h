@@ -58,8 +58,6 @@ struct Variable {
 // Represents a linear combination of variables.
 class LinearCombination {
  public:
-  std::vector<std::pair<Variable, yacl::math::MPInt>> terms;
-
   LinearCombination() = default;
   LinearCombination(Variable var);
   LinearCombination(yacl::math::MPInt scalar);
@@ -79,6 +77,14 @@ class LinearCombination {
   friend LinearCombination operator*(const yacl::math::MPInt& scalar,
                                      LinearCombination rhs);
   friend LinearCombination operator-(LinearCombination lc);
+
+  const std::vector<std::pair<Variable, yacl::math::MPInt>>& getTerms() const {
+    return terms_;
+  }
+
+ private:
+  std::vector<std::pair<Variable, yacl::math::MPInt>> terms_;
+
 };
 
 // Free function operators for convenience, e.g., var + var

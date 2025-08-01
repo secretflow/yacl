@@ -17,7 +17,7 @@
 #include <array>
 #include <cstring>
 
-#include "yacl/crypto/experimental/zkp/bulletproofs/generators.h"
+#include "yacl/crypto/experimental/zkp/bulletproofs/util.h"
 
 namespace examples::zkp {
 
@@ -37,9 +37,7 @@ PedersenGens::PedersenGens(std::shared_ptr<yacl::crypto::EcGroup> curve)
 
 yacl::crypto::EcPoint PedersenGens::Commit(
     const yacl::math::MPInt& value, const yacl::math::MPInt& blinding) const {
-  yacl::crypto::EcPoint term1 = curve_->Mul(B, value);
-  yacl::crypto::EcPoint term2 = curve_->Mul(B_blinding, blinding);
-  return curve_->Add(term1, term2);
+  return MultiScalarMul(curve_, {value, blinding}, {B, B_blinding});
 }
 
 // ---- GeneratorsChain implementation ----

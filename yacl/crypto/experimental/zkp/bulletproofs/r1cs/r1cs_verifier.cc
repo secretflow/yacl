@@ -120,7 +120,7 @@ R1CSVerifier::FlattenedConstraints(const yacl::math::MPInt& z) const {
 
   yacl::math::MPInt exp_z = z;
   for (const auto& lc : constraints_) {
-    for (const auto& term : lc.terms) {
+    for (const auto& term : lc.getTerms()) {
       switch (term.first.type) {
         case VariableType::MultiplierLeft:
           wL[term.first.index] += exp_z * term.second;

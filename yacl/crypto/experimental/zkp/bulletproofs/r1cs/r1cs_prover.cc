@@ -127,7 +127,7 @@ Result<void> R1CSProver::SpecifyRandomizedConstraints(
 
 yacl::math::MPInt R1CSProver::Eval(const LinearCombination& lc) const {
   yacl::math::MPInt acc(0);
-  for (const auto& term : lc.terms) {
+  for (const auto& term : lc.getTerms()) {
     auto var_value = yacl::math::MPInt(0);
     switch (term.first.type) {
       case VariableType::Committed:
@@ -180,7 +180,7 @@ R1CSProver::FlattenedConstraints(const yacl::math::MPInt& z) const {
 
   yacl::math::MPInt exp_z = z;
   for (const auto& lc : constraints_) {
-    for (const auto& term : lc.terms) {
+    for (const auto& term : lc.getTerms()) {
       switch (term.first.type) {
         case VariableType::MultiplierLeft:
           wL[term.first.index] += exp_z * term.second;
