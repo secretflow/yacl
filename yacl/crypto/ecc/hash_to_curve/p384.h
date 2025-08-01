@@ -25,6 +25,10 @@ namespace yacl {
 crypto::EcPoint EncodeToCurveP384(yacl::ByteContainerView buffer,
                                   const std::string &dst);
 
+// HashToCurve for P-384
+std::vector<crypto::EcPoint> HashToCurveP384(yacl::ByteContainerView buffer,
+                                  const std::string &dst);
+
 // HashToScalar for P-384
 crypto::MPInt HashToScalarP384(yacl::ByteContainerView buffer,
                                const std::string &dst);

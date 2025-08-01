@@ -21,11 +21,15 @@
 
 namespace yacl {
 
-// EncodeToCurve for P-512
+// EncodeToCurve for P-521
 crypto::EcPoint EncodeToCurveP521(yacl::ByteContainerView buffer,
                                   const std::string &dst);
 
-// HashToScalar for P-512
+// HashToCurve for P-521
+std::vector<crypto::EcPoint> HashToCurveP521(yacl::ByteContainerView buffer,
+                                  const std::string &dst);
+
+// HashToScalar for P-521
 crypto::MPInt HashToScalarP521(yacl::ByteContainerView buffer,
                                const std::string &dst);
 
