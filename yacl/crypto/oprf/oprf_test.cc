@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "yacl/crypto/oprf/oprf.h"
+#include "yacl/crypto/oprf/voprf.h"
 
 #include "absl/strings/escaping.h"
 #include "gtest/gtest.h"
@@ -35,6 +36,27 @@ TEST(SimpleTest, Works) {
   server.BlindEvaluate(c2s_tape, &s2c_tape);
 
   client.Finalize(s2c_tape);
+}
+
+TEST(VOPRFTest, Works) {
+  // get a default config
+  const auto config = OprfConfig::GetDefault();
+
+  auto server = VOprfServer(config);
+  auto client = VOprfClient(config);
+
+  client.ReceivePKS(server.GetPKS());
+
+  const std::string input = "test_element";
+
+  EcPoint c2s_tape;
+  client.Blind(input, &c2s_tape);
+
+  EcPoint s2c_tape;
+  Proof proof;
+  server.BlindEvaluate(c2s_tape, &s2c_tape, &proof);
+
+  client.Finalize(s2c_tape, c2s_tape, &proof);
 }
 
 }  // namespace yacl::crypto
