@@ -107,9 +107,9 @@ PartyAwaitingPosition::AssignPosition(
 
 PartyAwaitingBitChallenge::PartyAwaitingBitChallenge(
     size_t n, uint64_t v, yacl::math::MPInt v_blinding, size_t j,
-    std::shared_ptr<const PedersenGens> pc_gens,
-    yacl::math::MPInt a_blinding, yacl::math::MPInt s_blinding,
-    std::vector<yacl::math::MPInt> s_L, std::vector<yacl::math::MPInt> s_R)
+    std::shared_ptr<const PedersenGens> pc_gens, yacl::math::MPInt a_blinding,
+    yacl::math::MPInt s_blinding, std::vector<yacl::math::MPInt> s_L,
+    std::vector<yacl::math::MPInt> s_R)
     : n_(n),
       v_(v),
       v_blinding_(std::move(v_blinding)),
@@ -226,9 +226,8 @@ Result<DealerAwaitingBitCommitments> Dealer::New(
         ProofError(ProofError::Code::InvalidGeneratorsLength));
   }
   transcript->RangeProofDomainSep(n, m);
-  return Result<DealerAwaitingBitCommitments>::Ok(
-      DealerAwaitingBitCommitments(n, m, std::move(transcript),
-                                   std::move(bp_gens), std::move(pc_gens)));
+  return Result<DealerAwaitingBitCommitments>::Ok(DealerAwaitingBitCommitments(
+      n, m, std::move(transcript), std::move(bp_gens), std::move(pc_gens)));
 }
 
 DealerAwaitingBitCommitments::DealerAwaitingBitCommitments(
@@ -315,9 +314,8 @@ DealerAwaitingPolyCommitments::ReceivePolyCommitments(
 
   DealerAwaitingProofShares next_state(
       n_, m_, transcript_, bp_gens_, pc_gens_, bit_challenge_,
-      std::move(bit_commitments_), poly_challenge,
-      poly_commitments, 
-      A_, S_, T_1, T_2);
+      std::move(bit_commitments_), poly_challenge, poly_commitments, A_, S_,
+      T_1, T_2);
   return Result<std::pair<DealerAwaitingProofShares, PolyChallenge>>::Ok(
       {std::move(next_state), poly_challenge});
 }
@@ -452,13 +450,13 @@ bool RangeProof::VerifySingle(
 }
 
 Result<std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>>>
-RangeProof::ProveMultiple(
-    std::shared_ptr<SimpleTranscript> transcript,
-    const std::shared_ptr<yacl::crypto::EcGroup>& curve,
-    const std::shared_ptr<const BulletproofGens>& bp_gens,
-    const std::shared_ptr<const PedersenGens>& pc_gens,
-    const std::vector<uint64_t>& values,
-    const std::vector<yacl::math::MPInt>& blindings, size_t n) {
+RangeProof::ProveMultiple(std::shared_ptr<SimpleTranscript> transcript,
+                          const std::shared_ptr<yacl::crypto::EcGroup>& curve,
+                          const std::shared_ptr<const BulletproofGens>& bp_gens,
+                          const std::shared_ptr<const PedersenGens>& pc_gens,
+                          const std::vector<uint64_t>& values,
+                          const std::vector<yacl::math::MPInt>& blindings,
+                          size_t n) {
   if (values.size() != blindings.size()) {
     return Result<std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>>>::
         Err(ProofError(ProofError::Code::WrongNumBlindingFactors));

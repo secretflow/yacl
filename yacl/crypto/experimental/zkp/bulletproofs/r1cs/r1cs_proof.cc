@@ -27,11 +27,11 @@ namespace {
 constexpr uint8_t ONE_PHASE_COMMITMENTS = 0;
 constexpr uint8_t TWO_PHASE_COMMITMENTS = 1;
 
-constexpr size_t SCALAR_SIZE = 32;          // 32-byte scalars
-constexpr size_t NUM_SCALARS = 3;           // t_x, t_x_blinding, e_blinding
-constexpr size_t NUM_ONE_PHASE_COMMITS = 3; // A_I1, A_O1, S1
-constexpr size_t NUM_TWO_PHASE_COMMITS = 6; // A_I1, A_O1, S1, A_I2, A_O2, S2
-constexpr size_t NUM_T_COMMITS = 5;         // T_1, T_3, T_4, T_5, T_6
+constexpr size_t SCALAR_SIZE = 32;           // 32-byte scalars
+constexpr size_t NUM_SCALARS = 3;            // t_x, t_x_blinding, e_blinding
+constexpr size_t NUM_ONE_PHASE_COMMITS = 3;  // A_I1, A_O1, S1
+constexpr size_t NUM_TWO_PHASE_COMMITS = 6;  // A_I1, A_O1, S1, A_I2, A_O2, S2
+constexpr size_t NUM_T_COMMITS = 5;          // T_1, T_3, T_4, T_5, T_6
 constexpr size_t VERSION_BYTE_SIZE = 1;
 
 void WriteToBuffer(char** ptr, const yacl::Buffer& data) {
@@ -52,12 +52,11 @@ yacl::Buffer R1CSProof::ToBytes(
   size_t ipp_size = ipp_proof.SerializedSize(curve);
 
   bool is_one_phase = MissingPhase2Commitments(curve);
-  size_t num_phase_commits = is_one_phase ? NUM_ONE_PHASE_COMMITS : NUM_TWO_PHASE_COMMITS;
+  size_t num_phase_commits =
+      is_one_phase ? NUM_ONE_PHASE_COMMITS : NUM_TWO_PHASE_COMMITS;
 
-  size_t total_size = VERSION_BYTE_SIZE +
-                      num_phase_commits * point_size +
-                      NUM_T_COMMITS * point_size +
-                      NUM_SCALARS * SCALAR_SIZE +
+  size_t total_size = VERSION_BYTE_SIZE + num_phase_commits * point_size +
+                      NUM_T_COMMITS * point_size + NUM_SCALARS * SCALAR_SIZE +
                       ipp_size;
 
   yacl::Buffer buf(total_size);
@@ -105,11 +104,14 @@ R1CSProof R1CSProof::FromBytes(
                "R1CSProof format error: too short for version byte");
 
   uint8_t version = bytes[0];
-  yacl::ByteContainerView slice(bytes.data() + VERSION_BYTE_SIZE, bytes.size() - VERSION_BYTE_SIZE);
+  yacl::ByteContainerView slice(bytes.data() + VERSION_BYTE_SIZE,
+                                bytes.size() - VERSION_BYTE_SIZE);
 
   size_t point_size = curve->GetSerializeLength();
 
-  size_t min_num_points = (version == ONE_PHASE_COMMITMENTS) ? (NUM_ONE_PHASE_COMMITS + NUM_T_COMMITS) : (NUM_TWO_PHASE_COMMITS + NUM_T_COMMITS);
+  size_t min_num_points = (version == ONE_PHASE_COMMITMENTS)
+                              ? (NUM_ONE_PHASE_COMMITS + NUM_T_COMMITS)
+                              : (NUM_TWO_PHASE_COMMITS + NUM_T_COMMITS);
   size_t min_len = min_num_points * point_size + NUM_SCALARS * SCALAR_SIZE;
   YACL_ENFORCE(slice.size() >= min_len,
                "R1CSProof format error: slice too short for version");
@@ -155,7 +157,8 @@ R1CSProof R1CSProof::FromBytes(
   proof.e_blinding = read_scalar(offset);
 
   size_t remaining_size = slice.size() - offset;
-  proof.ipp_proof = InnerProductProof::FromBytes(slice.subspan(offset, remaining_size), curve);
+  proof.ipp_proof = InnerProductProof::FromBytes(
+      slice.subspan(offset, remaining_size), curve);
 
   return proof;
 }

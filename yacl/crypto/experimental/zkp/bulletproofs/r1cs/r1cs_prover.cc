@@ -203,8 +203,7 @@ R1CSProver::FlattenedConstraints(const yacl::math::MPInt& z) const {
   return {wL, wR, wO, wV};
 }
 
-Result<R1CSProof, R1CSError> R1CSProver::Prove(
-    const BulletproofGens* bp_gens) {
+Result<R1CSProof, R1CSError> R1CSProver::Prove(const BulletproofGens* bp_gens) {
   auto curve = pc_gens_->GetCurve();
   auto order = curve->GetOrder();
 

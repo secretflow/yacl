@@ -51,7 +51,8 @@ class RangeProofTest : public ::testing::Test {
 
     // 2. Prover's scope
     {
-      auto prover_transcript = std::make_shared<SimpleTranscript>("AggregatedRangeProofTest");
+      auto prover_transcript =
+          std::make_shared<SimpleTranscript>("AggregatedRangeProofTest");
 
       // 2.1. Create witness data
       std::vector<uint64_t> values;
@@ -83,7 +84,8 @@ class RangeProofTest : public ::testing::Test {
       // 3.1. Deserialize the proof
       RangeProof proof = RangeProof::FromBytes(curve_, proof_bytes);
       // 3.2. Verify with a fresh transcript
-      auto verifier_transcript = std::make_shared<SimpleTranscript>("AggregatedRangeProofTest");
+      auto verifier_transcript =
+          std::make_shared<SimpleTranscript>("AggregatedRangeProofTest");
       bool verify_ok = proof.VerifyMultiple(
           verifier_transcript, curve_, bp_gens, pc_gens, value_commitments, n);
 
