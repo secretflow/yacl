@@ -113,5 +113,14 @@ yacl_cc_library(
 
 yacl_cc_library(
     name = "errors",
+    srcs = ["errors.cc"],
     hdrs = ["errors.h"],
+    deps = [
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/crypto/ecc",
+        "@yacl//yacl/crypto/ecc:ec_point",
+        "@yacl//yacl/crypto/hash:hash_utils",
+        "@yacl//yacl/math/mpint",
+        "@yacl//yacl/math/mpint:mp_int_enforce",
+    ],
 )

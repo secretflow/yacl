@@ -21,7 +21,7 @@
 #include <stdexcept>
 
 #include "yacl/crypto/experimental/zkp/bulletproofs/errors.h"
-#include "yacl/crypto/experimental/zkp/bulletproofs/util.h"  // For exponentiation helpers
+#include "yacl/crypto/experimental/zkp/bulletproofs/util.h"
 
 namespace examples::zkp {
 
@@ -29,123 +29,163 @@ InnerProductProof InnerProductProof::Create(
     SimpleTranscript& transcript,
     const std::shared_ptr<yacl::crypto::EcGroup>& curve,
     const yacl::crypto::EcPoint& Q,
+    const std::vector<yacl::math::MPInt>& G_factors,
     const std::vector<yacl::math::MPInt>& H_factors,
-    std::vector<yacl::crypto::EcPoint> G_vec,  // Pass by value
-    std::vector<yacl::crypto::EcPoint> H_vec,  // Pass by value
-    std::vector<yacl::math::MPInt> a_vec,      // Pass by value
-    std::vector<yacl::math::MPInt> b_vec) {    // Pass by value
-
-  size_t n = G_vec.size();
+    std::vector<yacl::crypto::EcPoint> G_vec,
+    std::vector<yacl::crypto::EcPoint> H_vec,
+    std::vector<yacl::math::MPInt> a_vec,
+    std::vector<yacl::math::MPInt> b_vec) {
+  size_t original_n = G_vec.size();
   const auto& order = curve->GetOrder();
 
-  // Validation
-  YACL_ENFORCE(n > 0 && (n & (n - 1)) == 0, "n must be a power of 2 and > 0");
-  YACL_ENFORCE(H_vec.size() == n && a_vec.size() == n && b_vec.size() == n &&
-                   H_factors.size() == n,
+  YACL_ENFORCE(original_n > 0 && (original_n & (original_n - 1)) == 0,
+               "n must be a power of 2 and > 0");
+  YACL_ENFORCE(H_vec.size() == original_n && a_vec.size() == original_n &&
+                   b_vec.size() == original_n &&
+                   G_factors.size() == original_n &&
+                   H_factors.size() == original_n,
                "Vector size mismatch");
 
-  // Apply H_factors to H_vec initially - Modify H_vec in place
-  for (size_t i = 0; i < n; ++i) {
-    H_vec[i] = curve->Mul(H_vec[i], H_factors[i]);
-  }
+  transcript.InnerproductDomainSep(original_n);
 
-  // Determine number of rounds
-  size_t lg_n = FloorLog2(n);
+  size_t lg_n = FloorLog2(original_n);
   std::vector<yacl::crypto::EcPoint> L_vec_out;
   L_vec_out.reserve(lg_n);
   std::vector<yacl::crypto::EcPoint> R_vec_out;
   R_vec_out.reserve(lg_n);
 
+  size_t n = original_n;
+
   while (n > 1) {
-    n = n / 2;
+    size_t n_half = n / 2;
 
-    // Create temporary vectors for calculations based on current range [lo, lo
-    // + current_n) Scalars
-    std::vector<yacl::math::MPInt> a_L(a_vec.begin(), a_vec.begin() + n);
-    std::vector<yacl::math::MPInt> a_R(a_vec.begin() + n,
-                                       a_vec.begin() + 2 * n);
-    std::vector<yacl::math::MPInt> b_L(b_vec.begin(), b_vec.begin() + n);
-    std::vector<yacl::math::MPInt> b_R(b_vec.begin() + n,
-                                       b_vec.begin() + 2 * n);
-    // Points
-    std::vector<yacl::crypto::EcPoint> G_L(G_vec.begin(), G_vec.begin() + n);
-    std::vector<yacl::crypto::EcPoint> G_R(G_vec.begin() + n,
-                                           G_vec.begin() + 2 * n);
-    std::vector<yacl::crypto::EcPoint> H_L(H_vec.begin(), H_vec.begin() + n);
-    std::vector<yacl::crypto::EcPoint> H_R(H_vec.begin() + n,
-                                           H_vec.begin() + 2 * n);
+    auto a_L = absl::MakeSpan(a_vec.data(), n_half);
+    auto a_R = absl::MakeSpan(a_vec.data() + n_half, n_half);
+    auto b_L = absl::MakeSpan(b_vec.data(), n_half);
+    auto b_R = absl::MakeSpan(b_vec.data() + n_half, n_half);
+    auto G_L = absl::MakeSpan(G_vec.data(), n_half);
+    auto G_R = absl::MakeSpan(G_vec.data() + n_half, n_half);
+    auto H_L = absl::MakeSpan(H_vec.data(), n_half);
+    auto H_R = absl::MakeSpan(H_vec.data() + n_half, n_half);
 
-    // Compute c_L and c_R
     yacl::math::MPInt c_L = InnerProduct(a_L, b_R, curve);
     yacl::math::MPInt c_R = InnerProduct(a_R, b_L, curve);
 
-    // Compute L = <a_L, G_R * G_fact_R> + <b_R, H_L> + c_L * Q
+    // L and R calculation
     std::vector<yacl::math::MPInt> L_scalars;
-    L_scalars.reserve(n + n + 1);
+    L_scalars.reserve(2 * n_half + 1);
     std::vector<yacl::crypto::EcPoint> L_points;
-    L_points.reserve(n + n + 1);
-    for (size_t i = 0; i < n; ++i) {
-      L_scalars.emplace_back(a_L[i]);
-      L_points.emplace_back(G_R[i]);
-    }
-    for (size_t i = 0; i < n; ++i) {
-      L_scalars.emplace_back(b_R[i]);
-      L_points.emplace_back(H_L[i]);
-    }
-    L_scalars.emplace_back(c_L);
-    L_points.emplace_back(Q);
-    yacl::crypto::EcPoint L = MultiScalarMul(curve, L_scalars, L_points);
-    L_vec_out.emplace_back(L);
+    L_points.reserve(2 * n_half + 1);
 
-    // Compute R = <a_R, G_L> + <b_L, H_R> + c_R * Q
     std::vector<yacl::math::MPInt> R_scalars;
-    R_scalars.reserve(n + n + 1);
+    R_scalars.reserve(2 * n_half + 1);
     std::vector<yacl::crypto::EcPoint> R_points;
-    R_points.reserve(n + n + 1);
-    for (size_t i = 0; i < n; ++i) {
-      R_scalars.emplace_back(a_R[i]);
-      R_points.emplace_back(G_L[i]);
-    }
-    for (size_t i = 0; i < n; ++i) {
-      R_scalars.emplace_back(b_L[i]);
-      R_points.emplace_back(H_R[i]);
-    }
-    R_scalars.emplace_back(c_R);
-    R_points.emplace_back(Q);
-    yacl::crypto::EcPoint R = MultiScalarMul(curve, R_scalars, R_points);
-    R_vec_out.emplace_back(R);
+    R_points.reserve(2 * n_half + 1);
 
-    // Get challenge x
-    // TODO: Check if AppendPoint needs compressed format
-    transcript.AppendPoint("L", L, curve);
-    transcript.AppendPoint("R", R, curve);
-    yacl::math::MPInt x = transcript.ChallengeScalar("u", curve);  //
-    yacl::math::MPInt x_inv = x.InvertMod(order);
+    if (n == original_n) {  // FIRST ROUND LOGIC
+      auto G_factors_L = absl::MakeConstSpan(G_factors.data(), n_half);
+      auto G_factors_R = absl::MakeConstSpan(G_factors.data() + n_half, n_half);
+      auto H_factors_L = absl::MakeConstSpan(H_factors.data(), n_half);
+      auto H_factors_R = absl::MakeConstSpan(H_factors.data() + n_half, n_half);
 
-    // Update vectors for next round (modify originals in the range [lo, mid))
-    for (size_t i = 0; i < n; ++i) {
-      // a = a_L * x + a_R * x_inv
-      a_L[i] =
-          a_L[i].MulMod(x, order).AddMod(a_R[i].MulMod(x_inv, order), order);
-      // b = b_L * x_inv + b_R * x
-      b_L[i] =
-          b_L[i].MulMod(x_inv, order).AddMod(b_R[i].MulMod(x, order), order);
-      // G = G_L * x_inv + G_R * x <- Careful with
-      // factors G_new = G_L*x_inv + G_R*x (This matches  if factors are 1)
-      // Let's compute the updated points without factors here, assuming factors
-      // are applied outside/in verify
-      G_L[i] = MultiScalarMul(curve, {x_inv, x}, {G_L[i], G_R[i]});
-      // H = H_L * x + H_R * x_inv (H already includes H_factors)
-      H_L[i] = MultiScalarMul(curve, {x, x_inv}, {H_L[i], H_R[i]});
+      // L = <a_L, G_R*G_fact_R> + <b_R, H_L*H_fact_L> + c_L*Q
+      for (size_t i = 0; i < n_half; ++i) {
+        L_scalars.push_back(a_L[i].MulMod(G_factors_R[i], order));
+        L_points.push_back(G_R[i]);
+      }
+      for (size_t i = 0; i < n_half; ++i) {
+        L_scalars.push_back(b_R[i].MulMod(H_factors_L[i], order));
+        L_points.push_back(H_L[i]);
+      }
+      L_scalars.push_back(c_L);
+      L_points.push_back(Q);
+
+      // R = <a_R, G_L*G_fact_L> + <b_L, H_R*H_fact_R> + c_R*Q
+      for (size_t i = 0; i < n_half; ++i) {
+        R_scalars.push_back(a_R[i].MulMod(G_factors_L[i], order));
+        R_points.push_back(G_L[i]);
+      }
+      for (size_t i = 0; i < n_half; ++i) {
+        R_scalars.push_back(b_L[i].MulMod(H_factors_R[i], order));
+        R_points.push_back(H_R[i]);
+      }
+      R_scalars.push_back(c_R);
+      R_points.push_back(Q);
+
+    } else {  // SUBSEQUENT ROUNDS LOGIC
+      // L = <a_L, G_R> + <b_R, H_L> + c_L*Q
+      for (size_t i = 0; i < n_half; ++i) {
+        L_scalars.push_back(a_L[i]);
+      }
+      L_points.insert(L_points.end(), G_R.begin(), G_R.end());
+      for (size_t i = 0; i < n_half; ++i) {
+        L_scalars.push_back(b_R[i]);
+      }
+      L_points.insert(L_points.end(), H_L.begin(), H_L.end());
+      L_scalars.push_back(c_L);
+      L_points.push_back(Q);
+
+      // R = <a_R, G_L> + <b_L, H_R> + c_R*Q
+      for (size_t i = 0; i < n_half; ++i) {
+        R_scalars.push_back(a_R[i]);
+      }
+      R_points.insert(R_points.end(), G_L.begin(), G_L.end());
+      for (size_t i = 0; i < n_half; ++i) {
+        R_scalars.push_back(b_L[i]);
+      }
+      R_points.insert(R_points.end(), H_R.begin(), H_R.end());
+      R_scalars.push_back(c_R);
+      R_points.push_back(Q);
     }
 
-    a_vec = a_L;
-    b_vec = b_L;
-    G_vec = G_L;
-    H_vec = H_L;
+    yacl::crypto::EcPoint L_point = MultiScalarMul(curve, L_scalars, L_points);
+    yacl::crypto::EcPoint R_point = MultiScalarMul(curve, R_scalars, R_points);
+
+    L_vec_out.push_back(L_point);
+    R_vec_out.push_back(R_point);
+
+    transcript.AppendPoint("L", L_point, curve);
+    transcript.AppendPoint("R", R_point, curve);
+    yacl::math::MPInt u = transcript.ChallengeScalar("u", curve);
+    yacl::math::MPInt u_inv = u.InvertMod(order);
+
+    // Update vectors for next round
+    for (size_t i = 0; i < n_half; ++i) {
+      a_vec[i] =
+          a_L[i].MulMod(u, order).AddMod(a_R[i].MulMod(u_inv, order), order);
+      b_vec[i] =
+          b_L[i].MulMod(u_inv, order).AddMod(b_R[i].MulMod(u, order), order);
+
+      if (n == original_n) {  // Update with factors only after first round
+        auto G_factors_L = absl::MakeConstSpan(G_factors.data(), n_half);
+        auto G_factors_R =
+            absl::MakeConstSpan(G_factors.data() + n_half, n_half);
+        auto H_factors_L = absl::MakeConstSpan(H_factors.data(), n_half);
+        auto H_factors_R =
+            absl::MakeConstSpan(H_factors.data() + n_half, n_half);
+
+        yacl::math::MPInt g_l_factor = u_inv.MulMod(G_factors_L[i], order);
+        yacl::math::MPInt g_r_factor = u.MulMod(G_factors_R[i], order);
+        G_vec[i] =
+            MultiScalarMul(curve, {g_l_factor, g_r_factor}, {G_L[i], G_R[i]});
+
+        yacl::math::MPInt h_l_factor = u.MulMod(H_factors_L[i], order);
+        yacl::math::MPInt h_r_factor = u_inv.MulMod(H_factors_R[i], order);
+        H_vec[i] =
+            MultiScalarMul(curve, {h_l_factor, h_r_factor}, {H_L[i], H_R[i]});
+      } else {
+        G_vec[i] = MultiScalarMul(curve, {u_inv, u}, {G_L[i], G_R[i]});
+        H_vec[i] = MultiScalarMul(curve, {u, u_inv}, {H_L[i], H_R[i]});
+      }
+    }
+
+    n = n_half;
+    a_vec.resize(n);
+    b_vec.resize(n);
+    G_vec.resize(n);
+    H_vec.resize(n);
   }
 
-  // Return final proof
   return InnerProductProof(std::move(L_vec_out), std::move(R_vec_out),
                            std::move(a_vec[0]), std::move(b_vec[0]));
 }
@@ -158,89 +198,58 @@ InnerProductProof::VerificationScalars(
     const std::shared_ptr<yacl::crypto::EcGroup>& curve) const {
   size_t lg_n = L_vec_.size();  // Number of rounds = log2(n)
 
-  SPDLOG_DEBUG("InnerProductProof::VerificationScalars Start (n={}, lg_n={})",
-               n, lg_n);
-
   // --- Basic Checks ---
   YACL_ENFORCE(lg_n < 32, "Inner product proof too large (lg_n >= 32)");
   YACL_ENFORCE(n > 0 && (n == (1ULL << lg_n)),
-               "Input n must be 2^lg_n and positive");  // Check n is power of 2
-                                                        // and matches lg_n
+               "Input n must be 2^lg_n and positive");
   YACL_ENFORCE(R_vec_.size() == lg_n, "L_vec and R_vec size mismatch");
 
   transcript.InnerproductDomainSep(n);
 
   // --- 1. Recompute challenges u_i from transcript ---
-  std::vector<yacl::math::MPInt> challenges(lg_n);
-  std::vector<yacl::math::MPInt> challenges_inv(lg_n);  // Store inverses too
-
-  SPDLOG_DEBUG("Recomputing challenges...");
-
+  std::vector<yacl::math::MPInt> u_challenges(lg_n);
   for (size_t i = 0; i < lg_n; ++i) {
-    // Append points in the same order as prover
-    transcript.AppendPoint("L", L_vec_[i], curve);
-    transcript.AppendPoint("R", R_vec_[i], curve);
-    // Recompute challenge for this round
-    challenges[i] = transcript.ChallengeScalar("u", curve);
-    challenges_inv[i] =
-        challenges[i].InvertMod(curve->GetOrder());  // Compute inverse now
-    SPDLOG_DEBUG("  u_{} = {}, u_inv_{} = {}", i + 1, challenges[i], i + 1,
-                 challenges_inv[i]);
+    transcript.ValidateAndAppendPoint("L", L_vec_[i], curve);
+    transcript.ValidateAndAppendPoint("R", R_vec_[i], curve);
+    u_challenges[i] = transcript.ChallengeScalar("u", curve);
   }
 
-  // --- 2. Compute squares of challenges and inverses ---
-  std::vector<yacl::math::MPInt> challenges_sq(lg_n);
-  std::vector<yacl::math::MPInt> challenges_inv_sq(lg_n);
+  // --- 2. Compute squares of challenges and their inverses ---
+  std::vector<yacl::math::MPInt> u_sq(lg_n);
+  std::vector<yacl::math::MPInt> u_inv_sq(lg_n);
+  std::vector<yacl::math::MPInt> u_inv(lg_n);
+  const auto& order = curve->GetOrder();
   for (size_t i = 0; i < lg_n; ++i) {
-    challenges_sq[i] = challenges[i].MulMod(challenges[i], curve->GetOrder());
-    challenges_inv_sq[i] =
-        challenges_inv[i].MulMod(challenges_inv[i], curve->GetOrder());
+    u_sq[i] = u_challenges[i].MulMod(u_challenges[i], order);
+    u_inv[i] = u_challenges[i].InvertMod(order);
+    u_inv_sq[i] = u_inv[i].MulMod(u_inv[i], order);
   }
 
   // --- 3. Compute s vector ---
+  // s_i = product_{j=0}^{k-1} u_{lg_n-j}^(b_j) * product_{j=0}^{k-1}
+  // u_{lg_n-j}^{-(1-b_j)} where b_j is j-th bit of i.
   std::vector<yacl::math::MPInt> s(n);
-  // Compute s[0] = product_{j=0}^{lg_n-1} u_{j+1}^{-1}
-  yacl::math::MPInt s_0(1);
-  for (const auto& inv : challenges_inv) {
-    s_0 = s_0.MulMod(inv, curve->GetOrder());
+  s[0] = yacl::math::MPInt(1);
+  for (const auto& u_inv_i : u_inv) {
+    s[0] = s[0].MulMod(u_inv_i, order);
   }
-  s[0] = s_0;
-
-  SPDLOG_DEBUG("Computing s vector (size {})...", n);
-  SPDLOG_DEBUG("  s[0] = {}", s[0]);
 
   for (size_t i = 1; i < n; ++i) {
-    // Find the 0-based index of the highest set bit of i
     size_t lg_i = FloorLog2(i);
-    size_t k = 1ULL << lg_i;  // k = 2^{lg_i}
-
-    // The challenges are stored in "creation order" as [u_1, u_2,..., u_lg_n]
-    // challenges_sq holds [u_1^2, u_2^2, ..., u_lg_n^2]
-    //  code uses index (lg_n - 1) - lg_i
-    size_t challenge_idx = (lg_n - 1) - lg_i;
-    YACL_ENFORCE(challenge_idx < challenges_sq.size(),
-                 "Logic error: challenge_idx out of bounds");
-    const yacl::math::MPInt& u_sq_for_level = challenges_sq[challenge_idx];
-
-    // Find the previous index `i - k`
-    size_t prev_i = i - k;
-    YACL_ENFORCE(prev_i < i, "Logic error: prev_i >= i");
-
-    // Calculate s[i] = s[prev_i] * u_sq_for_level
-    s.at(i) = s.at(prev_i).MulMod(u_sq_for_level, curve->GetOrder());
-
-    SPDLOG_DEBUG("  s[{}] = s[{}] * challenges_sq[{}] = {}", i, prev_i,
-                 challenge_idx, s[i]);
+    size_t k = 1 << lg_i;
+    // The challenges are stored in "creation order" as [u_1,...,u_lg_n],
+    // so u_{lg(i)+1} is indexed by lg_i
+    const auto& u_sq_lg_i = u_sq[lg_n - 1 - lg_i];
+    s[i] = s[i - k].MulMod(u_sq_lg_i, order);
   }
 
-  SPDLOG_DEBUG("--- InnerProductProof::VerificationScalars End ---");
-
-  return {challenges_sq, challenges_inv_sq, s};
+  return {u_sq, u_inv_sq, s};
 }
 
 bool InnerProductProof::Verify(
     SimpleTranscript& transcript,
     const std::shared_ptr<yacl::crypto::EcGroup>& curve,
+    const std::vector<yacl::math::MPInt>& G_factors,  // G_factors
     const std::vector<yacl::math::MPInt>& H_factors,
     const yacl::crypto::EcPoint& P, const yacl::crypto::EcPoint& Q,
     const std::vector<yacl::crypto::EcPoint>& G,
@@ -248,88 +257,73 @@ bool InnerProductProof::Verify(
   SPDLOG_DEBUG("InnerProductProof::Verify");
 
   try {
-    size_t lg_n = L_vec_.size();
-    size_t n = 1ULL << lg_n;
-    auto order = curve->GetOrder();
-    SPDLOG_DEBUG("Verifying proof with n={}, lg_n={}", n, lg_n);
+    size_t n = G.size();
+    const auto& order = curve->GetOrder();
 
-    // --- 1. Recompute challenges u_i from transcript ---
-    std::vector<yacl::math::MPInt> challenges;
-    challenges.reserve(lg_n);
-    for (size_t i = 0; i < lg_n; ++i) {
-      transcript.AppendPoint("L", L_vec_[i], curve);
-      transcript.AppendPoint("R", R_vec_[i], curve);
-      challenges.emplace_back(transcript.ChallengeScalar("u", curve));
-    }
+    // VerificationScalars  s, u_sq, u_inv_sq
+    auto verification_data = this->VerificationScalars(n, transcript, curve);
+    const auto& u_sq = std::get<0>(verification_data);
+    const auto& u_inv_sq = std::get<1>(verification_data);
+    const auto& s = std::get<2>(verification_data);
 
-    std::vector<yacl::math::MPInt> inv_challenges(lg_n);
-    yacl::math::MPInt allinv(1);
-    for (size_t i = 0; i < lg_n; ++i) {
-      inv_challenges[i] = challenges[i].InvertMod(order);
-      allinv = allinv.MulMod(inv_challenges[i], order);
-    }
-
-    std::vector<yacl::math::MPInt> challenges_sq(lg_n);
-    for (size_t i = 0; i < lg_n; ++i) {
-      challenges_sq[i] = challenges[i].MulMod(challenges[i], order);
-    }
-
-    // --- 3. Compute s vector ---
-    std::vector<yacl::math::MPInt> s(n);
+    // g_times_a_times_s = (a * s_i) * G_factor_i
+    std::vector<yacl::math::MPInt> g_times_a_times_s(n);
     for (size_t i = 0; i < n; ++i) {
-      auto s_i = allinv;
-      for (size_t j = 0; j < lg_n; ++j) {
-        if (1ULL & (i >> j)) {
-          s_i = s_i.MulMod(challenges_sq[lg_n - 1 - j], order);
-        }
-      }
-      s[i] = s_i;
+      g_times_a_times_s[i] = a_.MulMod(s[i], order).MulMod(G_factors[i], order);
     }
 
-    std::vector<yacl::math::MPInt> a_times_s(n);
-    for (size_t i = 0; i < n; ++i) {
-      a_times_s[i] = a_.MulMod(s[i], order);
-    }
-
-    // 1/s[i] is s[!i], and !i runs from n-1 to 0 as i runs from 0 to n-1
+    // 1/s[i] is s[!i], where !i is the bitwise negation of i in a field of size
+    // n This is equivalent to reversing the s vector.
     auto inv_s = s;
     std::reverse(inv_s.begin(), inv_s.end());
 
+    // h_times_b_div_s = (b * s_inv_i) * H_factor_i
     std::vector<yacl::math::MPInt> h_times_b_div_s(n);
     for (size_t i = 0; i < n; ++i) {
       h_times_b_div_s[i] =
-          H_factors[i].MulMod(b_, order).MulMod(inv_s[i], order);
+          b_.MulMod(inv_s[i], order).MulMod(H_factors[i], order);
     }
 
-    std::vector<yacl::math::MPInt> neg_x_sq(lg_n);
+    // -u_i^2 and -u_inv_i^2
+    size_t lg_n = u_sq.size();
+    std::vector<yacl::math::MPInt> neg_u_sq(lg_n);
+    std::vector<yacl::math::MPInt> neg_u_inv_sq(lg_n);
     for (size_t i = 0; i < lg_n; ++i) {
-      neg_x_sq[i] = challenges_sq[i].MulMod(yacl::math::MPInt(-1), order);
-    }
-
-    std::vector<yacl::math::MPInt> neg_x_inv_sq(lg_n);
-    for (size_t i = 0; i < lg_n; ++i) {
-      neg_x_inv_sq[i] = inv_challenges[i]
-                            .MulMod(inv_challenges[i], order)
-                            .MulMod(yacl::math::MPInt(-1), order);
+      neg_u_sq[i] = yacl::math::MPInt(0).SubMod(u_sq[i], order);
+      neg_u_inv_sq[i] = yacl::math::MPInt(0).SubMod(u_inv_sq[i], order);
     }
 
     std::vector<yacl::math::MPInt> msm_scalars;
+    std::vector<yacl::crypto::EcPoint> msm_points;
+    // Pre-allocate memory
+    msm_scalars.reserve(1 + n + n + lg_n + lg_n);
+    msm_points.reserve(1 + n + n + lg_n + lg_n);
+
+    // Q * (a*b)
     msm_scalars.emplace_back(a_.MulMod(b_, order));
-    msm_scalars.insert(msm_scalars.end(), a_times_s.begin(), a_times_s.end());
+    msm_points.emplace_back(Q);
+
+    // G * (g_times_a_times_s)
+    msm_scalars.insert(msm_scalars.end(), g_times_a_times_s.begin(),
+                       g_times_a_times_s.end());
+    msm_points.insert(msm_points.end(), G.begin(), G.end());
+
+    // H * (h_times_b_div_s)
     msm_scalars.insert(msm_scalars.end(), h_times_b_div_s.begin(),
                        h_times_b_div_s.end());
-    msm_scalars.insert(msm_scalars.end(), neg_x_sq.begin(), neg_x_sq.end());
-    msm_scalars.insert(msm_scalars.end(), neg_x_inv_sq.begin(),
-                       neg_x_inv_sq.end());
-
-    std::vector<yacl::crypto::EcPoint> msm_points;
-    msm_points.emplace_back(Q);
-    msm_points.insert(msm_points.end(), G.begin(), G.end());
     msm_points.insert(msm_points.end(), H.begin(), H.end());
+
+    // L * (-u_i^2)
+    msm_scalars.insert(msm_scalars.end(), neg_u_sq.begin(), neg_u_sq.end());
     msm_points.insert(msm_points.end(), L_vec_.begin(), L_vec_.end());
+
+    // R * (-u_inv_i^2)
+    msm_scalars.insert(msm_scalars.end(), neg_u_inv_sq.begin(),
+                       neg_u_inv_sq.end());
     msm_points.insert(msm_points.end(), R_vec_.begin(), R_vec_.end());
 
     auto expect_P = MultiScalarMul(curve, msm_scalars, msm_points);
+
     if (curve->PointEqual(expect_P, P)) {
       SPDLOG_DEBUG("P match");
       return true;

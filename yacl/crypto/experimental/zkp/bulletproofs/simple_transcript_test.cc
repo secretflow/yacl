@@ -27,7 +27,6 @@ namespace {
 class SimpleTranscriptTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    // Create a curve for testing
     curve_ = yacl::crypto::EcGroupFactory::Instance().Create(
         kBpEcName, yacl::ArgLib = kBpEcLib);
   }
@@ -37,7 +36,6 @@ class SimpleTranscriptTest : public ::testing::Test {
 
 TEST_F(SimpleTranscriptTest, CreateTranscript) {
   SimpleTranscript transcript("test-transcript");
-  // No assertions needed - just verify it can be created
 }
 
 TEST_F(SimpleTranscriptTest, AppendingMessages) {
