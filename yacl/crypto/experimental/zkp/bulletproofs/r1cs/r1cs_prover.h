@@ -48,7 +48,7 @@ class R1CSProver : public ConstraintSystem {
   Result<void> SpecifyRandomizedConstraints(RandomizedCallback callback);
 
   // Proof generation
-  Result<R1CSProof, R1CSError> Prove(const BulletproofGens* bp_gens) const;
+  Result<R1CSProof, R1CSError> Prove(const BulletproofGens* bp_gens);
 
  private:
   friend class RandomizedProver;

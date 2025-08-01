@@ -204,8 +204,7 @@ R1CSProver::FlattenedConstraints(const yacl::math::MPInt& z) const {
 }
 
 Result<R1CSProof, R1CSError> R1CSProver::Prove(
-    const BulletproofGens* bp_gens) const {
-  auto non_const_this = const_cast<R1CSProver*>(this);
+    const BulletproofGens* bp_gens) {
   auto curve = pc_gens_->GetCurve();
   auto order = curve->GetOrder();
 
@@ -217,9 +216,9 @@ Result<R1CSProof, R1CSError> R1CSProver::Prove(
                "Invalid generators length for phase 1");
   auto gens_share = bp_gens->Share(0);
 
-  auto i_blinding1 = CreateDummyScalar(curve);
-  auto o_blinding1 = CreateDummyScalar(curve);
-  auto s_blinding1 = CreateDummyScalar(curve);
+  auto i_blinding1 = CreateRandomScalar(curve);
+  auto o_blinding1 = CreateRandomScalar(curve);
+  auto s_blinding1 = CreateRandomScalar(curve);
 
   auto G1 = gens_share.G(n1);
   auto H1 = gens_share.H(n1);
@@ -251,8 +250,8 @@ Result<R1CSProof, R1CSError> R1CSProver::Prove(
   // s_L1 and s_R1 generation
   std::vector<yacl::math::MPInt> s_L1, s_R1;
   for (size_t i = 0; i < n1; ++i) {
-    s_L1.push_back(CreateDummyScalar(curve));
-    s_R1.push_back(CreateDummyScalar(curve));
+    s_L1.push_back(CreateRandomScalar(curve));
+    s_R1.push_back(CreateRandomScalar(curve));
   }
 
   // S1 = <s_L1, G> + <s_R1, H> + s_blinding1 * B_blinding
@@ -269,7 +268,7 @@ Result<R1CSProof, R1CSError> R1CSProver::Prove(
   transcript_->AppendPoint("S1", S1, curve);
 
   // Phase 2: create randomized constraints and commit
-  auto res = non_const_this->CreateRandomizedConstraints();
+  auto res = this->CreateRandomizedConstraints();
   if (!res.IsOk()) {
     return Result<R1CSProof, R1CSError>::Err(R1CSError(res.Error()));
   }
@@ -286,9 +285,9 @@ Result<R1CSProof, R1CSError> R1CSProver::Prove(
   std::vector<yacl::math::MPInt> s_L2, s_R2;
 
   if (n2 > 0) {
-    i_blinding2 = CreateDummyScalar(curve);
-    o_blinding2 = CreateDummyScalar(curve);
-    s_blinding2 = CreateDummyScalar(curve);
+    i_blinding2 = CreateRandomScalar(curve);
+    o_blinding2 = CreateRandomScalar(curve);
+    s_blinding2 = CreateRandomScalar(curve);
 
     auto G_full = gens_share.G(n);
     auto H_full = gens_share.H(n);
@@ -319,8 +318,8 @@ Result<R1CSProof, R1CSError> R1CSProver::Prove(
     s_L2.reserve(n2);
     s_R2.reserve(n2);
     for (size_t i = 0; i < n2; ++i) {
-      s_L2.push_back(CreateDummyScalar(curve));
-      s_R2.push_back(CreateDummyScalar(curve));
+      s_L2.push_back(CreateRandomScalar(curve));
+      s_R2.push_back(CreateRandomScalar(curve));
     }
 
     // S2 = <s_L2, G[n1:]> + <s_R2, H[n1:]> + s_blinding2 * B_blinding
@@ -369,11 +368,11 @@ Result<R1CSProof, R1CSError> R1CSProver::Prove(
 
   auto t_poly = SpecialInnerProduct(l_poly, r_poly, curve);
 
-  auto t_1_blinding = CreateDummyScalar(curve);
-  auto t_3_blinding = CreateDummyScalar(curve);
-  auto t_4_blinding = CreateDummyScalar(curve);
-  auto t_5_blinding = CreateDummyScalar(curve);
-  auto t_6_blinding = CreateDummyScalar(curve);
+  auto t_1_blinding = CreateRandomScalar(curve);
+  auto t_3_blinding = CreateRandomScalar(curve);
+  auto t_4_blinding = CreateRandomScalar(curve);
+  auto t_5_blinding = CreateRandomScalar(curve);
+  auto t_6_blinding = CreateRandomScalar(curve);
 
   auto T_1 = pc_gens_->Commit(t_poly.T1, t_1_blinding);
   auto T_3 = pc_gens_->Commit(t_poly.T3, t_3_blinding);

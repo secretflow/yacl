@@ -44,30 +44,34 @@ class RangeProof {
 
   // Creates a rangeproof for a single value.
   static Result<std::pair<RangeProof, yacl::crypto::EcPoint>> ProveSingle(
-      SimpleTranscript* transcript,
+      std::shared_ptr<SimpleTranscript> transcript,
       const std::shared_ptr<yacl::crypto::EcGroup>& curve,
-      const BulletproofGens& bp_gens, const PedersenGens& pc_gens, uint64_t v,
+      const std::shared_ptr<const BulletproofGens>& bp_gens,
+      const std::shared_ptr<const PedersenGens>& pc_gens, uint64_t v,
       const yacl::math::MPInt& v_blinding, size_t n);
 
   // Verifies a rangeproof for a single value commitment.
-  bool VerifySingle(SimpleTranscript* transcript,
+  bool VerifySingle(std::shared_ptr<SimpleTranscript> transcript,
                     const std::shared_ptr<yacl::crypto::EcGroup>& curve,
-                    const BulletproofGens& bp_gens, const PedersenGens& pc_gens,
+                    const std::shared_ptr<const BulletproofGens>& bp_gens,
+                    const std::shared_ptr<const PedersenGens>& pc_gens,
                     const yacl::crypto::EcPoint& V, size_t n) const;
 
   // Creates an aggregated rangeproof for multiple values.
   static Result<std::pair<RangeProof, std::vector<yacl::crypto::EcPoint>>>
-  ProveMultiple(SimpleTranscript* transcript,
+  ProveMultiple(std::shared_ptr<SimpleTranscript> transcript,
                 const std::shared_ptr<yacl::crypto::EcGroup>& curve,
-                const BulletproofGens& bp_gens, const PedersenGens& pc_gens,
+                const std::shared_ptr<const BulletproofGens>& bp_gens,
+                const std::shared_ptr<const PedersenGens>& pc_gens,
                 const std::vector<uint64_t>& values,
                 const std::vector<yacl::math::MPInt>& blindings, size_t n);
 
   // Verifies an aggregated rangeproof for multiple value commitments.
   bool VerifyMultiple(
-      SimpleTranscript* transcript,
+      std::shared_ptr<SimpleTranscript> transcript,
       const std::shared_ptr<yacl::crypto::EcGroup>& curve,
-      const BulletproofGens& bp_gens, const PedersenGens& pc_gens,
+      const std::shared_ptr<const BulletproofGens>& bp_gens,
+      const std::shared_ptr<const PedersenGens>& pc_gens,
       const std::vector<yacl::crypto::EcPoint>& value_commitments,
       size_t n) const;
 

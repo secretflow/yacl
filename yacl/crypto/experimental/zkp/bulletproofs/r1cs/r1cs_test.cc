@@ -139,8 +139,8 @@ class R1CSTest : public ::testing::Test {
       input_vars.reserve(k);
 
       for (size_t i = 0; i < k; ++i) {
-        auto val = CreateDummyScalar(curve_);
-        auto [commit, var] = prover.Commit(val, CreateDummyScalar(curve_));
+        auto val = CreateRandomScalar(curve_);
+        auto [commit, var] = prover.Commit(val, CreateRandomScalar(curve_));
         input_values.push_back(val);
         input_commitments.push_back(commit);
         input_vars.push_back(var);
@@ -152,7 +152,7 @@ class R1CSTest : public ::testing::Test {
       output_vars.reserve(k);
       for (size_t i = 0; i < k; ++i) {
         auto [commit, var] =
-            prover.Commit(output_values[i], CreateDummyScalar(curve_));
+            prover.Commit(output_values[i], CreateRandomScalar(curve_));
         output_commitments.push_back(commit);
         output_vars.push_back(var);
       }
@@ -206,7 +206,7 @@ class R1CSTest : public ::testing::Test {
       std::vector<Variable> vars;
       for (uint64_t val : {a1, a2, b1, b2, c1}) {
         auto [com, var] =
-            prover.Commit(yacl::math::MPInt(val), CreateDummyScalar(curve_));
+            prover.Commit(yacl::math::MPInt(val), CreateRandomScalar(curve_));
         commitments.push_back(com);
         vars.push_back(var);
       }
@@ -263,7 +263,7 @@ class R1CSTest : public ::testing::Test {
       SimpleTranscript prover_transcript("RangeProofTest");
       R1CSProver prover(&prover_transcript, pc_gens_.get());
       auto [com, var] =
-          prover.Commit(yacl::math::MPInt(v_val), CreateDummyScalar(curve_));
+          prover.Commit(yacl::math::MPInt(v_val), CreateRandomScalar(curve_));
       commitment = com;
       YACL_ENFORCE(
           RangeProofGadget(&prover, var, std::make_optional(v_val), n).IsOk());

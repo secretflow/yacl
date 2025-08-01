@@ -226,16 +226,8 @@ yacl::crypto::EcPoint MultiScalarMul(
   return result;
 }
 
-// Helper to create a dummy EcPoint
-yacl::crypto::EcPoint CreateDummyPoint(
-    const std::shared_ptr<yacl::crypto::EcGroup>& curve) {
-  yacl::math::MPInt r;
-  r.RandomLtN(curve->GetOrder(), &r);
-  return curve->MulBase(r);
-}
-
-// Helper to create a dummy MPInt scalar
-yacl::math::MPInt CreateDummyScalar(
+// Helper to create a random MPInt scalar
+yacl::math::MPInt CreateRandomScalar(
     const std::shared_ptr<yacl::crypto::EcGroup>& curve) {
   yacl::math::MPInt r;
   r.RandomLtN(curve->GetOrder(), &r);

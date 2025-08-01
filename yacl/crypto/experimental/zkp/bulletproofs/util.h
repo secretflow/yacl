@@ -233,12 +233,8 @@ yacl::crypto::EcPoint MultiScalarMul(
     const std::vector<yacl::math::MPInt>& scalars,
     const std::vector<yacl::crypto::EcPoint>& points);
 
-// Helper to create a dummy EcPoint
-yacl::crypto::EcPoint CreateDummyPoint(
-    const std::shared_ptr<yacl::crypto::EcGroup>& curve);
-
-// Helper to create a dummy MPInt scalar
-yacl::math::MPInt CreateDummyScalar(
+// Helper to create a random MPInt scalar
+yacl::math::MPInt CreateRandomScalar(
     const std::shared_ptr<yacl::crypto::EcGroup>& curve);
 
 size_t NextPowerOfTwo(size_t n);

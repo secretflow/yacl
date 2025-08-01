@@ -84,7 +84,6 @@ class LinearCombination {
 
  private:
   std::vector<std::pair<Variable, yacl::math::MPInt>> terms_;
-
 };
 
 // Free function operators for convenience, e.g., var + var

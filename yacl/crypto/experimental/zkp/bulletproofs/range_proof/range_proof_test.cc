@@ -43,15 +43,15 @@ class RangeProofTest : public ::testing::Test {
     // The party_capacity must be at least m.
     const size_t max_parties = 8;
     YACL_ENFORCE(m <= max_parties, "Test party size exceeds max capacity");
-    BulletproofGens bp_gens(curve_, 64, max_parties);
-    PedersenGens pc_gens(curve_);
+    auto bp_gens = std::make_shared<BulletproofGens>(curve_, 64, max_parties);
+    auto pc_gens = std::make_shared<PedersenGens>(curve_);
 
     yacl::Buffer proof_bytes;
     std::vector<yacl::crypto::EcPoint> value_commitments;
 
     // 2. Prover's scope
     {
-      SimpleTranscript prover_transcript("AggregatedRangeProofTest");
+      auto prover_transcript = std::make_shared<SimpleTranscript>("AggregatedRangeProofTest");
 
       // 2.1. Create witness data
       std::vector<uint64_t> values;
@@ -63,12 +63,12 @@ class RangeProofTest : public ::testing::Test {
         yacl::math::MPInt v_mp;
         v_mp.RandomLtN(yacl::math::MPInt(max_value), &v_mp);
         values.push_back(v_mp.Get<uint64_t>());
-        blindings.push_back(CreateDummyScalar(curve_));
+        blindings.push_back(CreateRandomScalar(curve_));
       }
 
       // 2.2. Create the proof
       auto prove_res = RangeProof::ProveMultiple(
-          &prover_transcript, curve_, bp_gens, pc_gens, values, blindings, n);
+          prover_transcript, curve_, bp_gens, pc_gens, values, blindings, n);
       ASSERT_TRUE(prove_res.IsOk());
       auto prove_pair = std::move(prove_res).TakeValue();
       RangeProof proof = std::move(prove_pair.first);
@@ -83,9 +83,9 @@ class RangeProofTest : public ::testing::Test {
       // 3.1. Deserialize the proof
       RangeProof proof = RangeProof::FromBytes(curve_, proof_bytes);
       // 3.2. Verify with a fresh transcript
-      SimpleTranscript verifier_transcript("AggregatedRangeProofTest");
+      auto verifier_transcript = std::make_shared<SimpleTranscript>("AggregatedRangeProofTest");
       bool verify_ok = proof.VerifyMultiple(
-          &verifier_transcript, curve_, bp_gens, pc_gens, value_commitments, n);
+          verifier_transcript, curve_, bp_gens, pc_gens, value_commitments, n);
 
       // Add a helpful message in case of failure
       if (!verify_ok) {
@@ -132,8 +132,8 @@ TEST_F(RangeProofTest, CreateAndVerify_n64_m8) {
 
 TEST_F(RangeProofTest, TestDelta) {
   const size_t n = 256;
-  yacl::math::MPInt y = CreateDummyScalar(curve_);
-  yacl::math::MPInt z = CreateDummyScalar(curve_);
+  yacl::math::MPInt y = CreateRandomScalar(curve_);
+  yacl::math::MPInt z = CreateRandomScalar(curve_);
   const auto& order = curve_->GetOrder();
 
   yacl::math::MPInt z2 = z.MulMod(z, order);

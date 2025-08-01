@@ -22,10 +22,18 @@
 namespace examples::zkp {
 
 namespace {
+
+// constexpr constants
 constexpr uint8_t ONE_PHASE_COMMITMENTS = 0;
 constexpr uint8_t TWO_PHASE_COMMITMENTS = 1;
 
-// Helper to write a buffer into another buffer and advance the pointer
+constexpr size_t SCALAR_SIZE = 32;          // 32-byte scalars
+constexpr size_t NUM_SCALARS = 3;           // t_x, t_x_blinding, e_blinding
+constexpr size_t NUM_ONE_PHASE_COMMITS = 3; // A_I1, A_O1, S1
+constexpr size_t NUM_TWO_PHASE_COMMITS = 6; // A_I1, A_O1, S1, A_I2, A_O2, S2
+constexpr size_t NUM_T_COMMITS = 5;         // T_1, T_3, T_4, T_5, T_6
+constexpr size_t VERSION_BYTE_SIZE = 1;
+
 void WriteToBuffer(char** ptr, const yacl::Buffer& data) {
   std::memcpy(*ptr, data.data(), data.size());
   *ptr += data.size();
@@ -41,16 +49,15 @@ bool R1CSProof::MissingPhase2Commitments(
 yacl::Buffer R1CSProof::ToBytes(
     const std::shared_ptr<yacl::crypto::EcGroup>& curve) const {
   size_t point_size = curve->GetSerializeLength();
-  size_t scalar_size = 32;  // Assuming 32-byte scalars
   size_t ipp_size = ipp_proof.SerializedSize(curve);
 
   bool is_one_phase = MissingPhase2Commitments(curve);
-  size_t num_phase_commits = is_one_phase ? 3 : 6;
+  size_t num_phase_commits = is_one_phase ? NUM_ONE_PHASE_COMMITS : NUM_TWO_PHASE_COMMITS;
 
-  size_t total_size = 1 +                               // version byte
-                      num_phase_commits * point_size +  // A/S commitments
-                      5 * point_size +                  // T commitments
-                      3 * scalar_size +  // t_x, t_x_blinding, e_blinding
+  size_t total_size = VERSION_BYTE_SIZE +
+                      num_phase_commits * point_size +
+                      NUM_T_COMMITS * point_size +
+                      NUM_SCALARS * SCALAR_SIZE +
                       ipp_size;
 
   yacl::Buffer buf(total_size);
@@ -59,8 +66,8 @@ yacl::Buffer R1CSProof::ToBytes(
   // Write version byte
   uint8_t version =
       is_one_phase ? ONE_PHASE_COMMITMENTS : TWO_PHASE_COMMITMENTS;
-  std::memcpy(ptr, &version, 1);
-  ptr++;
+  std::memcpy(ptr, &version, VERSION_BYTE_SIZE);
+  ptr += VERSION_BYTE_SIZE;
 
   // Write commitments
   WriteToBuffer(&ptr, curve->SerializePoint(A_I1));
@@ -78,9 +85,9 @@ yacl::Buffer R1CSProof::ToBytes(
   WriteToBuffer(&ptr, curve->SerializePoint(T_6));
 
   // Write scalars
-  WriteToBuffer(&ptr, t_x.ToBytes(scalar_size, yacl::Endian::little));
-  WriteToBuffer(&ptr, t_x_blinding.ToBytes(scalar_size, yacl::Endian::little));
-  WriteToBuffer(&ptr, e_blinding.ToBytes(scalar_size, yacl::Endian::little));
+  WriteToBuffer(&ptr, t_x.ToBytes(SCALAR_SIZE, yacl::Endian::little));
+  WriteToBuffer(&ptr, t_x_blinding.ToBytes(SCALAR_SIZE, yacl::Endian::little));
+  WriteToBuffer(&ptr, e_blinding.ToBytes(SCALAR_SIZE, yacl::Endian::little));
 
   // Write IPP proof
   WriteToBuffer(&ptr, ipp_proof.ToBytes(curve));
@@ -94,63 +101,61 @@ yacl::Buffer R1CSProof::ToBytes(
 R1CSProof R1CSProof::FromBytes(
     const yacl::ByteContainerView& bytes,
     const std::shared_ptr<yacl::crypto::EcGroup>& curve) {
-  YACL_ENFORCE(bytes.size() >= 1,
+  YACL_ENFORCE(bytes.size() >= VERSION_BYTE_SIZE,
                "R1CSProof format error: too short for version byte");
 
   uint8_t version = bytes[0];
-  yacl::ByteContainerView slice(bytes.data() + 1, bytes.size() - 1);
+  yacl::ByteContainerView slice(bytes.data() + VERSION_BYTE_SIZE, bytes.size() - VERSION_BYTE_SIZE);
 
   size_t point_size = curve->GetSerializeLength();
-  size_t scalar_size = 32;
 
-  size_t min_num_points = (version == ONE_PHASE_COMMITMENTS) ? 8 : 11;
-  size_t min_len = min_num_points * point_size + 3 * scalar_size;
+  size_t min_num_points = (version == ONE_PHASE_COMMITMENTS) ? (NUM_ONE_PHASE_COMMITS + NUM_T_COMMITS) : (NUM_TWO_PHASE_COMMITS + NUM_T_COMMITS);
+  size_t min_len = min_num_points * point_size + NUM_SCALARS * SCALAR_SIZE;
   YACL_ENFORCE(slice.size() >= min_len,
                "R1CSProof format error: slice too short for version");
 
-  const char* ptr = reinterpret_cast<const char*>(slice.data());
+  size_t offset = 0;
 
-  auto read_point = [&](const char** p) {
-    auto point = curve->DeserializePoint({*p, point_size});
-    *p += point_size;
+  auto read_point = [&](size_t& offset) {
+    auto point = curve->DeserializePoint(slice.subspan(offset, point_size));
+    offset += point_size;
     return point;
   };
-  auto read_scalar = [&](const char** p) {
+  auto read_scalar = [&](size_t& offset) {
     yacl::math::MPInt s;
-    s.FromMagBytes({*p, scalar_size}, yacl::Endian::little);
-    *p += scalar_size;
+    s.FromMagBytes(slice.subspan(offset, SCALAR_SIZE), yacl::Endian::little);
+    offset += SCALAR_SIZE;
     return s;
   };
 
   R1CSProof proof;
 
-  proof.A_I1 = read_point(&ptr);
-  proof.A_O1 = read_point(&ptr);
-  proof.S1 = read_point(&ptr);
+  proof.A_I1 = read_point(offset);
+  proof.A_O1 = read_point(offset);
+  proof.S1 = read_point(offset);
 
   if (version == ONE_PHASE_COMMITMENTS) {
     proof.A_I2 = curve->MulBase(yacl::math::MPInt(0));
     proof.A_O2 = curve->MulBase(yacl::math::MPInt(0));
     proof.S2 = curve->MulBase(yacl::math::MPInt(0));
   } else {
-    proof.A_I2 = read_point(&ptr);
-    proof.A_O2 = read_point(&ptr);
-    proof.S2 = read_point(&ptr);
+    proof.A_I2 = read_point(offset);
+    proof.A_O2 = read_point(offset);
+    proof.S2 = read_point(offset);
   }
 
-  proof.T_1 = read_point(&ptr);
-  proof.T_3 = read_point(&ptr);
-  proof.T_4 = read_point(&ptr);
-  proof.T_5 = read_point(&ptr);
-  proof.T_6 = read_point(&ptr);
+  proof.T_1 = read_point(offset);
+  proof.T_3 = read_point(offset);
+  proof.T_4 = read_point(offset);
+  proof.T_5 = read_point(offset);
+  proof.T_6 = read_point(offset);
 
-  proof.t_x = read_scalar(&ptr);
-  proof.t_x_blinding = read_scalar(&ptr);
-  proof.e_blinding = read_scalar(&ptr);
+  proof.t_x = read_scalar(offset);
+  proof.t_x_blinding = read_scalar(offset);
+  proof.e_blinding = read_scalar(offset);
 
-  size_t remaining_size =
-      slice.size() - (ptr - reinterpret_cast<const char*>(slice.data()));
-  proof.ipp_proof = InnerProductProof::FromBytes({ptr, remaining_size}, curve);
+  size_t remaining_size = slice.size() - offset;
+  proof.ipp_proof = InnerProductProof::FromBytes(slice.subspan(offset, remaining_size), curve);
 
   return proof;
 }
