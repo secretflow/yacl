@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "yacl/crypto/ecc/hash_to_curve/hash_to_curve.h"
+#include "yacl/crypto/ecc/hash_to_curve/p256.h"
 #include "yacl/crypto/hash/blake3.h"
 #include "yacl/crypto/hash/ssl_hash.h"
 #include "yacl/crypto/openssl_wrappers.h"
@@ -179,7 +180,7 @@ EcPoint OpensslGroup::CopyPoint(const EcPoint &point) const {
     auto x = Mp2Bn(p.x);
     auto y = Mp2Bn(p.y);
     auto r = MakeOpensslPoint();
-    OSSL_RET_1(EC_POINT_set_affine_coordinates(
+    OSSL_RET_1(EC_POINT_set_affine_coordinates_GFp(
         group_.get(), CastAny<EC_POINT>(r), x.get(), y.get(), ctx_.get()));
     return r;
   }
@@ -289,7 +290,8 @@ EcPoint OpensslGroup::DeserializePoint(ByteContainerView buf,
 }
 
 EcPoint OpensslGroup::HashToCurve(HashToCurveStrategy strategy,
-                                  std::string_view str) const {
+                                  std::string_view str,
+                                  std::string_view dst) const {
   auto bits = EC_GROUP_order_bits(group_.get());
   HashAlgorithm hash_algorithm;
   switch (strategy) {
@@ -314,20 +316,33 @@ EcPoint OpensslGroup::HashToCurve(HashToCurveStrategy strategy,
     case HashToCurveStrategy::Autonomous:
       hash_algorithm = HashAlgorithm::BLAKE3;
       break;
+    case HashToCurveStrategy::SHA256_SSWU_RO_: {
+      std::string dst_s = dst.empty()
+                          ? "QUUX-V01-CS02-with-P256_XMD:SHA-256_SSWU_RO_"
+                          : std::string(dst);
+      std::vector<crypto::AffinePoint> q = HashToCurveP256(str, dst_s);
+      return Add(CopyPoint(q[0]), CopyPoint(q[1]));
+    }
     case HashToCurveStrategy::SHA256_SSWU_NU_: {
-      const std::string dst = "QUUX-V01-CS02-with-P256_XMD:SHA-256_SSWU_NU_";
-      EcPoint p = EncodeToCurveP256(str, dst);
-      return p;
+      std::string dst_s = dst.empty()
+                          ? "QUUX-V01-CS02-with-P256_XMD:SHA-256_SSWU_NU_"
+                          : std::string(dst);
+      EcPoint p = EncodeToCurveP256(str, dst_s);
+      return CopyPoint(p);
     }
     case HashToCurveStrategy::SHA384_SSWU_NU_: {
-      const std::string dst = "QUUX-V01-CS02-with-P384_XMD:SHA-384_SSWU_NU_";
-      EcPoint p = EncodeToCurveP384(str, dst);
-      return p;
+      std::string dst_s = dst.empty()
+                          ? "QUUX-V01-CS02-with-P384_XMD:SHA-384_SSWU_NU_"
+                          : std::string(dst);
+      EcPoint p = EncodeToCurveP384(str, dst_s);
+      return CopyPoint(p);
     }
     case HashToCurveStrategy::SHA512_SSWU_NU_: {
-      const std::string dst = "QUUX-V01-CS02-with-P521_XMD:SHA-512_SSWU_NU_";
-      EcPoint p = EncodeToCurveP521(str, dst);
-      return p;
+      std::string dst_s = dst.empty()
+                          ? "QUUX-V01-CS02-with-P521_XMD:SHA-512_SSWU_NU_"
+                          : std::string(dst);
+      EcPoint p = EncodeToCurveP521(str, dst_s);
+      return CopyPoint(p);
     }
     default:
       YACL_THROW("Openssl only supports TryAndRehash strategy now. select={}",
@@ -350,7 +365,7 @@ EcPoint OpensslGroup::HashToCurve(HashToCurveStrategy strategy,
     OSSL_RET_1(BN_nnmod(bn.get(), bn.get(), field_p_.get(), ctx_.get()));
 
     // check BN on the curve
-    int ret = EC_POINT_set_compressed_coordinates(
+    int ret = EC_POINT_set_compressed_coordinates_GFp(
         group_.get(), CastAny<EC_POINT>(point), bn.get(), 0, ctx_.get());
     if (ret == 1) {
       return point;
@@ -366,6 +381,38 @@ EcPoint OpensslGroup::HashToCurve(HashToCurveStrategy strategy,
 
   YACL_THROW("Openssl HashToCurve exceed max loop({})",
              kHashToCurveCounterGuard);
+}
+
+yacl::math::MPInt OpensslGroup::HashToScalar(HashToCurveStrategy strategy,
+                                             std::string_view str,
+                                             std::string_view dst) const {
+  switch (strategy) {
+    case HashToCurveStrategy::Autonomous:
+    case HashToCurveStrategy::SHA256_SSWU_NU_: {
+      std::string dst_s = dst.empty()
+                          ? "QUUX-V01-CS02-with-P256_XMD:SHA-256_SSWU_NU_"
+                          : std::string(dst);
+      yacl::math::MPInt s = HashToScalarP256(str, dst_s);
+      return s;
+    }
+    case HashToCurveStrategy::SHA384_SSWU_NU_: {
+      std::string dst_s = dst.empty()
+                          ? "QUUX-V01-CS02-with-P384_XMD:SHA-384_SSWU_NU_"
+                          : std::string(dst);
+      yacl::math::MPInt s = HashToScalarP384(str, dst_s);
+      return s;
+    }
+    case HashToCurveStrategy::SHA512_SSWU_NU_: {
+      std::string dst_s = dst.empty()
+                          ? "QUUX-V01-CS02-with-P521_XMD:SHA-512_SSWU_NU_"
+                          : std::string(dst);
+      yacl::math::MPInt s = HashToScalarP521(str, dst_s);
+      return s;
+    }
+    default:
+      YACL_THROW("Openssl only supports TryAndRehash strategy now. select={}",
+                 (int)strategy);
+  }
 }
 
 namespace {
