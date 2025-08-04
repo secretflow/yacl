@@ -119,18 +119,10 @@ class VOprfServer {
     std::memcpy(seed_p, crypto::I2OSP(seedDST.size(), 2).data(), 2);
     seed_p += 2;
 
-    snprintf(seed_p, seedDST.size() + 1, "%s", seedDST.data());
-    // seed_p += seedDST.size();
+    std::memcpy(seed_p, seedDST.data(), seedDST.size());
+
     auto seed = SslHash(ctx_->GetHashAlgorithm())
                                       .Update(seed_buf).CumulativeHash();
-
-    // const uint8_t* seed_buf_data = seed_buf.data<uint8_t>();
-    // std::cout << "composite fast seed content:\n";
-    // for (int i = 0; i < seed_buf.size(); ++i) {
-    //     std::cout << std::hex << std::setfill('0') << std::setw(2) 
-    //               << static_cast<int>(seed_buf_data[i]) << " ";
-    // }
-    // std::cout << std::dec << std::endl;
 
     // batch execution
     // temporary GetZero()
@@ -169,15 +161,7 @@ class VOprfServer {
       composite_p += d_i.size();
 
       // final step: copy phase string
-      snprintf(composite_p, kPhaseStr.size() + 1, "%s", kPhaseStr.data());
-
-      // const uint8_t* composite_transcript_data = composite_transcript.data<uint8_t>();
-      // std::cout << "composite seed content:\n";
-      // for (int i = 0; i < composite_transcript.size(); ++i) {
-      //     std::cout << std::hex << std::setfill('0') << std::setw(2) 
-      //               << static_cast<int>(composite_transcript_data[i]) << " ";
-      // }
-      // std::cout << std::dec << std::endl;
+      std::memcpy(composite_p, kPhaseStr.data(), kPhaseStr.size());
 
       auto scalar_i = ctx_->HashToScalar(composite_transcript);
       // M = di * C[i] + M
@@ -187,12 +171,10 @@ class VOprfServer {
     *z = ec->Mul(*m, sk_s_);
   }
 
-  // fixme:
-  // does not suupport batch, impl computecomposite in batch first
-  // Generate an NIZK proof for server's sk_s_
   void GenerateProof(const std::vector<EcPoint>& blinded_element,
                      const std::vector<EcPoint>& evaluated_element,
-                     Proof *out) {
+                     Proof *out,
+                     const math::MPInt& randomness = 0_mp) {
     const std::string kPhaseStr = "Challenge";
 
     auto* const ec = ctx_->BorrowEcGroup();
@@ -201,10 +183,12 @@ class VOprfServer {
     EcPoint z;
     ComputeCompositesFast(blinded_element, evaluated_element, &m, &z);
 
-    // math::MPInt r;
-    // math::MPInt::RandomLtN(ec->GetOrder(), &r);
-    math::MPInt r =
-    "0xf9db001266677f62c095021db018cd8cbb55941d4073698ce45c405d1348b7b1"_mp;
+    math::MPInt r;
+    if (randomness.IsZero()) {
+      math::MPInt::RandomLtN(ec->GetOrder(), &r);
+    } else {
+      r = randomness;
+    }
 
     EcPoint t2 = ec->Mul(ec->GetGenerator(), r);
     EcPoint t3 = ec->Mul(m, r);
@@ -254,15 +238,7 @@ class VOprfServer {
     challenge_p += a3.size();
 
     // final step: copy phase string
-    snprintf(challenge_p, kPhaseStr.size() + 1, "%s", kPhaseStr.data());
-
-    // const uint8_t* challenge_transcript_data = challenge_transcript.data<uint8_t>();
-    // std::cout << "generate proof content:\n";
-    // for (int i = 0; i < challenge_transcript.size(); ++i) {
-    //     std::cout << std::hex << std::setfill('0') << std::setw(2) 
-    //               << static_cast<int>(challenge_transcript_data[i]) << " ";
-    // }
-    // std::cout << std::dec << std::endl;
+    std::memcpy(challenge_p, kPhaseStr.data(), kPhaseStr.size());
 
     math::MPInt c = ctx_->HashToScalar(challenge_transcript);
     math::MPInt s = r - c * sk_s_;
@@ -276,7 +252,8 @@ class VOprfServer {
   // out: evaluatedElement, proof
   void BlindEvaluate(const EcPoint& blinded_element,
                      EcPoint* evaluated_element,
-                     Proof* proof) {
+                     Proof* proof,
+                     const math::MPInt& randomness = 0_mp) {
     YACL_ENFORCE(ctx_ != nullptr);
     YACL_ENFORCE(evaluated_element != nullptr);
 
@@ -286,7 +263,11 @@ class VOprfServer {
     auto blinded_elements = std::vector<EcPoint>{blinded_element};
     auto evaluated_elements = std::vector<EcPoint>{*evaluated_element};
 
-    GenerateProof(blinded_elements, evaluated_elements, proof);
+    if (randomness.IsZero()) {
+      GenerateProof(blinded_elements, evaluated_elements, proof);
+    } else {
+      GenerateProof(blinded_elements, evaluated_elements, proof, randomness);
+    }
   }
 
   // Refresh the internally stored blind to a random value. You need to setup
@@ -391,8 +372,8 @@ class VOprfClient {
     std::memcpy(seed_p, crypto::I2OSP(seedDST.size(), 2).data(), 2);
     seed_p += 2;
 
-    snprintf(seed_p, seedDST.size() + 1, "%s", seedDST.data());
-    seed_p += seedDST.size();
+    std::memcpy(seed_p, seedDST.data(), seedDST.size());
+
     auto seed = SslHash(ctx_->GetHashAlgorithm())
                                       .Update(seed_buf).CumulativeHash();
 
@@ -435,15 +416,7 @@ class VOprfClient {
       composite_p += d_i.size();
 
       // final step: copy phase string
-      snprintf(composite_p, kPhaseStr.size() + 1, "%s", kPhaseStr.data());
-
-      // const uint8_t* composite_transcript_data = composite_transcript.data<uint8_t>();
-      // std::cout << "composite seed content:\n";
-      // for (int i = 0; i < composite_transcript.size(); ++i) {
-      //     std::cout << std::hex << std::setfill('0') << std::setw(2) 
-      //               << static_cast<int>(composite_transcript_data[i]) << " ";
-      // }
-      // std::cout << std::dec << std::endl;
+      std::memcpy(composite_p, kPhaseStr.data(), kPhaseStr.size());
 
       auto scalar_i = ctx_->HashToScalar(composite_transcript);
 
@@ -515,8 +488,7 @@ class VOprfClient {
     challenge_p += a3.size();
 
     // final step: copy phase string
-    snprintf(challenge_p, kPhaseStr.size() + 1, "%s", kPhaseStr.data());
-
+    std::memcpy(challenge_p, kPhaseStr.data(), kPhaseStr.size());
 
     auto expected_c = ctx_->HashToScalar(challenge_transcript);
 
@@ -545,14 +517,6 @@ class VOprfClient {
     // FIXME https://www.rfc-editor.org/rfc/rfc9496#section-4.3.2
     auto point_buf = ec->SerializePoint(ec->Mul(evaluated_element, blind_inv_));
 
-    // const uint8_t* pointhash_data = point_buf.data<uint8_t>();
-    // std::cout << "pointhash_buf size: " << point_buf.size() << " bytes, content: ";
-    // for (int i = 0; i < point_buf.size(); ++i) {
-    //     std::cout << std::hex << std::setfill('0') << std::setw(2) 
-    //               << static_cast<int>(pointhash_data[i]) << " ";
-    // }
-    // std::cout << std::dec << std::endl;
-
     const std::string kPhaseStr = "Finalize";
     Buffer hash_buf(2 + private_input.size()
                     + 2 + point_buf.size()
@@ -561,18 +525,15 @@ class VOprfClient {
 
     // copy len of private input
     YACL_ENFORCE(private_input.size() <= (1 << 16));
-    // uint64_t len = private_input.size();
     std::memcpy(p, crypto::I2OSP(private_input.size(), 2).data(), 2);
-    // std::memcpy(p, &len, 2);
     p += 2;
 
     // copy private_input
-    snprintf(p, private_input.size() + 1, "%s", private_input.data());
+    std::memcpy(p, private_input.data(), private_input.size());
     p += private_input.size();
 
     // copy len of point_buf
     YACL_ENFORCE(point_buf.size() <= (1 << 16));
-    // len = point_buf.size();
     std::memcpy(p, crypto::I2OSP(point_buf.size(), 2).data(), 2);
     p += 2;
 
@@ -581,15 +542,7 @@ class VOprfClient {
     p += point_buf.size();
 
     // final step: copy phase string
-    snprintf(p, kPhaseStr.size() + 1, "%s", kPhaseStr.data());
-
-    // const uint8_t* hash_data = hash_buf.data<uint8_t>();
-    // std::cout << "hash_buf size: " << hash_buf.size() << " bytes, content: ";
-    // for (int i = 0; i < hash_buf.size(); ++i) {
-    //     std::cout << std::hex << std::setfill('0') << std::setw(2) 
-    //               << static_cast<int>(hash_data[i]) << " ";
-    // }
-    // std::cout << std::dec << std::endl;
+    std::memcpy(p, kPhaseStr.data(), kPhaseStr.size());
 
     // hash every thing in hash_buf
     return SslHash(ctx_->GetHashAlgorithm()).Update(hash_buf).CumulativeHash();
