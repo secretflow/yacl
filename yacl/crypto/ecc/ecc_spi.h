@@ -91,6 +91,10 @@ enum class HashToCurveStrategy {
   SHA512_SSWU_NU_,  // for P521
   SHA512_ELL2_NU_,  // for Curve25519
 
+  SHA256_SSWU_RO_,  // for P256
+  SHA384_SSWU_RO_,  // for P384
+  SHA512_SSWU_RO_,  // for P521
+
   // This strategy is a collection of the following methods, and SPI will
   // automatically select the applicable method according to different curves:
   //  - SHA-256_SSWU_RO_
@@ -260,10 +264,19 @@ class EcGroup {
   //   Waring! Not all strategies are supported by libs, be care to choose a
   //   valid strategy for specific lib.
   virtual EcPoint HashToCurve(HashToCurveStrategy strategy,
-                              std::string_view str) const = 0;
+                              std::string_view str,
+                              std::string_view dst = "") const = 0;
   EcPoint HashToCurve(std::string_view str) {
     // Autonomous strategy is lib's default strategy and will always be valid;
     return HashToCurve(HashToCurveStrategy::Autonomous, str);
+  }
+
+  virtual yacl::math::MPInt HashToScalar(HashToCurveStrategy strategy,
+                              std::string_view str,
+                              std::string_view dst = "") const = 0;
+// fixme: Autonomous strategy by default
+  yacl::math::MPInt HashToScalar(std::string_view str) const {
+    return HashToScalar(HashToCurveStrategy::Autonomous, str);
   }
 
   // Get the hash code of EcPoint so that you can store EcPoint in STL
