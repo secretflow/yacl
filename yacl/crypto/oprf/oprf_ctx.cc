@@ -44,7 +44,7 @@ std::pair<OprfCtx::SkTy, OprfCtx::PkTy> OprfCtx::DeriveKeyPair(
   std::memcpy(p, I2OSP(info.size(), 2).data(), 2);
   p += 2;
   // copy info
-  snprintf(p, info.size() + 1, "%s", info.data());
+  std::memcpy(p, info.data(), info_size);
   p += info_size;
 
   int counter = 0;
