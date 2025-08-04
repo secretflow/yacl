@@ -13,14 +13,41 @@
 // limitations under the License.
 
 #include "yacl/crypto/oprf/oprf.h"
+#include <algorithm>
 #include "yacl/crypto/oprf/voprf.h"
+#include "yacl/math/mpint/mp_int.h"
 
 #include "absl/strings/escaping.h"
 #include "gtest/gtest.h"
 
 namespace yacl::crypto {
 
-TEST(SimpleTest, Works) {
+TEST(ECCTest, HashToGroupWorks) {
+  // const auto config = OprfConfig::GetVOPRFDefault();
+}
+
+TEST(UtilTest, VOPRFDeriveKeyPairWorks) {
+  const auto config = OprfConfig::GetVOPRFDefault();
+  auto ctx = std::make_shared<OprfCtx>(config);
+  std::array<char, 32> seed;
+  std::fill(seed.begin(), seed.end(), 0xa3);
+  std::string info = "test key";
+  yacl::math::MPInt sk_sm;
+  yacl::crypto::EcPoint pk_sm;
+  std::tie(sk_sm, pk_sm) = ctx->DeriveKeyPair(seed, info);
+  EXPECT_EQ(sk_sm.ToHexString(),
+            "CA5D94C8807817669A51B196C34C1B7F8442FDE4334A7121AE4736364312FCA6");
+  auto ec = ctx->BorrowEcGroup();
+  auto serialized_pkSm = absl::BytesToHexString(
+                   absl::string_view(
+                       reinterpret_cast<const char*>(
+                           ec->SerializePoint(pk_sm).data()),
+                       ec->SerializePoint(pk_sm).size()));
+  EXPECT_EQ(serialized_pkSm,
+            "03e17e70604bcabe198882c0a1f27a92441e774224ed9c702e51dd17038b102462");
+}
+
+TEST(ProtocolTest, OPRFWorks) {
   // get a default config
   const auto config = OprfConfig::GetDefault();
 
@@ -38,25 +65,65 @@ TEST(SimpleTest, Works) {
   client.Finalize(s2c_tape);
 }
 
-TEST(VOPRFTest, Works) {
+TEST(ProtocolTest, VOPRFWorks) {
   // get a default config
-  const auto config = OprfConfig::GetDefault();
+  const auto config = OprfConfig::GetVOPRFDefault();
+  auto ctx = std::make_shared<OprfCtx>(config);
+  auto ec = ctx->BorrowEcGroup();
 
-  auto server = VOprfServer(config);
-  auto client = VOprfClient(config);
+
+  std::array<char, 32> seed;
+  std::fill(seed.begin(), seed.end(), 0xa3);
+  std::string info = "test key";
+  math::MPInt blindness = "0x3338fa65ec36e0290022b48eb562889d89dbfa691d1cde91517fa222ed7ad364"_mp;
+
+  auto server = VOprfServer(config, seed, info);
+  auto client = VOprfClient(config, blindness);
 
   client.ReceivePKS(server.GetPKS());
 
-  const std::string input = "test_element";
+  const std::string input = "ZZZZZZZZZZZZZZZZZ";
 
-  EcPoint c2s_tape;
-  client.Blind(input, &c2s_tape);
+  EcPoint blindedElement;
+  client.Blind(input, &blindedElement);
 
-  EcPoint s2c_tape;
+  auto serialized_blindedElement = absl::BytesToHexString(
+                   absl::string_view(
+                       reinterpret_cast<const char*>(
+                           ec->SerializePoint(blindedElement).data()),
+                       ec->SerializePoint(blindedElement).size()));
+
+  EXPECT_EQ(serialized_blindedElement,
+  "03cd0f033e791c4d79dfa9c6ed750f2ac009ec46cd4195ca6fd3800d1e9b887dbd");
+
+  EcPoint evaluatedElement;
   Proof proof;
-  server.BlindEvaluate(c2s_tape, &s2c_tape, &proof);
+  server.BlindEvaluate(blindedElement, &evaluatedElement, &proof);
 
-  client.Finalize(s2c_tape, c2s_tape, &proof);
+  auto serialized_evaluatedElement = absl::BytesToHexString(
+                   absl::string_view(
+                       reinterpret_cast<const char*>(
+                           ec->SerializePoint(evaluatedElement).data()),
+                       ec->SerializePoint(evaluatedElement).size()));
+  EXPECT_EQ(serialized_evaluatedElement,
+  "030d2985865c693bf7af47ba4d3a3813176576383d19aff003ef7b0784a0d83cf1");
+
+  // ProofRandomScalar = f9db001266677f62c095021db018cd8cbb55941d4073698ce45c405d1348b7b1
+  EXPECT_EQ(proof.c.ToHexString() + proof.s.ToHexString(), "2787D729C57E3D9512D3AA9E8708AD226BC48E0F1750B0767AAFF73482C44B8D2873D74EC88AEBD3504961ACEA16790A05C542D9FBFF4FE269A77510DB00ABAB");
+
+  auto output = client.Finalize(evaluatedElement, blindedElement, &proof, input);
+  EXPECT_EQ(absl::BytesToHexString(absl::string_view(
+                       reinterpret_cast<const char*>(output.data()),
+                       output.size())),
+            "771e10dcd6bcd3664e23b8f2a710cfaaa8357747c4a8cbba03133967b5c24f18");
+
+  // // 打印每个字节为两位十六进制数
+  // std::cout << "Output: ";
+  // for (const auto& byte : output) {
+  //     std::cout << std::hex << std::setfill('0') << std::setw(2) << static_cast<int>(byte) << " ";
+  // }
+  // std::cout << std::endl;
+
 }
 
 }  // namespace yacl::crypto
