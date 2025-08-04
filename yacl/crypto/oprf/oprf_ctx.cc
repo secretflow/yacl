@@ -26,50 +26,40 @@ std::pair<OprfCtx::SkTy, OprfCtx::PkTy> OprfCtx::GenKeyPair() {
 }
 
 std::pair<OprfCtx::SkTy, OprfCtx::PkTy> OprfCtx::DeriveKeyPair(
-    uint128_t seed, const std::string& info) {
+    std::array<char, 32> seed, const std::string& info) {
   constexpr std::string_view kDst = "DeriveKeyPair";
 
-  YACL_ENFORCE(info.size() < (1 << 16));
-  uint16_t info_size = info.size();
-  uint8_t counter = 0;
-  uint64_t n = sizeof(seed) + sizeof(info_size) + info_size + 1 + kDst.size() +
-               ctx_str_.size();
-  Buffer derive_input(static_cast<uint64_t>(n));
+  Buffer derive_input(sizeof(seed)
+                      + 2 + info.size()
+                      + 1);
   char* p = derive_input.data<char>();
 
   // copy seed
-  std::memcpy(p, &seed, sizeof(uint128_t));
-  p += sizeof(uint128_t);
+  std::memcpy(p, &seed, sizeof(seed));
+  p += sizeof(seed);
 
   // copy info size
-  std::memcpy(p, &info_size, sizeof(info_size));
-  p += sizeof(info_size);
-
+  YACL_ENFORCE(info.size() < (1 << 16));
+  uint64_t info_size = info.size();
+  std::memcpy(p, I2OSP(info.size(), 2).data(), 2);
+  p += 2;
   // copy info
-  snprintf(p, info.size(), "%s", info.data());
+  snprintf(p, info.size() + 1, "%s", info.data());
   p += info_size;
 
-  // copy counter
-  *p = static_cast<char>(counter);
-  p++;
-
-  // copy dst
-  std::memcpy(p, kDst.data(), kDst.size());
-  p += kDst.size();
-
-  // copy ctx_str
-  std::memcpy(p, ctx_str_.data(), ctx_str_.size());
-
-  SkTy sk;
+  int counter = 0;
+  SkTy sk = 0_mp;
   PkTy pk;
   while (sk == 0_mp) {
-    YACL_ENFORCE(counter <= 255);
-    auto hash_buf = SslHash(hash_).Update(derive_input).CumulativeHash();
-    sk.FromMagBytes(hash_buf, Endian::little);
-    math::MPInt::Mod(sk, ec_->GetOrder(), &sk);
+    YACL_ENFORCE(counter <= 255, "DeriveKeyPairError");
+    std::memcpy(p, I2OSP(counter, 1).data(), 1);
+    p += 1;
+
+    sk = HashToScalar(derive_input,
+                      std::string(kDst));
     counter++;
-    pk = ec_->MulBase(sk);
   }
+  pk = ec_->MulBase(sk);
   return {sk, pk};
 }
 }  // namespace yacl::crypto
