@@ -48,24 +48,30 @@ class OprfServer {
   // Construct OprfServer from OprfConfig
   explicit OprfServer(const OprfConfig& config)
       : ctx_(std::make_shared<OprfCtx>(config)) {
-    RefreshBlind();
+    GenKeyPair();
+  }
+
+  explicit OprfServer(const OprfConfig& config,
+                       const std::array<char, 32> seed, const std::string& info)
+      : ctx_(std::make_shared<OprfCtx>(config)) {
+    DeriveKeyPair(seed, info);
   }
 
   // Construct OprfServer from Existing OprfCtx (implicitly copied)
   explicit OprfServer(const std::shared_ptr<OprfCtx>& ctx) : ctx_(ctx) {
-    RefreshBlind();
+    GenKeyPair();
   }
 
   // Construct OprfServer from Existing OprfCtx (explicitly moved)
   explicit OprfServer(std::shared_ptr<OprfCtx>&& ctx) : ctx_(std::move(ctx)) {
-    RefreshBlind();
+    GenKeyPair();
   }
 
   // Setup OprfServer context, the new OprfCtx would overwrite the previous
   // OprfCtx, but previous OprfCtx may not be fully released from memory.
   void SetupCtx(const OprfConfig& config) {
     ctx_ = std::make_shared<OprfCtx>(config);
-    RefreshBlind();
+    GenKeyPair();
   }
 
   void BlindEvaluate(const EcPoint& in, EcPoint* out) {
@@ -73,26 +79,26 @@ class OprfServer {
     YACL_ENFORCE(out != nullptr);   // make sure out is not nullptr
 
     auto* const ec = ctx_->BorrowEcGroup();
-    *out = ec->Mul(in, blind_);
+    *out = ec->Mul(in, sk_s_);
   }
 
-  // Refresh the internally stored blind to a random value. You need to setup
+  // Setup the secret key skS of Server
   // OprfCtx before calling RefreshBlind()
-  void RefreshBlind() {
+  void GenKeyPair() {
     YACL_ENFORCE(ctx_ != nullptr);  // make sure context is setup
-    auto* const ec = ctx_->BorrowEcGroup();
-    math::MPInt::RandomLtN(ec->GetOrder(), &blind_);
+    std::tie(sk_s_, std::ignore) = ctx_->GenKeyPair();
   }
 
-  // Clear the internally stored blind value to zero
-  void ClearBlind() { blind_ = 0_mp; }
+  void DeriveKeyPair(std::array<char, 32> seed, const std::string& info) {
+    YACL_ENFORCE(ctx_ != nullptr);  // make sure context is setup
+    std::tie(sk_s_, std::ignore) = ctx_->DeriveKeyPair(seed, info);
+  }
 
  private:
   // NOTE oprf ctx may be reused by different oprf instance
   std::shared_ptr<OprfCtx> ctx_;
 
-  // Security-related values
-  math::MPInt blind_;
+  math::MPInt sk_s_;
 };
 
 class OprfClient {
@@ -104,6 +110,11 @@ class OprfClient {
   explicit OprfClient(const OprfConfig& config)
       : ctx_(std::make_shared<OprfCtx>(config)) {
     RefreshBlind();
+  }
+
+  explicit OprfClient(const OprfConfig& config, math::MPInt blindness)
+      : ctx_(std::make_shared<OprfCtx>(config)) {
+    blind_ = std::move(blindness);
   }
 
   // Construct OprfClient from Existing OprfCtx (implicitly copied)
@@ -129,21 +140,23 @@ class OprfClient {
     YACL_ENFORCE(out != nullptr);   // make sure out is not nullptr
 
     auto* const ec = ctx_->BorrowEcGroup();
-    EcPoint in_point = ec->HashToCurve(in);
+    EcPoint in_point = ctx_->HashToGroup(in);
     *out = ec->Mul(in_point, blind_);
   }
 
-  std::vector<uint8_t> Finalize(const EcPoint& in,
+  std::vector<uint8_t> Finalize(const EcPoint& evaluated_element,
                                 const std::string& private_input = "") {
     YACL_ENFORCE(ctx_ != nullptr);  // make sure context is setup
 
     auto* const ec = ctx_->BorrowEcGroup();
+
+    // blind_inv = 1 / blind
     if (blind_inv_ == 0_mp) {
       MPInt::InvertMod(blind_, ec->GetOrder(), &blind_inv_);
     }
 
     // FIXME https://www.rfc-editor.org/rfc/rfc9496#section-4.3.2
-    auto point_buf = ec->SerializePoint(ec->Mul(in, blind_inv_));
+    auto point_buf = ec->SerializePoint(ec->Mul(evaluated_element, blind_inv_));
 
     const std::string kPhaseStr = "Finalize";
     Buffer hash_buf(2 + private_input.size() + 2 + point_buf.size() +
@@ -152,18 +165,16 @@ class OprfClient {
 
     // copy len of private input
     YACL_ENFORCE(private_input.size() <= (1 << 16));
-    uint64_t len = private_input.size();
-    std::memcpy(p, &len, 2);
+    std::memcpy(p, crypto::I2OSP(private_input.size(), 2).data(), 2);
     p += 2;
 
     // copy private_input
-    snprintf(p, private_input.size(), "%s", private_input.data());
+    std::memcpy(p, private_input.data(), private_input.size());
     p += private_input.size();
 
     // copy len of point_buf
     YACL_ENFORCE(point_buf.size() <= (1 << 16));
-    len = point_buf.size();
-    std::memcpy(p, &len, 2);
+    std::memcpy(p, crypto::I2OSP(point_buf.size(), 2).data(), 2);
     p += 2;
 
     // copy point_buf
@@ -171,11 +182,11 @@ class OprfClient {
     p += point_buf.size();
 
     // final step: copy phase string
-    snprintf(p, kPhaseStr.size(), "%s", kPhaseStr.data());
+    std::memcpy(p, kPhaseStr.data(), kPhaseStr.size());
 
     // hash every thing in hash_buf
     return SslHash(ctx_->GetHashAlgorithm()).Update(hash_buf).CumulativeHash();
-  }
+  } 
 
   void RefreshBlind() {
     YACL_ENFORCE(ctx_ != nullptr);  // make sure context is setup

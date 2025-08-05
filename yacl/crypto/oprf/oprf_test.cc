@@ -51,19 +51,48 @@ TEST(UtilTest, VOPRFDeriveKeyPairWorks) {
 TEST(ProtocolTest, OPRFWorks) {
   // get a default config
   const auto config = OprfConfig::GetDefault();
+  auto ctx = std::make_shared<OprfCtx>(config);
+  EcGroup* ec = ctx->BorrowEcGroup();
 
-  auto server = OprfServer(config);
-  auto client = OprfClient(config);
+  std::array<char, 32> seed;
+  std::fill(seed.begin(), seed.end(), 0xa3);
+  std::string info = "test key";
+  math::MPInt blindness =
+      "0x3338fa65ec36e0290022b48eb562889d8"
+      "9dbfa691d1cde91517fa222ed7ad364"_mp;
 
-  const std::string input = "test_element";
+  auto server = OprfServer(config, seed, info);
+  auto client = OprfClient(config, blindness);
 
-  EcPoint c2s_tape;
-  client.Blind(input, &c2s_tape);
+  const std::string input = "ZZZZZZZZZZZZZZZZZ";
 
-  EcPoint s2c_tape;
-  server.BlindEvaluate(c2s_tape, &s2c_tape);
+  EcPoint blindedElement;
+  client.Blind(input, &blindedElement);
 
-  client.Finalize(s2c_tape);
+  auto s_blindedElement = ec->SerializePoint(blindedElement);
+  auto s_blindedElement_str = absl::BytesToHexString(
+      absl::string_view(reinterpret_cast<const char*>(s_blindedElement.data()),
+                        s_blindedElement.size()));
+  EXPECT_EQ(
+      s_blindedElement_str,
+      "03cc1df781f1c2240a64d1c297b3f3d16262ef5d4cf102734882675c26231b0838");
+
+  EcPoint evaluatedElement;
+  server.BlindEvaluate(blindedElement, &evaluatedElement);
+
+  auto s_evaluatedElement = ec->SerializePoint(evaluatedElement);
+  auto s_evaluatedElement_str = absl::BytesToHexString(absl::string_view(
+      reinterpret_cast<const char*>(s_evaluatedElement.data()),
+      s_evaluatedElement.size()));
+  EXPECT_EQ(
+      s_evaluatedElement_str,
+      "03a0395fe3828f2476ffcd1f4fe540e5a8489322d398be3c4e5a869db7fcb7c52c");
+
+  auto output = client.Finalize(evaluatedElement, input);
+
+  EXPECT_EQ(absl::BytesToHexString(absl::string_view(
+                reinterpret_cast<const char*>(output.data()), output.size())),
+            "c748ca6dd327f0ce85f4ae3a8cd6d4d5390bbb804c9e12dcf94f853fece3dcce");
 }
 
 TEST(ProtocolTest, VOPRFWorks) {
