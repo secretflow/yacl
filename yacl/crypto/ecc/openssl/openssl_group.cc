@@ -330,12 +330,26 @@ EcPoint OpensslGroup::HashToCurve(HashToCurveStrategy strategy,
       EcPoint p = EncodeToCurveP256(str, dst_s);
       return CopyPoint(p);
     }
+    case HashToCurveStrategy::SHA384_SSWU_RO_: {
+      std::string dst_s = dst.empty()
+                          ? "QUUX-V01-CS02-with-P384_XMD:SHA-384_SSWU_RO_"
+                          : std::string(dst);
+      std::vector<crypto::AffinePoint> q = HashToCurveP384(str, dst_s);
+      return Add(CopyPoint(q[0]), CopyPoint(q[1]));
+    }
     case HashToCurveStrategy::SHA384_SSWU_NU_: {
       std::string dst_s = dst.empty()
                           ? "QUUX-V01-CS02-with-P384_XMD:SHA-384_SSWU_NU_"
                           : std::string(dst);
       EcPoint p = EncodeToCurveP384(str, dst_s);
       return CopyPoint(p);
+    }
+    case HashToCurveStrategy::SHA512_SSWU_RO_: {
+      std::string dst_s = dst.empty()
+                          ? "QUUX-V01-CS02-with-P521_XMD:SHA-512_SSWU_RO_"
+                          : std::string(dst);
+      std::vector<crypto::AffinePoint> q = HashToCurveP521(str, dst_s);
+      return Add(CopyPoint(q[0]), CopyPoint(q[1]));
     }
     case HashToCurveStrategy::SHA512_SSWU_NU_: {
       std::string dst_s = dst.empty()
