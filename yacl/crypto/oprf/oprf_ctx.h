@@ -255,8 +255,9 @@ class OprfCtx {
 
   // ec group operations
   // fixme: HashToGroup
-  EcPoint HashToGroup(std::string_view str) {
-    std::string dst = "HashToGroup-" + ctx_str_;
+  EcPoint HashToGroup(std::string_view str,
+                      std::string_view prefix = "HashToGroup-") {
+    std::string dst = std::string(prefix) + ctx_str_;
     switch (cipher_suite_) {
       case OprfCipherSuite::ristretto255_Sha512:
         YACL_THROW("Unsupported cipher suite: ristretto255_Sha512");
@@ -273,35 +274,32 @@ class OprfCtx {
                                  str, dst);
       default:
         YACL_THROW(
-            "Decompose Oprf Cipher Suite failure, unknown CipherSuite "
-            "code: {}",
+            "HashToGroup failure, unknown CipherSuite code: {}",
             (int)cipher_suite_);
     }
   }
 
   yacl::math::MPInt HashToScalar(std::string_view str,
-                                 std::string prefix = "HashToScalar-") {
+                                 std::string_view prefix = "HashToScalar-") {
 
-    std::string dst = prefix + ctx_str_;
-    // std::string dst = "HashToScalar-" + ctx_str_;
+    std::string dst = std::string(prefix) + ctx_str_;
     switch (cipher_suite_) {
       case OprfCipherSuite::ristretto255_Sha512:
         YACL_THROW("Unsupported cipher suite: ristretto255_Sha512");
       case OprfCipherSuite::decaf448_SHAKE256:
         YACL_THROW("Unsupported cipher suite: decaf448_SHAKE256");
       case OprfCipherSuite::P256_SHA256:
-        return ec_->HashToScalar(HashToCurveStrategy::SHA256_SSWU_NU_,
+        return ec_->HashToScalar(HashToCurveStrategy::P256_SHA256_,
                                  str, dst);
       case OprfCipherSuite::P384_SHA384:
-        return ec_->HashToScalar(HashToCurveStrategy::SHA384_SSWU_NU_,
+        return ec_->HashToScalar(HashToCurveStrategy::P384_SHA384_,
                                  str, dst);
       case OprfCipherSuite::P521_SHA512:
-        return ec_->HashToScalar(HashToCurveStrategy::SHA512_SSWU_NU_,
+        return ec_->HashToScalar(HashToCurveStrategy::P521_SHA512_,
                                  str, dst);
       default:
         YACL_THROW(
-            "Decompose Oprf Cipher Suite failure, unknown CipherSuite "
-            "code: {}",
+            "HashToScalar failure, unknown CipherSuite code: {}",
             (int)cipher_suite_);
     }
   }

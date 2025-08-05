@@ -388,21 +388,21 @@ yacl::math::MPInt OpensslGroup::HashToScalar(HashToCurveStrategy strategy,
                                              std::string_view dst) const {
   switch (strategy) {
     case HashToCurveStrategy::Autonomous:
-    case HashToCurveStrategy::SHA256_SSWU_NU_: {
+    case HashToCurveStrategy::P256_SHA256_: {
       std::string dst_s = dst.empty()
                           ? "QUUX-V01-CS02-with-P256_XMD:SHA-256_SSWU_NU_"
                           : std::string(dst);
       yacl::math::MPInt s = HashToScalarP256(str, dst_s);
       return s;
     }
-    case HashToCurveStrategy::SHA384_SSWU_NU_: {
+    case HashToCurveStrategy::P384_SHA384_: {
       std::string dst_s = dst.empty()
                           ? "QUUX-V01-CS02-with-P384_XMD:SHA-384_SSWU_NU_"
                           : std::string(dst);
       yacl::math::MPInt s = HashToScalarP384(str, dst_s);
       return s;
     }
-    case HashToCurveStrategy::SHA512_SSWU_NU_: {
+    case HashToCurveStrategy::P521_SHA512_: {
       std::string dst_s = dst.empty()
                           ? "QUUX-V01-CS02-with-P521_XMD:SHA-512_SSWU_NU_"
                           : std::string(dst);
