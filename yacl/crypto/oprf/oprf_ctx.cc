@@ -29,9 +29,7 @@ std::pair<OprfCtx::SkTy, OprfCtx::PkTy> OprfCtx::DeriveKeyPair(
     std::array<char, 32> seed, const std::string& info) {
   constexpr std::string_view kDst = "DeriveKeyPair";
 
-  Buffer derive_input(sizeof(seed)
-                      + 2 + info.size()
-                      + 1);
+  Buffer derive_input(sizeof(seed) + 2 + info.size() + 1);
   char* p = derive_input.data<char>();
 
   // copy seed
@@ -55,8 +53,7 @@ std::pair<OprfCtx::SkTy, OprfCtx::PkTy> OprfCtx::DeriveKeyPair(
     std::memcpy(p, I2OSP(counter, 1).data(), 1);
     p += 1;
 
-    sk = HashToScalar(derive_input,
-                      std::string(kDst));
+    sk = HashToScalar(derive_input, std::string(kDst));
     counter++;
   }
   pk = ec_->MulBase(sk);

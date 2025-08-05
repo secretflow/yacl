@@ -53,7 +53,7 @@ crypto::EcPoint EncodeToCurveP384(yacl::ByteContainerView buffer,
 
 // P384_XMD:SHA-384_SSWU_RO_
 std::vector<crypto::AffinePoint> HashToCurveP384(yacl::ByteContainerView buffer,
-                                  const std::string &dst) {
+                                                 const std::string &dst) {
   YACL_ENFORCE((dst.size() >= 16) && (dst.size() <= 255),
                "domain separation tag length: {} not in 16B-255B", dst.size());
 
@@ -70,11 +70,11 @@ std::vector<crypto::AffinePoint> HashToCurveP384(yacl::ByteContainerView buffer,
   crypto::AffinePoint r(rx, ry);
 
   // fixme: Point Addition for affine point under NIST-P256
-  return std::vector<crypto::AffinePoint> {q, r};
+  return std::vector<crypto::AffinePoint>{q, r};
 }
 
 yacl::math::MPInt HashToScalarP384(yacl::ByteContainerView buffer,
-                               const std::string &dst) {
+                                   const std::string &dst) {
   YACL_ENFORCE((dst.size() >= 16) && (dst.size() <= 255),
                "domain separation tag length: {} not in 16B-255B", dst.size());
 

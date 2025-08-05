@@ -14,9 +14,9 @@
 
 #pragma once
 
+#include <algorithm>
 #include <cstring>
 #include <memory>
-#include <algorithm>
 
 #include "yacl/base/buffer.h"
 #include "yacl/base/byte_container_view.h"
@@ -33,7 +33,8 @@ struct Proof {
   math::MPInt s;
 };
 
-// RFC 9497: verifiable oblivious pseudorandom function (OPRF) using prime-order groups
+// RFC 9497: verifiable oblivious pseudorandom function (OPRF) using prime-order
+// groups
 //
 // Client(input, pkS)          <----- pkS -----               Server(skS)
 //   -------------------------------------------------------------------
@@ -63,8 +64,7 @@ class VOprfServer {
   }
 
   explicit VOprfServer(const OprfConfig& config,
-    const std::array<char, 32> seed,
-    const std::string& info)
+                       const std::array<char, 32> seed, const std::string& info)
       : ctx_(std::make_shared<OprfCtx>(config)) {
     DeriveKeyPair(seed, info);
   }
@@ -92,8 +92,7 @@ class VOprfServer {
   // Compute the composite values for ec points m and z (fast)
   void ComputeCompositesFast(const std::vector<EcPoint>& blinded_element,
                              const std::vector<EcPoint>& evaluated_element,
-                             EcPoint* m,
-                             EcPoint* z) {
+                             EcPoint* m, EcPoint* z) {
     const std::string kPhaseStr = "Composite";
 
     auto* const ec = ctx_->BorrowEcGroup();
@@ -106,8 +105,7 @@ class VOprfServer {
     auto bm = ec->SerializePoint(pk_s_);
     std::string seedDST = "Seed-" + ctx_->GetContextString();
 
-    Buffer seed_buf(2 + bm.size()
-                    + 2 + seedDST.size());
+    Buffer seed_buf(2 + bm.size() + 2 + seedDST.size());
     char* seed_p = seed_buf.data<char>();
 
     std::memcpy(seed_p, crypto::I2OSP(bm.size(), 2).data(), 2);
@@ -121,8 +119,8 @@ class VOprfServer {
 
     std::memcpy(seed_p, seedDST.data(), seedDST.size());
 
-    auto seed = SslHash(ctx_->GetHashAlgorithm())
-                                      .Update(seed_buf).CumulativeHash();
+    auto seed =
+        SslHash(ctx_->GetHashAlgorithm()).Update(seed_buf).CumulativeHash();
 
     // batch execution
     // temporary GetZero()
@@ -133,10 +131,8 @@ class VOprfServer {
       auto c_i = ec->SerializePoint(blinded_element[i]);
       auto d_i = ec->SerializePoint(evaluated_element[i]);
 
-      Buffer composite_transcript(2 + seed.size() + 2
-        + 2 + c_i.size()
-        + 2 + d_i.size()
-        + kPhaseStr.size());
+      Buffer composite_transcript(2 + seed.size() + 2 + 2 + c_i.size() + 2 +
+                                  d_i.size() + kPhaseStr.size());
       char* composite_p = composite_transcript.data<char>();
 
       std::memcpy(composite_p, crypto::I2OSP(seed.size(), 2).data(), 2);
@@ -172,8 +168,7 @@ class VOprfServer {
   }
 
   void GenerateProof(const std::vector<EcPoint>& blinded_element,
-                     const std::vector<EcPoint>& evaluated_element,
-                     Proof *out,
+                     const std::vector<EcPoint>& evaluated_element, Proof* out,
                      const math::MPInt& randomness = 0_mp) {
     const std::string kPhaseStr = "Challenge";
 
@@ -199,12 +194,9 @@ class VOprfServer {
     auto a2 = ec->SerializePoint(t2);
     auto a3 = ec->SerializePoint(t3);
 
-    Buffer challenge_transcript(2 + bm.size()
-                              + 2 + a0.size()
-                              + 2 + a1.size()
-                              + 2 + a2.size()
-                              + 2 + a3.size()
-                              + kPhaseStr.size());
+    Buffer challenge_transcript(2 + bm.size() + 2 + a0.size() + 2 + a1.size() +
+                                2 + a2.size() + 2 + a3.size() +
+                                kPhaseStr.size());
     char* challenge_p = challenge_transcript.data<char>();
 
     std::memcpy(challenge_p, crypto::I2OSP(bm.size(), 2).data(), 2);
@@ -250,10 +242,8 @@ class VOprfServer {
 
   // in: skS, pkS, blindedElement
   // out: evaluatedElement, proof
-  void BlindEvaluate(const EcPoint& blinded_element,
-                     EcPoint* evaluated_element,
-                     Proof* proof,
-                     const math::MPInt& randomness = 0_mp) {
+  void BlindEvaluate(const EcPoint& blinded_element, EcPoint* evaluated_element,
+                     Proof* proof, const math::MPInt& randomness = 0_mp) {
     YACL_ENFORCE(ctx_ != nullptr);
     YACL_ENFORCE(evaluated_element != nullptr);
 
@@ -307,7 +297,6 @@ class VOprfClient {
     RefreshBlind();
   }
 
-
   explicit VOprfClient(const OprfConfig& config, math::MPInt blindness)
       : ctx_(std::make_shared<OprfCtx>(config)) {
     blind_ = std::move(blindness);
@@ -342,11 +331,10 @@ class VOprfClient {
     *out = ec->Mul(in_point, blind_);
   }
 
-    // Compute the composite values for ec points m and z (fast)
+  // Compute the composite values for ec points m and z (fast)
   void ComputeComposites(const std::vector<EcPoint>& blinded_element,
                          const std::vector<EcPoint>& evaluated_element,
-                         EcPoint* m,
-                         EcPoint* z) {
+                         EcPoint* m, EcPoint* z) {
     const std::string kPhaseStr = "Composite";
 
     auto* const ec = ctx_->BorrowEcGroup();
@@ -359,8 +347,7 @@ class VOprfClient {
     auto bm = ec->SerializePoint(pk_s_);
     std::string seedDST = "Seed-" + ctx_->GetContextString();
 
-    Buffer seed_buf(2 + bm.size()
-                    + 2 + seedDST.size());
+    Buffer seed_buf(2 + bm.size() + 2 + seedDST.size());
     char* seed_p = seed_buf.data<char>();
 
     std::memcpy(seed_p, crypto::I2OSP(bm.size(), 2).data(), 2);
@@ -374,8 +361,8 @@ class VOprfClient {
 
     std::memcpy(seed_p, seedDST.data(), seedDST.size());
 
-    auto seed = SslHash(ctx_->GetHashAlgorithm())
-                                      .Update(seed_buf).CumulativeHash();
+    auto seed =
+        SslHash(ctx_->GetHashAlgorithm()).Update(seed_buf).CumulativeHash();
 
     // temporary GetZero()
     // m = G - G = 0
@@ -388,10 +375,8 @@ class VOprfClient {
       auto c_i = ec->SerializePoint(blinded_element[i]);
       auto d_i = ec->SerializePoint(evaluated_element[i]);
 
-      Buffer composite_transcript(2 + seed.size() + 2
-        + 2 + c_i.size()
-        + 2 + d_i.size()
-        + kPhaseStr.size());
+      Buffer composite_transcript(2 + seed.size() + 2 + 2 + c_i.size() + 2 +
+                                  d_i.size() + kPhaseStr.size());
       char* composite_p = composite_transcript.data<char>();
 
       std::memcpy(composite_p, crypto::I2OSP(seed.size(), 2).data(), 2);
@@ -440,7 +425,7 @@ class VOprfClient {
     ComputeComposites(blinded_element, evaluated_element, &m, &z);
 
     EcPoint t2 = ec->Add(ec->Mul(ec->GetGenerator(), proof->s),
-                      ec->Mul(pk_s_, proof->c));
+                         ec->Mul(pk_s_, proof->c));
     EcPoint t3 = ec->Add(ec->Mul(m, proof->s), ec->Mul(z, proof->c));
 
     auto bm = ec->SerializePoint(pk_s_);
@@ -449,12 +434,9 @@ class VOprfClient {
     auto a2 = ec->SerializePoint(t2);
     auto a3 = ec->SerializePoint(t3);
 
-    Buffer challenge_transcript(2 + bm.size()
-                              + 2 + a0.size()
-                              + 2 + a1.size()
-                              + 2 + a2.size()
-                              + 2 + a3.size()
-                              + kPhaseStr.size());
+    Buffer challenge_transcript(2 + bm.size() + 2 + a0.size() + 2 + a1.size() +
+                                2 + a2.size() + 2 + a3.size() +
+                                kPhaseStr.size());
     char* challenge_p = challenge_transcript.data<char>();
 
     std::memcpy(challenge_p, crypto::I2OSP(bm.size(), 2).data(), 2);
@@ -504,9 +486,9 @@ class VOprfClient {
 
     auto* const ec = ctx_->BorrowEcGroup();
 
-    auto blinded_elements = std::vector<EcPoint> {blinded_element};
-    auto evaluated_elements = std::vector<EcPoint> {evaluated_element};
-    
+    auto blinded_elements = std::vector<EcPoint>{blinded_element};
+    auto evaluated_elements = std::vector<EcPoint>{evaluated_element};
+
     YACL_ENFORCE(VerifyProof(blinded_elements, evaluated_elements, proof));
 
     // blind_inv = 1 / blind
@@ -518,9 +500,8 @@ class VOprfClient {
     auto point_buf = ec->SerializePoint(ec->Mul(evaluated_element, blind_inv_));
 
     const std::string kPhaseStr = "Finalize";
-    Buffer hash_buf(2 + private_input.size()
-                    + 2 + point_buf.size()
-                    + kPhaseStr.size());
+    Buffer hash_buf(2 + private_input.size() + 2 + point_buf.size() +
+                    kPhaseStr.size());
     char* p = hash_buf.data<char>();
 
     // copy len of private input

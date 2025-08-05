@@ -60,10 +60,8 @@ std::vector<std::vector<uint8_t>> HashToField(yacl::ByteContainerView msg,
 std::pair<yacl::math::MPInt, yacl::math::MPInt> MapToCurveSSWU(
     yacl::ByteContainerView ubuf, HashToCurveCtx &ctx);
 
-yacl::math::MPInt HashToScalar(yacl::ByteContainerView msg,
-                          size_t l,
-                          HashToCurveCtx &ctx,
-                          const std::string &dst);
+yacl::math::MPInt HashToScalar(yacl::ByteContainerView msg, size_t l,
+                               HashToCurveCtx &ctx, const std::string &dst);
 
 bool IsSquare(const yacl::math::MPInt &v, const yacl::math::MPInt &mod);
 

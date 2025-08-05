@@ -203,7 +203,8 @@ TEST(HashToScalarTest, P256HashToScalarWorks) {
   char kRFC9380P256RoDst[] = "QUUX-V01-CS02-with-P256_XMD:SHA-256_SSWU_RO_";
 
   for (size_t i = 0; i < rfc_9380_test_msgs.size(); ++i) {
-    yacl::math::MPInt scalar = HashToScalarP256(rfc_9380_test_msgs[i], kRFC9380P256RoDst);
+    yacl::math::MPInt scalar =
+        HashToScalarP256(rfc_9380_test_msgs[i], kRFC9380P256RoDst);
     EXPECT_EQ(scalar.ToHexString(), rfc_9380_test_scalar[i]);
   }
 }

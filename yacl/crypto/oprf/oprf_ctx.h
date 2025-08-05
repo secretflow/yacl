@@ -105,7 +105,8 @@ class OprfConfig {
     }
   }
   static OprfMode ModeFromU8(uint8_t x) { return static_cast<OprfMode>(x); }
-  // static uint8_t ModeToU8(OprfMode mode) { return static_cast<uint8_t>(mode); }
+  // static uint8_t ModeToU8(OprfMode mode) { return static_cast<uint8_t>(mode);
+  // }
   static char ModeToU8(OprfMode mode) { return static_cast<char>(mode); }
 
   // Constructors
@@ -133,11 +134,9 @@ class OprfConfig {
   OprfCipherSuite GetCipherSuite() const { return cipher_suite_; }
 
   // Convert the information to context string
-  //  OPRF Context String: "OPRFV1-" || I2OSP(mode, 1) || "-" || ciphersuite identifier
-  //  mode for OPRF protocol variants:
-  //  modeOPRF  - 0x00
-  //  modeVOPRF - 0x01
-  //  modePOPRF - 0x02
+  //  OPRF Context String: "OPRFV1-" || I2OSP(mode, 1) || "-" || ciphersuite
+  //  identifier mode for OPRF protocol variants: modeOPRF  - 0x00 modeVOPRF -
+  //  0x01 modePOPRF - 0x02
   // fixme: mode_ should be unprintable char /x0, /x1, /x2
   std::string ToContextString() const {
     return fmt::format("OPRFV1-{}-{}", ModeToU8(mode_),
@@ -229,15 +228,15 @@ class OprfCtx {
         YACL_THROW("Unsupported cipher suite: decaf448_SHAKE256");
       case OprfCipherSuite::P256_SHA256:
         return {EcGroupFactory::Instance().Create("secp256r1",
-                                                     yacl::ArgLib = "openssl"),
+                                                  yacl::ArgLib = "openssl"),
                 HashAlgorithm::SHA256};
       case OprfCipherSuite::P384_SHA384:
         return {EcGroupFactory::Instance().Create("secp384r1",
-                                                     yacl::ArgLib = "openssl"),
+                                                  yacl::ArgLib = "openssl"),
                 HashAlgorithm::SHA384};
       case OprfCipherSuite::P521_SHA512:
         return {EcGroupFactory::Instance().Create("secp521r1",
-                                                     yacl::ArgLib = "openssl"),
+                                                  yacl::ArgLib = "openssl"),
                 HashAlgorithm::SHA512};
       default:
         YACL_THROW(
@@ -249,9 +248,7 @@ class OprfCtx {
 
   std::string GetContextString() const { return ctx_str_; }
 
-  absl::string_view GetContextView() const {
-    return ctx_str_;
-  }
+  absl::string_view GetContextView() const { return ctx_str_; }
 
   // ec group operations
   // fixme: HashToGroup
@@ -264,24 +261,19 @@ class OprfCtx {
       case OprfCipherSuite::decaf448_SHAKE256:
         YACL_THROW("Unsupported cipher suite: decaf448_SHAKE256");
       case OprfCipherSuite::P256_SHA256:
-        return ec_->HashToCurve(HashToCurveStrategy::SHA256_SSWU_RO_,
-                                 str, dst);
+        return ec_->HashToCurve(HashToCurveStrategy::SHA256_SSWU_RO_, str, dst);
       case OprfCipherSuite::P384_SHA384:
-        return ec_->HashToCurve(HashToCurveStrategy::SHA384_SSWU_NU_,
-                                 str, dst);
+        return ec_->HashToCurve(HashToCurveStrategy::SHA384_SSWU_NU_, str, dst);
       case OprfCipherSuite::P521_SHA512:
-        return ec_->HashToCurve(HashToCurveStrategy::SHA512_SSWU_NU_,
-                                 str, dst);
+        return ec_->HashToCurve(HashToCurveStrategy::SHA512_SSWU_NU_, str, dst);
       default:
-        YACL_THROW(
-            "HashToGroup failure, unknown CipherSuite code: {}",
-            (int)cipher_suite_);
+        YACL_THROW("HashToGroup failure, unknown CipherSuite code: {}",
+                   (int)cipher_suite_);
     }
   }
 
   yacl::math::MPInt HashToScalar(std::string_view str,
                                  std::string_view prefix = "HashToScalar-") {
-
     std::string dst = std::string(prefix) + ctx_str_;
     switch (cipher_suite_) {
       case OprfCipherSuite::ristretto255_Sha512:
@@ -289,18 +281,14 @@ class OprfCtx {
       case OprfCipherSuite::decaf448_SHAKE256:
         YACL_THROW("Unsupported cipher suite: decaf448_SHAKE256");
       case OprfCipherSuite::P256_SHA256:
-        return ec_->HashToScalar(HashToCurveStrategy::P256_SHA256_,
-                                 str, dst);
+        return ec_->HashToScalar(HashToCurveStrategy::P256_SHA256_, str, dst);
       case OprfCipherSuite::P384_SHA384:
-        return ec_->HashToScalar(HashToCurveStrategy::P384_SHA384_,
-                                 str, dst);
+        return ec_->HashToScalar(HashToCurveStrategy::P384_SHA384_, str, dst);
       case OprfCipherSuite::P521_SHA512:
-        return ec_->HashToScalar(HashToCurveStrategy::P521_SHA512_,
-                                 str, dst);
+        return ec_->HashToScalar(HashToCurveStrategy::P521_SHA512_, str, dst);
       default:
-        YACL_THROW(
-            "HashToScalar failure, unknown CipherSuite code: {}",
-            (int)cipher_suite_);
+        YACL_THROW("HashToScalar failure, unknown CipherSuite code: {}",
+                   (int)cipher_suite_);
     }
   }
 

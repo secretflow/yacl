@@ -278,18 +278,15 @@ std::vector<std::vector<uint8_t>> HashToField(yacl::ByteContainerView msg,
   return ret;
 }
 
-yacl::math::MPInt HashToScalar(yacl::ByteContainerView msg,
-                          size_t l,
-                          HashToCurveCtx &ctx,
-                          const std::string &dst) {
-  std::vector<uint8_t> uniform_bytes =
-      ExpandMessageXmd(msg, ctx, dst, l);
+yacl::math::MPInt HashToScalar(yacl::ByteContainerView msg, size_t l,
+                               HashToCurveCtx &ctx, const std::string &dst) {
+  std::vector<uint8_t> uniform_bytes = ExpandMessageXmd(msg, ctx, dst, l);
 
   absl::Span<uint8_t> data = absl::MakeSpan(&uniform_bytes[0], l);
 
   yacl::math::MPInt scalar;
   scalar.FromMagBytes(data, yacl::Endian::big);
-;
+  ;
   scalar = scalar.Mod(ctx.aux.at("n"));
 
   return scalar;
