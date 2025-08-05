@@ -75,15 +75,15 @@ The protocol is as generally depicted above:
 
 In the VOPRF protocol, unlike the naive protocol described earlier, proofs are generated in a batched manner. To achieve this, the Client and Server must first exchange a public key corresponding to the private key $ k $ employed for computing the PRF before initiating the protocol interaction. This public key is used during proof generation and verification. The general approach for generating the NIZK proof is as follows:
 
-1. Aggregate the public key $ pkS = k \cdot g $ and the sets $ \{{blind_i} \cdot H(x_i)\},\ \{{(blind_i + k)} \cdot H(x_i)\} $, resulting in $ M = \sum (HashToScalar({blind_i} \cdot H(x_i) || {(blind_i + k)} \cdot H(x_i)) * ({blind_i} \cdot H(x_i))) $ and $ Z = k \cdot M $;
+1. Aggregate the public key $ pkS = {skS} \cdot g $ and the sets $ \{{blind_i} \cdot H(x_i)\},\ \{{(blind_i + {skS})} \cdot H(x_i)\} $, resulting in $ M = \sum (HashToScalar({blind_i} \cdot H(x_i) || {(blind_i + skS)} \cdot H(x_i)) * ({blind_i} \cdot H(x_i))) $ and $ Z = k \cdot M $;
 2. Generate a random value $ r $, compute $ r \cdot g, r \cdot M $; 
 3. Apply the Fiat-Shamir (FS) transformation to calculate the hash of the transcript ($ pkS || M || Z || r \cdot g || r \cdot M $), denoted as $ c $; 
-4. The proof is $ (c, s = r - ck) $.
+4. The proof is $ (c, s = r - c \cdot skS) $.
 
 Verification of the proof proceeds as follows:
 
-1. First, aggregate the public key and the sets $ \{{blind_i} \cdot H(x_i)\},\ \{{(blind_i + k)} \cdot H(x_i)\} $, to obtain $ M,Z $;
-2. Compute $ s \cdot g + c \cdot (k \cdot g) $ and $ s \cdot M + c \cdot Z $;
+1. First, aggregate the public key and the sets $ \{{blind_i} \cdot H(x_i)\},\ \{{(blind_i + skS)} \cdot H(x_i)\} $, to obtain $ M,Z $;
+2. Compute $ s \cdot g + c \cdot (skS \cdot g) $ and $ s \cdot M + c \cdot Z $;
 3. Compute the hash of the transcript again and compare it with $ c $ for verification.
 
 It can be verified that:
@@ -111,7 +111,7 @@ Thus, the computed hash values will match. Since $ M,Z $ incorporate all the Cli
 
 In POPRF, the extra public information $ info $ has to be integrated with the public key $ pkS $ to generate the tweaked key $ T = {info} \cdot {pkS} $, and is used to compute and verify the proof. The rest of the algorithm is the same as in the original VOPRF.
 
-## 参考文献
+## References
 
 [1] [SoK: Oblivious Pseudorandom Functions.](https://eprint.iacr.org/2022/302.pdf)
 
