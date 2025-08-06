@@ -53,9 +53,9 @@ Client(input)                             Server(skS)
 
 The protocol is as generally depicted above:
 
-1. The Client first processes the input using a random blinding value $ blind $, computing $ blindElement = {blind} \cdot H(input) $. The random blinding ensures the Client's input remains hidden.
-2. Upon receiving $ blindElemet $, the Server computes $ evaluatedElement = {skS} \cdot {blindElement} $ using its private key $ skS $, and returns this result to the Client.
-3. The Client computes the inverse of $ blind $ and recovers $ {1/blind} \cdot {blindElement} $, effectively unblinding the result.
+1. The Client first processes the input using a random blinding value $ blind $, computing $ blindedElement = {blind} \cdot H(input) $. The random blinding ensures the Client's input remains hidden.
+2. Upon receiving $ blindedElement $, the Server computes $ evaluatedElement = {skS} \cdot {blindedElement} $ using its private key $ skS $, and returns this result to the Client.
+3. The Client computes the inverse of $ blind $ and recovers $ {1/blind} \cdot {evaluatedElement} $, effectively unblinding the result.
 
 ### VOPRF
 
@@ -86,10 +86,16 @@ Verification of the proof proceeds as follows:
 2. Compute $ s \cdot g + c \cdot (skS \cdot g) $ and $ s \cdot M + c \cdot Z $;
 3. Compute the hash of the transcript again and compare it with $ c $ for verification.
 
-It can be verified that:
+Since:
 
 - $ s \cdot g + c \cdot (k \cdot g) = r \cdot g - {ck} \cdot g + {kc} \cdot g = r \cdot g $.
 - $ s \cdot M + c \cdot Z = r \cdot M - {ck} \cdot M + {kc} \cdot M = r \cdot M $.
+
+It can be verified that:
+
+$$
+Hash(pkS || M || Z || r \cdot g || r \cdot M) = Hash(pkS || M || Z || s \cdot g + c \cdot (k \cdot g) || s \cdot M + c \cdot Z)
+$$
 
 Thus, the computed hash values will match. Since $ M,Z $ incorporate all the Client's inputs and the Server's oblivious evaluation results, this NIZK proof demonstrates that the Server's output was generated using the private key $ k $ corresponding to the pre-exchanged public key. Rigorous proofs of completeness and knowledge soundness are omitted here for brevity.
 
@@ -109,7 +115,7 @@ Thus, the computed hash values will match. Since $ M,Z $ incorporate all the Cli
  blindedElement, proof, info, tweakedKey)
  ```
 
-In POPRF, the extra public information $ info $ has to be integrated with the public key $ pkS $ to generate the tweaked key $ T = {info} \cdot {pkS} $, and is used to compute and verify the proof. The rest of the algorithm is the same as in the original VOPRF.
+In POPRF, the extra public information $ info $ has to be integrated with the public key $ pkS $ to generate the tweaked key $ T = Hash(info) + {pkS} $, and is used to compute and verify the proof. The rest of the algorithm is the same as in the original VOPRF.
 
 ## References
 
