@@ -11,7 +11,7 @@ OPRF consists of an underlying PRF and an oblivious evaluation method:
 
 ## Hashed Diffie-Hellman OPRF
 
-The HashedDH is a simple class of pseudorandom functions that use a hash function abstracted as a Random Oracle to ensure pseudorandomness. For example, assuming $ H(x) $ is a secure hash function, then $ f_k^H(x) = H(x)^k $ forms a PRF.
+The HashedDH is a simple class of pseudorandom functions that use a hash function $ H(x) $ abstracted as a random oracle, producing uniformly distributed group elements. For example, assuming $ H(x)=x^a $, where $ a $ is a random value, then $ f_k^H(x) = H(x)^k $ forms a PRF.
 
 Choosing a random $ a $, $ H(x) = x^a $ is an one-way function, and $ f^H_k(x) = (x^a)^k = x^{ak} $ forms a DH-style value (similar to the shared secret in the Diffie-Hellman key exchange, where $ a $ and $ k $ are provided by the hash function and private key, respectively). This PRF is called the HashedDH PRF.
 
@@ -27,9 +27,9 @@ Verifiability describes the ability to verify the correctness of the output resu
 
 A naive VOPRF protocol using the Schnorr protocol could work as follows:
 
-1. The Client selects a blind exponent $ r $, computes $ a = H(x)^r $, and sends it to the Server.
-2. The Server computes $ b = (H(x)^{r})^k $, selects a random $ d $, computes $ c = (H(x)^r)^d,\ s = d + kH_2(c) $, and sends $ (b,c,s) $ to the Client. 
-3. The Client computes $ (H(x)^r)^s $ and compares it with $ c \cdot b^{H_2(c)} $. If they match, verification passes, and the Client recovers $ b^{1/r} = H(x)^k $.
+1. The Client selects a blind exponent $ r $, computes $ a = r \cdot H(x) $, and sends it to the Server.
+2. The Server computes $ b = k \cdot (r \cdot H(x)) $, selects a random $ d $, computes $ c = d \cdot (r \cdot H(x)),\ s = d + kH_2(c) $, and sends $ (b,c,s) $ to the Client. 
+3. The Client computes $ s \cdot ( r \cdot H(x)) $ and compares it with $ c + b \cdot {H_2(c)} $. If they match, verification passes, and the Client recovers $ {(1/r)} \cdot b = k \cdot H(x) $.
 
 ## RFC 9497
 
@@ -75,7 +75,7 @@ The protocol is as generally depicted above:
 
 In the VOPRF protocol, unlike the naive protocol described earlier, proofs are generated in a batched manner. To achieve this, the Client and Server must first exchange a public key corresponding to the private key $ k $ employed for computing the PRF before initiating the protocol interaction. This public key is used during proof generation and verification. The general approach for generating the NIZK proof is as follows:
 
-1. Aggregate the public key $ pkS = {skS} \cdot g $ and the sets $ \{{blind_i} \cdot H(x_i)\},\ \{{(blind_i + {skS})} \cdot H(x_i)\} $, resulting in $ M = \sum (HashToScalar({blind_i} \cdot H(x_i) || {(blind_i + skS)} \cdot H(x_i)) * ({blind_i} \cdot H(x_i))) $ and $ Z = k \cdot M $;
+1. Aggregate the public key $ pkS = {skS} \cdot g $, the context string for a seed $ seed $. For the sets $\{blindedElement\}$, $\{evaluatedElement\}$ for $ M = \sum (HashToScalar(i || blindedElement_i || evaluatedElement_i) \cdot blindedElement_i) $ and $ Z = k \cdot M $;
 2. Generate a random value $ r $, compute $ r \cdot g, r \cdot M $; 
 3. Apply the Fiat-Shamir (FS) transformation to calculate the hash of the transcript ($ pkS || M || Z || r \cdot g || r \cdot M $), denoted as $ c $; 
 4. The proof is $ (c, s = r - c \cdot skS) $.
