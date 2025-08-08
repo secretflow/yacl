@@ -359,7 +359,7 @@ EcPoint OpensslGroup::HashToCurve(HashToCurveStrategy strategy,
       return CopyPoint(p);
     }
     default:
-      YACL_THROW("Openssl only supports TryAndRehash strategy now. select={}",
+      YACL_THROW("Unsupported HashToCurve Strategy by Openssl. select={}",
                  (int)strategy);
   }
 
@@ -424,7 +424,7 @@ yacl::math::MPInt OpensslGroup::HashToScalar(HashToCurveStrategy strategy,
       return s;
     }
     default:
-      YACL_THROW("Openssl only supports TryAndRehash strategy now. select={}",
+      YACL_THROW("Unsupported HashToScalar Strategy by Openssl. select={}",
                  (int)strategy);
   }
 }
