@@ -1,4 +1,4 @@
-// Copyright 2024 Ant Group Co., Ltd.
+// Copyright 2025 @gingerbeam
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -86,10 +86,6 @@ class VOprfServer {
     GenKeyPair();
   }
 
-  // fixme:
-  // does not suupport batch,
-  // for ecc does not provide an identity element
-  // Compute the composite values for ec points m and z (fast)
   void ComputeCompositesFast(const std::vector<EcPoint>& blinded_element,
                              const std::vector<EcPoint>& evaluated_element,
                              EcPoint* m, EcPoint* z) {
