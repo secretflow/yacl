@@ -58,6 +58,9 @@ static std::map<std::string, HashToCurveCtx> kPredefinedCurveCtxs = {
           {"c1",  // RFC9390 I.1 sqrt for q = 3 (mod 4)
            "0x3fffffffc00000004000000000000000"
            "00000000400000000000000000000000"_mp},
+          {"n",
+           "0xffffffff00000000ffffffffffffffff"
+           "bce6faada7179e84f3b9cac2fc632551"_mp},
       }}},
     {"P-384",
      {48,
@@ -266,13 +269,27 @@ std::vector<std::vector<uint8_t>> HashToField(yacl::ByteContainerView msg,
     yacl::math::MPInt e_j;
     e_j.FromMagBytes(data, yacl::Endian::big);
 
-    yacl::math::MPInt e_jp = e_j.Mod(ctx.aux["p"]);
+    e_j = e_j.Mod(ctx.aux.at("p"));
 
     ret[i].resize(ctx.key_size);
-    MPIntToBytesWithPad(ret[i], ctx.key_size, e_jp);
+    MPIntToBytesWithPad(ret[i], ctx.key_size, e_j);
   }
 
   return ret;
+}
+
+yacl::math::MPInt HashToScalar(yacl::ByteContainerView msg, size_t l,
+                               HashToCurveCtx &ctx, const std::string &dst) {
+  std::vector<uint8_t> uniform_bytes = ExpandMessageXmd(msg, ctx, dst, l);
+
+  absl::Span<uint8_t> data = absl::MakeSpan(&uniform_bytes[0], l);
+
+  yacl::math::MPInt scalar;
+  scalar.FromMagBytes(data, yacl::Endian::big);
+  ;
+  scalar = scalar.Mod(ctx.aux.at("n"));
+
+  return scalar;
 }
 
 bool IsSquare(const yacl::math::MPInt &v, const yacl::math::MPInt &mod) {
