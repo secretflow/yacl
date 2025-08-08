@@ -65,11 +65,11 @@ class FourQGroup : public EcGroupSketch {
 
   EcPoint HashToCurve(HashToCurveStrategy strategy,
                       std::string_view str,
-                      std::string_view dst = "") const override;
+                      std::string_view dst) const override;
 
   yacl::math::MPInt HashToScalar(HashToCurveStrategy strategy,
                       std::string_view str,
-                      std::string_view dst = "") const override;
+                      std::string_view dst) const override;
 
   size_t HashPoint(const EcPoint& point) const override;
   bool PointEqual(const EcPoint& p1, const EcPoint& p2) const override;

@@ -93,9 +93,6 @@ enum class HashToCurveStrategy {
   SHA384_SSWU_NU_,  // for P384
   SHA512_SSWU_NU_,  // for P521
   SHA512_ELL2_NU_,  // for Curve25519
-  SHA256_SSWU_RO_,  // for P256
-  SHA384_SSWU_RO_,  // for P384
-  SHA512_SSWU_RO_,  // for P521
 
   // This strategy is a collection of the following methods, and SPI will
   // automatically select the applicable method according to different curves:
@@ -106,6 +103,9 @@ enum class HashToCurveStrategy {
   //  - SHAKE256_ELL2_RO_
   // Performance: This strategy takes 12 times longer than TryAndIncrement on
   // SM2
+  SHA256_SSWU_RO_,  // for P256
+  SHA384_SSWU_RO_,  // for P384
+  SHA512_SSWU_RO_,  // for P521
   SHA512_ELL2_RO_,  // for Curve25519
 
   // This strategy is a collection of the methods for hash_to_scalar
@@ -275,16 +275,26 @@ class EcGroup {
   //   valid strategy for specific lib.
   virtual EcPoint HashToCurve(HashToCurveStrategy strategy,
                               std::string_view str,
-                              std::string_view dst = "") const = 0;
-  EcPoint HashToCurve(std::string_view str) {
+                              std::string_view dst) const = 0;
+
+  EcPoint HashToCurve(HashToCurveStrategy strategy,
+                      std::string_view str) const {
+    return HashToCurve(strategy, str, std::string_view(""));
+  }
+  EcPoint HashToCurve(std::string_view str) const {
     // Autonomous strategy is lib's default strategy and will always be valid;
     return HashToCurve(HashToCurveStrategy::Autonomous, str);
   }
 
   virtual yacl::math::MPInt HashToScalar(HashToCurveStrategy strategy,
                               std::string_view str,
-                              std::string_view dst = "") const = 0;
-// fixme: Autonomous strategy by default
+                              std::string_view dst) const = 0;
+
+  yacl::math::MPInt HashToScalar(HashToCurveStrategy strategy,
+                                 std::string_view str) const {
+    return HashToScalar(strategy, str, std::string_view(""));
+  }
+
   yacl::math::MPInt HashToScalar(std::string_view str) const {
     return HashToScalar(HashToCurveStrategy::Autonomous, str);
   }
