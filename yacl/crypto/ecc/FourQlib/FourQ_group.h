@@ -17,6 +17,7 @@
 #include "FourQ_internal.h"
 
 #include "yacl/crypto/ecc/group_sketch.h"
+#include "yacl/math/mpint/mp_int.h"
 
 namespace yacl::crypto::FourQ {
 
@@ -62,8 +63,12 @@ class FourQGroup : public EcGroupSketch {
   EcPoint DeserializePoint(ByteContainerView buf,
                            PointOctetFormat format) const override;
 
-  EcPoint HashToCurve(HashToCurveStrategy strategy,
-                      std::string_view str) const override;
+  EcPoint HashToCurve(HashToCurveStrategy strategy, std::string_view str,
+                      std::string_view dst) const override;
+
+  yacl::math::MPInt HashToScalar(HashToCurveStrategy strategy,
+                                 std::string_view str,
+                                 std::string_view dst) const override;
 
   size_t HashPoint(const EcPoint& point) const override;
   bool PointEqual(const EcPoint& p1, const EcPoint& p2) const override;

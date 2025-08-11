@@ -43,4 +43,32 @@ crypto::EcPoint EncodeToCurveP521(yacl::ByteContainerView buffer,
   return p;
 }
 
+// P521_XMD:SHA-512_SSWU_RO_
+crypto::EcPoint HashToCurveP521(yacl::ByteContainerView buffer,
+                                const std::string &dst) {
+  YACL_ENFORCE((dst.size() >= 16) && (dst.size() <= 255),
+               "domain separation tag length: {} not in 16B-255B", dst.size());
+
+  HashToCurveCtx ctx = GetHashToCurveCtxByName("P-521");
+  std::vector<std::vector<uint8_t>> u = HashToField(buffer, 2, 98, ctx, dst);
+  yacl::math::MPInt qx;
+  yacl::math::MPInt qy;
+  yacl::math::MPInt rx;
+  yacl::math::MPInt ry;
+
+  std::tie(qx, qy) = MapToCurveSSWU(u[0], ctx);
+  std::tie(rx, ry) = MapToCurveSSWU(u[1], ctx);
+
+  return AffinePointAddNIST(qx, qy, rx, ry, ctx.aux.at("p"));
+}
+
+yacl::math::MPInt HashToScalarP521(yacl::ByteContainerView buffer,
+                                   const std::string &dst) {
+  YACL_ENFORCE((dst.size() >= 16) && (dst.size() <= 255),
+               "domain separation tag length: {} not in 16B-255B", dst.size());
+
+  HashToCurveCtx ctx = GetHashToCurveCtxByName("P-521");
+  return HashToScalar(buffer, 98, ctx, dst);
+}
+
 }  // namespace yacl

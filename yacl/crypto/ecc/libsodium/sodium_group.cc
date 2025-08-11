@@ -164,8 +164,15 @@ EcPoint SodiumGroup::DeserializePoint(ByteContainerView buf,
   return p;
 }
 
-EcPoint SodiumGroup::HashToCurve(HashToCurveStrategy, std::string_view) const {
+EcPoint SodiumGroup::HashToCurve(HashToCurveStrategy, std::string_view,
+                                 std::string_view) const {
   YACL_THROW("not impl");
+}
+
+yacl::math::MPInt SodiumGroup::HashToScalar(HashToCurveStrategy,
+                                            std::string_view,
+                                            std::string_view) const {
+  YACL_THROW("HashToScalar not implemented for SodiumGroup");
 }
 
 size_t SodiumGroup::HashPoint(const EcPoint& point) const {

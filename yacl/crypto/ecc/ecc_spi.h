@@ -100,7 +100,18 @@ enum class HashToCurveStrategy {
   //  - SHAKE256_ELL2_RO_
   // Performance: This strategy takes 12 times longer than TryAndIncrement on
   // SM2
+  SHA256_SSWU_RO_,  // for P256
+  SHA384_SSWU_RO_,  // for P384
+  SHA512_SSWU_RO_,  // for P521
   SHA512_ELL2_RO_,  // for Curve25519
+
+  // This strategy is a collection of the methods for hash_to_scalar
+  //  - P256-SHA256 // for P256
+  //  - P384-SHA384 // for P384
+  //  - P521-SHA512 // for P521
+  P256_SHA256_,
+  P384_SHA384_,
+  P521_SHA512_,
 };
 
 // Base class of elliptic curve
@@ -260,10 +271,29 @@ class EcGroup {
   //   Waring! Not all strategies are supported by libs, be care to choose a
   //   valid strategy for specific lib.
   virtual EcPoint HashToCurve(HashToCurveStrategy strategy,
-                              std::string_view str) const = 0;
-  EcPoint HashToCurve(std::string_view str) {
+                              std::string_view str,
+                              std::string_view dst) const = 0;
+
+  EcPoint HashToCurve(HashToCurveStrategy strategy,
+                      std::string_view str) const {
+    return HashToCurve(strategy, str, std::string_view(""));
+  }
+  EcPoint HashToCurve(std::string_view str) const {
     // Autonomous strategy is lib's default strategy and will always be valid;
     return HashToCurve(HashToCurveStrategy::Autonomous, str);
+  }
+
+  virtual yacl::math::MPInt HashToScalar(HashToCurveStrategy strategy,
+                                         std::string_view str,
+                                         std::string_view dst) const = 0;
+
+  yacl::math::MPInt HashToScalar(HashToCurveStrategy strategy,
+                                 std::string_view str) const {
+    return HashToScalar(strategy, str, std::string_view(""));
+  }
+
+  yacl::math::MPInt HashToScalar(std::string_view str) const {
+    return HashToScalar(HashToCurveStrategy::Autonomous, str);
   }
 
   // Get the hash code of EcPoint so that you can store EcPoint in STL

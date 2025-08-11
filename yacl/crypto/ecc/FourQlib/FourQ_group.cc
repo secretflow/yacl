@@ -268,7 +268,8 @@ EcPoint FourQGroup::DeserializePoint(ByteContainerView buf,
 }
 
 EcPoint FourQGroup::HashToCurve(HashToCurveStrategy strategy,
-                                std::string_view input) const {
+                                std::string_view input,
+                                std::string_view) const {
   YACL_ENFORCE(strategy == HashToCurveStrategy::Autonomous,
                "FourQlib only supports Autonomous strategy now. select={}",
                static_cast<int>(strategy));
@@ -289,6 +290,13 @@ EcPoint FourQGroup::HashToCurve(HashToCurveStrategy strategy,
   point_setup(p, CastR1(r));
 
   return r;
+}
+
+// FIXME: HashToScalar not implemented for FourQGroup
+yacl::math::MPInt FourQGroup::HashToScalar(HashToCurveStrategy,
+                                           std::string_view,
+                                           std::string_view) const {
+  YACL_THROW("HashToScalar not implemented for FourQGroup");
 }
 
 size_t FourQGroup::HashPoint(const EcPoint& point) const {

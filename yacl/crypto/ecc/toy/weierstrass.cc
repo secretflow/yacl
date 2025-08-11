@@ -142,9 +142,15 @@ EcPoint ToyWeierstrassGroup::DeserializePoint(ByteContainerView buf,
   return op;
 }
 
-EcPoint ToyWeierstrassGroup::HashToCurve(HashToCurveStrategy,
+EcPoint ToyWeierstrassGroup::HashToCurve(HashToCurveStrategy, std::string_view,
                                          std::string_view) const {
   YACL_THROW("not impl");
+}
+
+yacl::math::MPInt ToyWeierstrassGroup::HashToScalar(HashToCurveStrategy,
+                                                    std::string_view,
+                                                    std::string_view) const {
+  YACL_THROW("HashToScalar not implemented for ToyWeierstrassGroup");
 }
 
 bool ToyWeierstrassGroup::PointEqual(const EcPoint &p1,

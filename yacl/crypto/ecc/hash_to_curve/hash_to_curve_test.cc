@@ -16,10 +16,41 @@
 
 #include "gtest/gtest.h"
 
+#include "yacl/crypto/ecc/ec_point.h"
 #include "yacl/crypto/ecc/hash_to_curve/curve25519.h"
+#include "yacl/crypto/ecc/hash_to_curve/hash_to_curve_util.h"
 #include "yacl/math/mpint/mp_int.h"
 
 namespace yacl::crypto::test {
+
+TEST(AffinePointAdditionTest, P256Works) {
+  yacl::math::MPInt n =
+      "0xffffffff00000000ffffffffffffffff"
+      "bce6faada7179e84f3b9cac2fc632551"_mp;
+
+  yacl::math::MPInt p =
+      "0xffffffff000000010000000000000000"
+      "00000000ffffffffffffffffffffffff"_mp;
+
+  yacl::math::MPInt x1 =
+      "0x6B17D1F2E12C4247F8BCE6E563A440F277037D812DEB33A0F4A13945D898C296"_mp;
+  yacl::math::MPInt y1 =
+      "0x4FE342E2FE1A7F9B8EE7EB4A7C0F9E162BCE33576B315ECECBB6406837BF51F5"_mp;
+
+  yacl::math::MPInt x2 =
+      "0x5ECBE4D1A6330A44C8F7EF951D4BF165E6C6B721EFADA985FB41661BC6E7FD6C"_mp;
+  yacl::math::MPInt y2 =
+      "0x8734640C4998FF7E374B06CE1A64A2ECD82AB036384FB83D9A79B127A27D5032"_mp;
+
+  auto res = AffinePointAddNIST(x1, y1, x2, y2, p);
+
+  EXPECT_EQ(
+      res.x,
+      "0xE2534A3532D08FBBA02DDE659EE62BD0031FE2DB785596EF509302446B030852"_mp);
+  EXPECT_EQ(
+      res.y,
+      "0xE0F1575A4C633CC719DFEE5FDA862D764EFC96C3F30EE0055C42C23F184ED8C6"_mp);
+}
 
 TEST(HashToCurveTest, P256EncodeToCurveWorks) {
   std::vector<std::string> rfc_9380_test_msgs = {"", "abc", "abcdef0123456789"};
@@ -41,6 +72,44 @@ TEST(HashToCurveTest, P256EncodeToCurveWorks) {
     auto p = std::get<AffinePoint>(px);
     EXPECT_EQ(p.x.ToHexString(), rfc_9380_test_px[i]);
     EXPECT_EQ(p.y.ToHexString(), rfc_9380_test_py[i]);
+  }
+}
+
+TEST(HashToCurveTest, P256HashToCurveWorks) {
+  std::vector<std::string> rfc_9380_test_msgs = {"", "abc", "abcdef0123456789"};
+
+  std::vector<std::string> rfc_9380_test_q0x = {
+      "AB640A12220D3FF283510FF3F4B1953D09FAD35795140B1C5D64F313967934D5",
+      "5219AD0DDEF3CC49B714145E91B2F7DE6CE0A7A7DC7406C7726C7E373C58CB48",
+      "A17BDF2965EB88074BC01157E644ED409DAC97CFCF0C61C998ED0FA45E79E4A2"};
+
+  std::vector<std::string> rfc_9380_test_q0y = {
+      "DCCB558863804A881D4FFF3455716C836CEF230E5209594DDD33D85C565B19B1",
+      "7950144E52D30ACBEC7B624C203B1996C99617D0B61C2442354301B191D93ECF",
+      "4F1BC80C70D411A3CC1D67AEAE6E726F0F311639FEE560C7F5A664554E3C9C2E"};
+
+  std::vector<std::string> rfc_9380_test_q1x = {
+      "51CCE63C50D972A6E51C61334F0F4875C9AC1CD2D3238412F84E31DA7D980EF5",
+      "19B7CB4EFCFEAF39F738FE638E31D375AD6837F58A852D032FF60C69EE3875F",
+      "7DA48BB67225C1A17D452C983798113F47E438E4202219DD0715F8419B274D66"};
+
+  std::vector<std::string> rfc_9380_test_q1y = {
+      "B45D1A36D00AD90E5EC7840A60A4DE411917FBE7C82C3949A6E699E5A1B66AAC",
+      "589A62D2B22357FED5449BC38065B760095EBE6AEAC84B01156EE4252715446E",
+      "B765696B2913E36DB3016C47EDB99E24B1DA30E761A8A3215DC0EC4D8F96E6F9"};
+
+  char kRFC9380P256RoDst[] = "QUUX-V01-CS02-with-P256_XMD:SHA-256_SSWU_RO_";
+
+  for (size_t i = 0; i < rfc_9380_test_msgs.size(); ++i) {
+    auto qs = HashToCurveP256Coord(rfc_9380_test_msgs[i], kRFC9380P256RoDst);
+    crypto::AffinePoint q0 = qs[0];
+    // auto q0 = std::get<AffinePoint>(qs[0]);
+    EXPECT_EQ(q0.x.ToHexString(), rfc_9380_test_q0x[i]);
+    EXPECT_EQ(q0.y.ToHexString(), rfc_9380_test_q0y[i]);
+    crypto::AffinePoint q1 = qs[1];
+    // auto q1 = std::get<AffinePoint>(qs[1]);
+    EXPECT_EQ(q1.x.ToHexString(), rfc_9380_test_q1x[i]);
+    EXPECT_EQ(q1.y.ToHexString(), rfc_9380_test_q1y[i]);
   }
 }
 
@@ -153,4 +222,22 @@ TEST(HashToCurveTest, Curve25519HashToCurveWorks) {
     EXPECT_EQ(p.y.ToHexString(), rfc_9380_test_py[i]);
   }
 }
+
+TEST(HashToScalarTest, P256HashToScalarWorks) {
+  std::vector<std::string> rfc_9380_test_msgs = {"", "abc", "abcdef0123456789"};
+
+  std::vector<std::string> rfc_9380_test_scalar = {
+      "600E9F806E6766D4E33183869E7A68CDD9AD77F81AEB564AFC810C20108AFA27",
+      "FC85B6DAC2E8BE7343454B82C1BD5DAD62CF42331F3FA060FF7407D79E15BE6B",
+      "8917D16480EE360D3D6EDDAD59B32F2E46F6A6C25410946B5DB2A56AF0BA02E5"};
+
+  char kRFC9380P256RoDst[] = "QUUX-V01-CS02-with-P256_XMD:SHA-256_SSWU_RO_";
+
+  for (size_t i = 0; i < rfc_9380_test_msgs.size(); ++i) {
+    yacl::math::MPInt scalar =
+        HashToScalarP256(rfc_9380_test_msgs[i], kRFC9380P256RoDst);
+    EXPECT_EQ(scalar.ToHexString(), rfc_9380_test_scalar[i]);
+  }
+}
+
 }  // namespace yacl::crypto::test
