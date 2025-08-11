@@ -109,8 +109,7 @@ EcPoint Lib25519Group::DeserializePoint(ByteContainerView buf,
   return p;
 }
 
-EcPoint Lib25519Group::HashToCurve(HashToCurveStrategy,
-                                   std::string_view,
+EcPoint Lib25519Group::HashToCurve(HashToCurveStrategy, std::string_view,
                                    std::string_view) const {
   YACL_THROW("not implemented");
 }

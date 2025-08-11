@@ -296,7 +296,7 @@ EcPoint FourQGroup::HashToCurve(HashToCurveStrategy strategy,
 yacl::math::MPInt FourQGroup::HashToScalar(HashToCurveStrategy,
                                            std::string_view,
                                            std::string_view) const {
-    YACL_THROW("HashToScalar not implemented for FourQGroup");
+  YACL_THROW("HashToScalar not implemented for FourQGroup");
 }
 
 size_t FourQGroup::HashPoint(const EcPoint& point) const {

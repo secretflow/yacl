@@ -284,8 +284,8 @@ class EcGroup {
   }
 
   virtual yacl::math::MPInt HashToScalar(HashToCurveStrategy strategy,
-                              std::string_view str,
-                              std::string_view dst) const = 0;
+                                         std::string_view str,
+                                         std::string_view dst) const = 0;
 
   yacl::math::MPInt HashToScalar(HashToCurveStrategy strategy,
                                  std::string_view str) const {

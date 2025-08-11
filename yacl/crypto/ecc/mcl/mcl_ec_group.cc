@@ -465,8 +465,8 @@ EcPoint MclGroupT<Fp_, Zn_>::HashToCurve(HashToCurveStrategy strategy,
 
 template <typename Fp_, typename Zn_>
 yacl::math::MPInt MclGroupT<Fp_, Zn_>::HashToScalar(HashToCurveStrategy,
-                                          std::string_view,
-                                          std::string_view) const {
+                                                    std::string_view,
+                                                    std::string_view) const {
   YACL_THROW("HashToScalar not implemented for MclGroupT");
 }
 

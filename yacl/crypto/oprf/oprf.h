@@ -51,8 +51,8 @@ class OprfServer {
     GenKeyPair();
   }
 
-  explicit OprfServer(const OprfConfig& config,
-                       const std::array<char, 32> seed, const std::string& info)
+  explicit OprfServer(const OprfConfig& config, const std::array<char, 32> seed,
+                      const std::string& info)
       : ctx_(std::make_shared<OprfCtx>(config)) {
     DeriveKeyPair(seed, info);
   }
@@ -186,7 +186,7 @@ class OprfClient {
 
     // hash every thing in hash_buf
     return SslHash(ctx_->GetHashAlgorithm()).Update(hash_buf).CumulativeHash();
-  } 
+  }
 
   void RefreshBlind() {
     YACL_ENFORCE(ctx_ != nullptr);  // make sure context is setup

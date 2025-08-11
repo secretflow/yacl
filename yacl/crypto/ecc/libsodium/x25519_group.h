@@ -59,8 +59,7 @@ class X25519Group : public SodiumGroup {
   EcPoint DeserializePoint(ByteContainerView buf,
                            PointOctetFormat format) const override;
 
-  EcPoint HashToCurve(HashToCurveStrategy strategy,
-                      std::string_view str,
+  EcPoint HashToCurve(HashToCurveStrategy strategy, std::string_view str,
                       std::string_view dst) const override;
 
   yacl::math::MPInt HashToScalar(HashToCurveStrategy strategy,

@@ -38,7 +38,7 @@ yacl_cc_library(
 
 yacl_cc_library(
     name = "voprf",
-    # srcs = ["oprf.cc"],
+    # srcs = ["voprf.cc"],
     hdrs = ["voprf.h"],
     deps = [
         ":oprf_ctx",

@@ -26,6 +26,11 @@
 
 namespace yacl::crypto {
 
+struct Proof {
+  math::MPInt c;
+  math::MPInt s;
+};
+
 // rfc8017 4.1 I2OSP
 // I2OSP - Integer-to-Octet-String primitive
 // Input:
@@ -127,6 +132,11 @@ class OprfConfig {
     return config;
   }
 
+  static OprfConfig& GetPOPRFDefault() {
+    static OprfConfig config(OprfMode::POPRF, kDefaultCipherSuite);
+    return config;
+  }
+
   // Get the defined oprf mode
   OprfMode GetMode() const { return mode_; }
 
@@ -137,7 +147,7 @@ class OprfConfig {
   //  OPRF Context String: "OPRFV1-" || I2OSP(mode, 1) || "-" || ciphersuite
   //  identifier mode for OPRF protocol variants: modeOPRF  - 0x00 modeVOPRF -
   //  0x01 modePOPRF - 0x02
-  // fixme: mode_ should be unprintable char /x0, /x1, /x2
+  // FIXME: mode_ should be unprintable char /x0, /x1, /x2
   std::string ToContextString() const {
     return fmt::format("OPRFV1-{}-{}", ModeToU8(mode_),
                        CipherSuiteToStr(cipher_suite_));
@@ -251,7 +261,7 @@ class OprfCtx {
   absl::string_view GetContextView() const { return ctx_str_; }
 
   // ec group operations
-  // fixme: HashToGroup
+  // FIXME: HashToGroup
   EcPoint HashToGroup(std::string_view str,
                       std::string_view prefix = "HashToGroup-") {
     std::string dst = std::string(prefix) + ctx_str_;

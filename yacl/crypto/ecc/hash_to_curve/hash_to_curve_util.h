@@ -68,11 +68,10 @@ bool IsSquare(const yacl::math::MPInt &v, const yacl::math::MPInt &mod);
 
 bool Sgn0(const yacl::math::MPInt &v);
 
-crypto::AffinePoint AffinePointAddNIST(
-  const yacl::math::MPInt& x1,
-  const yacl::math::MPInt& y1,
-  const yacl::math::MPInt& x2,
-  const yacl::math::MPInt& y2,
-  const yacl::math::MPInt& p);
+crypto::AffinePoint AffinePointAddNIST(const yacl::math::MPInt &x1,
+                                       const yacl::math::MPInt &y1,
+                                       const yacl::math::MPInt &x2,
+                                       const yacl::math::MPInt &y2,
+                                       const yacl::math::MPInt &p);
 
 }  // namespace yacl

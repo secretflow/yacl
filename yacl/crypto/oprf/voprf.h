@@ -28,11 +28,6 @@
 
 namespace yacl::crypto {
 
-struct Proof {
-  math::MPInt c;
-  math::MPInt s;
-};
-
 // RFC 9497: verifiable oblivious pseudorandom function (OPRF) using prime-order
 // groups
 //

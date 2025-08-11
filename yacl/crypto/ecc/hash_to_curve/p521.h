@@ -27,7 +27,7 @@ crypto::EcPoint EncodeToCurveP521(yacl::ByteContainerView buffer,
 
 // HashToCurve for P-521
 crypto::EcPoint HashToCurveP521(yacl::ByteContainerView buffer,
-                                                 const std::string &dst);
+                                const std::string &dst);
 
 // HashToScalar for P-521
 crypto::MPInt HashToScalarP521(yacl::ByteContainerView buffer,

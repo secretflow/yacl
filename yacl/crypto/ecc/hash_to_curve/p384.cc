@@ -53,7 +53,7 @@ crypto::EcPoint EncodeToCurveP384(yacl::ByteContainerView buffer,
 
 // P384_XMD:SHA-384_SSWU_RO_
 crypto::EcPoint HashToCurveP384(yacl::ByteContainerView buffer,
-                                                 const std::string &dst) {
+                                const std::string &dst) {
   YACL_ENFORCE((dst.size() >= 16) && (dst.size() <= 255),
                "domain separation tag length: {} not in 16B-255B", dst.size());
 

@@ -27,13 +27,13 @@ crypto::EcPoint EncodeToCurveP256(yacl::ByteContainerView buffer,
 
 // HashToCurve for P-256
 crypto::EcPoint HashToCurveP256(yacl::ByteContainerView buffer,
-                                                 const std::string &dst);
+                                const std::string &dst);
 
 // HashToScalar for P-256
 crypto::MPInt HashToScalarP256(yacl::ByteContainerView buffer,
                                const std::string &dst);
 
-std::vector<crypto::AffinePoint> HashToCurveP256Coord(yacl::ByteContainerView buffer,
-                                                 const std::string &dst);
+std::vector<crypto::AffinePoint> HashToCurveP256Coord(
+    yacl::ByteContainerView buffer, const std::string &dst);
 
 }  // namespace yacl
