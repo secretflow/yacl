@@ -83,9 +83,6 @@ enum class HashToCurveStrategy {
   //  - SHA-512_SSWU_NU_
   //  - SHA-512_ELL2_NU_
   //  - SHAKE256_ELL2_NU_
-  //  - SHA256_SSWU_RO_
-  //  - SHA384_SSWU_RO_
-  //  - SHA512_SSWU_RO_
   // Performance: This strategy takes 6 times longer than TryAndIncrement on SM2
   // Warning: The output of this strategy is not uniformly distributed on the
   // elliptic curve G.
