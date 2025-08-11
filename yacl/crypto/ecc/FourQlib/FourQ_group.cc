@@ -292,7 +292,7 @@ EcPoint FourQGroup::HashToCurve(HashToCurveStrategy strategy,
   return r;
 }
 
-// fixme: HashToScalar not implemented for FourQGroup
+// FIXME: HashToScalar not implemented for FourQGroup
 yacl::math::MPInt FourQGroup::HashToScalar(HashToCurveStrategy,
                                            std::string_view,
                                            std::string_view) const {

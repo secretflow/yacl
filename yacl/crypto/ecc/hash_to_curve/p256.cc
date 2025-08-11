@@ -119,7 +119,7 @@ crypto::EcPoint EncodeToCurveP256(yacl::ByteContainerView buffer,
 }
 
 // P256_XMD:SHA-256_SSWU_RO_
-std::vector<crypto::AffinePoint> HashToCurveP256(yacl::ByteContainerView buffer,
+crypto::EcPoint HashToCurveP256(yacl::ByteContainerView buffer,
                                                  const std::string &dst) {
   YACL_ENFORCE((dst.size() >= 16) && (dst.size() <= 255),
                "domain separation tag length: {} not in 16B-255B", dst.size());
@@ -132,12 +132,9 @@ std::vector<crypto::AffinePoint> HashToCurveP256(yacl::ByteContainerView buffer,
   yacl::math::MPInt ry;
 
   std::tie(qx, qy) = MapToCurveSSWU(u[0], ctx);
-  crypto::AffinePoint q(qx, qy);
   std::tie(rx, ry) = MapToCurveSSWU(u[1], ctx);
-  crypto::AffinePoint r(rx, ry);
 
-  // fixme: Point Addition for affine point under NIST-P256
-  return std::vector<crypto::AffinePoint>{q, r};
+  return AffinePointAdd(qx, qy, rx, ry, ctx.aux.at("p"));
 }
 
 // hash_to_field with  L = 48

@@ -26,7 +26,7 @@ crypto::EcPoint EncodeToCurveP384(yacl::ByteContainerView buffer,
                                   const std::string &dst);
 
 // HashToCurve for P-384
-std::vector<crypto::AffinePoint> HashToCurveP384(yacl::ByteContainerView buffer,
+crypto::EcPoint HashToCurveP384(yacl::ByteContainerView buffer,
                                                  const std::string &dst);
 
 // HashToScalar for P-384
