@@ -74,6 +74,7 @@ class InnerProductProof {
       SimpleTranscript& transcript,
       const std::shared_ptr<yacl::crypto::EcGroup>& curve,
       const yacl::crypto::EcPoint& Q,
+      const std::vector<yacl::math::MPInt>& G_factors,
       const std::vector<yacl::math::MPInt>& H_factors,
       std::vector<yacl::crypto::EcPoint> G_vec,
       std::vector<yacl::crypto::EcPoint> H_vec,
@@ -111,6 +112,7 @@ class InnerProductProof {
    */
   bool Verify(SimpleTranscript& transcript,
               const std::shared_ptr<yacl::crypto::EcGroup>& curve,
+              const std::vector<yacl::math::MPInt>& G_factors,
               const std::vector<yacl::math::MPInt>& H_factors,
               const yacl::crypto::EcPoint& P, const yacl::crypto::EcPoint& Q,
               const std::vector<yacl::crypto::EcPoint>& G,
@@ -121,7 +123,13 @@ class InnerProductProof {
    *
    * @return size_t The size in bytes
    */
-  size_t SerializedSize() const;
+  size_t SerializedSize(
+      const std::shared_ptr<yacl::crypto::EcGroup>& curve) const {
+    // 2 points per round (L, R) + 2 final scalars (a, b)
+    size_t point_size = curve->GetSerializeLength();
+    size_t scalar_size = 32;
+    return L_vec_.size() * 2 * point_size + 2 * scalar_size;
+  }
 
   /**
    * @brief Serializes the proof into a byte vector
