@@ -11,19 +11,19 @@ OPRF consists of an underlying PRF and an oblivious evaluation method:
 
 ## Hashed Diffie-Hellman OPRF
 
-The HashedDH is a simple class of pseudorandom functions that use a hash function $ H(x) $ abstracted as a random oracle, producing uniformly distributed group elements. For example, assuming $ H(x)=x^a $, where $ a $ is a random value, then $ f_k^H(x) = H(x)^k $ forms a PRF.
+The HashedDH is a simple class of pseudorandom functions that use a hash function $ H(x) $ abstracted as a random oracle, producing uniformly distributed group elements. For example, assuming $ H(x)=a \cdot x $, where $ a $ is a random value, then $ f_k^H(x) = k \cdot H(x) $ forms a PRF.
 
-Choosing a random $ a $, $ H(x) = x^a $ is an one-way function, and $ f^H_k(x) = (x^a)^k = x^{ak} $ forms a DH-style value (similar to the shared secret in the Diffie-Hellman key exchange, where $ a $ and $ k $ are provided by the hash function and private key, respectively). This PRF is called the HashedDH PRF.
+Choosing a random $ a $, $ H(x) = a \cdot x $ is an one-way function, and $ f^H_k(x) = k \cdot (a \cdot x) = {ak} \cdot x $ forms a DH-style value (similar to the shared secret in the Diffie-Hellman key exchange, where $ a $ and $ k $ are provided by the hash function and private key, respectively). This PRF is called the HashedDH PRF.
 
 For such a PRF, the oblivious evaluation method is blinded exponentiation:
 
-1. The Client selects a blind exponent $ r $, computes $ a = H(x)^r $, and sends it to the Server.
-2. The Server performs the PRF operation on the blinded element $ H(x)^r $, resulting in $ b = (H(x)^{r})^k $, and returns it to the Client. This step is called blind evaluation, where the blind exponent ensures that $ H(x) $ remains hidden from the Server.
-3. The Client uses $ 1/r $ to recover $ b^{1/r} = H(x)^k $ from the value received from the Server.
+1. The Client selects a blind exponent $ r $, computes $ a = r \cdot H(x) $, and sends it to the Server.
+2. The Server performs the PRF operation on the blinded element $ r \cdot H(x) $, resulting in $ b = k \cdot (r \cdot H(x)) $, and returns it to the Client. This step is called blind evaluation, where the blind exponent ensures that $ H(x) $ remains hidden from the Server.
+3. The Client uses $ 1/r $ to recover $ {1/r} \cdot b = k \cdot H(x) $ from the value received from the Server.
 
 ## Verifiable Oblivious Pseudorandom Functions
 
-Verifiability describes the ability to verify the correctness of the output result. In OPRF, this means the Client can verify that the output $ f_k(x) $ was computed using the Server's private key $ k $. In HashedDH, verifiability is achieved by appending a NIZK (Non-Interactive Zero-Knowledge) proof to the Server's response, demonstrating that the Server possesses the private key $ k $. Here, the NIZK public statement is $ (H(x)^r)^k $, and the witness is the private key $ k $. A sigma protocol transformed via the FS (Fiat-Shamir) heuristic can compute this proof.
+Verifiability describes the ability to verify the correctness of the output result. In OPRF, this means the Client can verify that the output $ f_k(x) $ was computed using the Server's private key $ k $. In HashedDH, verifiability is achieved by appending a NIZK (Non-Interactive Zero-Knowledge) proof to the Server's response, demonstrating that the Server possesses the private key $ k $. Here, the NIZK public statement is $ k \cdot (r \cdot H(x)) $, and the witness is the private key $ k $. A sigma protocol transformed via the FS (Fiat-Shamir) heuristic can compute this proof.
 
 A naive VOPRF protocol using the Schnorr protocol could work as follows:
 
