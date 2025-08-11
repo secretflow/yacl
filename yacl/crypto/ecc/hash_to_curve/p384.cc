@@ -31,7 +31,7 @@
 
 namespace yacl {
 
-crypto::AffinePoint AffinePointAdd(
+crypto::AffinePoint AffinePointAddP384(
   const yacl::math::MPInt& x1,
   const yacl::math::MPInt& y1,
   const yacl::math::MPInt& x2,
@@ -135,7 +135,7 @@ crypto::EcPoint HashToCurveP384(yacl::ByteContainerView buffer,
   std::tie(qx, qy) = MapToCurveSSWU(u[0], ctx);
   std::tie(rx, ry) = MapToCurveSSWU(u[1], ctx);
 
-  return AffinePointAdd(qx, qy, rx, ry, ctx.aux.at("p"));
+  return AffinePointAddP384(qx, qy, rx, ry, ctx.aux.at("p"));
 }
 
 yacl::math::MPInt HashToScalarP384(yacl::ByteContainerView buffer,

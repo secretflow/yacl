@@ -21,13 +21,6 @@
 
 namespace yacl {
 
-crypto::AffinePoint AffinePointAdd(
-  const yacl::math::MPInt& x1,
-  const yacl::math::MPInt& y1,
-  const yacl::math::MPInt& x2,
-  const yacl::math::MPInt& y2,
-  const yacl::math::MPInt& n);
-
 // EncodeToCurve for P-256
 crypto::EcPoint EncodeToCurveP256(yacl::ByteContainerView buffer,
                                   const std::string &dst);
@@ -39,5 +32,8 @@ crypto::EcPoint HashToCurveP256(yacl::ByteContainerView buffer,
 // HashToScalar for P-256
 crypto::MPInt HashToScalarP256(yacl::ByteContainerView buffer,
                                const std::string &dst);
+
+std::vector<crypto::AffinePoint> HashToCurveP256Coord(yacl::ByteContainerView buffer,
+                                                 const std::string &dst);
 
 }  // namespace yacl

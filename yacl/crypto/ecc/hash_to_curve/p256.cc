@@ -31,7 +31,7 @@ namespace yacl {
 // y3 = lambda(x1 - x3) - y1
 // p1 != p2, lambda = (y2 - y1)/(x2 - x1)
 // p1 == p2, lambda = (3x1^2  - 3)/(2y1)
-crypto::AffinePoint AffinePointAdd(
+crypto::AffinePoint AffinePointAddP256(
   const yacl::math::MPInt& x1,
   const yacl::math::MPInt& y1,
   const yacl::math::MPInt& x2,
@@ -119,6 +119,27 @@ crypto::EcPoint EncodeToCurveP256(yacl::ByteContainerView buffer,
 }
 
 // P256_XMD:SHA-256_SSWU_RO_
+// P256_XMD:SHA-256_SSWU_RO_
+[[maybe_unused]] std::vector<crypto::AffinePoint> HashToCurveP256Coord(yacl::ByteContainerView buffer,
+                                                 const std::string &dst) {
+  YACL_ENFORCE((dst.size() >= 16) && (dst.size() <= 255),
+               "domain separation tag length: {} not in 16B-255B", dst.size());
+
+  HashToCurveCtx ctx = GetHashToCurveCtxByName("P-256");
+  std::vector<std::vector<uint8_t>> u = HashToField(buffer, 2, 48, ctx, dst);
+  yacl::math::MPInt qx;
+  yacl::math::MPInt qy;
+  yacl::math::MPInt rx;
+  yacl::math::MPInt ry;
+
+  std::tie(qx, qy) = MapToCurveSSWU(u[0], ctx);
+  crypto::AffinePoint q(qx, qy);
+  std::tie(rx, ry) = MapToCurveSSWU(u[1], ctx);
+  crypto::AffinePoint r(rx, ry);
+
+  return std::vector<crypto::AffinePoint> {q, r};
+}
+
 crypto::EcPoint HashToCurveP256(yacl::ByteContainerView buffer,
                                                  const std::string &dst) {
   YACL_ENFORCE((dst.size() >= 16) && (dst.size() <= 255),
@@ -134,7 +155,7 @@ crypto::EcPoint HashToCurveP256(yacl::ByteContainerView buffer,
   std::tie(qx, qy) = MapToCurveSSWU(u[0], ctx);
   std::tie(rx, ry) = MapToCurveSSWU(u[1], ctx);
 
-  return AffinePointAdd(qx, qy, rx, ry, ctx.aux.at("p"));
+  return AffinePointAddP256(qx, qy, rx, ry, ctx.aux.at("p"));
 }
 
 // hash_to_field with  L = 48
