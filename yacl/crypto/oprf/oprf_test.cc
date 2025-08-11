@@ -24,10 +24,6 @@
 
 namespace yacl::crypto {
 
-TEST(ECCTest, HashToGroupWorks) {
-  // const auto config = OprfConfig::GetVOPRFDefault();
-}
-
 TEST(UtilTest, VOPRFDeriveKeyPairWorks) {
   const auto config = OprfConfig::GetVOPRFDefault();
   auto ctx = std::make_shared<OprfCtx>(config);
