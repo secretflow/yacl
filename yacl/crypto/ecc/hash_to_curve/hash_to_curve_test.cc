@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "yacl/crypto/ecc/hash_to_curve/hash_to_curve.h"
+#include "yacl/crypto/ecc/hash_to_curve/hash_to_curve_util.h"
 
 #include "gtest/gtest.h"
 
@@ -22,24 +23,24 @@
 
 namespace yacl::crypto::test {
 
-// TEST(AffinePointAdditionTest, P256Works) {
-//   yacl::math::MPInt n = "0xffffffff00000000ffffffffffffffff"
-//            "bce6faada7179e84f3b9cac2fc632551"_mp;
+TEST(AffinePointAdditionTest, P256Works) {
+  yacl::math::MPInt n = "0xffffffff00000000ffffffffffffffff"
+           "bce6faada7179e84f3b9cac2fc632551"_mp;
 
-//   yacl::math::MPInt p = "0xffffffff000000010000000000000000"
-//            "00000000ffffffffffffffffffffffff"_mp;
+  yacl::math::MPInt p = "0xffffffff000000010000000000000000"
+           "00000000ffffffffffffffffffffffff"_mp;
 
-//   yacl::math::MPInt x1 = "0x6B17D1F2E12C4247F8BCE6E563A440F277037D812DEB33A0F4A13945D898C296"_mp;
-//   yacl::math::MPInt y1 = "0x4FE342E2FE1A7F9B8EE7EB4A7C0F9E162BCE33576B315ECECBB6406837BF51F5"_mp;
+  yacl::math::MPInt x1 = "0x6B17D1F2E12C4247F8BCE6E563A440F277037D812DEB33A0F4A13945D898C296"_mp;
+  yacl::math::MPInt y1 = "0x4FE342E2FE1A7F9B8EE7EB4A7C0F9E162BCE33576B315ECECBB6406837BF51F5"_mp;
 
-//   yacl::math::MPInt x2 = "0x5ECBE4D1A6330A44C8F7EF951D4BF165E6C6B721EFADA985FB41661BC6E7FD6C"_mp;
-//   yacl::math::MPInt y2 = "0x8734640C4998FF7E374B06CE1A64A2ECD82AB036384FB83D9A79B127A27D5032"_mp;
+  yacl::math::MPInt x2 = "0x5ECBE4D1A6330A44C8F7EF951D4BF165E6C6B721EFADA985FB41661BC6E7FD6C"_mp;
+  yacl::math::MPInt y2 = "0x8734640C4998FF7E374B06CE1A64A2ECD82AB036384FB83D9A79B127A27D5032"_mp;
 
-//   auto res = AffinePointAddP256(x1, y1, x2, y2, p);
+  auto res = AffinePointAddNIST(x1, y1, x2, y2, p);
 
-//   EXPECT_EQ(res.x, "0xE2534A3532D08FBBA02DDE659EE62BD0031FE2DB785596EF509302446B030852"_mp);
-//   EXPECT_EQ(res.y, "0xE0F1575A4C633CC719DFEE5FDA862D764EFC96C3F30EE0055C42C23F184ED8C6"_mp);
-// }
+  EXPECT_EQ(res.x, "0xE2534A3532D08FBBA02DDE659EE62BD0031FE2DB785596EF509302446B030852"_mp);
+  EXPECT_EQ(res.y, "0xE0F1575A4C633CC719DFEE5FDA862D764EFC96C3F30EE0055C42C23F184ED8C6"_mp);
+}
 
 TEST(HashToCurveTest, P256EncodeToCurveWorks) {
   std::vector<std::string> rfc_9380_test_msgs = {"", "abc", "abcdef0123456789"};

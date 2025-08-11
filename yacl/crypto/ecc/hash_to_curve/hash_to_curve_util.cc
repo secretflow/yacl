@@ -462,4 +462,78 @@ std::pair<yacl::math::MPInt, yacl::math::MPInt> MapToCurveSSWU(
   // return p;
   return std::make_pair(x, y);
 }
+
+// // Affine Point Addition
+// x3 = lambda^2 - x1 - x2
+// y3 = lambda(x1 - x3) - y1
+// p1 != p2, lambda = (y2 - y1)/(x2 - x1)
+// p1 == p2, lambda = (3x1^2  - 3)/(2y1)
+crypto::AffinePoint AffinePointAddNIST(
+  const yacl::math::MPInt& x1,
+  const yacl::math::MPInt& y1,
+  const yacl::math::MPInt& x2,
+  const yacl::math::MPInt& y2,
+  const yacl::math::MPInt& p) {
+  
+  // Handle special case when one point is at infinity
+  if (x1.IsZero() && y1.IsZero()) {
+    return crypto::AffinePoint(x2, y2);
+  }
+  if (x2.IsZero() && y2.IsZero()) {
+    return crypto::AffinePoint(x1, y1);
+  }
+
+  yacl::math::MPInt lambda;
+  yacl::math::MPInt x3, y3;
+  
+  // Check if points are equal
+  if (x1 == x2 && y1 == y2) {
+    // Point doubling: lambda = (3*x1^2 + a)/(2*y1)
+    // For P-256, a = -3
+    yacl::math::MPInt x1_squared, numerator, denominator;
+    x1_squared = x1 * x1;
+    numerator = x1_squared * 3 - 3;  // 3*x1^2 - 3 (since a = -3 for P-256)
+    denominator = y1 * 2;            // 2*y1
+    
+    // Compute lambda = numerator/denominator mod p
+    yacl::math::MPInt denominator_inv;
+    // denominator.InvertMod(p, &denominator_inv);
+    denominator_inv = denominator.InvertMod(p);
+    lambda = numerator * denominator_inv;
+    lambda %= p;
+  } else {
+    // Point addition: lambda = (y2 - y1)/(x2 - x1)
+    yacl::math::MPInt numerator, denominator;
+    numerator = y2 - y1;
+    denominator = x2 - x1;
+    
+    if (denominator.IsZero()) {
+      // Return point at infinity
+      return crypto::AffinePoint(yacl::math::MPInt(0), yacl::math::MPInt(0));
+    }
+    
+    // lambda = numerator/denominator mod p
+    yacl::math::MPInt denominator_inv;
+    denominator_inv = denominator.InvertMod(p);
+    lambda = numerator * denominator_inv;
+    lambda %= p;
+  }
+  
+  // x3 = lambda^2 - x1 - x2
+  x3 = lambda * lambda - x1 - x2;
+  x3 %= p;
+  if (x3.IsNegative()) {
+    x3 += p;
+  }
+  
+  // y3 = lambda(x1 - x3) - y1
+  y3 = lambda * (x1 - x3) - y1;
+  y3 %= p;
+  if (y3.IsNegative()) {
+    y3 += p;
+  }
+  
+  return crypto::AffinePoint(x3, y3);
+}
+
 }  // namespace yacl

@@ -17,6 +17,7 @@
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/crypto/ecc/curve_meta.h"
+#include "yacl/crypto/ecc/ec_point.h"
 #include "yacl/crypto/hash/hash_interface.h"
 #include "yacl/math/mpint/mp_int.h"
 #include "yacl/utils/spi/type_traits.h"
@@ -66,5 +67,12 @@ yacl::math::MPInt HashToScalar(yacl::ByteContainerView msg, size_t l,
 bool IsSquare(const yacl::math::MPInt &v, const yacl::math::MPInt &mod);
 
 bool Sgn0(const yacl::math::MPInt &v);
+
+crypto::AffinePoint AffinePointAddNIST(
+  const yacl::math::MPInt& x1,
+  const yacl::math::MPInt& y1,
+  const yacl::math::MPInt& x2,
+  const yacl::math::MPInt& y2,
+  const yacl::math::MPInt& p);
 
 }  // namespace yacl
