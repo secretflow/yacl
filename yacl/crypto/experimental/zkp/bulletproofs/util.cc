@@ -111,8 +111,6 @@ VecPoly1::~VecPoly1() {}  // Destructor body can be empty
 //----------------------------------------
 
 yacl::math::MPInt InnerProduct(
-    // const std::vector<yacl::math::MPInt>& a,
-    // const std::vector<yacl::math::MPInt>& b,
     absl::Span<const yacl::math::MPInt> a,
     absl::Span<const yacl::math::MPInt> b,
     const std::shared_ptr<yacl::crypto::EcGroup>& curve) {
