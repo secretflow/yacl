@@ -21,7 +21,6 @@
 #include "spdlog/spdlog.h"
 
 #include "yacl/base/byte_container_view.h"
-#include "yacl/base/exception.h"
 
 namespace yacl::crypto {
 

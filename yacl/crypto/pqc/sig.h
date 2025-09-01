@@ -76,7 +76,7 @@ class Sig {
                         ByteContainerView context) const;
 
  private:
-  std::shared_ptr<OQS_SIG> sig_{nullptr, [](OQS_SIG* p) { OQS_SIG_free(p); }};
+  std::shared_ptr<OQS_SIG> sig_{nullptr, OQS_SIG_free};
 };
 
 }  // namespace yacl::crypto

@@ -25,8 +25,7 @@ Sig::Sig(const std::string& alg_name) {
   if (!IsSigAlgEnabled(alg_name)) {
     YACL_THROW("SIG algorithm '{}' is not supported or not enabled", alg_name);
   }
-  sig_.reset(OQS_SIG_new(alg_name.c_str()),
-             [](OQS_SIG* p) { OQS_SIG_free(p); });
+  sig_.reset(OQS_SIG_new(alg_name.c_str()), OQS_SIG_free);
 }
 
 uint64_t Sig::GetSigAlgCount() { return OQS_SIG_alg_count(); }

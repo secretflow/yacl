@@ -32,7 +32,6 @@ yacl_cc_test(
     srcs = ["kem_test.cc"],
     deps = [
         ":kem",
-        "//yacl/base:exception",
     ],
 )
 

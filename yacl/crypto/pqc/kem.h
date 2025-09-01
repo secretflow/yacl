@@ -69,7 +69,7 @@ class Kem {
                                    ByteContainerView ciphertext) const;
 
  private:
-  std::shared_ptr<OQS_KEM> kem_{nullptr, [](OQS_KEM* p) { OQS_KEM_free(p); }};
+  std::shared_ptr<OQS_KEM> kem_{nullptr, OQS_KEM_free};
 };
 
 }  // namespace yacl::crypto

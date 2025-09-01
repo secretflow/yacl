@@ -20,8 +20,6 @@
 #include "gtest/gtest.h"
 #include "spdlog/spdlog.h"
 
-#include "yacl/base/exception.h"
-
 namespace yacl::crypto {
 
 void test_kem(const std::string& kem_name) {

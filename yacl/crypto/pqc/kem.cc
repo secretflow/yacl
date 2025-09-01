@@ -14,8 +14,6 @@
 
 #include "yacl/crypto/pqc/kem.h"
 
-#include "spdlog/spdlog.h"
-
 #include "yacl/base/exception.h"
 
 namespace yacl::crypto {
@@ -24,8 +22,7 @@ Kem::Kem(const std::string& alg_name) {
   if (!IsKemAlgEnabled(alg_name)) {
     YACL_THROW("KEM algorithm '{}' is not enabled", alg_name);
   }
-  kem_.reset(OQS_KEM_new(alg_name.c_str()),
-             [](OQS_KEM* p) { OQS_KEM_free(p); });
+  kem_.reset(OQS_KEM_new(alg_name.c_str()), OQS_KEM_free);
 }
 
 uint64_t Kem::GetKemAlgCount() { return OQS_KEM_alg_count(); }
