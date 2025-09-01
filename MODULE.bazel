@@ -58,6 +58,7 @@ bazel_dep(name = "lib25519", version = "20240321")
 bazel_dep(name = "mcl", version = "1.99")
 bazel_dep(name = "leveldb", version = "1.23")
 bazel_dep(name = "openssl", version = "3.3.2.bcr.1")
+bazel_dep(name = "liboqs", version = "0.13.0")
 
 new_local_repository = use_repo_rule("@bazel_tools//tools/build_defs/repo:local.bzl", "new_local_repository")
 
