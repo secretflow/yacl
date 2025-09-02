@@ -25,6 +25,9 @@
 
 #pragma once
 
+#include <oqs/common.h>
+#include <oqs/oqs.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -36,11 +39,6 @@
 #include "yacl/base/exception.h"
 
 namespace yacl::crypto {
-
-extern "C" {
-#include <oqs/common.h>
-#include <oqs/oqs.h>
-}
 
 class Kem {
  public:

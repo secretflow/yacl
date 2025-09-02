@@ -24,6 +24,8 @@
 // https://github.com/open-quantum-safe/liboqs
 
 #pragma once
+#include <oqs/common.h>
+#include <oqs/oqs.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -35,11 +37,6 @@
 #include "yacl/base/byte_container_view.h"
 
 namespace yacl::crypto {
-
-extern "C" {
-#include <oqs/common.h>
-#include <oqs/oqs.h>
-}
 
 class Sig {
  public:
