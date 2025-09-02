@@ -44,8 +44,8 @@ class Sig {
 
   static uint64_t GetSigAlgCount();
   static std::string GetSigAlgName(std::size_t alg_id);
-  static std::vector<std::string> GetSupportedSig();
-  static std::vector<std::string> GetEnabledSig();
+  static std::vector<std::string> GetAllSigs();
+  static std::vector<std::string> GetEnabledSigs();
   static bool IsSigAlgEnabled(const std::string& alg_name);
 
   std::string GetSigAlgVersion() const { return sig_->alg_version; }

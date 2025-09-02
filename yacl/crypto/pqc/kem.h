@@ -46,8 +46,8 @@ class Kem {
 
   static uint64_t GetKemAlgCount();
   static std::string GetKemAlgName(std::size_t alg_id);
-  static std::vector<std::string> GetSupportedKem();
-  static std::vector<std::string> GetEnabledKem();
+  static std::vector<std::string> GetAllKems();
+  static std::vector<std::string> GetEnabledKems();
   static bool IsKemAlgEnabled(const std::string& alg_name);
 
   std::string GetKemAlgVersion() const { return kem_->alg_version; }

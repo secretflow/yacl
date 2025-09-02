@@ -41,14 +41,14 @@ void test_kem(const std::string& kem_name) {
 }
 
 TEST(KemTest, BasicFunctionality) {
-  std::vector<std::string> enabled_kems = Kem::GetEnabledKem();
+  std::vector<std::string> enabled_kems = Kem::GetEnabledKems();
   for (const auto& kem_name : enabled_kems) {
     test_kem(kem_name);
   }
 }
 
 TEST(KemTest, AlgorithmInfo) {
-  auto supported_kems = Kem::GetSupportedKem();
+  auto supported_kems = Kem::GetAllKems();
   EXPECT_EQ(supported_kems.size(), Kem::GetKemAlgCount());
 
   // Test specific algorithm properties

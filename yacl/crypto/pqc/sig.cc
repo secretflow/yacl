@@ -38,18 +38,21 @@ std::string Sig::GetSigAlgName(std::size_t alg_id) {
   return OQS_SIG_alg_identifier(alg_id);
 }
 
-std::vector<std::string> Sig::GetSupportedSig() {
-  std::vector<std::string> supported_sigs;
-  for (std::size_t i = 0; i < GetSigAlgCount(); ++i) {
-    supported_sigs.emplace_back(GetSigAlgName(i));
-  }
+std::vector<std::string> Sig::GetAllSigs() {
+  static auto supported_sigs = []() {
+    std::vector<std::string> sigs;
+    for (std::size_t i = 0; i < GetSigAlgCount(); ++i) {
+      sigs.emplace_back(GetSigAlgName(i));
+    }
+    return sigs;
+  }();
   return supported_sigs;
 }
 
-std::vector<std::string> Sig::GetEnabledSig() {
+std::vector<std::string> Sig::GetEnabledSigs() {
   static auto enabled_sigs = []() {
     std::vector<std::string> sigs;
-    for (const auto& sig : GetSupportedSig()) {
+    for (const auto& sig : GetAllSigs()) {
       if (IsSigAlgEnabled(sig)) {
         sigs.emplace_back(sig);
       }

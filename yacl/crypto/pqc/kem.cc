@@ -35,18 +35,22 @@ std::string Kem::GetKemAlgName(std::size_t alg_id) {
   return OQS_KEM_alg_identifier(alg_id);
 }
 
-std::vector<std::string> Kem::GetSupportedKem() {
-  std::vector<std::string> supported_kems;
-  for (std::size_t i = 0; i < GetKemAlgCount(); ++i) {
-    supported_kems.emplace_back(GetKemAlgName(i));
-  }
-  return supported_kems;
+std::vector<std::string> Kem::GetAllKems() {
+  static auto all_kems = []() {
+    const auto count = GetKemAlgCount();
+    std::vector<std::string> kems;
+    for (std::size_t i = 0; i < count; ++i) {
+      kems.emplace_back(GetKemAlgName(i));
+    }
+    return kems;
+  }();
+  return all_kems;
 }
 
-std::vector<std::string> Kem::GetEnabledKem() {
+std::vector<std::string> Kem::GetEnabledKems() {
   static auto enabled_kems = []() {
     std::vector<std::string> kems;
-    for (const auto& kem : GetSupportedKem()) {
+    for (const auto& kem : GetAllKems()) {
       if (IsKemAlgEnabled(kem)) {
         kems.emplace_back(kem);
       }

@@ -59,14 +59,14 @@ void test_sig(const std::string& sig_name) {
 }
 
 TEST(SigTest, BasicFunctionality) {
-  std::vector<std::string> enabled_sigs = Sig::GetEnabledSig();
+  std::vector<std::string> enabled_sigs = Sig::GetEnabledSigs();
   for (const auto& sig_name : enabled_sigs) {
     test_sig(sig_name);
   }
 }
 
 TEST(SigTest, AlgorithmInfo) {
-  auto supported_sigs = Sig::GetSupportedSig();
+  auto supported_sigs = Sig::GetAllSigs();
   EXPECT_EQ(supported_sigs.size(), Sig::GetSigAlgCount());
 
   std::string sig_name = "Dilithium2";
@@ -78,7 +78,7 @@ TEST(SigTest, AlgorithmInfo) {
 }
 
 TEST(SigTest, EmptyMessage) {
-  std::vector<std::string> enabled_sigs = Sig::GetEnabledSig();
+  std::vector<std::string> enabled_sigs = Sig::GetEnabledSigs();
   for (const auto& sig_name : enabled_sigs) {
     Sig sig(sig_name);
     auto [pk, sk] = sig.GenKeyPair();
