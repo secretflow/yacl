@@ -39,7 +39,6 @@ workflows:
       - path-filtering/filter:
           base-revision: main
           config-path: .circleci/continue-config.yml
-          tag: "3.9"
           mapping: |
             yacl/.* build-and-run true
             bazel/.* build-and-run true
