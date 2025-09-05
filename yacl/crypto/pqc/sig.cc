@@ -79,7 +79,7 @@ std::pair<std::vector<uint8_t>, std::vector<uint8_t>> Sig::GenKeyPair() const {
 std::vector<uint8_t> Sig::Sign(ByteContainerView sk,
                                ByteContainerView message) const {
   std::vector<uint8_t> signature(GetSignatureSize());
-  uint64_t signature_len = 0;
+  size_t signature_len = 0;
   auto ret = sig_->sign(signature.data(), &signature_len, message.data(),
                         message.size(), sk.data());
   if (ret != OQS_STATUS::OQS_SUCCESS) {
@@ -96,7 +96,7 @@ std::vector<uint8_t> Sig::SignWithCtxStr(ByteContainerView sk,
   YACL_ENFORCE(context.size() > 0, "Context size must be greater than 0");
 
   std::vector<uint8_t> signature(GetSignatureSize());
-  uint64_t signature_len = 0;
+  size_t signature_len = 0;
   auto ret = sig_->sign_with_ctx_str(signature.data(), &signature_len,
                                      message.data(), message.size(),
                                      context.data(), context.size(), sk.data());
