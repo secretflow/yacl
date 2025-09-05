@@ -14,8 +14,6 @@
 
 #pragma once
 
-#include <spdlog/common.h>
-
 #include <atomic>
 #include <cstdint>
 #include <limits>
