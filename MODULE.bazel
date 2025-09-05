@@ -41,7 +41,7 @@ bazel_dep(name = "spdlog", version = "1.14.1")
 bazel_dep(name = "rules_python", version = "0.16.2")
 bazel_dep(name = "bazel_features", version = "1.24.0")
 bazel_dep(name = "rules_foreign_cc", version = "0.14.0")
-bazel_dep(name = "platforms", version = "0.0.11")
+bazel_dep(name = "platforms", version = "1.0.0")
 
 # self-hosted registry
 bazel_dep(name = "brpc", version = "1.11.0-20241212-282bc90")
@@ -58,6 +58,7 @@ bazel_dep(name = "lib25519", version = "20240321")
 bazel_dep(name = "mcl", version = "1.99")
 bazel_dep(name = "leveldb", version = "1.23")
 bazel_dep(name = "openssl", version = "3.3.2.bcr.1")
+bazel_dep(name = "liboqs", version = "0.13.0")
 
 new_local_repository = use_repo_rule("@bazel_tools//tools/build_defs/repo:local.bzl", "new_local_repository")
 

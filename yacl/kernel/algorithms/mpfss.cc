@@ -253,6 +253,10 @@ void MpfssSend_fixed_index(const std::shared_ptr<link::Context>& ctx,
   auto gywz_send_msgs = UninitAlignedVector<uint128_t>(
       batch_length * (kSuperBatch - 1) + last_batch_length);
 
+  const auto total_ot_msg_num = param.require_ot_num_;
+  auto all_gywz_send_msgs = UninitAlignedVector<uint128_t>(total_ot_msg_num);
+  int64_t ot_msg_offset = 0;
+
   const auto super_batch_num = math::DivCeil(batch_num, kSuperBatch);
 
   for (uint32_t s = 0; s < super_batch_num; ++s) {
@@ -274,8 +278,9 @@ void MpfssSend_fixed_index(const std::shared_ptr<link::Context>& ctx,
       // It would be better to use "NextSlice" here, but it's not a const
       auto ot_slice = send_ot.Slice(batch_idx * batch_length,
                                     batch_idx * batch_length + this_length);
-      auto send_span =
-          absl::MakeSpan(gywz_send_msgs.data() + i * batch_length, this_length);
+      auto send_span = absl::MakeSpan(all_gywz_send_msgs.data() + ot_msg_offset,
+                                      this_length);
+      ot_msg_offset += this_length;
       // GywzOtExt is single-point COT
       GywzOtExtSend_fixed_index(ot_slice, this_size, this_span, send_span);
       // Use CrHash to break the correlation
@@ -284,16 +289,13 @@ void MpfssSend_fixed_index(const std::shared_ptr<link::Context>& ctx,
       dpf_sum[batch_idx] = std::reduce(this_span.begin(), this_span.end(),
                                        dpf_sum[batch_idx], op.add);
     }
-
-    auto msg_length = kSuperBatch * batch_length;
-    if (s == (super_batch_num - 1)) {
-      msg_length = (bound - 1) * batch_length + last_batch_length;
-    }
-    ctx->SendAsync(ctx->NextRank(),
-                   ByteContainerView(gywz_send_msgs.data(),
-                                     sizeof(uint128_t) * msg_length),
-                   "GYWZ_OTE: messages");
   }
+  YACL_ENFORCE(ot_msg_offset == static_cast<int64_t>(total_ot_msg_num),
+               "Logic error: filled OT messages do not match required number.");
+  ctx->SendAsync(ctx->NextRank(),
+                 ByteContainerView(all_gywz_send_msgs.data(),
+                                   sizeof(uint128_t) * total_ot_msg_num),
+                 "GYWZ_OTE: messages");
 
   auto& send_msgs = dpf_sum;
   ctx->SendAsync(
@@ -317,11 +319,16 @@ void MpfssRecv_fixed_index(const std::shared_ptr<link::Context>& ctx,
   const auto last_batch_length = math::Log2Ceil(last_batch_size);
 
   auto& indexes = param.indexes_;
+  auto all_gywz_recv_buf = ctx->Recv(ctx->NextRank(), "GYWZ_OTE: messages");
+  YACL_ENFORCE(all_gywz_recv_buf.size() ==
+               static_cast<int64_t>(param.require_ot_num_ * sizeof(uint128_t)));
+  auto all_gywz_recv_span =
+      absl::MakeSpan(reinterpret_cast<uint128_t*>(all_gywz_recv_buf.data()),
+                     param.require_ot_num_);
+  int64_t ot_msg_offset = 0;
 
-  const auto super_batch_num = math::DivCeil(batch_num, kSuperBatch);
-
-  // Copy vector v
   auto dpf_sum = UninitAlignedVector<uint128_t>(batch_num, 0);
+  const auto super_batch_num = math::DivCeil(batch_num, kSuperBatch);
 
   for (uint32_t s = 0; s < super_batch_num; ++s) {
     const uint32_t bound =
@@ -331,11 +338,8 @@ void MpfssRecv_fixed_index(const std::shared_ptr<link::Context>& ctx,
       msg_length = (bound - 1) * batch_length + last_batch_length;
     }
 
-    auto gywz_recv_buf = ctx->Recv(ctx->NextRank(), "GYWZ_OTE: messages");
-    YACL_ENFORCE(gywz_recv_buf.size() ==
-                 static_cast<int64_t>(msg_length * sizeof(uint128_t)));
-    auto gywz_recv_msgs = absl::MakeSpan(
-        reinterpret_cast<uint128_t*>(gywz_recv_buf.data()), msg_length);
+    auto gywz_recv_msgs = all_gywz_recv_span.subspan(ot_msg_offset, msg_length);
+    ot_msg_offset += msg_length;
 
     for (uint32_t i = 0; i < bound; ++i) {
       auto this_size = batch_size;
@@ -356,8 +360,8 @@ void MpfssRecv_fixed_index(const std::shared_ptr<link::Context>& ctx,
           absl::MakeSpan(gywz_recv_msgs.data() + i * batch_length, this_length);
 
       uint32_t real_index = 0;
-      for (size_t i = 0; i < this_length; ++i) {
-        real_index |= ot_slice.GetChoice(i) << i;
+      for (size_t j = 0; j < this_length; ++j) {
+        real_index |= ot_slice.GetChoice(j) << j;
       }
       if (indexes[batch_idx] != real_index) {
         SPDLOG_DEBUG(
@@ -541,8 +545,8 @@ void MpfssRecv_fixed_index(const std::shared_ptr<link::Context>& ctx,
                                     batch_idx * batch_length + this_length);
 
       uint32_t real_index = 0;
-      for (size_t i = 0; i < this_length; ++i) {
-        real_index |= ot_slice.GetChoice(i) << i;
+      for (size_t j = 0; j < this_length; ++j) {
+        real_index |= ot_slice.GetChoice(j) << j;
       }
       if (indexes[batch_idx] != real_index) {
         SPDLOG_DEBUG(
