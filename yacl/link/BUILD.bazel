@@ -143,3 +143,28 @@ cc_proto_library(
         ":link_proto",
     ],
 )
+
+yacl_cc_library(
+    name = "mbox",
+    hdrs = ["mbox.h"],
+    deps = [
+        "@abseil-cpp//absl/types:span",
+    ],
+)
+
+yacl_cc_library(
+    name = "mbox_factory",
+    srcs = ["mbox_factory.cc"],
+    hdrs = ["mbox_factory.h"],
+    deps = [
+        ":mbox",
+    ],
+)
+
+yacl_cc_test(
+    name = "mbox_factory_test",
+    srcs = ["mbox_factory_test.cc"],
+    deps = [
+        ":mbox_factory",
+    ],
+)
