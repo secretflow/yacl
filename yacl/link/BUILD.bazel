@@ -145,26 +145,27 @@ cc_proto_library(
 )
 
 yacl_cc_library(
-    name = "mbox",
-    hdrs = ["mbox.h"],
+    name = "mbox_capi",
+    srcs = ["mbox_capi.cc"],
+    hdrs = ["mbox_capi.h"],
+)
+
+yacl_cc_library(
+    name = "mbox_wrapper",
+    srcs = ["mbox_wrapper.cc"],
+    hdrs = ["mbox_wrapper.h"],
     deps = [
+        ":mbox_capi",
         "@abseil-cpp//absl/types:span",
     ],
 )
 
 yacl_cc_library(
-    name = "mbox_factory",
-    srcs = ["mbox_factory.cc"],
-    hdrs = ["mbox_factory.h"],
+    name = "link_bridge",
+    srcs = ["link_bridge.cc"],
+    hdrs = ["link_bridge.h"],
     deps = [
-        ":mbox",
-    ],
-)
-
-yacl_cc_test(
-    name = "mbox_factory_test",
-    srcs = ["mbox_factory_test.cc"],
-    deps = [
-        ":mbox_factory",
+        ":mbox_capi",
+        "//yacl/link/transport:channel",
     ],
 )
