@@ -567,10 +567,6 @@ void Channel::SetRecvTimeout(uint64_t recv_timeout_ms) {
 
 uint64_t Channel::GetRecvTimeout() const { return recv_timeout_ms_; }
 
-void Channel::SendAsync(const std::string& msg_key, ByteContainerView value) {
-  SendAsync(msg_key, Buffer(value));
-}
-
 void Channel::MessageQueue::Push(Message&& msg) {
   std::unique_lock<bthread::Mutex> lock(mutex_);
   queue_.push(std::move(msg));
@@ -614,18 +610,13 @@ void Channel::Send(const std::string& msg_key, ByteContainerView value) {
   send_sync_.WaitSeqIdSendFinished(seq_id);
 }
 
-void Channel::SendAsyncThrottled(const std::string& msg_key,
-                                 ByteContainerView value) {
-  SendAsyncThrottled(msg_key, Buffer(value));
-}
-
 void Channel::SendAsyncThrottled(const std::string& msg_key, Buffer&& value) {
   if (aborting_.load()) {
     YACL_THROW_LINK_ABORTED(
         "SendAsyncThrottled is not allowed when channel is aborting");
   }
   if (YACL_UNLIKELY(disable_msg_seq_id_)) {
-    return SendAsync(msg_key, value);
+    return SendAsync(msg_key, std::move(value));
   }
 
   YACL_ENFORCE(!waiting_finish_.load(),
