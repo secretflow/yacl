@@ -46,7 +46,9 @@ class IChannel {
   // send asynchronously.
   // return when the message successfully pushed into the send queue.
   // SendAsync is not reentrant with same key.
-  virtual void SendAsync(const std::string& key, ByteContainerView value) = 0;
+  virtual void SendAsync(const std::string& key, ByteContainerView value) {
+    SendAsync(key, Buffer(value));
+  }
 
   virtual void SendAsync(const std::string& key, Buffer&& value) = 0;
 
@@ -57,8 +59,9 @@ class IChannel {
   virtual void SendAsyncThrottled(const std::string& key, Buffer&& value) = 0;
 
   virtual void SendAsyncThrottled(const std::string& key,
-                                  ByteContainerView value) = 0;
-
+                                  ByteContainerView value) {
+    SendAsyncThrottled(key, Buffer(value));
+  }
   // Send synchronously.
   // return when the message is successfully pushed into peer's recv buffer.
   // Send is not reentrant with same key.
@@ -176,15 +179,12 @@ class Channel : public IChannel, public std::enable_shared_from_this<Channel> {
 
   std::shared_ptr<TransportLink> GetLink() { return link_; }
 
+  using IChannel::SendAsync;
   // all send interface for normal msg is not reentrant with same key.
-  void SendAsync(const std::string& key, ByteContainerView value) final;
-
   void SendAsync(const std::string& key, Buffer&& value) final;
 
+  using IChannel::SendAsyncThrottled;
   void SendAsyncThrottled(const std::string& key, Buffer&& value) final;
-
-  void SendAsyncThrottled(const std::string& key,
-                          ByteContainerView value) final;
 
   void Send(const std::string& key, ByteContainerView value) final;
 
