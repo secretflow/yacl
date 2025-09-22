@@ -60,7 +60,7 @@ class IChannel {
 
   virtual void SendAsyncThrottled(const std::string& key,
                                   ByteContainerView value) {
-    SendAsyncThrottled(key, std::move(Buffer(value)));
+    SendAsyncThrottled(key, Buffer(value));
   }
   // Send synchronously.
   // return when the message is successfully pushed into peer's recv buffer.
