@@ -70,9 +70,6 @@ class IChannel {
   // block waiting message.
   virtual Buffer Recv(const std::string& key) = 0;
 
-  // called by an async dispatcher.
-  virtual void OnMessage(const std::string& key, ByteContainerView value) = 0;
-
   // set receive timeout ms
   virtual void SetRecvTimeout(uint64_t timeout_ms) = 0;
 
@@ -190,7 +187,7 @@ class Channel : public IChannel, public std::enable_shared_from_this<Channel> {
 
   Buffer Recv(const std::string& key) override;
 
-  void OnMessage(const std::string& key, ByteContainerView value) override;
+  void OnMessage(const std::string& key, ByteContainerView value);
 
   void SetRecvTimeout(uint64_t recv_timeout_ms) override;
 

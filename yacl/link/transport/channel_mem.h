@@ -63,7 +63,7 @@ class ChannelMem final : public IChannel {
 
   Buffer Recv(const std::string& key) final;
 
-  void OnMessage(const std::string& key, ByteContainerView value) final;
+  void OnMessage(const std::string& key, ByteContainerView value);
 
   void SetRecvTimeout(uint64_t timeout_ms) final {
     recv_timeout_ms_ = timeout_ms * std::chrono::milliseconds(1);
