@@ -47,7 +47,7 @@ class IChannel {
   // return when the message successfully pushed into the send queue.
   // SendAsync is not reentrant with same key.
   virtual void SendAsync(const std::string& key, ByteContainerView value) {
-    SendAsync(key, std::move(Buffer(value)));
+    SendAsync(key, Buffer(value));
   }
 
   virtual void SendAsync(const std::string& key, Buffer value) = 0;
