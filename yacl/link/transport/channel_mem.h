@@ -48,12 +48,12 @@ class ChannelMem final : public IChannel {
   void SetPeer(const std::shared_ptr<ChannelMem>& peer_task);
 
   using IChannel::SendAsync;
-  void SendAsync(const std::string& key, Buffer&& value) final {
+  void SendAsync(const std::string& key, Buffer value) final {
     SendImpl(key, value);
   }
 
   using IChannel::SendAsyncThrottled;
-  void SendAsyncThrottled(const std::string& key, Buffer&& value) final {
+  void SendAsyncThrottled(const std::string& key, Buffer value) final {
     SendImpl(key, value);
   }
 
