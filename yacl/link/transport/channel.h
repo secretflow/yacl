@@ -70,9 +70,6 @@ class IChannel {
   // block waiting message.
   virtual Buffer Recv(const std::string& key) = 0;
 
-  // called by an async dispatcher.
-  virtual void OnMessage(const std::string& key, ByteContainerView value) = 0;
-
   // set receive timeout ms
   virtual void SetRecvTimeout(uint64_t timeout_ms) = 0;
 
@@ -190,8 +187,6 @@ class Channel : public IChannel, public std::enable_shared_from_this<Channel> {
 
   Buffer Recv(const std::string& key) override;
 
-  void OnMessage(const std::string& key, ByteContainerView value) override;
-
   void SetRecvTimeout(uint64_t recv_timeout_ms) override;
 
   uint64_t GetRecvTimeout() const override;
@@ -214,9 +209,6 @@ class Channel : public IChannel, public std::enable_shared_from_this<Channel> {
 
   // wait for dummy msg from peer, timeout by recv_timeout_ms_.
   void TestRecv() final;
-
-  void OnChunkedMessage(const std::string& key, ByteContainerView value,
-                        size_t offset, size_t total_length);
 
   void OnRequest(const ::google::protobuf::Message& request,
                  ::google::protobuf::Message* response);
@@ -257,6 +249,10 @@ class Channel : public IChannel, public std::enable_shared_from_this<Channel> {
   }
 
  private:
+  void OnMessage(const std::string& key, ByteContainerView value);
+  void OnChunkedMessage(const std::string& key, ByteContainerView value,
+                        size_t offset, size_t total_length);
+
   void WaitAsyncSendToFinish();
 
   void ThrottleWindowWait(size_t);
