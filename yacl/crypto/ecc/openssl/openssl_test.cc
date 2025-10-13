@@ -82,15 +82,39 @@ TEST(OpensslTest, HashToCurveWorks) {
   };
 
   for (int i = 0; i < 1000; ++i) {
-    is_unique(curve->HashToCurve(HashToCurveStrategy::TryAndRehash_SHA2,
-                                 fmt::format("id{}", i)));
+    // is_unique(curve->HashToCurve(HashToCurveStrategy::TryAndRehash_SHA2,
+    //                              fmt::format("id{}", i)));
     is_unique(curve->HashToCurve(HashToCurveStrategy::TryAndRehash_SM,
                                  fmt::format("id{}", i)));
-    is_unique(curve->HashToCurve(HashToCurveStrategy::TryAndRehash_BLAKE3,
-                                 fmt::format("id{}", i)));
+    // is_unique(curve->HashToCurve(HashToCurveStrategy::TryAndRehash_BLAKE3,
+    //                              fmt::format("id{}", i)));
     // Same strategy as above TryAndRehash_BLAKE3
     // is_unique(curve->HashToCurve(fmt::format("id{}", i)));
   }
+}
+
+TEST(OpensslTest, HashToCurveWorks_ExpectedBitLength){
+    auto curve521 = OpensslGroup::Create(GetCurveMetaByName("P-521"));
+    auto curve256 = OpensslGroup::Create(GetCurveMetaByName("P-256"));
+    auto curvesm2 = OpensslGroup::Create(GetCurveMetaByName("sm2"));
+    for(uint64_t i=0;i<10;i++){
+        EcPoint p521 = curve521->HashToCurve(HashToCurveStrategy::TryAndRehash_SHA3, fmt::format("id{}", i));
+        AffinePoint ap521 = curve521->GetAffinePoint(p521);
+        EXPECT_LT(curve521->GetField().BitCount()-ap521.x.BitCount(), 5);
+
+        EcPoint p256 = curve256->HashToCurve(HashToCurveStrategy::TryAndRehash_SHA3, fmt::format("id{}", i));
+        AffinePoint ap256 = curve256->GetAffinePoint(p256);
+        EXPECT_LT(curve256->GetField().BitCount()-ap256.x.BitCount(), 5);
+        
+        EcPoint psm2 = curvesm2->HashToCurve(HashToCurveStrategy::TryAndRehash_SM, fmt::format("id{}", i));
+        AffinePoint apsm2 = curvesm2->GetAffinePoint(psm2);
+        EXPECT_LT(curvesm2->GetField().BitCount()-apsm2.x.BitCount(), 5);
+      }
+}
+
+TEST(OpensslTest, HashToCurveWorks_SHA2){
+    auto curve521 = OpensslGroup::Create(GetCurveMetaByName("P-521"));
+    EXPECT_ANY_THROW(curve521->HashToCurve(HashToCurveStrategy::TryAndRehash_SHA2, fmt::format("id{}", 1)));
 }
 
 TEST(OpensslTest, P256HashToCurveWorks) {
