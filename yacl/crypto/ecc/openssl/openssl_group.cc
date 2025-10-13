@@ -300,10 +300,11 @@ EcPoint OpensslGroup::HashToCurve(HashToCurveStrategy strategy,
       YACL_THROW("HashToCurveStrategy::TryAndRehash_SHA2 has been deprecated.");
       break;
     case HashToCurveStrategy::TryAndRehash_SHA3:
-      if (bits <= 128)
+      if (bits <= 128) {
         hash_algorithm = HashAlgorithm::SHAKE128;
-      else
+      } else {
         hash_algorithm = HashAlgorithm::SHAKE256;
+      }
       break;
     case HashToCurveStrategy::TryAndRehash_SM:
       YACL_ENFORCE(GetCurveName() == "SM2",
@@ -366,12 +367,9 @@ EcPoint OpensslGroup::HashToCurve(HashToCurveStrategy strategy,
   std::vector<uint8_t> buf;
   if (hash_algorithm == HashAlgorithm::BLAKE3) {
     buf = Blake3Hash((bits + 7) / 8).Update(str).CumulativeHash();
-  } else if (hash_algorithm == HashAlgorithm::SHAKE128) {
+  } else if (hash_algorithm == HashAlgorithm::SHAKE128 ||
+             hash_algorithm == HashAlgorithm::SHAKE256) {
     SslHashXof hash_impl(HashAlgorithm::SHAKE128);
-    hash_impl.Update(str);
-    buf = hash_impl.CumulativeHash((bits + 7) / 8);
-  } else if (hash_algorithm == HashAlgorithm::SHAKE256) {
-    SslHashXof hash_impl(HashAlgorithm::SHAKE256);
     hash_impl.Update(str);
     buf = hash_impl.CumulativeHash((bits + 7) / 8);
   } else {
@@ -393,13 +391,10 @@ EcPoint OpensslGroup::HashToCurve(HashToCurveStrategy strategy,
 
     if (hash_algorithm == HashAlgorithm::BLAKE3) {
       buf = Blake3Hash((bits + 7) / 8).Update(buf).CumulativeHash();
-    } else if (hash_algorithm == HashAlgorithm::SHAKE128) {
+    } else if (hash_algorithm == HashAlgorithm::SHAKE128 ||
+               hash_algorithm == HashAlgorithm::SHAKE256) {
       // 补充这两个哈希的使用
       SslHashXof hash_impl(HashAlgorithm::SHAKE128);
-      hash_impl.Update(buf);
-      buf = hash_impl.CumulativeHash((bits + 7) / 8);
-    } else if (hash_algorithm == HashAlgorithm::SHAKE256) {
-      SslHashXof hash_impl(HashAlgorithm::SHAKE256);
       hash_impl.Update(buf);
       buf = hash_impl.CumulativeHash((bits + 7) / 8);
     } else {
