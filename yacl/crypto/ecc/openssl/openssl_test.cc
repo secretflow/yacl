@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <cstdint>
+
 #include "gtest/gtest.h"
 
 #include "yacl/crypto/ecc/hash_to_curve/p256.h"
@@ -98,12 +99,16 @@ TEST(OpensslTest, HashToCurveWorks_ExpectedBitLength) {
       HashToCurveStrategy::TryAndRehash_SHA3,
       HashToCurveStrategy::TryAndRehash_SHA3,
       HashToCurveStrategy::TryAndRehash_SM};
-  for (int id = 0; id < 3; id++) {
+  constexpr int kMaxBitLengthDifference = 5;
+  constexpr int kNumTestCases = 3;
+  constexpr int kNumTestRounds = 10;
+  for (int id = 0; id < kNumTestCases; id++) {
     auto curve = OpensslGroup::Create(GetCurveMetaByName(groups[id]));
-    for (uint64_t i = 0; i < 10; i++) {
+    for (uint64_t i = 0; i < kNumTestRounds; i++) {
       EcPoint p = curve->HashToCurve(strategy[id], fmt::format("id{}", i));
       AffinePoint ap = curve->GetAffinePoint(p);
-      EXPECT_LT(curve->GetField().BitCount() - ap.x.BitCount(), 5);
+      EXPECT_LT(curve->GetField().BitCount() - ap.x.BitCount(),
+                kMaxBitLengthDifference);
     }
   }
 }

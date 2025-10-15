@@ -300,7 +300,7 @@ EcPoint OpensslGroup::HashToCurve(HashToCurveStrategy strategy,
       YACL_THROW("HashToCurveStrategy::TryAndRehash_SHA2 has been deprecated.");
       break;
     case HashToCurveStrategy::TryAndRehash_SHA3:
-      if (bits <= 128) {
+      if (bits <= 256) {
         hash_algorithm = HashAlgorithm::SHAKE128;
       } else {
         hash_algorithm = HashAlgorithm::SHAKE256;
@@ -393,7 +393,6 @@ EcPoint OpensslGroup::HashToCurve(HashToCurveStrategy strategy,
       buf = Blake3Hash((bits + 7) / 8).Update(buf).CumulativeHash();
     } else if (hash_algorithm == HashAlgorithm::SHAKE128 ||
                hash_algorithm == HashAlgorithm::SHAKE256) {
-      // 补充这两个哈希的使用
       SslHashXof hash_impl(HashAlgorithm::SHAKE128);
       hash_impl.Update(buf);
       buf = hash_impl.CumulativeHash((bits + 7) / 8);
