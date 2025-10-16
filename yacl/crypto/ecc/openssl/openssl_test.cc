@@ -31,7 +31,9 @@ MPInt Bn2Mp(const BIGNUM *bn);
 }  // namespace yacl::crypto::openssl
 
 namespace yacl::crypto::openssl::test {
-
+constexpr int kMaxBitLengthDifference = 5;
+constexpr int kNumTestCases = 3;
+constexpr int kNumTestRounds = 10;
 TEST(OpensslTest, BnWorks) {
   // small case
   for (int i = 100; i >= -100; --i) {
@@ -99,9 +101,6 @@ TEST(OpensslTest, HashToCurveWorks_ExpectedBitLength) {
       HashToCurveStrategy::TryAndRehash_SHA3,
       HashToCurveStrategy::TryAndRehash_SHA3,
       HashToCurveStrategy::TryAndRehash_SM};
-  constexpr int kMaxBitLengthDifference = 5;
-  constexpr int kNumTestCases = 3;
-  constexpr int kNumTestRounds = 10;
   for (int id = 0; id < kNumTestCases; id++) {
     auto curve = OpensslGroup::Create(GetCurveMetaByName(groups[id]));
     for (uint64_t i = 0; i < kNumTestRounds; i++) {
