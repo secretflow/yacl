@@ -80,3 +80,40 @@ yacl_cc_library(
         "@yacl//yacl/crypto/rand",
     ],
 )
+
+yacl_cc_library(
+    name = "sumcheck",
+    srcs = ["sumcheck.cc"],
+    hdrs = ["sumcheck.h"],
+    deps = [
+        "@yacl//yacl/crypto/rand",
+        "@yacl//yacl/math/mpint"
+    ],
+)
+
+yacl_cc_test(
+    name = "sumcheck_test",
+    srcs = ["sumcheck_test.cc"],
+    deps = [
+        ":sumcheck",
+    ],
+)
+
+yacl_cc_library(
+    name = "matmul_check",
+    srcs = ["matmul_check.cc"],
+    hdrs = ["matmul_check.h"],
+    deps = [
+        ":sumcheck",
+        "@yacl//yacl/base:exception",
+    ],
+)
+
+yacl_cc_test(
+    name = "matmul_check_test",
+    srcs = ["matmul_check_test.cc"],
+    deps = [
+        ":matmul_check",
+        "@yacl//yacl/crypto/rand",
+    ],
+)
