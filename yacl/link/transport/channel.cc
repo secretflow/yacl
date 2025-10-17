@@ -573,7 +573,7 @@ void Channel::MessageQueue::Push(Message&& msg) {
   cond_.notify_all();
 }
 
-void Channel::SendAsync(const std::string& msg_key, Buffer&& value) {
+void Channel::SendAsync(const std::string& msg_key, Buffer value) {
   if (aborting_.load()) {
     YACL_THROW_LINK_ABORTED(
         "SendAsync is not allowed when channel is aborting");
@@ -610,7 +610,7 @@ void Channel::Send(const std::string& msg_key, ByteContainerView value) {
   send_sync_.WaitSeqIdSendFinished(seq_id);
 }
 
-void Channel::SendAsyncThrottled(const std::string& msg_key, Buffer&& value) {
+void Channel::SendAsyncThrottled(const std::string& msg_key, Buffer value) {
   if (aborting_.load()) {
     YACL_THROW_LINK_ABORTED(
         "SendAsyncThrottled is not allowed when channel is aborting");
