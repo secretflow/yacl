@@ -1,4 +1,4 @@
-// Copyright 2023 Ant Group Co., Ltd.
+// Copyright 2025 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -64,6 +64,10 @@ private:
 
 bool RunSumcheckProtocol(const MultiLinearPolynomial& polynomial,
                          const FieldElem& claimed_sum,
+                         const FieldElem& modulus);
+bool RunZeroCheckProtocol(const MultiLinearPolynomial& poly_A,
+                          const FieldElem& modulus);
+bool RunOneCheckProtocol(const MultiLinearPolynomial& poly_y,
                          const FieldElem& modulus);
 
 } // namespace examples::zkp

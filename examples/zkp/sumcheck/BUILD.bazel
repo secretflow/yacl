@@ -1,4 +1,4 @@
-# Copyright 2022 Ant Group Co., Ltd.
+# Copyright 2025 Ant Group Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,66 +17,56 @@ load("@yacl//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
 package(default_visibility = ["//visibility:public"])
 
 yacl_cc_library(
-    name = "pedersen_commit",
-    hdrs = [
-        "pedersen_commit.h",
-    ],
+    name = "sumcheck",
+    srcs = ["sumcheck.cc"],
+    hdrs = ["sumcheck.h"],
     deps = [
-        ":sigma_owh",
-        "@yacl//yacl/crypto/hash:hash_utils",
+        "@yacl//yacl/crypto/rand",
+        "@yacl//yacl/math/mpint",
     ],
 )
 
 yacl_cc_test(
-    name = "pedersen_commit_test",
-    srcs = ["pedersen_commit_test.cc"],
+    name = "sumcheck_test",
+    srcs = ["sumcheck_test.cc"],
     deps = [
-        ":pedersen_commit",
+        ":sumcheck",
     ],
 )
 
 yacl_cc_library(
-    name = "sigma",
-    srcs = ["sigma.cc"],
-    hdrs = [
-        "sigma.h",
-    ],
+    name = "matmul_check",
+    srcs = ["matmul_check.cc"],
+    hdrs = ["matmul_check.h"],
     deps = [
-        ":sigma_owh",
-        "@yacl//yacl/crypto/tools:ro",
-        "@yacl//yacl/utils:parallel",
+        ":sumcheck",
+        "@yacl//yacl/base:exception",
     ],
 )
 
 yacl_cc_test(
-    name = "sigma_test",
-    srcs = ["sigma_test.cc"],
+    name = "matmul_check_test",
+    srcs = ["matmul_check_test.cc"],
     deps = [
-        ":sigma",
+        ":matmul_check",
         "@yacl//yacl/crypto/rand",
     ],
 )
 
 yacl_cc_library(
-    name = "sigma_config",
-    srcs = ["sigma_config.cc"],
-    hdrs = [
-        "sigma_config.h",
-    ],
+    name = "logup",
+    srcs = ["logup.cc"],
+    hdrs = ["logup.h"],
     deps = [
-        "@yacl//yacl/crypto/ecc",
-        "@yacl//yacl/crypto/hash:hash_interface",
+        ":sumcheck",
+        "@yacl//yacl/base:exception",
     ],
 )
 
-yacl_cc_library(
-    name = "sigma_owh",
-    srcs = ["sigma_owh.cc"],
-    hdrs = [
-        "sigma_owh.h",
-    ],
+yacl_cc_test(
+    name = "logup_test",
+    srcs = ["logup_test.cc"],
     deps = [
-        ":sigma_config",
-        "@yacl//yacl/crypto/rand",
+        ":logup",
     ],
 )

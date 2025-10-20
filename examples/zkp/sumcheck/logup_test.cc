@@ -1,0 +1,78 @@
+// Copyright 2025 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "zkp/sumcheck/logup.h"
+
+#include "gtest/gtest.h"
+
+namespace examples::zkp {
+
+class LogUpTest : public ::testing::Test {
+ protected:
+  void SetUp() override { modulus_p_ = yacl::math::MPInt("257"); }
+  yacl::math::MPInt modulus_p_;
+};
+
+TEST_F(LogUpTest, HonestProver) {
+  MultiLinearPolynomial f_A = {FieldElem(5), FieldElem(10)};
+  MultiLinearPolynomial f_B = {FieldElem(3), FieldElem(5), FieldElem(10),
+                               FieldElem(20)};
+  MultiLinearPolynomial m_B = {FieldElem(0), FieldElem(1), FieldElem(1),
+                               FieldElem(0)};
+
+  bool success = RunLogUpProtocol(f_A, f_B, m_B, modulus_p_);
+  EXPECT_TRUE(success);
+}
+
+TEST_F(LogUpTest, HonestProverWithMultiplicity) {
+  MultiLinearPolynomialVec f_A_evals = {FieldElem(5), FieldElem(5), FieldElem(10),
+                                        FieldElem(10)};  // f_A = {5, 5, 10, 10}
+  MultiLinearPolynomialVec f_B_evals = {FieldElem(3), FieldElem(5), FieldElem(10),
+                                        FieldElem(20)};  // f_B = {3, 5, 10, 20}
+
+  // m_B
+  // f_B[0] = 3 -> m_B[0]=0
+  // f_B[1]=5 -> m_B[1]=2
+  // f_B[2]=10 -> m_B[2]=2
+  // f_B[3]=20 -> m_B[3]=0
+  MultiLinearPolynomialVec m_B_evals = {FieldElem(0), FieldElem(2), FieldElem(2),
+                                        FieldElem(0)};
+
+  // LHS Sum = 1/(z-5) + 1/(z-5) + 1/(z-10) + 1/(z-10) = 2/(z-5) + 2/(z-10)
+  // RHS Sum = 0/(z-3) + 2/(z-5) + 2/(z-10) + 0/(z-20) = 2/(z-5) + 2/(z-10)
+  bool success = RunLogUpProtocol(f_A_evals, f_B_evals, m_B_evals, modulus_p_);
+  EXPECT_TRUE(success);
+}
+
+TEST_F(LogUpTest, FraudulentProverSubset) {
+  MultiLinearPolynomial f_A = {FieldElem(5), FieldElem(99)};
+  MultiLinearPolynomial f_B = {FieldElem(3), FieldElem(5), FieldElem(10),
+                               FieldElem(20)};
+  MultiLinearPolynomial m_B = {FieldElem(0), FieldElem(1), FieldElem(1),
+                               FieldElem(0)};
+  bool success = RunLogUpProtocol(f_A, f_B, m_B, modulus_p_);
+  EXPECT_FALSE(success);
+}
+
+TEST_F(LogUpTest, FraudulentProverMultiplicity) {
+  MultiLinearPolynomial f_A = {FieldElem(5), FieldElem(5)};
+  MultiLinearPolynomial f_B = {FieldElem(3), FieldElem(5), FieldElem(10),
+                               FieldElem(20)};
+  MultiLinearPolynomial m_B = {FieldElem(0), FieldElem(1), FieldElem(1),
+                               FieldElem(0)};
+  bool success = RunLogUpProtocol(f_A, f_B, m_B, modulus_p_);
+  EXPECT_FALSE(success);
+}
+
+}  // namespace examples::zkp

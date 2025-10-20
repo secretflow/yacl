@@ -1,4 +1,4 @@
-// Copyright 2023 Ant Group Co., Ltd.
+// Copyright 2025 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,7 +28,6 @@ using FieldElem = MPInt;
 class MultivariatePolynomial {
 public:
     virtual ~MultivariatePolynomial() = default;
-    virtual FieldElem evaluate(const std::vector<FieldElem>& point) const = 0;
     virtual size_t get_num_variables() const = 0;
 };
 

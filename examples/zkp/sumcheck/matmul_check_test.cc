@@ -1,4 +1,4 @@
-// Copyright 2023 Ant Group Co., Ltd.
+// Copyright 2025 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "zkp/matmul_check.h"
+#include "zkp/sumcheck/matmul_check.h"
 
 #include "gtest/gtest.h"
 
@@ -71,7 +71,9 @@ public:
         return EvaluateMultilinearTest(evaluations_, absl::MakeConstSpan(point), modulus_);
     }
 
-    size_t get_num_variables() const override {return num_vars_;}
+    size_t get_num_variables() const override {
+        return num_vars_;
+    }
 
 private:
     std::vector<FieldElem> evaluations_;
@@ -88,40 +90,32 @@ protected:
 };
 
 TEST_F(MatmulCheckTest, MatVecMultiplication) {
-    // Matrix M (2x2): [[1, 2], [3, 4]]
-    // correspond to {M(0,0), M(0,1), M(1,0), M(1,1)}.
+    // Matrix M
     auto M = std::make_shared<DenseMultilinearPolynomial>(
         std::vector<FieldElem>{FieldElem(1), FieldElem(2), FieldElem(3), FieldElem(4)}, modulus_p_);
-
-    // Vector t (2x1): [5, 6]
     auto t = std::make_shared<DenseMultilinearPolynomial>(
         std::vector<FieldElem>{FieldElem(5), FieldElem(6)}, modulus_p_);
-
-    // Result a = M * t = [1*5+2*6, 3*5+4*6] = [17, 39]
     auto a = std::make_shared<DenseMultilinearPolynomial>(
         std::vector<FieldElem>{FieldElem(17), FieldElem(39)}, modulus_p_);
+    std::vector<FieldElem> r = {FieldElem(10)};  // Random challenge
 
-    std::vector<FieldElem> r = {FieldElem(10)};
     FieldElem expected = a->evaluate(r);
     FieldElem actual = mat_vec_multiplication(M, t, r, modulus_p_);
     EXPECT_EQ(expected, actual);
 }
 
 TEST_F(MatmulCheckTest, MatMatMultiplication) {
-    // Matrix A (2x2): [[1, 2], [3, 4]].
     auto A = std::make_shared<DenseMultilinearPolynomial>(
         std::vector<FieldElem>{FieldElem(1), FieldElem(2), FieldElem(3), FieldElem(4)}, modulus_p_);
-
-    // Matrix B (2x2): [[5, 6], [7, 8]].
     auto B = std::make_shared<DenseMultilinearPolynomial>(
         std::vector<FieldElem>{FieldElem(5), FieldElem(6), FieldElem(7), FieldElem(8)}, modulus_p_);
-
-    // Result C = A * B = [[1*5+2*7, 1*6+2*8], [3*5+4*7, 3*6+4*8]] = [[19, 22], [43, 50]]
     auto C = std::make_shared<DenseMultilinearPolynomial>(
-        std::vector<FieldElem>{FieldElem(19), FieldElem(22), FieldElem(43), FieldElem(50)}, modulus_p_);
+        std::vector<FieldElem>{FieldElem(19), FieldElem(22), FieldElem(43), FieldElem(50)}, modulus_p_);  // Result C = A * B
 
-    std::vector<FieldElem> u = {FieldElem(10)};
-    std::vector<FieldElem> v = {FieldElem(20)}; 
+    // Random challenges
+    std::vector<FieldElem> u = {FieldElem(10)}; // for rows of A
+    std::vector<FieldElem> v = {FieldElem(20)}; // for columns of B
+
     std::vector<FieldElem> uv_point = u;
     uv_point.insert(uv_point.end(), v.begin(), v.end());
     FieldElem expected = C->evaluate(uv_point);
