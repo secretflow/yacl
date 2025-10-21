@@ -16,15 +16,12 @@
 
 #include "yacl/base/exception.h"
 
-#include <iostream>
-
 namespace examples::zkp {
 
 namespace {
 
 FieldElem EvaluateUnivariate(const UnivariatePolynomial& poly,
-                                const FieldElem& x,
-                                const FieldElem& modulus) {
+                             const FieldElem& x, const FieldElem& modulus) {
   FieldElem result(0);
   FieldElem x_pow(1);
 
@@ -38,8 +35,8 @@ FieldElem EvaluateUnivariate(const UnivariatePolynomial& poly,
 }
 
 FieldElem EvaluateMultilinear(const MultiLinearPolynomial& g,
-                                 absl::Span<const FieldElem> r,
-                                 const FieldElem& modulus) {
+                              absl::Span<const FieldElem> r,
+                              const FieldElem& modulus) {
   size_t num_vars = r.size();
   YACL_ENFORCE(g.size() == (1U << num_vars),
                "Polynomial evaluation size mismatch number of variables");
@@ -94,7 +91,7 @@ MultiLinearPolynomial MultiplyPolynomials(const MultiLinearPolynomial& p1,
 
 // eq(r, x) = \prod_{i=1 to k} (r_i * x_i + (1-r_i)*(1-x_i))
 MultiLinearPolynomial BuildEqPolynomial(absl::Span<const FieldElem> r,
-                                          const FieldElem& modulus) {
+                                        const FieldElem& modulus) {
   size_t k = r.size();
   size_t N = 1U << k;
   MultiLinearPolynomial eq_poly_evals(N);
@@ -122,8 +119,8 @@ MultiLinearPolynomial BuildEqPolynomial(absl::Span<const FieldElem> r,
 
 // Build the alpha polynomial \hat{α}(i) = α^i.
 MultiLinearPolynomial BuildAlphaPolynomial(size_t num_vars,
-                                             const FieldElem& alpha,
-                                             const FieldElem& modulus) {
+                                           const FieldElem& alpha,
+                                           const FieldElem& modulus) {
   size_t N = 1U << num_vars;
   MultiLinearPolynomial alpha_poly_evals(N);
   FieldElem current_power(1);
@@ -160,118 +157,124 @@ FieldElem ComputeAlphaSum(size_t num_vars, const FieldElem& alpha,
   return result;
 }
 
-} // namespace
+}  // namespace
 
 SumcheckProver::SumcheckProver(const MultiLinearPolynomial& polynomial,
                                const FieldElem& modulus)
     : current_g_evals_(polynomial), modulus_p_(modulus) {
-    YACL_ENFORCE(polynomial.size() > 0 &&
-                (polynomial.size() & (polynomial.size() - 1)) == 0,
+  YACL_ENFORCE(polynomial.size() > 0 &&
+                   (polynomial.size() & (polynomial.size() - 1)) == 0,
                "Polynomial size must be a power of 2.");
-    num_vars_ = std::log2(polynomial.size());
+  num_vars_ = std::log2(polynomial.size());
 }
 
 UnivariatePolynomial SumcheckProver::ComputeNextRoundPoly() {
-    YACL_ENFORCE(current_round_ < num_vars_, "No more rounds to prove.");
+  YACL_ENFORCE(current_round_ < num_vars_, "No more rounds to prove.");
 
-    FieldElem p_i_at_0(0);
-    FieldElem p_i_at_1(0);
-    size_t half_size = current_g_evals_.size() / 2;
+  FieldElem p_i_at_0(0);
+  FieldElem p_i_at_1(0);
+  size_t half_size = current_g_evals_.size() / 2;
 
-    for (size_t j = 0; j < half_size; ++j) {
-        FieldElem::AddMod(p_i_at_0, current_g_evals_[j], modulus_p_, &p_i_at_0);
-        FieldElem::AddMod(p_i_at_1, current_g_evals_[j + half_size],
-                           modulus_p_, &p_i_at_1);
-    }
+  for (size_t j = 0; j < half_size; ++j) {
+    FieldElem::AddMod(p_i_at_0, current_g_evals_[j], modulus_p_, &p_i_at_0);
+    FieldElem::AddMod(p_i_at_1, current_g_evals_[j + half_size], modulus_p_,
+                      &p_i_at_1);
+  }
 
-    FieldElem c1;
-    FieldElem::SubMod(p_i_at_1, p_i_at_0, modulus_p_, &c1);
-    return {p_i_at_0, c1}; // p_i(X) = p_i_at_0 + c1 * X
+  FieldElem c1;
+  FieldElem::SubMod(p_i_at_1, p_i_at_0, modulus_p_, &c1);
+  return {p_i_at_0, c1};  // p_i(X) = p_i_at_0 + c1 * X
 }
 
 void SumcheckProver::ProcessChallenge(const FieldElem& challenge) {
-    size_t half_size = current_g_evals_.size() / 2;
-    std::vector<FieldElem> next_g_evals;
-    next_g_evals.reserve(half_size);
+  size_t half_size = current_g_evals_.size() / 2;
+  std::vector<FieldElem> next_g_evals;
+  next_g_evals.reserve(half_size);
 
-    for (size_t j = 0; j < half_size; ++j) {
-        const auto& eval_at_0 = current_g_evals_[j];
-        const auto& eval_at_1 = current_g_evals_[j + half_size];
+  for (size_t j = 0; j < half_size; ++j) {
+    const auto& eval_at_0 = current_g_evals_[j];
+    const auto& eval_at_1 = current_g_evals_[j + half_size];
 
-        FieldElem one(1);
-        FieldElem one_minus_ri;
-        FieldElem::SubMod(one, challenge, modulus_p_, &one_minus_ri);
+    FieldElem one(1);
+    FieldElem one_minus_ri;
+    FieldElem::SubMod(one, challenge, modulus_p_, &one_minus_ri);
 
-        FieldElem term1, term2, new_eval;
-        FieldElem::MulMod(eval_at_0, one_minus_ri, modulus_p_, &term1);
-        FieldElem::MulMod(eval_at_1, challenge, modulus_p_, &term2);
-        FieldElem::AddMod(term1, term2, modulus_p_, &new_eval);
-        next_g_evals.push_back(new_eval);
-    }
-    current_g_evals_ = std::move(next_g_evals);
-    current_round_++;
+    FieldElem term1, term2, new_eval;
+    FieldElem::MulMod(eval_at_0, one_minus_ri, modulus_p_, &term1);
+    FieldElem::MulMod(eval_at_1, challenge, modulus_p_, &term2);
+    FieldElem::AddMod(term1, term2, modulus_p_, &new_eval);
+    next_g_evals.push_back(new_eval);
+  }
+  current_g_evals_ = std::move(next_g_evals);
+  current_round_++;
 }
 
 FieldElem SumcheckProver::GetFinalEvaluation() const {
-    YACL_ENFORCE(current_round_ == num_vars_ && current_g_evals_.size() == 1,
+  YACL_ENFORCE(current_round_ == num_vars_ && current_g_evals_.size() == 1,
                "Protocol hasn't finished yet.");
-    return current_g_evals_[0];
+  return current_g_evals_[0];
 }
 
-SumcheckVerifier::SumcheckVerifier(const FieldElem& claimed_sum, size_t num_vars,
-                                   const FieldElem& modulus)
+SumcheckVerifier::SumcheckVerifier(const FieldElem& claimed_sum,
+                                   size_t num_vars, const FieldElem& modulus)
     : expected_sum_(claimed_sum), num_vars_(num_vars), modulus_p_(modulus) {
-    challenges_.reserve(num_vars_);
+  challenges_.reserve(num_vars_);
 }
 
 std::optional<FieldElem> SumcheckVerifier::VerifyRound(
     const UnivariatePolynomial& round_poly) {
-    YACL_ENFORCE(current_round_ < num_vars_, "No more rounds to verify.");
-    if (round_poly.size() != 2) return std::nullopt;
+  YACL_ENFORCE(current_round_ < num_vars_, "No more rounds to verify.");
+  if (round_poly.size() != 2) return std::nullopt;
 
-    const FieldElem& a0 = round_poly[0];
-    const FieldElem& a1 = round_poly[1];
-    FieldElem p_i_at_0 = a0;
-    FieldElem p_i_at_1;
-    FieldElem::AddMod(a0, a1, modulus_p_, &p_i_at_1);
+  const FieldElem& a0 = round_poly[0];
+  const FieldElem& a1 = round_poly[1];
+  FieldElem p_i_at_0 = a0;
+  FieldElem p_i_at_1;
+  FieldElem::AddMod(a0, a1, modulus_p_, &p_i_at_1);
 
-    FieldElem sum_check;
-    FieldElem::AddMod(p_i_at_0, p_i_at_1, modulus_p_, &sum_check);
+  FieldElem sum_check;
+  FieldElem::AddMod(p_i_at_0, p_i_at_1, modulus_p_, &sum_check);
 
-    if (sum_check != expected_sum_) { return std::nullopt; }
-    FieldElem challenge = RandFieldElem(modulus_p_);
-    challenges_.push_back(challenge);
-    expected_sum_ = EvaluateUnivariate(round_poly, challenge, modulus_p_);
-    current_round_++;
-    return challenge;
+  if (sum_check != expected_sum_) {
+    return std::nullopt;
+  }
+  FieldElem challenge = RandFieldElem(modulus_p_);
+  challenges_.push_back(challenge);
+  expected_sum_ = EvaluateUnivariate(round_poly, challenge, modulus_p_);
+  current_round_++;
+  return challenge;
 }
 
 bool SumcheckVerifier::FinalCheck(const MultiLinearPolynomial& g,
                                   const FieldElem& final_eval_from_prover) {
-    if (current_round_ != num_vars_) {return false;}
-    FieldElem final_eval_check = EvaluateMultilinear(g, challenges_, modulus_p_);
+  if (current_round_ != num_vars_) {
+    return false;
+  }
+  FieldElem final_eval_check = EvaluateMultilinear(g, challenges_, modulus_p_);
 
-    return final_eval_check == final_eval_from_prover &&
-           expected_sum_ == final_eval_from_prover;
+  return final_eval_check == final_eval_from_prover &&
+         expected_sum_ == final_eval_from_prover;
 }
 
 bool RunSumcheckProtocol(const MultiLinearPolynomial& polynomial,
                          const FieldElem& claimed_sum,
                          const FieldElem& modulus) {
-    size_t num_vars = std::log2(polynomial.size());
+  size_t num_vars = std::log2(polynomial.size());
 
-    SumcheckProver prover(polynomial, modulus);
-    SumcheckVerifier verifier(claimed_sum, num_vars, modulus);
+  SumcheckProver prover(polynomial, modulus);
+  SumcheckVerifier verifier(claimed_sum, num_vars, modulus);
 
-    for (size_t i = 0; i < num_vars; ++i) {
-        UnivariatePolynomial p_i = prover.ComputeNextRoundPoly();
-        std::optional<FieldElem> challenge = verifier.VerifyRound(p_i);
-        if (!challenge.has_value()) {return false;}
-        prover.ProcessChallenge(challenge.value());
+  for (size_t i = 0; i < num_vars; ++i) {
+    UnivariatePolynomial p_i = prover.ComputeNextRoundPoly();
+    std::optional<FieldElem> challenge = verifier.VerifyRound(p_i);
+    if (!challenge.has_value()) {
+      return false;
     }
+    prover.ProcessChallenge(challenge.value());
+  }
 
-    FieldElem final_eval = prover.GetFinalEvaluation();
-    return verifier.FinalCheck(polynomial, final_eval);
+  FieldElem final_eval = prover.GetFinalEvaluation();
+  return verifier.FinalCheck(polynomial, final_eval);
 }
 
 bool RunZeroCheckProtocol(const MultiLinearPolynomial& poly_A,
@@ -279,14 +282,15 @@ bool RunZeroCheckProtocol(const MultiLinearPolynomial& poly_A,
   YACL_ENFORCE(poly_A.size() > 0 && (poly_A.size() & (poly_A.size() - 1)) == 0,
                "Polynomial size must be a power of 2.");
   size_t num_vars = std::log2(poly_A.size());
-  
+
   std::vector<FieldElem> r_eq;  // random challenges
   r_eq.reserve(num_vars);
   for (size_t i = 0; i < num_vars; ++i) {
     r_eq.push_back(RandFieldElem(modulus));
   }
 
-  MultiLinearPolynomial eq_poly = BuildEqPolynomial(r_eq, modulus);  // g(X) = A(X) * eq(r_eq, X)
+  MultiLinearPolynomial eq_poly =
+      BuildEqPolynomial(r_eq, modulus);  // g(X) = A(X) * eq(r_eq, X)
   MultiLinearPolynomial g_poly = MultiplyPolynomials(poly_A, eq_poly, modulus);
   FieldElem claimed_sum_c(0);  // \sum_{x \in {0,1}^k} g(x) = A(r)
   return RunSumcheckProtocol(g_poly, claimed_sum_c, modulus);
@@ -299,11 +303,13 @@ bool RunOneCheckProtocol(const MultiLinearPolynomial& poly_y,
   size_t num_vars = std::log2(poly_y.size());
   FieldElem alpha = RandFieldElem(modulus);  // random challenge
   FieldElem claimed_sum_c = ComputeAlphaSum(num_vars, alpha, modulus);
-  
+
   // g(X) = y(X) * \hat{α}(X)
-  MultiLinearPolynomial alpha_poly = BuildAlphaPolynomial(num_vars, alpha, modulus);
-  MultiLinearPolynomial g_poly = MultiplyPolynomials(poly_y, alpha_poly, modulus);
+  MultiLinearPolynomial alpha_poly =
+      BuildAlphaPolynomial(num_vars, alpha, modulus);
+  MultiLinearPolynomial g_poly =
+      MultiplyPolynomials(poly_y, alpha_poly, modulus);
   return RunSumcheckProtocol(g_poly, claimed_sum_c, modulus);
 }
 
-} // namespace examples::zkp
+}  // namespace examples::zkp

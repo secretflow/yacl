@@ -15,18 +15,14 @@
 #pragma once
 
 #include <memory>
-
+#include <optional>
+#include <string>
 #include <vector>
 
-#include <string>
-
-#include <optional>
-
-#include "yacl/math/mpint/mp_int.h"
+#include "zkp/sumcheck/sumcheck.h"
 
 #include "yacl/crypto/rand/rand.h"
-
-#include "zkp/sumcheck/sumcheck.h"
+#include "yacl/math/mpint/mp_int.h"
 
 namespace examples::zkp {
 
@@ -36,57 +32,65 @@ using MultiLinearPolynomialVec = std::vector<FieldElem>;
 using UnivariatePolynomial = std::vector<FieldElem>;
 
 class MultilinearPolynomial {
-public:
-    explicit MultilinearPolynomial(MultiLinearPolynomialVec evals);
-    FieldElem Evaluate(const std::vector<FieldElem>& r, const FieldElem& modulus) const;
-    size_t NumVars() const;
-    const MultiLinearPolynomialVec& GetEvals() const;
+ public:
+  explicit MultilinearPolynomial(MultiLinearPolynomialVec evals);
 
-private:
-    MultiLinearPolynomialVec evals_; // {0,1}^k
-    size_t num_vars_;
+  FieldElem Evaluate(const std::vector<FieldElem>& r,
+                     const FieldElem& modulus) const;
+
+  size_t NumVars() const;
+
+  const MultiLinearPolynomialVec& GetEvals() const;
+
+ private:
+  MultiLinearPolynomialVec evals_;
+  size_t num_vars_;
 };
 
 class LogUpProver {
-public:
-    LogUpProver(std::shared_ptr<const MultilinearPolynomial> f_A,
-                std::shared_ptr<const MultilinearPolynomial> f_B,
-                std::shared_ptr<const MultilinearPolynomial> m_B,
-                const FieldElem& modulus);
-    void Setup(const FieldElem& zeta);
-    std::pair<FieldElem, FieldElem> GetClaimedSums();
-    std::shared_ptr<const MultilinearPolynomial> Get_h_A() const { return h_A_; }
-    std::shared_ptr<const MultilinearPolynomial> Get_h_B() const { return h_B_; }
-    std::shared_ptr<const MultilinearPolynomial> Get_q_A() const { return q_A_; }
-    std::shared_ptr<const MultilinearPolynomial> Get_q_B() const { return q_B_; }
+ public:
+  LogUpProver(std::shared_ptr<const MultilinearPolynomial> f_A,
+              std::shared_ptr<const MultilinearPolynomial> f_B,
+              std::shared_ptr<const MultilinearPolynomial> m_B,
+              const FieldElem& modulus);
 
-private:
-    std::shared_ptr<const MultilinearPolynomial> f_A_;
-    std::shared_ptr<const MultilinearPolynomial> f_B_;
-    std::shared_ptr<const MultilinearPolynomial> m_B_;
-    FieldElem modulus_p_;
-    FieldElem zeta_;
+  void Setup(const FieldElem& zeta);
 
-    std::shared_ptr<MultilinearPolynomial> h_A_;
-    std::shared_ptr<MultilinearPolynomial> h_B_;
-    std::shared_ptr<MultilinearPolynomial> q_A_;
-    std::shared_ptr<MultilinearPolynomial> q_B_;
+  std::pair<FieldElem, FieldElem> GetClaimedSums();
+
+  std::shared_ptr<const MultilinearPolynomial> Get_h_A() const { return h_A_; }
+  std::shared_ptr<const MultilinearPolynomial> Get_h_B() const { return h_B_; }
+  std::shared_ptr<const MultilinearPolynomial> Get_q_A() const { return q_A_; }
+  std::shared_ptr<const MultilinearPolynomial> Get_q_B() const { return q_B_; }
+
+ private:
+  std::shared_ptr<const MultilinearPolynomial> f_A_;
+  std::shared_ptr<const MultilinearPolynomial> f_B_;
+  std::shared_ptr<const MultilinearPolynomial> m_B_;
+  FieldElem modulus_p_;
+  FieldElem zeta_;
+
+  std::shared_ptr<MultilinearPolynomial> h_A_;
+  std::shared_ptr<MultilinearPolynomial> h_B_;
+  std::shared_ptr<MultilinearPolynomial> q_A_;
+  std::shared_ptr<MultilinearPolynomial> q_B_;
 };
 
 class LogUpVerifier {
-public:
-    LogUpVerifier(std::shared_ptr<const MultilinearPolynomial> f_A,
-                  std::shared_ptr<const MultilinearPolynomial> f_B,
-                  std::shared_ptr<const MultilinearPolynomial> m_B,
-                  const FieldElem& modulus);
-    bool Verify(LogUpProver& prover);
+ public:
+  LogUpVerifier(std::shared_ptr<const MultilinearPolynomial> f_A,
+                std::shared_ptr<const MultilinearPolynomial> f_B,
+                std::shared_ptr<const MultilinearPolynomial> m_B,
+                const FieldElem& modulus);
 
-private:
-    std::shared_ptr<const MultilinearPolynomial> f_A_;
-    std::shared_ptr<const MultilinearPolynomial> f_B_;
-    std::shared_ptr<const MultilinearPolynomial> m_B_;
-    FieldElem modulus_p_;
-    FieldElem zeta_;
+  bool Verify(LogUpProver& prover);
+
+ private:
+  std::shared_ptr<const MultilinearPolynomial> f_A_;
+  std::shared_ptr<const MultilinearPolynomial> f_B_;
+  std::shared_ptr<const MultilinearPolynomial> m_B_;
+  FieldElem modulus_p_;
+  FieldElem zeta_;
 };
 
 bool RunLogUpProtocol(const MultiLinearPolynomialVec& f_A_evals,
@@ -94,4 +98,4 @@ bool RunLogUpProtocol(const MultiLinearPolynomialVec& f_A_evals,
                       const MultiLinearPolynomialVec& m_B_evals,
                       const FieldElem& modulus);
 
-} // namespace examples::zkp
+}  // namespace examples::zkp

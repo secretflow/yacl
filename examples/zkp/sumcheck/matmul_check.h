@@ -15,7 +15,6 @@
 #pragma once
 
 #include <memory>
-
 #include <vector>
 
 #include "yacl/math/mpint/mp_int.h"
@@ -26,22 +25,21 @@ using yacl::math::MPInt;
 using FieldElem = MPInt;
 
 class MultivariatePolynomial {
-public:
-    virtual ~MultivariatePolynomial() = default;
-    virtual size_t get_num_variables() const = 0;
+ public:
+  virtual ~MultivariatePolynomial() = default;
+  virtual size_t get_num_variables() const = 0;
+  virtual FieldElem evaluate(const std::vector<FieldElem>& point) const = 0;
 };
 
 FieldElem mat_mat_multiplication(
     const std::shared_ptr<const MultivariatePolynomial>& A,
     const std::shared_ptr<const MultivariatePolynomial>& B,
-    const std::vector<FieldElem>& u,
-    const std::vector<FieldElem>& v,
+    const std::vector<FieldElem>& u, const std::vector<FieldElem>& v,
     const FieldElem& modulus);
 
 FieldElem mat_vec_multiplication(
     const std::shared_ptr<const MultivariatePolynomial>& M,
     const std::shared_ptr<const MultivariatePolynomial>& t,
-    const std::vector<FieldElem>& r,
-    const FieldElem& modulus);
+    const std::vector<FieldElem>& r, const FieldElem& modulus);
 
-} // namespace examples::zkp
+}  // namespace examples::zkp

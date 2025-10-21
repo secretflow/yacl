@@ -14,16 +14,12 @@
 
 #pragma once
 
-#include <string>
-
 #include <memory>
-
+#include <optional>
+#include <string>
 #include <vector>
 
-#include <optional>
-
 #include "yacl/crypto/rand/rand.h"
-
 #include "yacl/math/mpint/mp_int.h"
 
 namespace examples::zkp {
@@ -34,32 +30,34 @@ using MultiLinearPolynomial = std::vector<FieldElem>;
 using UnivariatePolynomial = std::vector<FieldElem>;
 
 class SumcheckProver {
-public:
-    SumcheckProver(const MultiLinearPolynomial& polynomial, const FieldElem& modulus);
-    UnivariatePolynomial ComputeNextRoundPoly();
-    void ProcessChallenge(const FieldElem& challenge);
-    FieldElem GetFinalEvaluation() const;
+ public:
+  SumcheckProver(const MultiLinearPolynomial& polynomial,
+                 const FieldElem& modulus);
+  UnivariatePolynomial ComputeNextRoundPoly();
+  void ProcessChallenge(const FieldElem& challenge);
+  FieldElem GetFinalEvaluation() const;
 
-private:
-    std::vector<FieldElem> current_g_evals_;
-    FieldElem modulus_p_;
-    size_t num_vars_;
-    size_t current_round_ = 0;
+ private:
+  std::vector<FieldElem> current_g_evals_;
+  FieldElem modulus_p_;
+  size_t num_vars_;
+  size_t current_round_ = 0;
 };
 
 class SumcheckVerifier {
-public:
-    SumcheckVerifier(const FieldElem& claimed_sum, size_t num_vars,
-                     const FieldElem& modulus);
-    std::optional<FieldElem> VerifyRound(const UnivariatePolynomial& round_poly);
-    bool FinalCheck(const MultiLinearPolynomial& g, const FieldElem& final_eval_from_prover);
+ public:
+  SumcheckVerifier(const FieldElem& claimed_sum, size_t num_vars,
+                   const FieldElem& modulus);
+  std::optional<FieldElem> VerifyRound(const UnivariatePolynomial& round_poly);
+  bool FinalCheck(const MultiLinearPolynomial& g,
+                  const FieldElem& final_eval_from_prover);
 
-private:
-    FieldElem expected_sum_;
-    size_t num_vars_;
-    FieldElem modulus_p_;
-    size_t current_round_ = 0;
-    std::vector<FieldElem> challenges_;
+ private:
+  FieldElem expected_sum_;
+  size_t num_vars_;
+  FieldElem modulus_p_;
+  size_t current_round_ = 0;
+  std::vector<FieldElem> challenges_;
 };
 
 bool RunSumcheckProtocol(const MultiLinearPolynomial& polynomial,
@@ -70,4 +68,4 @@ bool RunZeroCheckProtocol(const MultiLinearPolynomial& poly_A,
 bool RunOneCheckProtocol(const MultiLinearPolynomial& poly_y,
                          const FieldElem& modulus);
 
-} // namespace examples::zkp
+}  // namespace examples::zkp

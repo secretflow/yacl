@@ -19,16 +19,17 @@
 namespace examples::zkp {
 
 class SumcheckTest : public ::testing::Test {
-  protected:
+ protected:
   void SetUp() override {
     modulus_p_ = yacl::math::MPInt("103");
 
     // g(x_1, x_2) = x_1 + 2*x_2
-    polynomial_g_ = {yacl::math::MPInt(0),  // g(0,0) = 0
-                     yacl::math::MPInt(2),  // g(0,1) = 2
-                     yacl::math::MPInt(1),  // g(1,0) = 1
-                     yacl::math::MPInt(3)}; // g(1,1) = 3
-    correct_sum_h_ = yacl::math::MPInt(6);  // H = g(0,0) + g(0,1) + g(1,0) + g(1,1) = 0 + 2 + 1 + 3 = 6
+    polynomial_g_ = {yacl::math::MPInt(0),   // g(0,0) = 0
+                     yacl::math::MPInt(2),   // g(0,1) = 2
+                     yacl::math::MPInt(1),   // g(1,0) = 1
+                     yacl::math::MPInt(3)};  // g(1,1) = 3
+    correct_sum_h_ = yacl::math::MPInt(
+        6);  // H = g(0,0) + g(0,1) + g(1,0) + g(1,1) = 0 + 2 + 1 + 3 = 6
   }
   yacl::math::MPInt modulus_p_;
   MultiLinearPolynomial polynomial_g_;
@@ -42,7 +43,8 @@ TEST_F(SumcheckTest, HonestProver) {
 
 TEST_F(SumcheckTest, FraudProver) {
   yacl::math::MPInt fraudulent_sum_h(10);
-  bool success = RunSumcheckProtocol(polynomial_g_, fraudulent_sum_h, modulus_p_);
+  bool success =
+      RunSumcheckProtocol(polynomial_g_, fraudulent_sum_h, modulus_p_);
   EXPECT_FALSE(success);
 }
 
@@ -60,7 +62,7 @@ TEST_F(ZeroCheckTest, HonestProver) {
 }
 
 TEST_F(ZeroCheckTest, FraudProver) {
-  // A(x1, x2) = x2. 
+  // A(x1, x2) = x2.
   MultiLinearPolynomial poly_A = {FieldElem(0), FieldElem(1), FieldElem(0),
                                   FieldElem(1)};
   bool success = RunZeroCheckProtocol(poly_A, modulus_p_);
