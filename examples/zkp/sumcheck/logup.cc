@@ -200,7 +200,7 @@ bool LogUpVerifier::Verify(LogUpProver& prover) {
   auto [claimed_sum_A, claimed_sum_B] = prover.GetClaimedSums();
 
   if (claimed_sum_A != claimed_sum_B) {
-    return false;  // 基本检查失败
+    return false;
   }
 
   auto h_A = prover.Get_h_A();

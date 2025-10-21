@@ -14,8 +14,6 @@
 
 #include "zkp/sumcheck/matmul_check.h"
 
-#include <cmath>
-
 #include "yacl/base/exception.h"
 
 namespace examples::zkp {
