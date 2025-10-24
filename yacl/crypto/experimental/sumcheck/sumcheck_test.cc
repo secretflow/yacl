@@ -15,24 +15,28 @@
 #include "zkp/sumcheck/sumcheck.h"
 
 #include "gtest/gtest.h"
+#include "zkp/sumcheck/polynomial.h"
 
 namespace examples::zkp {
 
 class SumcheckTest : public ::testing::Test {
  protected:
+  // constructor
+  SumcheckTest()
+      : polynomial_g_({yacl::math::MPInt(0),   // g(0,0) = 0
+                       yacl::math::MPInt(2),   // g(0,1) = 2
+                       yacl::math::MPInt(1),   // g(1,0) = 1
+                       yacl::math::MPInt(3)})  // g(1,1) = 3
+  {}
+
   void SetUp() override {
     modulus_p_ = yacl::math::MPInt("103");
-
-    // g(x_1, x_2) = x_1 + 2*x_2
-    polynomial_g_ = {yacl::math::MPInt(0),   // g(0,0) = 0
-                     yacl::math::MPInt(2),   // g(0,1) = 2
-                     yacl::math::MPInt(1),   // g(1,0) = 1
-                     yacl::math::MPInt(3)};  // g(1,1) = 3
-    correct_sum_h_ = yacl::math::MPInt(
-        6);  // H = g(0,0) + g(0,1) + g(1,0) + g(1,1) = 0 + 2 + 1 + 3 = 6
+    // H = g(0,0) + g(0,1) + g(1,0) + g(1,1) = 0 + 2 + 1 + 3 = 6
+    correct_sum_h_ = yacl::math::MPInt(6);
   }
+
   yacl::math::MPInt modulus_p_;
-  MultiLinearPolynomial polynomial_g_;
+  MultilinearPolynomial polynomial_g_;
   yacl::math::MPInt correct_sum_h_;
 };
 
@@ -55,16 +59,16 @@ class ZeroCheckTest : public ::testing::Test {
 };
 
 TEST_F(ZeroCheckTest, HonestProver) {
-  MultiLinearPolynomial poly_A = {FieldElem(0), FieldElem(0), FieldElem(0),
-                                  FieldElem(0)};
+  MultilinearPolynomial poly_A(
+      {FieldElem(0), FieldElem(0), FieldElem(0), FieldElem(0)});
   bool success = RunZeroCheckProtocol(poly_A, modulus_p_);
   EXPECT_TRUE(success);
 }
 
 TEST_F(ZeroCheckTest, FraudProver) {
   // A(x1, x2) = x2.
-  MultiLinearPolynomial poly_A = {FieldElem(0), FieldElem(1), FieldElem(0),
-                                  FieldElem(1)};
+  MultilinearPolynomial poly_A(
+      {FieldElem(0), FieldElem(1), FieldElem(0), FieldElem(1)});
   bool success = RunZeroCheckProtocol(poly_A, modulus_p_);
   EXPECT_FALSE(success);
 }
@@ -76,23 +80,23 @@ class OneCheckTest : public ::testing::Test {
 };
 
 TEST_F(OneCheckTest, AllOnesHonestProver) {
-  MultiLinearPolynomial poly_y = {FieldElem(1), FieldElem(1), FieldElem(1),
-                                  FieldElem(1)};
+  MultilinearPolynomial poly_y(
+      {FieldElem(1), FieldElem(1), FieldElem(1), FieldElem(1)});
   bool success = RunOneCheckProtocol(poly_y, modulus_p_);
   EXPECT_TRUE(success);
 }
 
 TEST_F(OneCheckTest, NotAllOnesFraudProver) {
   // y(x1, x2) is a bit vector, but not all entries are 1
-  MultiLinearPolynomial poly_y_fraud = {FieldElem(1), FieldElem(0),
-                                        FieldElem(1), FieldElem(1)};
+  MultilinearPolynomial poly_y_fraud(
+      {FieldElem(1), FieldElem(0), FieldElem(1), FieldElem(1)});
   bool success = RunOneCheckProtocol(poly_y_fraud, modulus_p_);
   EXPECT_FALSE(success);
 }
 
 TEST_F(OneCheckTest, NotABitVectorFraudProver) {
-  MultiLinearPolynomial poly_y_fraud = {FieldElem(1), FieldElem(5),
-                                        FieldElem(1), FieldElem(1)};
+  MultilinearPolynomial poly_y_fraud(
+      {FieldElem(1), FieldElem(5), FieldElem(1), FieldElem(1)});
   bool success = RunOneCheckProtocol(poly_y_fraud, modulus_p_);
   EXPECT_FALSE(success);
 }

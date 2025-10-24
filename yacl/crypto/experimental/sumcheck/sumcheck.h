@@ -19,19 +19,13 @@
 #include <string>
 #include <vector>
 
-#include "yacl/crypto/rand/rand.h"
-#include "yacl/math/mpint/mp_int.h"
+#include "zkp/sumcheck/polynomial.h"
 
 namespace examples::zkp {
 
-using yacl::math::MPInt;
-using FieldElem = MPInt;
-using MultiLinearPolynomial = std::vector<FieldElem>;
-using UnivariatePolynomial = std::vector<FieldElem>;
-
 class SumcheckProver {
  public:
-  SumcheckProver(const MultiLinearPolynomial& polynomial,
+  SumcheckProver(const MultilinearPolynomial& polynomial,
                  const FieldElem& modulus);
   UnivariatePolynomial ComputeNextRoundPoly();
   void ProcessChallenge(const FieldElem& challenge);
@@ -49,7 +43,7 @@ class SumcheckVerifier {
   SumcheckVerifier(const FieldElem& claimed_sum, size_t num_vars,
                    const FieldElem& modulus);
   std::optional<FieldElem> VerifyRound(const UnivariatePolynomial& round_poly);
-  bool FinalCheck(const MultiLinearPolynomial& g,
+  bool FinalCheck(const MultilinearPolynomial& g,
                   const FieldElem& final_eval_from_prover);
 
  private:
@@ -60,12 +54,12 @@ class SumcheckVerifier {
   std::vector<FieldElem> challenges_;
 };
 
-bool RunSumcheckProtocol(const MultiLinearPolynomial& polynomial,
+bool RunSumcheckProtocol(const MultilinearPolynomial& polynomial,
                          const FieldElem& claimed_sum,
                          const FieldElem& modulus);
-bool RunZeroCheckProtocol(const MultiLinearPolynomial& poly_A,
+bool RunZeroCheckProtocol(const MultilinearPolynomial& poly_A,
                           const FieldElem& modulus);
-bool RunOneCheckProtocol(const MultiLinearPolynomial& poly_y,
+bool RunOneCheckProtocol(const MultilinearPolynomial& poly_y,
                          const FieldElem& modulus);
 
 }  // namespace examples::zkp

@@ -19,33 +19,10 @@
 #include <string>
 #include <vector>
 
+#include "zkp/sumcheck/polynomial.h"
 #include "zkp/sumcheck/sumcheck.h"
 
-#include "yacl/crypto/rand/rand.h"
-#include "yacl/math/mpint/mp_int.h"
-
 namespace examples::zkp {
-
-using yacl::math::MPInt;
-using FieldElem = MPInt;
-using MultiLinearPolynomialVec = std::vector<FieldElem>;
-using UnivariatePolynomial = std::vector<FieldElem>;
-
-class MultilinearPolynomial {
- public:
-  explicit MultilinearPolynomial(MultiLinearPolynomialVec evals);
-
-  FieldElem Evaluate(const std::vector<FieldElem>& r,
-                     const FieldElem& modulus) const;
-
-  size_t NumVars() const;
-
-  const MultiLinearPolynomialVec& GetEvals() const;
-
- private:
-  MultiLinearPolynomialVec evals_;
-  size_t num_vars_;
-};
 
 class LogUpProver {
  public:

@@ -16,83 +16,11 @@
 
 #include <cmath>
 
+#include "zkp/sumcheck/polynomial.h"
+
 #include "yacl/base/exception.h"
 
 namespace examples::zkp {
-
-namespace {
-FieldElem RandFieldElem(const FieldElem& modulus) {
-  const size_t num_bits = modulus.BitCount();
-  const size_t num_bytes = (num_bits + 7) / 8;
-  auto rand_bytes = yacl::crypto::SecureRandBytes(num_bytes);
-
-  FieldElem rand_val;
-  rand_val.FromMagBytes(
-      absl::MakeConstSpan(rand_bytes.data(), rand_bytes.size()));
-  FieldElem::Mod(rand_val, modulus, &rand_val);
-  return rand_val;
-}
-
-FieldElem SumOverBooleanHypercube(const MultiLinearPolynomialVec& evals,
-                                  const FieldElem& modulus) {
-  FieldElem total_sum(0);
-  for (const auto& val : evals) {
-    FieldElem::AddMod(total_sum, val, modulus, &total_sum);
-  }
-  return total_sum;
-}
-}  // namespace
-
-MultilinearPolynomial::MultilinearPolynomial(MultiLinearPolynomialVec evals)
-    : evals_(std::move(evals)) {
-  YACL_ENFORCE(evals_.size() > 0 && (evals_.size() & (evals_.size() - 1)) == 0,
-               "MultilinearPolynomial size must be a non-zero power of 2.");
-  if (evals_.size() == 1) {
-    num_vars_ = 0;
-  } else {
-    num_vars_ = std::log2(evals_.size());
-  }
-}
-
-size_t MultilinearPolynomial::NumVars() const { return num_vars_; }
-
-const MultiLinearPolynomialVec& MultilinearPolynomial::GetEvals() const {
-  return evals_;
-}
-
-FieldElem MultilinearPolynomial::Evaluate(const std::vector<FieldElem>& r,
-                                          const FieldElem& modulus) const {
-  YACL_ENFORCE(r.size() == num_vars_,
-               "Evaluation point has incorrect number of variables.");
-  if (num_vars_ == 0) {
-    return evals_[0];
-  }
-
-  std::vector<FieldElem> current_evals = evals_;
-  for (size_t i = 0; i < num_vars_; ++i) {
-    std::vector<FieldElem> next_evals;
-    size_t current_size = current_evals.size() / 2;
-    next_evals.reserve(current_size);
-    const auto& r_i = r[i];
-
-    FieldElem one(1);
-    FieldElem one_minus_ri;
-    FieldElem::SubMod(one, r_i, modulus, &one_minus_ri);
-
-    for (size_t j = 0; j < current_size; ++j) {
-      const auto& eval_at_0 = current_evals[j];
-      const auto& eval_at_1 = current_evals[j + current_size];
-
-      FieldElem term1, term2, new_eval;
-      FieldElem::MulMod(eval_at_0, one_minus_ri, modulus, &term1);
-      FieldElem::MulMod(eval_at_1, r_i, modulus, &term2);
-      FieldElem::AddMod(term1, term2, modulus, &new_eval);
-      next_evals.push_back(new_eval);
-    }
-    current_evals = std::move(next_evals);
-  }
-  return current_evals[0];
-}
 
 LogUpProver::LogUpProver(std::shared_ptr<const MultilinearPolynomial> f_A,
                          std::shared_ptr<const MultilinearPolynomial> f_B,
@@ -204,22 +132,22 @@ bool LogUpVerifier::Verify(LogUpProver& prover) {
   }
 
   auto h_A = prover.Get_h_A();
-  if (!RunSumcheckProtocol(h_A->GetEvals(), claimed_sum_A, modulus_p_)) {
+  if (!RunSumcheckProtocol(*h_A, claimed_sum_A, modulus_p_)) {
     return false;
   }
 
   auto h_B = prover.Get_h_B();
-  if (!RunSumcheckProtocol(h_B->GetEvals(), claimed_sum_B, modulus_p_)) {
+  if (!RunSumcheckProtocol(*h_B, claimed_sum_B, modulus_p_)) {
     return false;
   }
 
   auto q_A = prover.Get_q_A();
-  if (!RunZeroCheckProtocol(q_A->GetEvals(), modulus_p_)) {
+  if (!RunZeroCheckProtocol(*q_A, modulus_p_)) {
     return false;
   }
 
   auto q_B = prover.Get_q_B();
-  if (!RunZeroCheckProtocol(q_B->GetEvals(), modulus_p_)) {
+  if (!RunZeroCheckProtocol(*q_B, modulus_p_)) {
     return false;
   }
 

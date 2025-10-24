@@ -16,13 +16,26 @@ load("@yacl//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
+# NEW: Library for the MultilinearPolynomial class and related utilities.
+yacl_cc_library(
+    name = "polynomial",
+    srcs = ["polynomial.cc"],
+    hdrs = ["polynomial.h"],
+    deps = [
+        "@yacl//yacl/base:exception",
+        "@yacl//yacl/crypto/rand",
+        "@yacl//yacl/math/mpint",
+    ],
+)
+
+# UPDATED: sumcheck now depends on the new polynomial library.
 yacl_cc_library(
     name = "sumcheck",
     srcs = ["sumcheck.cc"],
     hdrs = ["sumcheck.h"],
     deps = [
-        "@yacl//yacl/crypto/rand",
-        "@yacl//yacl/math/mpint",
+        ":polynomial",
+        "@yacl//yacl/base:exception",
     ],
 )
 
@@ -53,11 +66,13 @@ yacl_cc_test(
     ],
 )
 
+# UPDATED: logup now also depends on the polynomial library.
 yacl_cc_library(
     name = "logup",
     srcs = ["logup.cc"],
     hdrs = ["logup.h"],
     deps = [
+        ":polynomial",
         ":sumcheck",
         "@yacl//yacl/base:exception",
     ],

@@ -15,6 +15,7 @@
 #include "zkp/sumcheck/logup.h"
 
 #include "gtest/gtest.h"
+#include "zkp/sumcheck/polynomial.h"
 
 namespace examples::zkp {
 
@@ -25,13 +26,14 @@ class LogUpTest : public ::testing::Test {
 };
 
 TEST_F(LogUpTest, HonestProver) {
-  MultiLinearPolynomial f_A = {FieldElem(5), FieldElem(10)};
-  MultiLinearPolynomial f_B = {FieldElem(3), FieldElem(5), FieldElem(10),
-                               FieldElem(20)};
+  // Use the new type alias MultiLinearPolynomialVec
+  MultiLinearPolynomialVec f_A = {FieldElem(5), FieldElem(10)};
+  MultiLinearPolynomialVec f_B = {FieldElem(3), FieldElem(5), FieldElem(10),
+                                  FieldElem(20)};
 
   // m_B
-  MultiLinearPolynomial m_B = {FieldElem(0), FieldElem(1), FieldElem(1),
-                               FieldElem(0)};
+  MultiLinearPolynomialVec m_B = {FieldElem(0), FieldElem(1), FieldElem(1),
+                                  FieldElem(0)};
 
   bool success = RunLogUpProtocol(f_A, f_B, m_B, modulus_p_);
   EXPECT_TRUE(success);
@@ -55,23 +57,23 @@ TEST_F(LogUpTest, HonestProverWithMultiplicity) {
 }
 
 TEST_F(LogUpTest, FraudulentProverSubset) {
-  MultiLinearPolynomial f_A = {FieldElem(5), FieldElem(99)};
-  MultiLinearPolynomial f_B = {FieldElem(3), FieldElem(5), FieldElem(10),
-                               FieldElem(20)};
-  MultiLinearPolynomial m_B = {FieldElem(0), FieldElem(1), FieldElem(1),
-                               FieldElem(0)};
+  // Use the new type alias MultiLinearPolynomialVec
+  MultiLinearPolynomialVec f_A = {FieldElem(5), FieldElem(99)};
+  MultiLinearPolynomialVec f_B = {FieldElem(3), FieldElem(5), FieldElem(10),
+                                  FieldElem(20)};
+  MultiLinearPolynomialVec m_B = {FieldElem(0), FieldElem(1), FieldElem(1),
+                                  FieldElem(0)};
   bool success = RunLogUpProtocol(f_A, f_B, m_B, modulus_p_);
   EXPECT_FALSE(success);
 }
 
 TEST_F(LogUpTest, FraudulentProverMultiplicity) {
-  MultiLinearPolynomial f_A = {FieldElem(5), FieldElem(5)};
-
-  MultiLinearPolynomial f_B = {FieldElem(3), FieldElem(5), FieldElem(10),
-                               FieldElem(20)};
-
-  MultiLinearPolynomial m_B = {FieldElem(0), FieldElem(1), FieldElem(1),
-                               FieldElem(0)};
+  // Use the new type alias MultiLinearPolynomialVec
+  MultiLinearPolynomialVec f_A = {FieldElem(5), FieldElem(5)};
+  MultiLinearPolynomialVec f_B = {FieldElem(3), FieldElem(5), FieldElem(10),
+                                  FieldElem(20)};
+  MultiLinearPolynomialVec m_B = {FieldElem(0), FieldElem(1), FieldElem(1),
+                                  FieldElem(0)};
 
   bool success = RunLogUpProtocol(f_A, f_B, m_B, modulus_p_);
   EXPECT_FALSE(success);
