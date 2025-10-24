@@ -35,11 +35,10 @@ class MockChannel : public transport::IChannel {
  public:
   MOCK_METHOD2(SendAsync,
                void(const std::string &key, ByteContainerView value));
-  MOCK_METHOD2(SendAsync, void(const std::string &key, Buffer &&value));
+  MOCK_METHOD2(SendAsync, void(const std::string &key, Buffer value));
   MOCK_METHOD2(SendAsyncThrottled,
                void(const std::string &key, ByteContainerView value));
-  MOCK_METHOD2(SendAsyncThrottled,
-               void(const std::string &key, Buffer &&value));
+  MOCK_METHOD2(SendAsyncThrottled, void(const std::string &key, Buffer value));
   MOCK_METHOD2(Send, void(const std::string &key, ByteContainerView value));
   MOCK_METHOD1(Recv, Buffer(const std::string &key));
   MOCK_METHOD2(OnMessage,
