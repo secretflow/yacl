@@ -18,9 +18,9 @@
 #include <numeric>
 
 #include "gtest/gtest.h"
-#include "yacl/crypto/experimental/zkp/sumcheck/polynomial.h"
 
 #include "yacl/base/exception.h"
+#include "yacl/crypto/experimental/zkp/sumcheck/polynomial.h"
 
 namespace examples::zkp {
 

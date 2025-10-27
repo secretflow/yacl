@@ -15,6 +15,7 @@
 #include "yacl/crypto/experimental/zkp/sumcheck/logup.h"
 
 #include "gtest/gtest.h"
+
 #include "yacl/crypto/experimental/zkp/sumcheck/polynomial.h"
 
 namespace examples::zkp {

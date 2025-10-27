@@ -15,6 +15,7 @@
 #include "yacl/crypto/experimental/zkp/sumcheck/sumcheck.h"
 
 #include "gtest/gtest.h"
+
 #include "yacl/crypto/experimental/zkp/sumcheck/polynomial.h"
 
 namespace examples::zkp {
@@ -67,7 +68,7 @@ TEST_F(ZeroCheckTest, HonestProver) {
 
 TEST_F(ZeroCheckTest, FraudProver) {
   MultilinearPolynomial poly_A(
-      {FieldElem(9), FieldElem(3), FieldElem(6), FieldElem(10)});
+      {FieldElem(9), FieldElem(1), FieldElem(6), FieldElem(1)});
   bool success = RunZeroCheckProtocol(poly_A, modulus_p_);
   EXPECT_FALSE(success);
 }
