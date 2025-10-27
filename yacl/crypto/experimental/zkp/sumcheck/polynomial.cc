@@ -21,8 +21,6 @@
 
 namespace examples::zkp {
 
-//--- MultilinearPolynomial Class Implementation ---//
-
 MultilinearPolynomial::MultilinearPolynomial(MultiLinearPolynomialVec evals)
     : evals_(std::move(evals)) {
   YACL_ENFORCE(evals_.size() > 0 && (evals_.size() & (evals_.size() - 1)) == 0,
@@ -74,18 +72,8 @@ FieldElem MultilinearPolynomial::Evaluate(absl::Span<const FieldElem> r,
   return current_evals[0];
 }
 
-//--- Common Utility Functions Implementation ---//
-
 FieldElem RandFieldElem(const FieldElem& modulus) {
-  const size_t num_bits = modulus.BitCount();
-  const size_t num_bytes = (num_bits + 7) / 8;
-  auto rand_bytes = yacl::crypto::SecureRandBytes(num_bytes);
-
-  FieldElem rand_val;
-  rand_val.FromMagBytes(
-      absl::MakeConstSpan(rand_bytes.data(), rand_bytes.size()));
-  FieldElem::Mod(rand_val, modulus, &rand_val);
-  return rand_val;
+  return FieldElem::RandomLtN(modulus);
 }
 
 FieldElem SumOverBooleanHypercube(const MultiLinearPolynomialVec& evals,
