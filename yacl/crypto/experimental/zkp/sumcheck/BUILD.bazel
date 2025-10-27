@@ -16,7 +16,6 @@ load("@yacl//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
-# NEW: Library for the MultilinearPolynomial class and related utilities.
 yacl_cc_library(
     name = "polynomial",
     srcs = ["polynomial.cc"],
@@ -28,7 +27,6 @@ yacl_cc_library(
     ],
 )
 
-# UPDATED: sumcheck now depends on the new polynomial library.
 yacl_cc_library(
     name = "sumcheck",
     srcs = ["sumcheck.cc"],
@@ -66,7 +64,6 @@ yacl_cc_test(
     ],
 )
 
-# UPDATED: logup now also depends on the polynomial library.
 yacl_cc_library(
     name = "logup",
     srcs = ["logup.cc"],

@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/experimental/zkp/logup.h"
+#include "yacl/crypto/experimental/zkp/sumcheck/logup.h"
 
 #include <cmath>
 
-#include "yacl/crypto/experimental/zkp/polynomial.h"
+#include "yacl/crypto/experimental/zkp/sumcheck/polynomial.h"
 
 #include "yacl/base/exception.h"
 
@@ -131,22 +131,22 @@ bool LogUpVerifier::Verify(LogUpProver& prover) {
     return false;
   }
 
-  auto h_A = prover.Get_h_A();
+  auto h_A = prover.get_h_A();
   if (!RunSumcheckProtocol(*h_A, claimed_sum_A, modulus_p_)) {
     return false;
   }
 
-  auto h_B = prover.Get_h_B();
+  auto h_B = prover.get_h_B();
   if (!RunSumcheckProtocol(*h_B, claimed_sum_B, modulus_p_)) {
     return false;
   }
 
-  auto q_A = prover.Get_q_A();
+  auto q_A = prover.get_q_A();
   if (!RunZeroCheckProtocol(*q_A, modulus_p_)) {
     return false;
   }
 
-  auto q_B = prover.Get_q_B();
+  auto q_B = prover.get_q_B();
   if (!RunZeroCheckProtocol(*q_B, modulus_p_)) {
     return false;
   }

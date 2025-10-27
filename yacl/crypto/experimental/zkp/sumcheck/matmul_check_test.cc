@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/experimental/zkp/matmul_check.h"
+#include "yacl/crypto/experimental/zkp/sumcheck/matmul_check.h"
 
 #include <cmath>
 #include <numeric>
 
 #include "gtest/gtest.h"
-#include "yacl/crypto/experimental/zkp/polynomial.h"
+#include "yacl/crypto/experimental/zkp/sumcheck/polynomial.h"
 
 #include "yacl/base/exception.h"
 
@@ -26,8 +26,8 @@ namespace examples::zkp {
 
 class MatmulCheckTest : public ::testing::Test {
  protected:
-  void SetUp() override { modulusP_ = yacl::math::MPInt("103"); }
-  yacl::math::MPInt modulusP_;
+  void SetUp() override { modulus_p_ = yacl::math::MPInt("103"); }
+  yacl::math::MPInt modulus_p_;
 };
 
 TEST_F(MatmulCheckTest, MatVecMultiplication) {
@@ -39,8 +39,8 @@ TEST_F(MatmulCheckTest, MatVecMultiplication) {
 
   std::vector<FieldElem> r = {FieldElem(10)};  // Random challenge
 
-  FieldElem expected = a.Evaluate(r, modulusP_);
-  FieldElem actual = MatVecMultiplication(M, t, r, modulusP_);
+  FieldElem expected = a.Evaluate(r, modulus_p_);
+  FieldElem actual = MatVecMultiplication(M, t, r, modulus_p_);
   EXPECT_EQ(expected, actual);
 }
 
@@ -58,8 +58,8 @@ TEST_F(MatmulCheckTest, MatMatMultiplication) {
 
   std::vector<FieldElem> uvPoint = u;
   uvPoint.insert(uvPoint.end(), v.begin(), v.end());
-  FieldElem expected = C.Evaluate(uvPoint, modulusP_);
-  FieldElem actual = MatMatMultiplication(A, B, u, v, modulusP_);
+  FieldElem expected = C.Evaluate(uvPoint, modulus_p_);
+  FieldElem actual = MatMatMultiplication(A, B, u, v, modulus_p_);
   EXPECT_EQ(expected, actual);
 }
 

@@ -19,7 +19,7 @@
 #include <string>
 #include <vector>
 
-#include "yacl/crypto/experimental/zkp/polynomial.h"
+#include "yacl/crypto/experimental/zkp/sumcheck/polynomial.h"
 
 namespace examples::zkp {
 

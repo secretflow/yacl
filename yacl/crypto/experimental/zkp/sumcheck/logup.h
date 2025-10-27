@@ -19,8 +19,8 @@
 #include <string>
 #include <vector>
 
-#include "yacl/crypto/experimental/zkp/polynomial.h"
-#include "yacl/crypto/experimental/zkp/sumcheck.h"
+#include "yacl/crypto/experimental/zkp/sumcheck/polynomial.h"
+#include "yacl/crypto/experimental/zkp/sumcheck/sumcheck.h"
 
 namespace examples::zkp {
 
@@ -35,10 +35,10 @@ class LogUpProver {
 
   std::pair<FieldElem, FieldElem> GetClaimedSums();
 
-  std::shared_ptr<const MultilinearPolynomial> Get_h_A() const { return h_A_; }
-  std::shared_ptr<const MultilinearPolynomial> Get_h_B() const { return h_B_; }
-  std::shared_ptr<const MultilinearPolynomial> Get_q_A() const { return q_A_; }
-  std::shared_ptr<const MultilinearPolynomial> Get_q_B() const { return q_B_; }
+  std::shared_ptr<const MultilinearPolynomial> get_h_A() const { return h_A_; }
+  std::shared_ptr<const MultilinearPolynomial> get_h_B() const { return h_B_; }
+  std::shared_ptr<const MultilinearPolynomial> get_q_A() const { return q_A_; }
+  std::shared_ptr<const MultilinearPolynomial> get_q_B() const { return q_B_; }
 
  private:
   std::shared_ptr<const MultilinearPolynomial> f_A_;
