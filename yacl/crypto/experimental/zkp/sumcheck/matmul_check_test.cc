@@ -12,13 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "zkp/sumcheck/matmul_check.h"
+#include "yacl/crypto/experimental/zkp/matmul_check.h"
 
 #include <cmath>
 #include <numeric>
 
 #include "gtest/gtest.h"
-#include "zkp/sumcheck/polynomial.h"
+#include "yacl/crypto/experimental/zkp/polynomial.h"
 
 #include "yacl/base/exception.h"
 

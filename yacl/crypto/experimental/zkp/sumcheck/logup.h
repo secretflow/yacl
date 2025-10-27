@@ -19,8 +19,8 @@
 #include <string>
 #include <vector>
 
-#include "zkp/sumcheck/polynomial.h"
-#include "zkp/sumcheck/sumcheck.h"
+#include "yacl/crypto/experimental/zkp/polynomial.h"
+#include "yacl/crypto/experimental/zkp/sumcheck.h"
 
 namespace examples::zkp {
 

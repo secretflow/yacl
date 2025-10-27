@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "zkp/sumcheck/logup.h"
+#include "yacl/crypto/experimental/zkp/logup.h"
 
 #include <cmath>
 
-#include "zkp/sumcheck/polynomial.h"
+#include "yacl/crypto/experimental/zkp/polynomial.h"
 
 #include "yacl/base/exception.h"
 

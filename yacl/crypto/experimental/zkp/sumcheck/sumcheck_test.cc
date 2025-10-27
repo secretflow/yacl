@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "zkp/sumcheck/sumcheck.h"
+#include "yacl/crypto/experimental/zkp/sumcheck.h"
 
 #include "gtest/gtest.h"
-#include "zkp/sumcheck/polynomial.h"
+#include "yacl/crypto/experimental/zkp/polynomial.h"
 
 namespace examples::zkp {
 
