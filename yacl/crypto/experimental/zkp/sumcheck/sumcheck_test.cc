@@ -66,9 +66,8 @@ TEST_F(ZeroCheckTest, HonestProver) {
 }
 
 TEST_F(ZeroCheckTest, FraudProver) {
-  // A(x1, x2) = x2.
   MultilinearPolynomial poly_A(
-      {FieldElem(0), FieldElem(1), FieldElem(0), FieldElem(1)});
+      {FieldElem(9), FieldElem(3), FieldElem(6), FieldElem(10)});
   bool success = RunZeroCheckProtocol(poly_A, modulus_p_);
   EXPECT_FALSE(success);
 }
