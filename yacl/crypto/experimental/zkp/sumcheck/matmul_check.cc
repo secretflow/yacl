@@ -53,13 +53,17 @@ FieldElem MatMatMultiplication(const MultilinearPolynomial& A,
       tempI >>= 1;
     }
 
-    std::vector<FieldElem> pointA = u;
-    pointA.insert(pointA.end(), y.begin(), y.end());
-    std::vector<FieldElem> pointB = y;
-    pointB.insert(pointB.end(), v.begin(), v.end());
+    std::vector<FieldElem> point_A;
+    point_A.reserve(u.size() + y.size());
+    point_A.insert(point_A.end(), u.begin(), u.end());
+    point_A.insert(point_A.end(), y.begin(), y.end());
+    std::vector<FieldElem> point_B;
+    point_B.reserve(y.size() + v.size());
+    point_B.insert(point_B.end(), y.begin(), y.end());
+    point_B.insert(point_B.end(), v.begin(), v.end());
 
-    FieldElem evalA = A.Evaluate(pointA, modulus);
-    FieldElem evalB = B.Evaluate(pointB, modulus);
+    FieldElem evalA = A.Evaluate(point_A, modulus);
+    FieldElem evalB = B.Evaluate(point_B, modulus);
     FieldElem product;
     FieldElem::MulMod(evalA, evalB, modulus, &product);
     FieldElem::AddMod(totalSum, product, modulus, &totalSum);
