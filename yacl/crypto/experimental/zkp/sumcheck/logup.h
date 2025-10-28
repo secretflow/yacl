@@ -35,10 +35,10 @@ class LogUpProver {
 
   std::pair<FieldElem, FieldElem> GetClaimedSums();
 
-  std::shared_ptr<const MultilinearPolynomial> get_h_A() const { return h_A_; }
-  std::shared_ptr<const MultilinearPolynomial> get_h_B() const { return h_B_; }
-  std::shared_ptr<const MultilinearPolynomial> get_q_A() const { return q_A_; }
-  std::shared_ptr<const MultilinearPolynomial> get_q_B() const { return q_B_; }
+  std::shared_ptr<const MultilinearPolynomial> GetHA() const { return h_A_; }
+  std::shared_ptr<const MultilinearPolynomial> GetHB() const { return h_B_; }
+  std::shared_ptr<const MultilinearPolynomial> GetQA() const { return q_A_; }
+  std::shared_ptr<const MultilinearPolynomial> GetQB() const { return q_B_; }
 
  private:
   std::shared_ptr<const MultilinearPolynomial> f_A_;
