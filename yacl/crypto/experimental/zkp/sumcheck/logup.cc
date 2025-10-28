@@ -14,8 +14,6 @@
 
 #include "yacl/crypto/experimental/zkp/sumcheck/logup.h"
 
-#include <cmath>
-
 #include "yacl/base/exception.h"
 #include "yacl/crypto/experimental/zkp/sumcheck/polynomial.h"
 

@@ -23,8 +23,7 @@
 
 namespace examples::zkp {
 
-using yacl::math::MPInt;
-using FieldElem = MPInt;
+using FieldElem = yacl::math::MPInt;
 using MultiLinearPolynomialVec = std::vector<FieldElem>;
 using UnivariatePolynomial = std::vector<FieldElem>;
 
