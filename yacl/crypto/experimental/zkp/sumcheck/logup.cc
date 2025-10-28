@@ -128,27 +128,10 @@ bool LogUpVerifier::Verify(LogUpProver& prover) {
     return false;
   }
 
-  auto h_A = prover.get_h_A();
-  if (!RunSumcheckProtocol(*h_A, claimed_sum_A, modulus_p_)) {
-    return false;
-  }
-
-  auto h_B = prover.get_h_B();
-  if (!RunSumcheckProtocol(*h_B, claimed_sum_B, modulus_p_)) {
-    return false;
-  }
-
-  auto q_A = prover.get_q_A();
-  if (!RunZeroCheckProtocol(*q_A, modulus_p_)) {
-    return false;
-  }
-
-  auto q_B = prover.get_q_B();
-  if (!RunZeroCheckProtocol(*q_B, modulus_p_)) {
-    return false;
-  }
-
-  return true;
+  return RunSumcheckProtocol(*prover.GetHA(), claimed_sum_A, modulus_p_) &&
+         RunSumcheckProtocol(*prover.GetHB(), claimed_sum_B, modulus_p_) &&
+         RunZeroCheckProtocol(*prover.GetQA(), modulus_p_) &&
+         RunZeroCheckProtocol(*prover.GetQB(), modulus_p_);
 }
 
 bool RunLogUpProtocol(const MultiLinearPolynomialVec& f_A_evals,

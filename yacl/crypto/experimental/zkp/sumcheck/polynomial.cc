@@ -28,7 +28,7 @@ MultilinearPolynomial::MultilinearPolynomial(MultiLinearPolynomialVec evals)
   if (evals_.size() == 1) {
     num_vars_ = 0;
   } else {
-    num_vars_ = std::log2(evals_.size());
+    num_vars_ = static_cast<size_t>(std::log2(evals_.size()));
   }
 }
 

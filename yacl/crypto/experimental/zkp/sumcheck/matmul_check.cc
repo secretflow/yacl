@@ -101,7 +101,9 @@ FieldElem MatVecMultiplication(const MultilinearPolynomial& M,
       tempI >>= 1;
     }
 
-    std::vector<FieldElem> pointM = r;
+    std::vector<FieldElem> pointM;
+    pointM.reserve(r.size() + y.size());
+    pointM.insert(pointM.end(), r.begin(), r.end());
     pointM.insert(pointM.end(), y.begin(), y.end());
     FieldElem evalM = M.Evaluate(pointM, modulus);
     FieldElem evalT = t.Evaluate(y, modulus);
