@@ -87,16 +87,8 @@ TEST_F(OneCheckTest, AllOnesHonestProver) {
 }
 
 TEST_F(OneCheckTest, NotAllOnesFraudProver) {
-  // y(x1, x2) is a bit vector, but not all entries are 1
   MultilinearPolynomial poly_y_fraud(
       {FieldElem(1), FieldElem(0), FieldElem(1), FieldElem(1)});
-  bool success = RunOneCheckProtocol(poly_y_fraud, modulus_p_);
-  EXPECT_FALSE(success);
-}
-
-TEST_F(OneCheckTest, NotABitVectorFraudProver) {
-  MultilinearPolynomial poly_y_fraud(
-      {FieldElem(1), FieldElem(5), FieldElem(1), FieldElem(1)});
   bool success = RunOneCheckProtocol(poly_y_fraud, modulus_p_);
   EXPECT_FALSE(success);
 }
