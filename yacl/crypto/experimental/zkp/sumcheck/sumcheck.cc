@@ -24,13 +24,9 @@ namespace {
 FieldElem EvaluateUnivariate(const UnivariatePolynomial& poly,
                              const FieldElem& x, const FieldElem& modulus) {
   FieldElem result(0);
-  FieldElem x_pow(1);
-
-  for (const auto& coeff : poly) {
-    FieldElem term;
-    FieldElem::MulMod(coeff, x_pow, modulus, &term);
-    FieldElem::AddMod(result, term, modulus, &result);
-    FieldElem::MulMod(x_pow, x, modulus, &x_pow);
+  for (auto it = poly.rbegin(); it != poly.rend(); ++it) {
+    FieldElem::MulMod(result, x, modulus, &result);
+    FieldElem::AddMod(result, *it, modulus, &result);
   }
   return result;
 }

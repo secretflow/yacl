@@ -27,16 +27,13 @@ class LogUpTest : public ::testing::Test {
 };
 
 TEST_F(LogUpTest, HonestProver) {
-  // Use the new type alias MultiLinearPolynomialVec
-  MultiLinearPolynomialVec f_A = {FieldElem(5), FieldElem(10)};
-  MultiLinearPolynomialVec f_B = {FieldElem(3), FieldElem(5), FieldElem(10),
-                                  FieldElem(20)};
-
+  MultiLinearPolynomialVec f_A_evals = {FieldElem(5), FieldElem(10)};
+  MultiLinearPolynomialVec f_B_evals = {FieldElem(3), FieldElem(5),
+                                        FieldElem(10), FieldElem(20)};
   // m_B
-  MultiLinearPolynomialVec m_B = {FieldElem(0), FieldElem(1), FieldElem(1),
-                                  FieldElem(0)};
-
-  bool success = RunLogUpProtocol(f_A, f_B, m_B, modulus_p_);
+  MultiLinearPolynomialVec m_B_evals = {FieldElem(0), FieldElem(1),
+                                        FieldElem(1), FieldElem(0)};
+  bool success = RunLogUpProtocol(f_A_evals, f_B_evals, m_B_evals, modulus_p_);
   EXPECT_TRUE(success);
 }
 
@@ -55,6 +52,29 @@ TEST_F(LogUpTest, HonestProverWithMultiplicity) {
                                         FieldElem(2), FieldElem(0)};
   bool success = RunLogUpProtocol(f_A_evals, f_B_evals, m_B_evals, modulus_p_);
   EXPECT_TRUE(success);
+}
+
+TEST_F(LogUpTest, FraudulentProverSubset) {
+  // Use the new type alias MultiLinearPolynomialVec
+  MultiLinearPolynomialVec f_A = {FieldElem(5), FieldElem(99)};
+  MultiLinearPolynomialVec f_B = {FieldElem(3), FieldElem(5), FieldElem(10),
+                                  FieldElem(20)};
+  MultiLinearPolynomialVec m_B = {FieldElem(0), FieldElem(1), FieldElem(1),
+                                  FieldElem(0)};
+  bool success = RunLogUpProtocol(f_A, f_B, m_B, modulus_p_);
+  EXPECT_FALSE(success);
+}
+
+TEST_F(LogUpTest, FraudulentProverMultiplicity) {
+  // Use the new type alias MultiLinearPolynomialVec
+  MultiLinearPolynomialVec f_A = {FieldElem(5), FieldElem(5)};
+  MultiLinearPolynomialVec f_B = {FieldElem(3), FieldElem(5), FieldElem(10),
+                                  FieldElem(20)};
+  MultiLinearPolynomialVec m_B = {FieldElem(0), FieldElem(1), FieldElem(1),
+                                  FieldElem(0)};
+
+  bool success = RunLogUpProtocol(f_A, f_B, m_B, modulus_p_);
+  EXPECT_FALSE(success);
 }
 
 }  // namespace examples::zkp
