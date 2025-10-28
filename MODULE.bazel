@@ -31,7 +31,7 @@ bazel_dep(name = "rules_proto", version = "4.0.0")
 bazel_dep(name = "bazel_skylib", version = "1.7.1")
 bazel_dep(name = "apple_support", version = "1.17.1")
 git_override(
-    model_name = "apple_support",
+    module_name = "apple_support",
     remote = "https://github.com/bazelbuild/apple_support.git",
     commit = "218e193e3ae0cb0203107147b48b14b948f3e4f1",
 )
