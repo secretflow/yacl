@@ -41,6 +41,12 @@ bazel_dep(name = "spdlog", version = "1.14.1")
 bazel_dep(name = "rules_python", version = "0.16.2")
 bazel_dep(name = "bazel_features", version = "1.38.0")
 bazel_dep(name = "rules_foreign_cc", version = "0.15.1")
+git_override(
+    module_name = "rules_foreign_cc",
+    commit = "625cd77e22641feecf51071ff4870c3e3bc69030",
+    remote = "https://github.com/bazel-contrib/rules_foreign_cc.git",
+)
+
 bazel_dep(name = "platforms", version = "1.0.0")
 
 # self-hosted registry
