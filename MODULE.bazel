@@ -39,7 +39,7 @@ bazel_dep(name = "blake3", version = "1.5.4")
 bazel_dep(name = "fmt", version = "11.0.2")
 bazel_dep(name = "spdlog", version = "1.14.1")
 bazel_dep(name = "rules_python", version = "0.16.2")
-bazel_dep(name = "bazel_features", version = "1.35.0")
+bazel_dep(name = "bazel_features", version = "1.38.0")
 bazel_dep(name = "rules_foreign_cc", version = "0.15.1")
 bazel_dep(name = "platforms", version = "1.0.0")
 
