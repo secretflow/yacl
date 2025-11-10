@@ -297,7 +297,13 @@ EcPoint OpensslGroup::HashToCurve(HashToCurveStrategy strategy,
   HashAlgorithm hash_algorithm;
   switch (strategy) {
     case HashToCurveStrategy::TryAndRehash_SHA2:
-      YACL_THROW("HashToCurveStrategy::TryAndRehash_SHA2 has been deprecated.");
+      YACL_THROW(
+          "HashToCurveStrategy::TryAndRehash_SHA2 has been deprecated.\n"
+          "It is recommanded to use curve-specific, standard-compliant "
+          "strategies for better security and interoperability.\n\n"
+          "For example:\n"
+          "  - For NIST curves like P-256: Use SHA256_SSWU_RO_.\n"
+          "  - For the SM2 curve: Use TryAndRehash_SM.");
       break;
     case HashToCurveStrategy::TryAndRehash_SHA3:
       if (bits <= 256) {
