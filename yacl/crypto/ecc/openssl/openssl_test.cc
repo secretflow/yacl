@@ -84,14 +84,8 @@ TEST(OpensslTest, HashToCurveWorks) {
   };
 
   for (int i = 0; i < 1000; ++i) {
-    // is_unique(curve->HashToCurve(HashToCurveStrategy::TryAndRehash_SHA2,
-    //                              fmt::format("id{}", i)));
     is_unique(curve->HashToCurve(HashToCurveStrategy::TryAndRehash_SM,
                                  fmt::format("id{}", i)));
-    // is_unique(curve->HashToCurve(HashToCurveStrategy::TryAndRehash_BLAKE3,
-    //                              fmt::format("id{}", i)));
-    // Same strategy as above TryAndRehash_BLAKE3
-    // is_unique(curve->HashToCurve(fmt::format("id{}", i)));
   }
 }
 
