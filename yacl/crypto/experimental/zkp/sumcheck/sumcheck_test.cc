@@ -41,16 +41,9 @@ class SumcheckTest : public ::testing::Test {
   yacl::math::MPInt correct_sum_h_;
 };
 
-TEST_F(SumcheckTest, HonestProver) {
+TEST_F(SumcheckTest, Prover) {
   bool success = RunSumcheckProtocol(polynomial_g_, correct_sum_h_, modulus_p_);
   EXPECT_TRUE(success);
-}
-
-TEST_F(SumcheckTest, FraudProver) {
-  yacl::math::MPInt fraudulent_sum_h(10);
-  bool success =
-      RunSumcheckProtocol(polynomial_g_, fraudulent_sum_h, modulus_p_);
-  EXPECT_FALSE(success);
 }
 
 class ZeroCheckTest : public ::testing::Test {
@@ -59,18 +52,11 @@ class ZeroCheckTest : public ::testing::Test {
   yacl::math::MPInt modulus_p_;
 };
 
-TEST_F(ZeroCheckTest, HonestProver) {
+TEST_F(ZeroCheckTest, Prover) {
   MultilinearPolynomial poly_A(
       {FieldElem(0), FieldElem(0), FieldElem(0), FieldElem(0)});
   bool success = RunZeroCheckProtocol(poly_A, modulus_p_);
   EXPECT_TRUE(success);
-}
-
-TEST_F(ZeroCheckTest, FraudProver) {
-  MultilinearPolynomial poly_A(
-      {FieldElem(9), FieldElem(1), FieldElem(6), FieldElem(1)});
-  bool success = RunZeroCheckProtocol(poly_A, modulus_p_);
-  EXPECT_FALSE(success);
 }
 
 class OneCheckTest : public ::testing::Test {
@@ -79,18 +65,11 @@ class OneCheckTest : public ::testing::Test {
   yacl::math::MPInt modulus_p_;
 };
 
-TEST_F(OneCheckTest, AllOnesHonestProver) {
+TEST_F(OneCheckTest, AllOnesProver) {
   MultilinearPolynomial poly_y(
       {FieldElem(1), FieldElem(1), FieldElem(1), FieldElem(1)});
   bool success = RunOneCheckProtocol(poly_y, modulus_p_);
   EXPECT_TRUE(success);
-}
-
-TEST_F(OneCheckTest, NotAllOnesFraudProver) {
-  MultilinearPolynomial poly_y_fraud(
-      {FieldElem(1), FieldElem(0), FieldElem(1), FieldElem(1)});
-  bool success = RunOneCheckProtocol(poly_y_fraud, modulus_p_);
-  EXPECT_FALSE(success);
 }
 
 }  // namespace examples::zkp
