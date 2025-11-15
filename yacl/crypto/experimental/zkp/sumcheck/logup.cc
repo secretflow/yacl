@@ -33,16 +33,21 @@ LogUpProver::LogUpProver(std::shared_ptr<const MultilinearPolynomial> f_A,
 
 void LogUpProver::Setup(const FieldElem& zeta) {
   zeta_ = zeta;
-  FieldElem one(1);
-  FieldElem zero(0);
+  const FieldElem one(1);
+  const FieldElem zero(0);
 
-  // h_A
+  const size_t num_vars_A = f_A_->NumVars();
+  const size_t size_A = 1 << num_vars_A;
   const auto& f_A_evals = f_A_->GetEvals();
+
   MultiLinearPolynomialVec h_A_evals;
-  h_A_evals.reserve(f_A_evals.size());
-  for (const auto& f_A_val : f_A_evals) {
+  MultiLinearPolynomialVec q_A_evals;
+  h_A_evals.reserve(size_A);
+  q_A_evals.reserve(size_A);
+
+  for (size_t i = 0; i < size_A; ++i) {
     FieldElem denominator;
-    FieldElem::SubMod(zeta_, f_A_val, modulus_p_, &denominator);
+    FieldElem::SubMod(zeta_, f_A_evals[i], modulus_p_, &denominator);
     YACL_ENFORCE(
         denominator != zero,
         "Division by zero in h_A construction: zeta is a root of f_A.");
@@ -50,19 +55,34 @@ void LogUpProver::Setup(const FieldElem& zeta) {
     FieldElem inv_denominator;
     FieldElem::InvertMod(denominator, modulus_p_, &inv_denominator);
     h_A_evals.push_back(inv_denominator);
+
+    FieldElem term1;
+    FieldElem::MulMod(h_A_evals.back(), denominator, modulus_p_, &term1);
+    FieldElem q_A_val;
+    FieldElem::SubMod(term1, one, modulus_p_, &q_A_val);
+    q_A_evals.push_back(q_A_val);
   }
   h_A_ = std::make_shared<MultilinearPolynomial>(std::move(h_A_evals));
+  q_A_ = std::make_shared<MultilinearPolynomial>(std::move(q_A_evals));
 
-  // h_B
+  const size_t num_vars_B = f_B_->NumVars();
+  const size_t size_B = 1 << num_vars_B;
   const auto& f_B_evals = f_B_->GetEvals();
   const auto& m_B_evals = m_B_->GetEvals();
+
   MultiLinearPolynomialVec h_B_evals;
-  h_B_evals.reserve(f_B_evals.size());
-  for (size_t i = 0; i < f_B_evals.size(); ++i) {
+  MultiLinearPolynomialVec q_B_evals;
+  h_B_evals.reserve(size_B);
+  q_B_evals.reserve(size_B);
+
+  for (size_t i = 0; i < size_B; ++i) {
     if (m_B_evals[i] == zero) {
       h_B_evals.push_back(zero);
+      // q_B(y) = 0 * (zeta - f_B(y)) - 0 = 0
+      q_B_evals.push_back(zero);
       continue;
     }
+
     FieldElem denominator;
     FieldElem::SubMod(zeta_, f_B_evals[i], modulus_p_, &denominator);
     YACL_ENFORCE(denominator != zero,
@@ -75,31 +95,15 @@ void LogUpProver::Setup(const FieldElem& zeta) {
     FieldElem h_B_val;
     FieldElem::MulMod(m_B_evals[i], inv_denominator, modulus_p_, &h_B_val);
     h_B_evals.push_back(h_B_val);
-  }
-  h_B_ = std::make_shared<MultilinearPolynomial>(std::move(h_B_evals));
 
-  // (q_A(x) = h_A(x) * (zeta - f_A(x)) - 1)
-  MultiLinearPolynomialVec q_A_evals;
-  q_A_evals.reserve(h_A_->GetEvals().size());
-  for (size_t i = 0; i < h_A_->GetEvals().size(); ++i) {
-    FieldElem term1, zeta_minus_fA, q_A_val;
-    FieldElem::SubMod(zeta_, f_A_evals[i], modulus_p_, &zeta_minus_fA);
-    FieldElem::MulMod(h_A_->GetEvals()[i], zeta_minus_fA, modulus_p_, &term1);
-    FieldElem::SubMod(term1, one, modulus_p_, &q_A_val);
-    q_A_evals.push_back(q_A_val);
-  }
-  q_A_ = std::make_shared<MultilinearPolynomial>(std::move(q_A_evals));
-
-  // (q_B(y) = h_B(y) * (zeta - f_B(y)) - m_B(y))
-  MultiLinearPolynomialVec q_B_evals;
-  q_B_evals.reserve(h_B_->GetEvals().size());
-  for (size_t i = 0; i < h_B_->GetEvals().size(); ++i) {
-    FieldElem term1, zeta_minus_fB, q_B_val;
-    FieldElem::SubMod(zeta_, f_B_evals[i], modulus_p_, &zeta_minus_fB);
-    FieldElem::MulMod(h_B_->GetEvals()[i], zeta_minus_fB, modulus_p_, &term1);
+    // q_B(y) = h_B(y) * (zeta - f_B(y)) - m_B(y)
+    FieldElem term1;
+    FieldElem::MulMod(h_B_val, denominator, modulus_p_, &term1);
+    FieldElem q_B_val;
     FieldElem::SubMod(term1, m_B_evals[i], modulus_p_, &q_B_val);
     q_B_evals.push_back(q_B_val);
   }
+  h_B_ = std::make_shared<MultilinearPolynomial>(std::move(h_B_evals));
   q_B_ = std::make_shared<MultilinearPolynomial>(std::move(q_B_evals));
 }
 
