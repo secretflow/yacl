@@ -143,3 +143,29 @@ cc_proto_library(
         ":link_proto",
     ],
 )
+
+yacl_cc_library(
+    name = "mbox_capi",
+    srcs = ["mbox_capi.cc"],
+    hdrs = ["mbox_capi.h"],
+)
+
+yacl_cc_library(
+    name = "mbox_wrapper",
+    srcs = ["mbox_wrapper.cc"],
+    hdrs = ["mbox_wrapper.h"],
+    deps = [
+        ":mbox_capi",
+        "@abseil-cpp//absl/types:span",
+    ],
+)
+
+yacl_cc_library(
+    name = "link_bridge",
+    srcs = ["link_bridge.cc"],
+    hdrs = ["link_bridge.h"],
+    deps = [
+        ":mbox_capi",
+        "//yacl/link/transport:channel",
+    ],
+)
