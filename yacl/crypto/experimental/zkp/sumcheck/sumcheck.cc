@@ -83,25 +83,24 @@ UnivariatePolynomial SumcheckProver::ComputeNextRoundPoly() {
 }
 
 void SumcheckProver::ProcessChallenge(const FieldElem& challenge) {
-  size_t half_size = current_g_evals_.size() / 2;
-  std::vector<FieldElem> next_g_evals;
-  next_g_evals.reserve(half_size);
+  const size_t half_size = current_g_evals_.size() / 2;
+  const FieldElem kOne(1);
+  FieldElem one_minus_ri;
+  FieldElem::SubMod(kOne, challenge, modulus_p_, &one_minus_ri);
 
   for (size_t j = 0; j < half_size; ++j) {
     const auto& eval_at_0 = current_g_evals_[j];
     const auto& eval_at_1 = current_g_evals_[j + half_size];
 
-    FieldElem one(1);
-    FieldElem one_minus_ri;
-    FieldElem::SubMod(one, challenge, modulus_p_, &one_minus_ri);
-
     FieldElem term1, term2, new_eval;
     FieldElem::MulMod(eval_at_0, one_minus_ri, modulus_p_, &term1);
     FieldElem::MulMod(eval_at_1, challenge, modulus_p_, &term2);
     FieldElem::AddMod(term1, term2, modulus_p_, &new_eval);
-    next_g_evals.push_back(new_eval);
+
+    current_g_evals_[j] = std::move(new_eval);
   }
-  current_g_evals_ = std::move(next_g_evals);
+
+  current_g_evals_.resize(half_size);
   current_round_++;
 }
 

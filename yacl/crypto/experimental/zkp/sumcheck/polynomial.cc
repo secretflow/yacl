@@ -47,27 +47,28 @@ FieldElem MultilinearPolynomial::Evaluate(absl::Span<const FieldElem> r,
   }
 
   std::vector<FieldElem> current_evals = evals_;
+  const FieldElem kOne(1);
+
   for (size_t i = 0; i < num_vars_; ++i) {
-    std::vector<FieldElem> next_evals;
-    size_t current_size = current_evals.size() / 2;
-    next_evals.reserve(current_size);
+    const size_t half_size = current_evals.size() / 2;
     const auto& r_i = r[i];
 
-    FieldElem one(1);
     FieldElem one_minus_ri;
-    FieldElem::SubMod(one, r_i, modulus, &one_minus_ri);
+    FieldElem::SubMod(kOne, r_i, modulus, &one_minus_ri);
 
-    for (size_t j = 0; j < current_size; ++j) {
+    for (size_t j = 0; j < half_size; ++j) {
       const auto& eval_at_0 = current_evals[j];
-      const auto& eval_at_1 = current_evals[j + current_size];
+      const auto& eval_at_1 = current_evals[j + half_size];
 
+      // new_eval = eval_at_0 * (1 - r_i) + eval_at_1 * r_i;
       FieldElem term1, term2, new_eval;
       FieldElem::MulMod(eval_at_0, one_minus_ri, modulus, &term1);
       FieldElem::MulMod(eval_at_1, r_i, modulus, &term2);
       FieldElem::AddMod(term1, term2, modulus, &new_eval);
-      next_evals.push_back(new_eval);
+
+      current_evals[j] = std::move(new_eval);
     }
-    current_evals = std::move(next_evals);
+    current_evals.resize(half_size);
   }
   return current_evals[0];
 }
@@ -105,21 +106,17 @@ std::unique_ptr<MultilinearPolynomial> BuildEqPolynomial(
   size_t k = r.size();
   size_t N = 1U << k;
   MultiLinearPolynomialVec eq_poly_evals(N);
-  FieldElem one(1);
+  const FieldElem kOne(1);
+
+  std::vector<FieldElem> one_minus_r(k);
+  for (size_t j = 0; j < k; ++j) {
+    FieldElem::SubMod(kOne, r[j], modulus, &one_minus_r[j]);
+  }
 
   for (size_t i = 0; i < N; ++i) {
     FieldElem res(1);
     for (size_t j = 0; j < k; ++j) {
-      // x_j is the j-th bit of i (from MSB)
-      bool x_j_is_one = ((i >> (k - 1 - j)) & 1);
-      const auto& r_j = r[j];
-      FieldElem term;
-
-      if (x_j_is_one) {
-        term = r_j;
-      } else {
-        FieldElem::SubMod(one, r_j, modulus, &term);
-      }
+      const FieldElem& term = ((i >> j) & 1) ? r[j] : one_minus_r[j];
       FieldElem::MulMod(res, term, modulus, &res);
     }
     eq_poly_evals[i] = res;
