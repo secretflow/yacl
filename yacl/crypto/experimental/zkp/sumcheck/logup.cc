@@ -56,11 +56,9 @@ void LogUpProver::Setup(const FieldElem& zeta) {
     FieldElem::InvertMod(denominator, modulus_p_, &inv_denominator);
     h_A_evals.push_back(inv_denominator);
 
-    FieldElem term1;
-    FieldElem::MulMod(h_A_evals.back(), denominator, modulus_p_, &term1);
-    FieldElem q_A_val;
-    FieldElem::SubMod(term1, one, modulus_p_, &q_A_val);
-    q_A_evals.push_back(q_A_val);
+    // By definition, q_A(x) = h_A(x) * (zeta - f_A(x)) - 1.
+    // Since h_A(x) = 1 / (zeta - f_A(x)), q_A(x) is identically 0.
+    q_A_evals.push_back(zero);
   }
   h_A_ = std::make_shared<MultilinearPolynomial>(std::move(h_A_evals));
   q_A_ = std::make_shared<MultilinearPolynomial>(std::move(q_A_evals));
