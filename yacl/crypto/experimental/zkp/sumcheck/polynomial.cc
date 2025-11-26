@@ -116,7 +116,7 @@ std::unique_ptr<MultilinearPolynomial> BuildEqPolynomial(
   for (size_t i = 0; i < N; ++i) {
     FieldElem res(1);
     for (size_t j = 0; j < k; ++j) {
-      const FieldElem& term = ((i >> j) & 1) ? r[j] : one_minus_r[j];
+      const FieldElem& term = ((i >> (k - 1 - j)) & 1) ? r[j] : one_minus_r[j];
       FieldElem::MulMod(res, term, modulus, &res);
     }
     eq_poly_evals[i] = res;
