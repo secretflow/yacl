@@ -79,8 +79,8 @@ jobs:
       - build_and_test
   macOS_ut_arm64:
     macos:
-      xcode: 16.0.0
-    resource_class: macos.m1.medium.gen1
+      xcode: 16.4.0
+    resource_class: m4pro.medium
     steps:
       - checkout
       - run:
