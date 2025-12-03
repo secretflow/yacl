@@ -50,7 +50,7 @@ public class EcdhPsi {
   // Native Functions Declaration
   // ----------------------------
   //
-  // NOTE the gerenated c header (*.h) file could be found at
+  // NOTE the generated c header (*.h) file could be found at
   // bazel-bin/examples/psi/java/EcdhPsi.hdrs.h/EcdhPsi.h
 
   public static native byte[] jni_ecc_keygen();

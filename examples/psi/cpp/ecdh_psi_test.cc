@@ -74,7 +74,7 @@ TEST(PsiTest, Works) {
   //
   // ... code here (omitted) ...
   //
-  // You may mannually send the EcPoints through yacl::link::Context, which
+  // You may manually send the EcPoints through yacl::link::Context, which
   // handles an RPC channel, see: yacl/link/context.h. You may also use any
   // method that you like to let Alice talk to Bob. Remember the communication
   // channel needs to be a secure P2P channel.
@@ -129,7 +129,7 @@ TEST(PsiExTest, Works) {
   //
   // ... code here (omitted) ...
   //
-  // You may mannually send the EcPoints through yacl::link::Context, which
+  // You may manually send the EcPoints through yacl::link::Context, which
   // handles an RPC channel, see: yacl/link/context.h. You may also use any
   // method that you like to let Alice talk to Bob. Remember the communication
   // channel needs to be a secure P2P channel.
