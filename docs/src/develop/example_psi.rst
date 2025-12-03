@@ -1,7 +1,7 @@
 Example: Build a PSI Protocol
 =============================
 
-This is an example of how to use Yacl's ECC api and link to build up a `PSI (Private Set Intersection) <https://en.wikipedia.org/wiki/Private_set_intersection>`_ protocol. The code of this example is avaliable at `link <https://github.com/secretflow/yacl/tree/main/examples/psi/cpp>`_.
+This is an example of how to use Yacl's ECC api and link to build up a `PSI (Private Set Intersection) <https://en.wikipedia.org/wiki/Private_set_intersection>`_ protocol. The code of this example is available at `link <https://github.com/secretflow/yacl/tree/main/examples/psi/cpp>`_.
 
 .. warning::
    This example is merely designed for demonstration only, please do not use this example in production.
@@ -80,7 +80,7 @@ To run the exeutable, open two terminals in the same machine.
 
 .. note::
 
-   Please make sure your machine's 10086 and 10087 ports are avaliable.
+   Please make sure your machine's 10086 and 10087 ports are available.
 
 In the first terminal, at yacl's project root, run
 

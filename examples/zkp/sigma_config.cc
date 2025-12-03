@@ -42,7 +42,7 @@ bool SigmaConfig::IsQualified() const {
   if (!dyn_size_flag) {
     return Equals(GetSigmaConfig(type));
   }
-  // check varied size sigma config(values of varied attrs may are setted by
+  // check varied size sigma config(values of varied attrs may are set by
   // called SigmaConfig.SetXXX(), or default 0)
   switch (type) {
     case SigmaType::Representation:

@@ -92,7 +92,7 @@ std::vector<uint128_t> ProcessSelfData(const LCTX& lctx,
 }
 
 void StartPsi(int rank, const std::string& file_path) {
-  YACL_ENFORCE(rank == 0 || rank == 1, "Invalid Arguemnts: rank");
+  YACL_ENFORCE(rank == 0 || rank == 1, "Invalid Arguments: rank");
   YACL_ENFORCE(!file_path.empty());
   auto data_str = LoadCsv(file_path);
 
@@ -150,7 +150,7 @@ int main(int argc, char* argv[]) {
 
   // Phase 0: Setup network, data, and everything else
   SPDLOG_INFO("Phase 0: Setup network, data, and everything else ...");
-  YACL_ENFORCE(FLAGS_rank == 0 || FLAGS_rank == 1, "Invalid Arguemnts: rank");
+  YACL_ENFORCE(FLAGS_rank == 0 || FLAGS_rank == 1, "Invalid Arguments: rank");
 
   std::string file_path =
       FLAGS_path.empty() ? fmt::format("{}/psi/data/data_{}.csv",

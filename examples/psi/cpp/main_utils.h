@@ -33,7 +33,7 @@ inline std::vector<std::string> LoadCsv(const std::string& file_path) {
   yacl::io::ReaderOptions reader_ops;
 
   // We only want to read the "ID" column
-  reader_ops.file_schema = {{/* target colum type */ yacl::io::Schema::STRING},
+  reader_ops.file_schema = {{/* target column type */ yacl::io::Schema::STRING},
                             {/* target column */ "ID"}};
   auto csv_reader = yacl::io::CsvReader(reader_ops, std::move(in));
   csv_reader.Init();

@@ -34,7 +34,7 @@ namespace examples::psi {
 
 // An example of PSI protocol
 //
-// NOTE: this PSI protocol is designed solely for demonstation and is not
+// NOTE: this PSI protocol is designed solely for demonstration and is not
 // ready, or designed for production use, please do not use this in
 // production.
 //

@@ -14,7 +14,7 @@
 
 #
 # NOTE Before running the following examples, please make sure you have
-# correctly setup java developement environment.
+# correctly setup java development environment.
 #
 # Example:
 #   export JAVA_HOME="$(dirname $(dirname $(realpath $(which javac))))"
