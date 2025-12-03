@@ -22,7 +22,7 @@ namespace examples::zkp {
 using namespace yacl::crypto;
 using namespace yacl::math;
 
-// We abide an unifying view to implement the common Sigma-type zero-knowledge
+// We abide a unifying view to implement the common Sigma-type zero-knowledge
 // proof (ZKP) schemes, in which we view the ZKP schemes as proof of knowledge
 // of a pre-image of a one-way group homomorphism(OWH) and a specific group
 // homomorphism would determine a specific scheme [Mau09].
