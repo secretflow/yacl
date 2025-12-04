@@ -29,7 +29,7 @@ int rdseed64_step(uint64_t *out) {
   return static_cast<int>(ok);
 }
 
-// Or the buit-in function (may not impemented by all c++ compilers):
+// Or the built-in function (may not implemented by all c++ compilers):
 // ----------------------------------------
 // #include <immintrin.h>
 // int _rdseed64_step(uint64_t*);
@@ -64,7 +64,7 @@ Buffer RdSeedEntropySource::GetEntropy(uint32_t bits_of_entropy) {
       size_t current_pos = idx * batch_size;
       size_t current_batch_size = std::min(num_bytes - current_pos, batch_size);
 
-      // if failed, retry geneartion, we adopt strategy in section 5.3.1.1
+      // if failed, retry generation, we adopt strategy in section 5.3.1.1
       //
       // If the application is not latency-sensitive, then it can simply retry
       // the RDSEED instruction indefinitely, though it is recommended that a
@@ -100,7 +100,7 @@ Buffer RdSeedEntropySource::GetEntropy(uint32_t bits_of_entropy) {
       size_t current_pos = idx * batch_size;
       size_t current_batch_size = std::min(num_bytes - current_pos, batch_size);
 
-      // if failed, retry geneartion, we adopt strategy in section 5.3.1.1
+      // if failed, retry generation, we adopt strategy in section 5.3.1.1
       //
       // If the application is not latency-sensitive, then it can simply retry
       // the RDSEED instruction indefinitely, though it is recommended that a
@@ -119,7 +119,7 @@ Buffer RdSeedEntropySource::GetEntropy(uint32_t bits_of_entropy) {
     return {out.data(), out.size()};
   } else {
     SPDLOG_WARN(
-        "Unconfigured CPU verndors, continue gracefully without generating "
+        "Unconfigured CPU vendors, continue gracefully without generating "
         "entropy");
     return {};
   }

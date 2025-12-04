@@ -32,7 +32,7 @@ class UrandomEntropySource : public EntropySource {
     return std::make_unique<UrandomEntropySource>();
   }
 
-  // this checker would always return ture
+  // this checker would always return true
   static bool Check(const std::string &type,
                     [[maybe_unused]] const SpiArgs &config) {
     return absl::AsciiStrToLower(type) == "software" ||

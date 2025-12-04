@@ -50,7 +50,7 @@ msgid "[Feature] Add ECC FourQ implementation"
 msgstr "[功能] 添加 ECC FourQ 实现"
 
 #: ../../../CHANGELOG.md:10
-msgid "[Feature] Unify f2k implementaion"
+msgid "[Feature] Unify f2k implementation"
 msgstr "[功能] 统一 f2k 实现"
 
 #: ../../../CHANGELOG.md:11

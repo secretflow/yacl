@@ -37,13 +37,13 @@ using GF64 = uint64_t;
 using GF128 = uint128_t;
 
 template <typename T, typename K>
-void SendWarpper(SilentVoleSender& sender, std::shared_ptr<link::Context>& lctx,
+void SendWrapper(SilentVoleSender& sender, std::shared_ptr<link::Context>& lctx,
                  absl::Span<K> c) {
   sender.Send(lctx, c);
 }
 
 template <>
-void SendWarpper<GF64, GF128>(SilentVoleSender& sender,
+void SendWrapper<GF64, GF128>(SilentVoleSender& sender,
                               std::shared_ptr<link::Context>& lctx,
                               absl::Span<GF128> c) {
   sender.SfSend(lctx, c);
@@ -75,7 +75,7 @@ void RecvWrapper<GF64, GF128>(SilentVoleReceiver& receiver,
     Type1 delta = 0;                                                     \
     auto sender = std::async([&] {                                       \
       auto sv_sender = SilentVoleSender(codetype, is_mal);               \
-      SendWarpper<Type0, Type1>(sv_sender, lctxs[0], absl::MakeSpan(c)); \
+      SendWrapper<Type0, Type1>(sv_sender, lctxs[0], absl::MakeSpan(c)); \
       delta = sv_sender.GetDelta();                                      \
     });                                                                  \
     auto receiver = std::async([&] {                                     \

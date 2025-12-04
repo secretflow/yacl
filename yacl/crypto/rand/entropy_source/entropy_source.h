@@ -34,7 +34,7 @@ namespace yacl::crypto {
 // all implementations of entropy source should comply NIST SP800-90B, see:
 // https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-90B.pdf
 //
-// NOTE: In the recommmend entropy source model, there's noise source,
+// NOTE: In the recommend entropy source model, there's noise source,
 // conditioning component and health tests. This base class is designed to only
 // include the functionalities that allow external calls (e.g. generating the
 // entropy output). In particular, we do not include the health tests API
@@ -42,7 +42,7 @@ namespace yacl::crypto {
 //
 class EntropySource {
  public:
-  // Constructor and desctructor
+  // Constructor and destructor
   EntropySource() = default;
   virtual ~EntropySource() = default;
 

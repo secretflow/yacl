@@ -93,7 +93,7 @@ inline uint64_t reduce_64(uint128_t x) {
 }  // namespace
 
 // -----------------------
-// Implementaion of SPI
+// Implementation of SPI
 // -----------------------
 template <>
 uint128_t IntrinsicField<uint128_t>::Mul(const uint128_t& x,
