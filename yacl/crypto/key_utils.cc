@@ -179,7 +179,7 @@ void ExportPublicKeyToPemFile(const openssl::UniquePkey& pkey,
   ExportBufToFile(ExportPublicKeyToPemBuf(pkey), file_path);
 }
 
-//  export secret key to pem (different from publick key since they may not have
+//  export secret key to pem (different from public key since they may not have
 // the same structure)
 Buffer ExportSecretKeyToPemBuf(
     /* secret key */ const openssl::UniquePkey& pkey) {
@@ -221,7 +221,7 @@ void ExportPublicKeyToDerFile(const openssl::UniquePkey& pkey,
   ExportBufToFile(ExportPublicKeyToPemBuf(pkey), file_path);
 }
 
-//  export secret key to pem (different from publick key since they may not have
+//  export secret key to pem (different from public key since they may not have
 // the same structure)
 Buffer ExportSecretKeyToDerBuf(
     /* secret key */ const openssl::UniquePkey& pkey) {

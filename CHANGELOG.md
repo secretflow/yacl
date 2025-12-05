@@ -7,7 +7,7 @@ All notable changes to this project will be documented in this file.
 - [Feature] Re-organize repo layout, add kernel folder for crypto protocols with links
 - [Feature] Add ECC lib25519 implementation
 - [Feature] Add ECC FourQ implementation
-- [Feature] Unify f2k implementaion
+- [Feature] Unify f2k implementation
 - [Bugifx] Fix RandBits implementation
 
 **2024-02-01**

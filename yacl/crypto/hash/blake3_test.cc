@@ -116,7 +116,7 @@ TEST(Blake3HashTest, MultipleUpdates) {
 // Verify that blacke3 could extract different output length as needed.
 // The blow testing would set the output length from 1 byte (8-bit) to 8 * 32 =
 // 256 bytes (2048-bit).
-// Besdies, the output length would affect the security level, see
+// Besides, the output length would affect the security level, see
 // yacl/crypto/hash/blake3.h for more details.
 TEST(Blake3HashTest, CustomOutLength) {
   for (size_t i = 0; i <= (8 * BLAKE3_OUT_LEN); i++) {

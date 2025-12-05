@@ -57,7 +57,7 @@ class RdSeedEntropySource : public EntropySource {
     return std::make_unique<RdSeedEntropySource>();
   }
 
-  // this checker would always return ture
+  // this checker would always return true
   static bool Check(const std::string &type,
                     [[maybe_unused]] const SpiArgs &config) {
     return cpu_features::GetX86Info().features.rdseed &&

@@ -32,7 +32,7 @@ JNIEXPORT jbyteArray JNICALL Java_EcdhPsi_jni_1ecc_1keygen(JNIEnv *env,
   auto ec = yc::EcGroupFactory::Instance().Create("FourQ");
   yc::MPInt::RandomLtN(ec->GetOrder(), &sk);
   auto buf = sk.Serialize();
-  return jni::buffer_to_jbyteArrary(env, sk.Serialize());
+  return jni::buffer_to_jbyteArray(env, sk.Serialize());
 }
 
 /*
@@ -61,7 +61,7 @@ Java_EcdhPsi_jni_1mask_1strings(JNIEnv *env, jclass java_class,
         ec->HashToCurve(yc::HashToCurveStrategy::Autonomous, temp_in);
     ec->MulInplace(&temp_out, sk);
     auto buffer = ec->SerializePoint(temp_out);
-    env->SetObjectArrayElement(out, i, jni::buffer_to_jbyteArrary(env, buffer));
+    env->SetObjectArrayElement(out, i, jni::buffer_to_jbyteArray(env, buffer));
   }
   return out;
 }
@@ -95,7 +95,7 @@ Java_EcdhPsi_jni_1mask_1ec_1point_1and_1hash_1to_1u128(JNIEnv *env,
 
     yacl::Buffer buf(sizeof(uint128_t));
     memcpy(buf.data(), &temp_out, buf.size());
-    env->SetObjectArrayElement(out, i, jni::buffer_to_jbyteArrary(env, buf));
+    env->SetObjectArrayElement(out, i, jni::buffer_to_jbyteArray(env, buf));
   }
   return out;
 }

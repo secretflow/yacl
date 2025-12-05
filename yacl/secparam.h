@@ -52,8 +52,8 @@ class SecParam {
   // |       256         |      Y      |      Y     |
   // +-------------------+-------------+------------+
   //
-  // Note that security stregth is an abstract concept, which may not directly
-  // refer to the key size of a concerete crypto algorithm. See:
+  // Note that security strength is an abstract concept, which may not directly
+  // refer to the key size of a concrete crypto algorithm. See:
   // https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-57pt1r5.pdf
   //
   // +-------------------+---------------+---------------+---------+-----------+
@@ -67,21 +67,21 @@ class SecParam {
   // +-------------------+---------------+---------------+---------+-----------+
   // FFC: finite field cryptography, L is the pk length, N is the sk length
   // IFC: integer factorization cryptography, k is modulus length
-  // ECC: elliptic curve cryptograpjy, f is the key length (depending on curves)
+  // ECC: elliptic curve cryptography, f is the key length (depending on curves)
   enum class C {
     UNKNOWN,
     k112,  // not recommended in any cases (last reviewed: 2023-9)
     k128,  // default for yacl
     k192,  // not yet supported by most yacl's algorithms
     k256,  //
-    INF,   // information-theorectically secure (or, unconditional security)
+    INF,   // information-theoretically secure (or, unconditional security)
   };
 
   // convert to int
   static constexpr uint32_t MakeInt(C c);
 
   // Statistical Security Parameter: (from wikipedia) A measure of the
-  // probability with which an adversary can break the scheme. Statistial
+  // probability with which an adversary can break the scheme. Statistical
   // security parameter is usually used in the security proof of statistical
   // indistinguishability. The recommended value is 40, which indicates a
   // probability of 2^{-40}.
@@ -96,12 +96,12 @@ class SecParam {
   // convert s to int
   static constexpr uint32_t MakeInt(S s);
 
-  static C glob_c;  // global computational security paramter
-  static S glob_s;  // global statistical security paramter
+  static C glob_c;  // global computational security parameter
+  static S glob_s;  // global statistical security parameter
 };
 
 // -----------------------
-// Function implementaions
+// Function implementations
 // -----------------------
 constexpr uint32_t SecParam::MakeInt(SecParam::C c) {
   switch (c) {
@@ -192,7 +192,7 @@ uint64_t inline GenRegNoiseWeight(double min_dist_ratio, uint64_t sec) {
 // Yacl module's security parameter setup
 //
 // What is the boundary of Yacl's module? Note that each module's declaration
-// only relect its actual security parameter if it is self-contained (which
+// only reflect its actual security parameter if it is self-contained (which
 // means it has no further module dependencies, e.g. module b)
 //
 //  +----------+           +------------+
@@ -218,7 +218,7 @@ struct YaclModule {
 
 // Yacl global registry (which is a compile-time map)
 // this map only stores the unique module name hash (supposedly), and a
-// compile-time interal counter which counts the number of registerd modules
+// compile-time internal counter which counts the number of registered modules
 struct YaclModuleCtr {};  // compile-time counter initialization (start at 0)
 
 template <uint32_t counter>
@@ -226,7 +226,7 @@ struct YaclRegistry {
   [[maybe_unused]] static constexpr uint32_t hash = 0;
 };
 
-// Yacl module handler, which helps to print all registed module infos
+// Yacl module handler, which helps to print all registered module infos
 class YaclModuleHandler {
  public:
   using SecParam = yacl::crypto::SecParam;
@@ -287,9 +287,9 @@ class YaclModuleHandler {
 // This macro is designed to be used by each cryptographic module in its header
 // (*.h file), note that module name is *case sensitive*
 //
-// Please make sure your declearation is correct for this module. By
+// Please make sure your declaration is correct for this module. By
 // "cryptographic" traditional, you may want to declare a security level
-// assuming the existance of certain theoritical tools, but those tools in
+// assuming the existence of certain theoretical tools, but those tools in
 // reality may be instantiate against comp. adversaries. You need to configure
 // this for your module sine yacl will automatically performs check.
 //

@@ -45,7 +45,7 @@ template <typename SPI_T>
 struct SpiLibMeta {
   int64_t performance;
 
-  // pointer to Ckeck(...) function
+  // pointer to Check(...) function
   SpiCheckerT Check;
   // pointer to Create(...) function
   SpiCreatorT<SPI_T> Create;

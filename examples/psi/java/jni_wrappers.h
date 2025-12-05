@@ -26,8 +26,8 @@
 
 namespace jni {
 
-inline jbyteArray buffer_to_jbyteArrary(JNIEnv *env,
-                                        yacl::ByteContainerView in) {
+inline jbyteArray buffer_to_jbyteArray(JNIEnv *env,
+                                       yacl::ByteContainerView in) {
   const auto *by = reinterpret_cast<const jbyte *>(in.data());
   jbyteArray ret = env->NewByteArray(in.size());
   env->SetByteArrayRegion(ret, 0, in.size(), by);

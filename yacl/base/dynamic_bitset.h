@@ -1792,7 +1792,7 @@ dynamic_bitset(integral_type) -> dynamic_bitset<>;
  *             return !(lhs == rhs);
  *             @endcode
  *             see @ref yacl::dynamic_bitset::operator==() for more
- * informations.
+ * information.
  *
  * @param[in]  lhs        The left hand side @ref yacl::dynamic_bitset of the
  * operator
@@ -1826,7 +1826,7 @@ constexpr bool operator!=(const dynamic_bitset<Block, Allocator>& lhs,
  *             @code
  *             return !(rhs < lhs);
  *             @endcode
- *             see @ref yacl::dynamic_bitset::operator<() for more informations.
+ *             see @ref yacl::dynamic_bitset::operator<() for more information.
  *
  * @param[in]  lhs        The left hand side @ref yacl::dynamic_bitset of the
  * operator
@@ -1859,7 +1859,7 @@ constexpr bool operator<=(const dynamic_bitset<Block, Allocator>& lhs,
  *             @code
  *             return rhs < lhs;
  *             @endcode
- *             see @ref yacl::dynamic_bitset::operator<() for more informations.
+ *             see @ref yacl::dynamic_bitset::operator<() for more information.
  *
  * @param[in]  lhs        The left hand side @ref yacl::dynamic_bitset of the
  * operator
@@ -1892,7 +1892,7 @@ constexpr bool operator>(const dynamic_bitset<Block, Allocator>& lhs,
  *             @code
  *             return !(lhs < rhs);
  *             @endcode
- *             see @ref yacl::dynamic_bitset::operator<() for more informations.
+ *             see @ref yacl::dynamic_bitset::operator<() for more information.
  *
  * @param[in]  lhs        The left hand side @ref yacl::dynamic_bitset of the
  * operator
@@ -1926,7 +1926,7 @@ constexpr bool operator>=(const dynamic_bitset<Block, Allocator>& lhs,
  *             return result &= rhs;
  *             @endcode
  *             see @ref yacl::dynamic_bitset::operator&=() for more
- * informations.
+ * information.
  *
  * @param[in]  lhs        The left hand side @ref yacl::dynamic_bitset of the
  * operator
@@ -1966,7 +1966,7 @@ constexpr dynamic_bitset<Block, Allocator> operator&(
  *             return result |= rhs;
  *             @endcode
  *             see @ref yacl::dynamic_bitset::operator|=() for more
- * informations.
+ * information.
  *
  * @param[in]  lhs        The left hand side @ref yacl::dynamic_bitset of the
  * operator
@@ -2006,7 +2006,7 @@ constexpr dynamic_bitset<Block, Allocator> operator|(
  *             return result ^= rhs;
  *             @endcode
  *             see @ref yacl::dynamic_bitset::operator^=() for more
- * informations.
+ * information.
  *
  * @param[in]  lhs        The left hand side @ref yacl::dynamic_bitset of the
  * operator
@@ -2045,7 +2045,7 @@ constexpr dynamic_bitset<Block, Allocator> operator^(
  *             return result -= rhs;
  *             @endcode
  *             see @ref yacl::dynamic_bitset::operator-=() for more
- * informations.
+ * information.
  *
  * @param[in]  lhs        The left hand side @ref yacl::dynamic_bitset of the
  * operator
@@ -2146,7 +2146,7 @@ constexpr std::basic_istream<_CharT, _Traits>& operator>>(
  *             @code
  *             bitset1.swap(bitset2);
  *             @endcode
- *             see @ref yacl::dynamic_bitset::swap() for more informations.
+ *             see @ref yacl::dynamic_bitset::swap() for more information.
  *
  * @param      bitset1    @ref yacl::dynamic_bitset to be swapped
  * @param      bitset2    @ref yacl::dynamic_bitset to be swapped

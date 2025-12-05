@@ -51,7 +51,7 @@ std::vector<uint128_t> ProcessPeerData(const LCTX& lctx,
   protocol.MaskEcPointsAndHashToU128(absl::MakeSpan(peer_points),
                                      absl::MakeSpan(peer_final));
 
-  // Send back all informations
+  // Send back all information
   for (const auto& u128 : peer_final) {
     lctx->Send(
         lctx->NextRank(), yacl::SerializeUint128(u128),

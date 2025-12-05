@@ -44,7 +44,7 @@ yacl_cc_test(
 )
 
 # ========================
-# Algorithm implementaions
+# Algorithm implementations
 # ========================
 
 yacl_cc_library(
