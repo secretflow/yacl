@@ -38,7 +38,7 @@ class SliceBase {
   uint64_t GetBufSize() const { return internal_buf_size_; }
   virtual void ConsistencyCheck() const;
 
-  // init all interal values
+  // init all internal values
   void InitCtrs(uint64_t use_ctr, uint64_t use_size, uint64_t buf_ctr,
                 uint64_t buf_size);
 
@@ -51,7 +51,7 @@ class SliceBase {
   // reset all pointers
   void Reset();
 
-  // An unused slice looks like the follwoing:
+  // An unused slice looks like the following:
   //
   // |---------------|-----slice-----|----------------| internal buffer
   // a               b               c                d
@@ -73,7 +73,7 @@ class SliceBase {
   // internal_buf_size_ = d - a
 
   uint64_t internal_use_ctr_ = 0;   // slice begin position in buffer
-  uint64_t internal_use_size_ = 0;  // allowed slice size (read & wrtie)
+  uint64_t internal_use_size_ = 0;  // allowed slice size (read & write)
   uint64_t internal_buf_ctr_ = 0;   // buffer use counter (next slice position)
   uint64_t internal_buf_size_ = 0;  // underlying buf max size
                                     // (will not be affected by slice op)
