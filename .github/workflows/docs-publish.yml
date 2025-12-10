@@ -19,20 +19,27 @@ on:
       - main
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Run in dry-run mode"
+        required: false
+        default: "true"
+        type: boolean
 
 jobs:
   check-docs:
     name: check docs
     runs-on: [ubuntu-latest]
     steps:
-      - uses: actions/checkout@v5    
+      - uses: actions/checkout@v6.0.1
       - uses: actions/setup-node@v6
         with:
-          node-version: "24"
+          node-version: "22"
       - uses: actions/setup-python@v6
         with:
           python-version: "3.10"
-      - name: pubilsh docs
+      - name: publish docs
         run: |
             python3 -m venv ~/.venv/docs
             source ~/.venv/docs/bin/activate
@@ -42,5 +49,5 @@ jobs:
               --name @secretflow/x-yacl \
               --index-js docs/_build/esm/index.js
         env:
-          DRY_RUN: "0" # omit in test runs
+          DRY_RUN: ${{ github.event_name == 'push' && '0' || (github.event.inputs.dry_run == 'false' && '0' || '1') }}
           DOCTOOLS_PUBLISH_NPM_TOKEN: ${{secrets.DOCTOOLS_PUBLISH_NPM_TOKEN}}
