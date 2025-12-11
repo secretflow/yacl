@@ -63,12 +63,12 @@ Sm4Drbg::Sm4Drbg(SecParam::C secparam, const std::shared_ptr<EntropySource>& es)
 
 void Sm4Drbg::Instantiate(ByteContainerView nonce,
                           ByteContainerView personal_string) {
-  // since GetEntrpoy always success in yacl, there is no need for step (c) in
+  // since GetEntropy always success in yacl, there is no need for step (c) in
   // the standard
   auto entropy_buf = es_->GetEntropy(kMinEntropyBits); /* 256 bits */
   YACL_ENFORCE(entropy_buf.size() <= kMaxEntropySize);
 
-  // initialize SM4 entryption context
+  // initialize SM4 encryption context
   cipher_ = openssl::FetchEvpCipher(ToString(kCodeType));
   cipher_ctx_ = openssl::UniqueCipherCtx(EVP_CIPHER_CTX_new());
 
@@ -214,7 +214,7 @@ std::array<uint8_t, Sm4Drbg::kBlockSize> Sm4Drbg::cbc_mac(
     uint128_t key, ByteContainerView data) {
   static_assert(kSeedlen % kBlockSize == 0);
 
-  /* init openssl cipher contex */
+  /* init openssl cipher context */
   OSSL_RET_1(EVP_CIPHER_CTX_reset(cipher_ctx_.get()));
   auto local_ctx = openssl::UniqueCipherCtx(EVP_CIPHER_CTX_new());
   YACL_ENFORCE(EVP_CipherInit(local_ctx.get(), cipher_.get(),
@@ -222,7 +222,7 @@ std::array<uint8_t, Sm4Drbg::kBlockSize> Sm4Drbg::cbc_mac(
                               /* iv */ nullptr, /* 1 = enc, 0 = dec */ 1));
 
   /* step (a) */
-  std::array<uint8_t, kBlockSize> chaining_value{};  // defalt init to 0
+  std::array<uint8_t, kBlockSize> chaining_value{};  // default init to 0
 
   /* step (b) */
   size_t n = data.size() / kBlockSize;
@@ -250,11 +250,11 @@ void Sm4Drbg::ReSeed(ByteContainerView additional_input) {
   // its entropy source
   auto es = EntropySourceFactory::Instance().Create("auto");
 
-  // GetEntrpoy always succeed in yacl
+  // GetEntropy always succeed in yacl
   auto buf = es->GetEntropy(kMinEntropyBits); /* 256 bits */
   YACL_ENFORCE(buf.size() <= kMaxEntropySize);
 
-  // get the derived buf, shoud be at least 32 + 32 + 0 = 64 bytes
+  // get the derived buf, should be at least 32 + 32 + 0 = 64 bytes
   // Derive(entropy_buf || nonce || personal_string)
   buf.resize(buf.size() + additional_input.size());
   std::memcpy((char*)buf.data() + buf.size(), additional_input.data(),

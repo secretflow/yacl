@@ -68,7 +68,7 @@ enum class SigmaType {
   // Statement:  z1 = h1^x1, z2 = h1^x2, z3 = h1^{x1·x2} = z2^x1,
   // Generators define & transform: h1 = h1, h2 = z2,
   // Transformed statement: z1 = h1^x1, z3 = h2^x1 (Actually DlogEq).
-  DHTripple,
+  DHTriple,
   // Description: know the multiplication relation of three Pedersen commitments
   // (z1, z2, z3) with x3 = x1 · x2. (5 2 3)
   // f : It's underlying homomorphism is Pedersen. We don't count x3 as a

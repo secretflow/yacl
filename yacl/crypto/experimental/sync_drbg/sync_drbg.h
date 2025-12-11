@@ -45,7 +45,7 @@ namespace yacl::crypto {
 // DRBG: Deterministic Random Bit Generator
 //
 // Syncable Drbg can be seen as an extension of standard DRBG (NIST-800-90A),
-// with the additional support for "sync" functionaility. It allows the user
+// with the additional support for "sync" functionality. It allows the user
 // to grab the internal state of an existing s-drbg instance, and then pass
 // this internal state to init a new s-drbg instance or reconfig an existing
 // s-drbg. As the result, two s-drbg will behave exactly the same.
@@ -77,8 +77,8 @@ namespace yacl::crypto {
 // NOTE: all s-DRBGs should "jointly" re-init their internal state after certain
 // rounds, or if necessary.
 //
-// NOTE: SyncDrbg does not provide full security gurantee of prediction
-// resistence
+// NOTE: SyncDrbg does not provide full security guarantee of prediction
+// resistance
 //
 // NOTE: SyncDrbg is supposed to be thread-safe with blocked sync
 
@@ -93,8 +93,8 @@ class SyncDrbg {
   // Instantiate Sync Drbg.
   //
   // For parameter choices, see NIST-SP800-90A-rev1 Table 2, Definitions for
-  // Hash-based DRBG mechanisms, colum SHA-256 and SHA-512/256. The size of both
-  // nonce and personal_string should not exceed 2^35 bits (2^32 bytes).
+  // Hash-based DRBG mechanisms, column SHA-256 and SHA-512/256. The size of
+  // both nonce and personal_string should not exceed 2^35 bits (2^32 bytes).
   explicit SyncDrbg() : SyncDrbg(nullptr, nullptr) {}
   explicit SyncDrbg(ByteContainerView nonce, ByteContainerView personal_string);
 
@@ -152,7 +152,7 @@ class SyncDrbg {
   // However, a const SyncDrbg is by design not allowed to SendState or
   // RecvState
   //
-  HashDrbgCtx ctx_ = HashDrbgCtx(hash_drbg_ctx_new());  // defult void init
+  HashDrbgCtx ctx_ = HashDrbgCtx(hash_drbg_ctx_new());  // default void init
 
   // Handle multi-thread case, `Fill` should not be called during the sync
   // process.

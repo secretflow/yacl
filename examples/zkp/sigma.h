@@ -210,7 +210,7 @@ class SigmaProtocol {
                      const std::vector<EcPoint>& statement,
                      const std::vector<EcPoint>& rnd_statement,
                      yacl::ByteContainerView other_info = {}) const;
-  void CheckParms() const;
+  void CheckParams() const;
 
   SigmaConfig config_;
   std::shared_ptr<EcGroup> group_ref_;

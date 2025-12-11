@@ -145,7 +145,7 @@ INSTANTIATE_TEST_SUITE_P(
             GetSigmaConfig(SigmaType::Dlog),
             GetSigmaConfig(SigmaType::Pedersen),
             GetSigmaConfig(SigmaType::DlogEq),
-            GetSigmaConfig(SigmaType::DHTripple),
+            GetSigmaConfig(SigmaType::DHTriple),
             GetSigmaConfig(SigmaType::SeveralDlog).SetDynNum(11),
             GetSigmaConfig(SigmaType::SeveralDlogEq).SetDynNum(11),
             GetSigmaConfig(SigmaType::Representation).SetDynNum(11))));

@@ -76,7 +76,7 @@ void AeadCtx::Decrypt(ByteContainerView ciphertext, ByteContainerView mac,
   Decrypt(algorithm_, ciphertext, mac, key, iv, plaintext, aad);
 }
 
-// Staticlly encrypts plaintext into ciphertext and mac. The input arguments
+// Statically encrypts plaintext into ciphertext and mac. The input arguments
 // are the AEAD algorithm, the plaintext, the symmetric encryption key, the
 // initialization vector (iv), and the optional additional-authenticated-data
 // (aad).
@@ -119,7 +119,7 @@ void AeadCtx::Encrypt(AeadAlgorithm algorithm, ByteContainerView plaintext,
   }
 }
 
-// Staticlly decrypts ciphertext and mac into ciphertext. The input
+// Statically decrypts ciphertext and mac into ciphertext. The input
 // arguments are the AEAD algorithm, the ciphertext, the mac, the symmetric
 // encryption key, the initialization vector (iv), and the optional
 // additional-authenticated-data (aad).

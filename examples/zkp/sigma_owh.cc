@@ -103,7 +103,7 @@ SigmaStatement SigmaOWH::ToStatement(const SigmaConfig& config,
     case SigmaType::SeveralDlog:
       return EcStatementNNN(config, group, witness, generators);
     case SigmaType::DlogEq:
-    case SigmaType::DHTripple:
+    case SigmaType::DHTriple:
     case SigmaType::SeveralDlogEq:
       return EcStatement1NN(config, group, witness, generators);
     default:

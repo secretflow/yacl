@@ -76,7 +76,7 @@ Also, alternatively you can build an executable for two users to actually run th
 
 In order to compile, run ``bazel build //psi/cpp:ecdh_psi_main -c opt``. The ``-c opt`` flag tells the bazel build system to build a release (or, optimized) version of the executable.
 
-To run the exeutable, open two terminals in the same machine.
+To run the executable, open two terminals in the same machine.
 
 .. note::
 

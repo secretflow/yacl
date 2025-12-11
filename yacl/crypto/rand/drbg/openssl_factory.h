@@ -62,7 +62,7 @@ class OpensslDrbg : public Drbg {
     return std::make_unique<OpensslDrbg>(absl::AsciiStrToUpper(type));
   }
 
-  // SPI: Check drbg avaliability
+  // SPI: Check drbg availability
   static bool Check(const std::string &type,
                     [[maybe_unused]] const SpiArgs &config) {
     return find(begin(TypeList), end(TypeList), absl::AsciiStrToUpper(type)) !=

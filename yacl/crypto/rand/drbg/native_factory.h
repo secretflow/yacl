@@ -71,7 +71,7 @@ class Sm4Drbg {
 
  private:
   // drbg internal working state
-  struct InteralWorkingState {
+  struct InternalWorkingState {
     uint128_t v;
     uint128_t key;
     size_t reseed_ctr = 1;                /* starts with 1 */
@@ -92,13 +92,13 @@ class Sm4Drbg {
                                           ByteContainerView data);
 
   // Q: why not use SymmetricCrypto in crypto/base/block_cipher?
-  // A: SymmetricCrypto is originally designed to be use to entrypt large amount
+  // A: SymmetricCrypto is originally designed to be use to encrypt large amount
   // of plaintexts with the same key, and in DRBG we need to change the key
-  // oftenly. It's more efficient to use openssl's native APIs.
+  // often. It's more efficient to use openssl's native APIs.
   openssl::UniqueCipher cipher_;
   openssl::UniqueCipherCtx cipher_ctx_;
   std::shared_ptr<EntropySource> es_;
-  InteralWorkingState internal_state_;
+  InternalWorkingState internal_state_;
 };
 
 }  // namespace internal
@@ -130,7 +130,7 @@ class NativeDrbg : public Drbg {
     return std::make_unique<NativeDrbg>(absl::AsciiStrToUpper(type));
   }
 
-  // SPI: Check drbg avaliability
+  // SPI: Check drbg availability
   static bool Check(const std::string &type,
                     [[maybe_unused]] const SpiArgs &config) {
     return find(begin(TypeList), end(TypeList), absl::AsciiStrToUpper(type)) !=

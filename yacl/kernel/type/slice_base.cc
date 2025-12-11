@@ -24,11 +24,11 @@ namespace yacl::crypto {
 void SliceBase::ConsistencyCheck() const {
   YACL_ENFORCE(
       internal_use_size_ > 0,
-      "Internal slice size shoud be greater than 0, but got slice size: {}",
+      "Internal slice size should be greater than 0, but got slice size: {}",
       internal_use_size_);
   YACL_ENFORCE(
       internal_buf_size_ > 0,
-      "Internal buffer size shoud be greater than 0, but got buffer size: {}",
+      "Internal buffer size should be greater than 0, but got buffer size: {}",
       internal_buf_size_);
   YACL_ENFORCE(internal_buf_size_ >= internal_use_size_,
                "Buffer size should great or equal to slice size, got {} >= {}",

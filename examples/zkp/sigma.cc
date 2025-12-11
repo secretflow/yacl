@@ -42,7 +42,7 @@ SigmaProtocol::SigmaProtocol(const SigmaConfig& config,
                              const std::shared_ptr<EcGroup>& group,
                              const SigmaGenerator& generators)
     : config_(config), group_ref_(group), generators_(generators) {
-  CheckParms();
+  CheckParams();
 }
 
 SigmaProtocol::SigmaProtocol(SigmaType type,
@@ -54,7 +54,7 @@ SigmaProtocol::SigmaProtocol(const SigmaConfig& config,
                              const std::shared_ptr<EcGroup>& group,
                              yacl::ByteContainerView serialized_generators)
     : config_(config), group_ref_(group) {
-  CheckParms();
+  CheckParams();
   const auto kGroupLen = group_ref_->GetSerializeLength();
   YACL_ENFORCE(serialized_generators.size() % kGroupLen == 0);
   const auto n = serialized_generators.size() / kGroupLen;
@@ -68,7 +68,7 @@ SigmaProtocol::SigmaProtocol(const SigmaConfig& config,
   }
 }
 
-void SigmaProtocol::CheckParms() const {
+void SigmaProtocol::CheckParams() const {
   YACL_ENFORCE(config_.IsQualified());
   YACL_ENFORCE(group_ref_->GetFieldType() == FieldType::Prime,
                "ECC-based Sigma proof systems should be implemented over "
@@ -80,12 +80,12 @@ void SigmaProtocol::CheckParms() const {
     case SigmaType::SeveralDlog:
     case SigmaType::DlogEq:
     case SigmaType::SeveralDlogEq:
-    case SigmaType::DHTripple:
+    case SigmaType::DHTriple:
       break;
     default:
       YACL_THROW(
           "yacl/zkp/sigma only supports Dlog, Pedersen, Representation, "
-          "SeveralDlog, DlogEq, SeveralDlogEq, DHTripple types now!");
+          "SeveralDlog, DlogEq, SeveralDlogEq, DHTriple types now!");
   }
 }
 

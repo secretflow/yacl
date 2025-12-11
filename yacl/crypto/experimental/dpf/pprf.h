@@ -26,7 +26,7 @@ namespace yacl::crypto {
 
 // Puncturable Psedu-Random Function (PPRF)
 //
-// NOTE: this algorithm is experimental, also, this implemention is not
+// NOTE: this algorithm is experimental, also, this implementation is not
 // *Private* Puncturable Pseu-Random Function
 //
 struct PprfPuncKey {
