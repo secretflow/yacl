@@ -42,13 +42,13 @@ class BFCircuit {
   uint32_t nov;                  // number of output values
   std::vector<GateNumType> now;  // number of wires per each output values
 
-  // circuit oeprations
+  // circuit operations
   enum class Op { XOR, AND, INV, EQ, EQW, MAND };
 
   // Gate definition
   class Gate {
    public:
-    GateNumType niw = 0;           // numer of input wires
+    GateNumType niw = 0;           // number of input wires
     GateNumType now = 0;           // number of output wires
     std::vector<GateWireType> iw;  // lists of input wires
     std::vector<GateWireType> ow;  // lists of output wires

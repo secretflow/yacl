@@ -30,7 +30,7 @@ uint64_t FillPRand(SymmetricCrypto::CryptoType type, uint128_t seed,
 
   std::unique_ptr<SymmetricCrypto> crypto;
   if (isCTR) {
-    // CTR mode does not requires padding or manully build counter...
+    // CTR mode does not requires padding or manually build counter...
     crypto = std::make_unique<SymmetricCrypto>(type, seed, count);
     std::memset(buf, 0, nbytes);
     auto bv = absl::MakeSpan(reinterpret_cast<uint8_t*>(buf), nbytes);

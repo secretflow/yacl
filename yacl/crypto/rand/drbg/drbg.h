@@ -70,7 +70,7 @@ class Drbg {
   const std::shared_ptr<EntropySource>& es_;  // entropy source
 };
 
-// by defalt we want the DRBG has at least 128 bit security strength
+// by default we want the DRBG has at least 128 bit security strength
 class DrbgFactory final : public SpiFactoryBase<Drbg> {
  public:
   static DrbgFactory& Instance() {

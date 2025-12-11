@@ -47,7 +47,7 @@ OtRecvStore::OtRecvStore(uint64_t num, OtStoreType type) : type_(type) {
 }
 
 OtRecvStore OtRecvStore::NextSlice(uint64_t num) {
-  // Recall: A new slice looks like the follwoing:
+  // Recall: A new slice looks like the following:
   //
   // |---------------|-----slice-----|----------------| internal buffer
   // a               b               c                d
@@ -74,7 +74,7 @@ OtRecvStore OtRecvStore::NextSlice(uint64_t num) {
 // FIX ME: a const OtRecvStore could execute "Slice" to get a non-const
 // OtRecvStore, which could change Block Value by "SetBlock"
 OtRecvStore OtRecvStore::Slice(uint64_t begin, uint64_t end) const {
-  // Recall: A new slice looks like the follwoing:
+  // Recall: A new slice looks like the following:
   //
   // |---------------|-----slice-----|----------------| internal buffer
   // a               b               c                d
@@ -165,7 +165,7 @@ void OtRecvStore::SetBitBuf(const dynamic_bitset<uint128_t>& in) {
 }
 
 dynamic_bitset<uint128_t> OtRecvStore::CopyBitBuf() const {
-  // [Warning] low efficency
+  // [Warning] low efficiency
   if (type_ == OtStoreType::Compact) {
     dynamic_bitset<uint128_t> out(Size());
     for (size_t i = 0; i < Size(); ++i) {
@@ -234,7 +234,7 @@ void OtSendStore::ConsistencyCheck() const {
 // OtSendStore, which could change Block Value by "SetBlock"
 OtSendStore OtSendStore::Slice(uint64_t begin, uint64_t end) const {
   const uint64_t ot_blk_num = (type_ == OtStoreType::Compact) ? 1 : 2;
-  // Recall: A new slice looks like the follwoing:
+  // Recall: A new slice looks like the following:
   //
   // |---------------|-----slice-----|----------------| internal buffer
   // a               b               c                d
@@ -255,7 +255,7 @@ OtSendStore OtSendStore::Slice(uint64_t begin, uint64_t end) const {
 
 OtSendStore OtSendStore::NextSlice(uint64_t num) {
   const uint64_t ot_blk_num = (type_ == OtStoreType::Compact) ? 1 : 2;
-  // Recall: A new slice looks like the follwoing:
+  // Recall: A new slice looks like the following:
   //
   // |---------------|-----slice-----|----------------| internal buffer
   // a               b               c                d
@@ -293,7 +293,7 @@ uint64_t OtSendStore::Size() const {
 uint128_t OtSendStore::GetDelta() const {
   YACL_ENFORCE(delta_ != 0,
                "Error: You either call GetDelta() for a random ot store, or "
-               "accidently set cot's delta to 0.");
+               "accidentally set cot's delta to 0.");
   return delta_;
 }
 

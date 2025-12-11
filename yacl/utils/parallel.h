@@ -105,7 +105,7 @@ intermediate results tensor and degree of parallelization.
 reduce_f: function for reduction over a chunk.
 combine_f: function to combine two partial results.
 
-For example, you might have a tensor of 10000 entires and want to sum together
+For example, you might have a tensor of 10000 entries and want to sum together
 all the elements. Parallel_reduce with a grain_size of 2500 will then allocate
 an intermediate result tensor with 4 elements. Then it will execute the function
 "f" you provide and pass the beginning and end index of these chunks, so
