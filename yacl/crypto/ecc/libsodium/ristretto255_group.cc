@@ -20,31 +20,27 @@
 #include "sodium/crypto_core_ristretto255.h"
 #include "sodium/crypto_scalarmult_ristretto255.h"
 
+#include "yacl/crypto/ecc/hash_to_curve/ristretto255.h"
 #include "yacl/crypto/hash/ssl_hash.h"
 
 namespace yacl::crypto::sodium {
 
 namespace {
 
-constexpr size_t kPointBytes = crypto_core_ristretto255_BYTES;      // 32
-constexpr size_t kScalarBytes = crypto_core_ristretto255_SCALARBYTES;  // 32
-constexpr size_t kHashBytes = crypto_core_ristretto255_HASHBYTES;  // 64
+constexpr size_t kPointBytes = crypto_core_ristretto255_BYTES;
+constexpr size_t kScalarBytes = crypto_core_ristretto255_SCALARBYTES;
+constexpr size_t kHashBytes = crypto_core_ristretto255_HASHBYTES;
 
 }  // namespace
 
 Ristretto255Group::Ristretto255Group(const CurveMeta& meta,
                                      const CurveParam& param)
     : SodiumGroup(meta, param) {
-  // Ristretto255 uses Array32 for point storage (32 bytes compressed)
   static_assert(kPointBytes == 32);
   static_assert(kScalarBytes == 32);
   static_assert(kHashBytes == 64);
 
-  // Generate the generator point: g = 1 * G
   g_ = MulBase(1_mp);
-
-  // Generate the identity element using 0 scalar
-  // Note: In libsodium, 0 * G returns all zeros which is the identity
   inf_ = EcPoint(std::in_place_type<Array32>);
   std::memset(CastBytes(inf_), 0, kPointBytes);
 }
@@ -52,7 +48,6 @@ Ristretto255Group::Ristretto255Group(const CurveMeta& meta,
 bool Ristretto255Group::MpIntToScalar(const MPInt& mp,
                                       unsigned char* buf) const {
   auto s = mp.Mod(param_.n);
-  // Use little-endian byte order
   s.ToBytes(buf, kScalarBytes, Endian::little);
   return s.IsPositive();
 }
@@ -100,7 +95,6 @@ void Ristretto255Group::SubInplace(EcPoint* p1, const EcPoint& p2) const {
 }
 
 EcPoint Ristretto255Group::Double(const EcPoint& p) const {
-  // Double by adding point to itself
   return Add(p, p);
 }
 
@@ -117,11 +111,8 @@ EcPoint Ristretto255Group::MulBase(const MPInt& scalar) const {
   MpIntToScalar(scalar, s);
 
   EcPoint r(std::in_place_type<Array32>);
-  // Note: crypto_scalarmult_ristretto255_base returns -1 if scalar is 0
-  // but we handle this case by returning the identity element
   int ret = crypto_scalarmult_ristretto255_base(CastBytes(r), s);
   if (ret != 0) {
-    // Scalar was 0, return identity
     std::memcpy(CastBytes(r), CastBytes(inf_), kPointBytes);
   }
   return r;
@@ -139,7 +130,6 @@ EcPoint Ristretto255Group::Mul(const EcPoint& point,
   EcPoint r(std::in_place_type<Array32>);
   int ret = crypto_scalarmult_ristretto255(CastBytes(r), s, CastBytes(point));
   if (ret != 0) {
-    // Scalar was 0 or point invalid, return identity
     std::memcpy(CastBytes(r), CastBytes(inf_), kPointBytes);
   }
   return r;
@@ -156,7 +146,6 @@ void Ristretto255Group::MulInplace(EcPoint* point, const MPInt& scalar) const {
   Array32 temp;
   int ret = crypto_scalarmult_ristretto255(temp.data(), s, CastBytes(*point));
   if (ret != 0) {
-    // Scalar was 0 or point invalid, set to identity
     std::memcpy(CastBytes(*point), CastBytes(inf_), kPointBytes);
   } else {
     std::memcpy(CastBytes(*point), temp.data(), kPointBytes);
@@ -165,7 +154,6 @@ void Ristretto255Group::MulInplace(EcPoint* point, const MPInt& scalar) const {
 
 EcPoint Ristretto255Group::MulDoubleBase(const MPInt& s1, const MPInt& s2,
                                          const EcPoint& p2) const {
-  // Compute s1*G + s2*p2
   auto r = MulBase(s1);
   AddInplace(&r, Mul(p2, s2));
   return r;
@@ -175,7 +163,6 @@ EcPoint Ristretto255Group::Negate(const EcPoint& point) const {
   if (IsInfinity(point)) {
     return point;
   }
-  // In Ristretto255, negation is: 0 - P = -P
   return Sub(inf_, point);
 }
 
@@ -183,8 +170,6 @@ void Ristretto255Group::NegateInplace(EcPoint* point) const {
   if (IsInfinity(*point)) {
     return;
   }
-  // In Ristretto255, negation is: -P
-  // Compute 0 - P properly using Sub
   Array32 temp;
   int ret = crypto_core_ristretto255_sub(temp.data(), CastBytes(inf_),
                                          CastBytes(*point));
@@ -193,9 +178,6 @@ void Ristretto255Group::NegateInplace(EcPoint* point) const {
 }
 
 AffinePoint Ristretto255Group::GetAffinePoint(const EcPoint& point) const {
-  // Ristretto255 encoding does not directly expose affine coordinates
-  // The encoding is a canonical 32-byte representation
-  // We return the encoding as the "x-coordinate" and 0 as "y-coordinate"
   const unsigned char* bytes = CastBytes(point);
   MPInt x(0, 256);
   x.FromMagBytes({bytes, kPointBytes}, Endian::little);
@@ -208,7 +190,6 @@ bool Ristretto255Group::IsInCurveGroup(const EcPoint& point) const {
 }
 
 bool Ristretto255Group::IsInfinity(const EcPoint& point) const {
-  // The identity element in Ristretto255 is all zeros
   const unsigned char* bytes = CastBytes(point);
   for (size_t i = 0; i < kPointBytes; ++i) {
     if (bytes[i] != 0) {
@@ -219,15 +200,12 @@ bool Ristretto255Group::IsInfinity(const EcPoint& point) const {
 }
 
 EcPoint Ristretto255Group::CopyPoint(const EcPoint& point) const {
-  // For Ristretto255, points are stored as Array32
-  // Simply copy the bytes
   EcPoint r(std::in_place_type<Array32>);
   std::memcpy(CastBytes(r), CastBytes(point), kPointBytes);
   return r;
 }
 
 size_t Ristretto255Group::HashPoint(const EcPoint& point) const {
-  // Hash the 32-byte point representation
   const unsigned char* bytes = CastBytes(point);
   size_t hash = 0;
   for (size_t i = 0; i < kPointBytes; ++i) {
@@ -237,14 +215,11 @@ size_t Ristretto255Group::HashPoint(const EcPoint& point) const {
 }
 
 bool Ristretto255Group::PointEqual(const EcPoint& p1, const EcPoint& p2) const {
-  // For Ristretto255, points are canonically encoded
-  // Two points are equal iff their encodings are identical
   return std::memcmp(CastBytes(p1), CastBytes(p2), kPointBytes) == 0;
 }
 
 uint64_t Ristretto255Group::GetSerializeLength(
     PointOctetFormat /* format */) const {
-  // Ristretto255 always uses 32-byte encoding regardless of format
   return kPointBytes;
 }
 
@@ -283,51 +258,65 @@ EcPoint Ristretto255Group::DeserializePoint(ByteContainerView buf,
   return p;
 }
 
-EcPoint Ristretto255Group::HashToCurve(HashToCurveStrategy /*strategy*/,
+EcPoint Ristretto255Group::HashToCurve(HashToCurveStrategy strategy,
                                        std::string_view str,
                                        std::string_view dst) const {
-  // Ristretto255 uses crypto_core_ristretto255_from_hash which takes 64 bytes
-  // We use SHA-512 to generate the 64-byte hash
+  switch (strategy) {
+    case HashToCurveStrategy::SHA512_R255_RO_: {
+      std::string dst_s = dst.empty()
+          ? "QUUX-V01-CS02-with-ristretto255_XMD:SHA-512_R255MAP_RO_"
+          : std::string(dst);
+      return yacl::HashToCurveRistretto255(str, dst_s);
+    }
+    case HashToCurveStrategy::SHA512_R255_NU_: {
+      std::string dst_s = dst.empty()
+          ? "QUUX-V01-CS02-with-ristretto255_XMD:SHA-512_R255MAP_NU_"
+          : std::string(dst);
+      return yacl::EncodeToCurveRistretto255(str, dst_s);
+    }
+    case HashToCurveStrategy::Autonomous:
+    default:
+      break;
+  }
 
-  // Construct input with domain separator
+  // Autonomous: SHA-512(dst || str) + ristretto255_from_hash
   std::string input;
   input.reserve(dst.size() + str.size());
   input.append(dst);
   input.append(str);
 
-  // Hash to 64 bytes using SHA-512
   SslHash sha512(HashAlgorithm::SHA512);
   sha512.Update(input);
   auto hash = sha512.CumulativeHash();
 
-  // Map to curve using libsodium's ristretto255_from_hash
   EcPoint r(std::in_place_type<Array32>);
   crypto_core_ristretto255_from_hash(CastBytes(r), hash.data());
-
   return r;
 }
 
 yacl::math::MPInt Ristretto255Group::HashToScalar(
-    HashToCurveStrategy /*strategy*/, std::string_view str,
+    HashToCurveStrategy strategy, std::string_view str,
     std::string_view dst) const {
-  // Hash to scalar: produce a 64-byte hash, then reduce mod n
+  if (strategy == HashToCurveStrategy::Ristretto255_SHA512_) {
+    std::string dst_s = dst.empty()
+        ? "QUUX-V01-CS02-with-ristretto255_XMD:SHA-512_R255MAP_"
+        : std::string(dst);
+    return yacl::HashToScalarRistretto255(str, dst_s);
+  }
 
-  // Construct input with domain separator
+  // Autonomous: SHA-512(dst || str) + scalar_reduce
   std::string input;
   input.reserve(dst.size() + str.size());
   input.append(dst);
   input.append(str);
 
-  // Hash to 64 bytes using SHA-512
   SslHash sha512(HashAlgorithm::SHA512);
   sha512.Update(input);
   auto hash = sha512.CumulativeHash();
 
-  // Reduce to scalar using libsodium
   unsigned char scalar[kScalarBytes];
   crypto_core_ristretto255_scalar_reduce(scalar, hash.data());
 
-  // Convert to MPInt
   MPInt result(0, 256);
   result.FromMagBytes({scalar, kScalarBytes}, Endian::little);
   return result;

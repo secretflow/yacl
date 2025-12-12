@@ -83,6 +83,7 @@ yacl_cc_library(
     ],
     deps = [
         ":sodium_group",
+        "//yacl/crypto/ecc/hash_to_curve:ristretto255",
         "//yacl/crypto/hash:ssl_hash",
     ],
 )

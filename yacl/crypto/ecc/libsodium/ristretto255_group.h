@@ -19,55 +19,37 @@
 
 namespace yacl::crypto::sodium {
 
-// Ristretto255 group implementation using libsodium's ristretto255 API.
-// Unlike Ed25519, Ristretto255 has a prime-order group (cofactor = 1),
-// making it suitable for protocols requiring prime-order groups like OPRF.
-//
-// Key differences from Ed25519:
-// - Point storage: Array32 (32 bytes compressed) vs Array160 (extended coords)
-// - Cofactor: 1 (prime-order) vs 8
-// - libsodium API: crypto_core_ristretto255_* vs crypto_core_ed25519_*
+// Ristretto255: prime-order group (cofactor=1) from Curve25519, uses Array32.
 class Ristretto255Group : public SodiumGroup {
  public:
   Ristretto255Group(const CurveMeta& meta, const CurveParam& param);
 
-  // Returns the generator point
   EcPoint GetGenerator() const override;
 
-  // Group operations
   EcPoint Add(const EcPoint& p1, const EcPoint& p2) const override;
   void AddInplace(EcPoint* p1, const EcPoint& p2) const override;
-
   EcPoint Sub(const EcPoint& p1, const EcPoint& p2) const override;
   void SubInplace(EcPoint* p1, const EcPoint& p2) const override;
-
   EcPoint Double(const EcPoint& p) const override;
   void DoubleInplace(EcPoint* p) const override;
 
-  // Scalar multiplication
   EcPoint Mul(const EcPoint& point, const MPInt& scalar) const override;
   void MulInplace(EcPoint* point, const MPInt& scalar) const override;
   EcPoint MulBase(const MPInt& scalar) const override;
   EcPoint MulDoubleBase(const MPInt& s1, const MPInt& s2,
                         const EcPoint& p2) const override;
 
-  // Negation
   EcPoint Negate(const EcPoint& point) const override;
   void NegateInplace(EcPoint* point) const override;
 
-  // Point representation conversion
   AffinePoint GetAffinePoint(const EcPoint& point) const override;
-
-  // Validation
   bool IsInCurveGroup(const EcPoint& point) const override;
   bool IsInfinity(const EcPoint& point) const override;
 
-  // Override base class methods that assume Array160 format
   EcPoint CopyPoint(const EcPoint& point) const override;
   size_t HashPoint(const EcPoint& point) const override;
   bool PointEqual(const EcPoint& p1, const EcPoint& p2) const override;
 
-  // Serialization (Ristretto255 uses 32-byte compressed format)
   uint64_t GetSerializeLength(PointOctetFormat format) const override;
   Buffer SerializePoint(const EcPoint& point,
                         PointOctetFormat format) const override;
@@ -78,26 +60,19 @@ class Ristretto255Group : public SodiumGroup {
   EcPoint DeserializePoint(ByteContainerView buf,
                            PointOctetFormat format) const override;
 
-  // Hash-to-Curve implementation (RFC 9380 compatible)
   EcPoint HashToCurve(HashToCurveStrategy strategy, std::string_view str,
                       std::string_view dst) const override;
-
-  // Hash-to-Scalar for OPRF compatibility
   yacl::math::MPInt HashToScalar(HashToCurveStrategy strategy,
                                  std::string_view str,
                                  std::string_view dst) const override;
 
  private:
-  // Convert MPInt to 32-byte little-endian array (modulo order n)
-  // Returns true if the scalar is positive after mod, false otherwise
   bool MpIntToScalar(const MPInt& mp, unsigned char* buf) const;
-
-  // Cast EcPoint to raw bytes (Ristretto255 uses Array32)
   static const unsigned char* CastBytes(const EcPoint& p);
   static unsigned char* CastBytes(EcPoint& p);
 
-  EcPoint g_;    // Cached generator
-  EcPoint inf_;  // Cached identity element
+  EcPoint g_;
+  EcPoint inf_;
 };
 
 }  // namespace yacl::crypto::sodium

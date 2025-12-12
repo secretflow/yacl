@@ -240,4 +240,104 @@ TEST(HashToScalarTest, P256HashToScalarWorks) {
   }
 }
 
+TEST(HashToCurveTest, Ristretto255EncodeToCurveWorks) {
+  std::vector<std::string> test_msgs = {"", "abc", "abcdef0123456789",
+                                        "test message for ristretto255"};
+
+  char kRistretto255NuDst[] =
+      "QUUX-V01-CS02-with-ristretto255_XMD:SHA-512_R255MAP_NU_";
+
+  for (const auto& msg : test_msgs) {
+    EcPoint p1 = EncodeToCurveRistretto255(msg, kRistretto255NuDst);
+    EcPoint p2 = EncodeToCurveRistretto255(msg, kRistretto255NuDst);
+
+    EXPECT_TRUE(std::holds_alternative<Array32>(p1));
+    EXPECT_TRUE(std::holds_alternative<Array32>(p2));
+
+    const auto& bytes1 = std::get<Array32>(p1);
+    const auto& bytes2 = std::get<Array32>(p2);
+    EXPECT_EQ(bytes1, bytes2);
+
+    if (!msg.empty()) {
+      bool all_zeros = true;
+      for (auto b : bytes1) {
+        if (b != 0) {
+          all_zeros = false;
+          break;
+        }
+      }
+      EXPECT_FALSE(all_zeros);
+    }
+  }
+}
+
+TEST(HashToCurveTest, Ristretto255HashToCurveWorks) {
+  std::vector<std::string> test_msgs = {"", "abc", "abcdef0123456789"};
+
+  char kRistretto255RoDst[] =
+      "QUUX-V01-CS02-with-ristretto255_XMD:SHA-512_R255MAP_RO_";
+
+  for (const auto& msg : test_msgs) {
+    EcPoint p1 = HashToCurveRistretto255(msg, kRistretto255RoDst);
+    EcPoint p2 = HashToCurveRistretto255(msg, kRistretto255RoDst);
+
+    EXPECT_TRUE(std::holds_alternative<Array32>(p1));
+    EXPECT_TRUE(std::holds_alternative<Array32>(p2));
+
+    const auto& bytes1 = std::get<Array32>(p1);
+    const auto& bytes2 = std::get<Array32>(p2);
+    EXPECT_EQ(bytes1, bytes2);
+  }
+}
+
+TEST(HashToCurveTest, Ristretto255DSTImpactWorks) {
+  std::string msg = "test message";
+  char dst1[] = "QUUX-V01-CS02-with-ristretto255_XMD:SHA-512_R255MAP_RO_";
+  char dst2[] = "Different-DST-for-ristretto255";
+
+  EcPoint p1 = HashToCurveRistretto255(msg, dst1);
+  EcPoint p2 = HashToCurveRistretto255(msg, dst2);
+
+  const auto& bytes1 = std::get<Array32>(p1);
+  const auto& bytes2 = std::get<Array32>(p2);
+  EXPECT_NE(bytes1, bytes2);
+}
+
+TEST(HashToCurveTest, Ristretto255EncodeVsHashDiffers) {
+  std::string msg = "test message";
+  char dst[] = "QUUX-V01-CS02-with-ristretto255_XMD:SHA-512_R255MAP_";
+
+  std::string nu_dst = std::string(dst) + "NU_";
+  std::string ro_dst = std::string(dst) + "RO_";
+
+  EcPoint p_encode = EncodeToCurveRistretto255(msg, nu_dst);
+  EcPoint p_hash = HashToCurveRistretto255(msg, ro_dst);
+
+  const auto& bytes_encode = std::get<Array32>(p_encode);
+  const auto& bytes_hash = std::get<Array32>(p_hash);
+  EXPECT_NE(bytes_encode, bytes_hash);
+}
+
+TEST(HashToScalarTest, Ristretto255HashToScalarWorks) {
+  std::vector<std::string> test_msgs = {"", "abc", "abcdef0123456789"};
+
+  char kRistretto255ScalarDst[] =
+      "QUUX-V01-CS02-with-ristretto255_XMD:SHA-512_R255MAP_";
+
+  yacl::math::MPInt n =
+      "0x10000000000000000000000000000000"
+      "14def9dea2f79cd65812631a5cf5d3ed"_mp;
+
+  for (const auto& msg : test_msgs) {
+    yacl::math::MPInt s1 =
+        HashToScalarRistretto255(msg, kRistretto255ScalarDst);
+    yacl::math::MPInt s2 =
+        HashToScalarRistretto255(msg, kRistretto255ScalarDst);
+
+    EXPECT_EQ(s1, s2);
+    EXPECT_TRUE(s1.IsPositive() || s1.IsZero());
+    EXPECT_TRUE(s1 < n);
+  }
+}
+
 }  // namespace yacl::crypto::test
