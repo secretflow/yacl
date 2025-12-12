@@ -32,6 +32,11 @@ namespace {
 constexpr size_t kHashBytes = crypto_core_ristretto255_HASHBYTES;      // 64
 constexpr size_t kScalarBytes = crypto_core_ristretto255_SCALARBYTES;  // 32
 
+const HashToCurveCtx& GetRistretto255Ctx() {
+  static const HashToCurveCtx ctx = GetHashToCurveCtxByName("Ristretto255");
+  return ctx;
+}
+
 }  // namespace
 
 crypto::EcPoint EncodeToCurveRistretto255(yacl::ByteContainerView buffer,
@@ -39,7 +44,7 @@ crypto::EcPoint EncodeToCurveRistretto255(yacl::ByteContainerView buffer,
   YACL_ENFORCE((dst.size() >= 16) && (dst.size() <= 255),
                "domain separation tag length: {} not in 16B-255B", dst.size());
 
-  HashToCurveCtx ctx = GetHashToCurveCtxByName("Ristretto255");
+  HashToCurveCtx ctx = GetRistretto255Ctx();
   std::vector<uint8_t> uniform_bytes =
       ExpandMessageXmd(buffer, ctx, dst, kHashBytes);
 
@@ -53,7 +58,7 @@ crypto::EcPoint HashToCurveRistretto255(yacl::ByteContainerView buffer,
   YACL_ENFORCE((dst.size() >= 16) && (dst.size() <= 255),
                "domain separation tag length: {} not in 16B-255B", dst.size());
 
-  HashToCurveCtx ctx = GetHashToCurveCtxByName("Ristretto255");
+  HashToCurveCtx ctx = GetRistretto255Ctx();
   std::vector<uint8_t> uniform_bytes =
       ExpandMessageXmd(buffer, ctx, dst, kHashBytes * 2);
 
@@ -71,7 +76,7 @@ math::MPInt HashToScalarRistretto255(yacl::ByteContainerView buffer,
   YACL_ENFORCE((dst.size() >= 16) && (dst.size() <= 255),
                "domain separation tag length: {} not in 16B-255B", dst.size());
 
-  HashToCurveCtx ctx = GetHashToCurveCtxByName("Ristretto255");
+  HashToCurveCtx ctx = GetRistretto255Ctx();
   std::vector<uint8_t> uniform_bytes =
       ExpandMessageXmd(buffer, ctx, dst, kHashBytes);
 
