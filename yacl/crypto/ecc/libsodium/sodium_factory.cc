@@ -15,6 +15,7 @@
 #include <map>
 
 #include "yacl/crypto/ecc/libsodium/ed25519_group.h"
+#include "yacl/crypto/ecc/libsodium/ristretto255_group.h"
 #include "yacl/crypto/ecc/libsodium/x25519_group.h"
 
 namespace yacl::crypto::sodium {
@@ -34,6 +35,12 @@ std::map<CurveName, CurveParam> kPredefinedCurves = {
          (2_mp).Pow(255) - 19_mp,  // p = 2^255 - 19
          (2_mp).Pow(252) + "0x14def9dea2f79cd65812631a5cf5d3ed"_mp,  // n
          "8"_mp                                                      // h
+     }},
+    {"ristretto255",
+     {
+         (2_mp).Pow(255) - 19_mp,  // p = 2^255 - 19
+         (2_mp).Pow(252) + "0x14def9dea2f79cd65812631a5cf5d3ed"_mp,  // n
+         "1"_mp  // h = 1 (prime-order group, unlike Ed25519 which has h=8)
      }}};
 
 std::unique_ptr<EcGroup> Create(const CurveMeta &meta) {
@@ -45,6 +52,8 @@ std::unique_ptr<EcGroup> Create(const CurveMeta &meta) {
     return std::make_unique<Ed25519Group>(meta, conf);
   } else if (meta.LowerName() == "curve25519") {
     return std::make_unique<X25519Group>(meta, conf);
+  } else if (meta.LowerName() == "ristretto255") {
+    return std::make_unique<Ristretto255Group>(meta, conf);
   } else {
     YACL_THROW("unexpected curve {}", meta.name);
   }
