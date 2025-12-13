@@ -436,6 +436,9 @@ std::vector<CurveMeta> kPredefinedCurves = {
     {"Curve383187", {}, CurveForm::Montgomery, FieldType::Prime, 141},
     // Curve from https://ed25519.cr.yp.to
     {"Ed25519", {}, CurveForm::TwistedEdwards, FieldType::Prime, 127},
+    // Ristretto255 - prime-order group from Curve25519
+    // https://ristretto.group/
+    {"Ristretto255", {}, CurveForm::TwistedEdwards, FieldType::Prime, 127},
     // Curve from
     // https://datatracker.ietf.org/doc/html/draft-ietf-lwig-curve-representations-23
     {"Ed448", {}, CurveForm::TwistedEdwards, FieldType::Prime, 224},

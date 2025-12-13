@@ -137,6 +137,20 @@ static std::map<std::string, HashToCurveCtx> kPredefinedCurveCtxs = {
           {"c4",  // RFC9380 G.2.  Elligator 2 Method  map_to_curve_elligator2
            "0xffffffffffffffffffffffffffffffff"
            "ffffffffffffffffffffffffffffffd"_mp},
+      }}},
+    // Ristretto255: prime-order group derived from Curve25519
+    // Uses libsodium's crypto_core_ristretto255_from_hash for mapping
+    {"Ristretto255",
+     {32,   // key_size: 32 bytes
+      128,  // s_in_bytes: same as Curve25519
+      crypto::HashAlgorithm::SHA512,
+      {
+          {"p",  // Field characteristic: 2^255 - 19
+           "0x7fffffffffffffffffffffffffffffff"
+           "ffffffffffffffffffffffffffffffed"_mp},
+          {"n",  // Group order: 2^252 + 0x14def9dea2f79cd65812631a5cf5d3ed
+           "0x10000000000000000000000000000000"
+           "14def9dea2f79cd65812631a5cf5d3ed"_mp},
       }}}};
 
 HashToCurveCtx GetHashToCurveCtxByName(const crypto::CurveName &name) {
