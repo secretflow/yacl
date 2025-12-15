@@ -201,23 +201,23 @@ TEST_F(Ristretto255Test, HashToCurveWorks) {
   std::string input = "test input for hash to curve";
   std::string dst = "YACL_Ristretto255_Test";
 
-  auto p1 = ec_->HashToCurve(HashToCurveStrategy::Autonomous, input, dst);
+  auto p1 = ec_->HashToCurve(HashToCurveStrategy::SHA512_R255_RO_, input, dst);
 
   EXPECT_TRUE(ec_->IsInCurveGroup(p1));
   EXPECT_FALSE(ec_->IsInfinity(p1));
 
   // Same input should produce same point (deterministic)
-  auto p2 = ec_->HashToCurve(HashToCurveStrategy::Autonomous, input, dst);
+  auto p2 = ec_->HashToCurve(HashToCurveStrategy::SHA512_R255_RO_, input, dst);
   EXPECT_TRUE(ec_->PointEqual(p1, p2));
 
   // Different input should produce different point
-  auto p3 = ec_->HashToCurve(HashToCurveStrategy::Autonomous,
+  auto p3 = ec_->HashToCurve(HashToCurveStrategy::SHA512_R255_RO_,
                              "different input", dst);
   EXPECT_FALSE(ec_->PointEqual(p1, p3));
 
   // Different DST should produce different point
-  auto p4 = ec_->HashToCurve(HashToCurveStrategy::Autonomous, input,
-                             "Different_DST");
+  auto p4 = ec_->HashToCurve(HashToCurveStrategy::SHA512_R255_RO_, input,
+                             "Different_DST_16bytes");
   EXPECT_FALSE(ec_->PointEqual(p1, p4));
 }
 
@@ -226,18 +226,18 @@ TEST_F(Ristretto255Test, HashToScalarWorks) {
   std::string input = "test input for hash to scalar";
   std::string dst = "YACL_Ristretto255_Scalar_Test";
 
-  auto s1 = ec_->HashToScalar(HashToCurveStrategy::Autonomous, input, dst);
+  auto s1 = ec_->HashToScalar(HashToCurveStrategy::Ristretto255_SHA512_, input, dst);
 
   // Scalar should be in valid range [0, n)
   EXPECT_TRUE(s1.IsPositive() || s1.IsZero());
   EXPECT_TRUE(s1 < ec_->GetOrder());
 
   // Same input should produce same scalar (deterministic)
-  auto s2 = ec_->HashToScalar(HashToCurveStrategy::Autonomous, input, dst);
+  auto s2 = ec_->HashToScalar(HashToCurveStrategy::Ristretto255_SHA512_, input, dst);
   EXPECT_EQ(s1, s2);
 
   // Different input should produce different scalar
-  auto s3 = ec_->HashToScalar(HashToCurveStrategy::Autonomous,
+  auto s3 = ec_->HashToScalar(HashToCurveStrategy::Ristretto255_SHA512_,
                               "different input", dst);
   EXPECT_NE(s1, s3);
 }
