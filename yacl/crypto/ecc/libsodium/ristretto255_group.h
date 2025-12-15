@@ -67,7 +67,7 @@ class Ristretto255Group : public SodiumGroup {
                                  std::string_view dst) const override;
 
  private:
-  bool MpIntToScalar(const MPInt& mp, unsigned char* buf) const;
+  void MpIntToScalar(const MPInt& mp, unsigned char* buf) const;
   static const unsigned char* CastBytes(const EcPoint& p);
   static unsigned char* CastBytes(EcPoint& p);
 

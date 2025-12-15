@@ -16,6 +16,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <string_view>
 #include <vector>
 
 #include "sodium/crypto_core_ristretto255.h"
@@ -40,7 +41,7 @@ const HashToCurveCtx& GetRistretto255Ctx() {
 }  // namespace
 
 crypto::EcPoint EncodeToCurveRistretto255(yacl::ByteContainerView buffer,
-                                          const std::string &dst) {
+                                          std::string_view dst) {
   YACL_ENFORCE((dst.size() >= 16) && (dst.size() <= 255),
                "domain separation tag length: {} not in 16B-255B", dst.size());
 
@@ -54,7 +55,7 @@ crypto::EcPoint EncodeToCurveRistretto255(yacl::ByteContainerView buffer,
 }
 
 crypto::EcPoint HashToCurveRistretto255(yacl::ByteContainerView buffer,
-                                        const std::string &dst) {
+                                        std::string_view dst) {
   YACL_ENFORCE((dst.size() >= 16) && (dst.size() <= 255),
                "domain separation tag length: {} not in 16B-255B", dst.size());
 
@@ -72,7 +73,7 @@ crypto::EcPoint HashToCurveRistretto255(yacl::ByteContainerView buffer,
 }
 
 math::MPInt HashToScalarRistretto255(yacl::ByteContainerView buffer,
-                                     const std::string &dst) {
+                                     std::string_view dst) {
   YACL_ENFORCE((dst.size() >= 16) && (dst.size() <= 255),
                "domain separation tag length: {} not in 16B-255B", dst.size());
 

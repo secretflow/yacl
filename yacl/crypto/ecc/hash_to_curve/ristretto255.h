@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include <string>
+#include <string_view>
 
 #include "yacl/base/byte_container_view.h"
 #include "yacl/crypto/ecc/ec_point.h"
@@ -24,12 +24,12 @@ namespace yacl {
 
 // RFC 9380 hash-to-curve for Ristretto255
 crypto::EcPoint EncodeToCurveRistretto255(yacl::ByteContainerView buffer,
-                                          const std::string &dst);
+                                          std::string_view dst);
 
 crypto::EcPoint HashToCurveRistretto255(yacl::ByteContainerView buffer,
-                                        const std::string &dst);
+                                        std::string_view dst);
 
 math::MPInt HashToScalarRistretto255(yacl::ByteContainerView buffer,
-                                     const std::string &dst);
+                                     std::string_view dst);
 
 }  // namespace yacl

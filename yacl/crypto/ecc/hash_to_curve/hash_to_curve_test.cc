@@ -259,14 +259,8 @@ TEST(HashToCurveTest, Ristretto255EncodeToCurveWorks) {
     EXPECT_EQ(bytes1, bytes2);
 
     if (!msg.empty()) {
-      bool all_zeros = true;
-      for (auto b : bytes1) {
-        if (b != 0) {
-          all_zeros = false;
-          break;
-        }
-      }
-      EXPECT_FALSE(all_zeros);
+      const crypto::Array32 identity_point{};
+      EXPECT_NE(bytes1, identity_point);
     }
   }
 }

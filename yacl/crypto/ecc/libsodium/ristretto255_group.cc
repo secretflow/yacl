@@ -45,11 +45,10 @@ Ristretto255Group::Ristretto255Group(const CurveMeta& meta,
   std::memset(CastBytes(inf_), 0, kPointBytes);
 }
 
-bool Ristretto255Group::MpIntToScalar(const MPInt& mp,
+void Ristretto255Group::MpIntToScalar(const MPInt& mp,
                                       unsigned char* buf) const {
   auto s = mp.Mod(param_.n);
   s.ToBytes(buf, kScalarBytes, Endian::little);
-  return s.IsPositive();
 }
 
 const unsigned char* Ristretto255Group::CastBytes(const EcPoint& p) {
@@ -111,10 +110,7 @@ EcPoint Ristretto255Group::MulBase(const MPInt& scalar) const {
   MpIntToScalar(scalar, s);
 
   EcPoint r(std::in_place_type<Array32>);
-  int ret = crypto_scalarmult_ristretto255_base(CastBytes(r), s);
-  if (ret != 0) {
-    std::memcpy(CastBytes(r), CastBytes(inf_), kPointBytes);
-  }
+  crypto_scalarmult_ristretto255_base(CastBytes(r), s);
   return r;
 }
 
@@ -263,16 +259,16 @@ EcPoint Ristretto255Group::HashToCurve(HashToCurveStrategy strategy,
                                        std::string_view dst) const {
   switch (strategy) {
     case HashToCurveStrategy::SHA512_R255_RO_: {
-      std::string dst_s = dst.empty()
+      std::string_view final_dst = dst.empty()
           ? "QUUX-V01-CS02-with-ristretto255_XMD:SHA-512_R255MAP_RO_"
-          : std::string(dst);
-      return yacl::HashToCurveRistretto255(str, dst_s);
+          : dst;
+      return yacl::HashToCurveRistretto255(str, final_dst);
     }
     case HashToCurveStrategy::SHA512_R255_NU_: {
-      std::string dst_s = dst.empty()
+      std::string_view final_dst = dst.empty()
           ? "QUUX-V01-CS02-with-ristretto255_XMD:SHA-512_R255MAP_NU_"
-          : std::string(dst);
-      return yacl::EncodeToCurveRistretto255(str, dst_s);
+          : dst;
+      return yacl::EncodeToCurveRistretto255(str, final_dst);
     }
     case HashToCurveStrategy::Autonomous:
     default:
@@ -298,10 +294,10 @@ yacl::math::MPInt Ristretto255Group::HashToScalar(
     HashToCurveStrategy strategy, std::string_view str,
     std::string_view dst) const {
   if (strategy == HashToCurveStrategy::Ristretto255_SHA512_) {
-    std::string dst_s = dst.empty()
+    std::string_view final_dst = dst.empty()
         ? "QUUX-V01-CS02-with-ristretto255_XMD:SHA-512_R255MAP_"
-        : std::string(dst);
-    return yacl::HashToScalarRistretto255(str, dst_s);
+        : dst;
+    return yacl::HashToScalarRistretto255(str, final_dst);
   }
 
   // Autonomous: SHA-512(dst || str) + scalar_reduce
