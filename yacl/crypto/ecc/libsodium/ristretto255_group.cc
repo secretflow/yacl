@@ -1,4 +1,4 @@
-// Copyright 2024 Ant Group Co., Ltd.
+// Copyright 2025 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -258,13 +258,13 @@ EcPoint Ristretto255Group::HashToCurve(HashToCurveStrategy strategy,
                                        std::string_view str,
                                        std::string_view dst) const {
   switch (strategy) {
-    case HashToCurveStrategy::SHA512_R255_RO_: {
+    case HashToCurveStrategy::SHA512_R255MAP_RO_: {
       std::string_view final_dst = dst.empty()
           ? "QUUX-V01-CS02-with-ristretto255_XMD:SHA-512_R255MAP_RO_"
           : dst;
       return yacl::HashToCurveRistretto255(str, final_dst);
     }
-    case HashToCurveStrategy::SHA512_R255_NU_: {
+    case HashToCurveStrategy::SHA512_R255MAP_NU_: {
       std::string_view final_dst = dst.empty()
           ? "QUUX-V01-CS02-with-ristretto255_XMD:SHA-512_R255MAP_NU_"
           : dst;

@@ -1,4 +1,4 @@
-// Copyright 2024 Ant Group Co., Ltd.
+// Copyright 2025 Ant Group Co., Ltd.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -201,22 +201,22 @@ TEST_F(Ristretto255Test, HashToCurveWorks) {
   std::string input = "test input for hash to curve";
   std::string dst = "YACL_Ristretto255_Test";
 
-  auto p1 = ec_->HashToCurve(HashToCurveStrategy::SHA512_R255_RO_, input, dst);
+  auto p1 = ec_->HashToCurve(HashToCurveStrategy::SHA512_R255MAP_RO_, input, dst);
 
   EXPECT_TRUE(ec_->IsInCurveGroup(p1));
   EXPECT_FALSE(ec_->IsInfinity(p1));
 
   // Same input should produce same point (deterministic)
-  auto p2 = ec_->HashToCurve(HashToCurveStrategy::SHA512_R255_RO_, input, dst);
+  auto p2 = ec_->HashToCurve(HashToCurveStrategy::SHA512_R255MAP_RO_, input, dst);
   EXPECT_TRUE(ec_->PointEqual(p1, p2));
 
   // Different input should produce different point
-  auto p3 = ec_->HashToCurve(HashToCurveStrategy::SHA512_R255_RO_,
+  auto p3 = ec_->HashToCurve(HashToCurveStrategy::SHA512_R255MAP_RO_,
                              "different input", dst);
   EXPECT_FALSE(ec_->PointEqual(p1, p3));
 
   // Different DST should produce different point
-  auto p4 = ec_->HashToCurve(HashToCurveStrategy::SHA512_R255_RO_, input,
+  auto p4 = ec_->HashToCurve(HashToCurveStrategy::SHA512_R255MAP_RO_, input,
                              "Different_DST_16bytes");
   EXPECT_FALSE(ec_->PointEqual(p1, p4));
 }

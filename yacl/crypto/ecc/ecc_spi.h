@@ -115,8 +115,8 @@ enum class HashToCurveStrategy {
 
   // RFC 9380 compliant hash-to-curve for Ristretto255
   // Uses expand_message_xmd (SHA-512) + libsodium's ristretto255_from_hash
-  SHA512_R255_NU_,  // encode_to_curve (1 hash element)
-  SHA512_R255_RO_,  // hash_to_curve (2 hash elements, add results)
+  SHA512_R255MAP_NU_,  // encode_to_curve (1 hash element)
+  SHA512_R255MAP_RO_,  // hash_to_curve (2 hash elements, add results)
   Ristretto255_SHA512_,  // hash_to_scalar
 };
 
