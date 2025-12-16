@@ -201,13 +201,15 @@ TEST_F(Ristretto255Test, HashToCurveWorks) {
   std::string input = "test input for hash to curve";
   std::string dst = "YACL_Ristretto255_Test";
 
-  auto p1 = ec_->HashToCurve(HashToCurveStrategy::SHA512_R255MAP_RO_, input, dst);
+  auto p1 =
+      ec_->HashToCurve(HashToCurveStrategy::SHA512_R255MAP_RO_, input, dst);
 
   EXPECT_TRUE(ec_->IsInCurveGroup(p1));
   EXPECT_FALSE(ec_->IsInfinity(p1));
 
   // Same input should produce same point (deterministic)
-  auto p2 = ec_->HashToCurve(HashToCurveStrategy::SHA512_R255MAP_RO_, input, dst);
+  auto p2 =
+      ec_->HashToCurve(HashToCurveStrategy::SHA512_R255MAP_RO_, input, dst);
   EXPECT_TRUE(ec_->PointEqual(p1, p2));
 
   // Different input should produce different point
@@ -226,14 +228,16 @@ TEST_F(Ristretto255Test, HashToScalarWorks) {
   std::string input = "test input for hash to scalar";
   std::string dst = "YACL_Ristretto255_Scalar_Test";
 
-  auto s1 = ec_->HashToScalar(HashToCurveStrategy::Ristretto255_SHA512_, input, dst);
+  auto s1 =
+      ec_->HashToScalar(HashToCurveStrategy::Ristretto255_SHA512_, input, dst);
 
   // Scalar should be in valid range [0, n)
   EXPECT_TRUE(s1.IsPositive() || s1.IsZero());
   EXPECT_TRUE(s1 < ec_->GetOrder());
 
   // Same input should produce same scalar (deterministic)
-  auto s2 = ec_->HashToScalar(HashToCurveStrategy::Ristretto255_SHA512_, input, dst);
+  auto s2 =
+      ec_->HashToScalar(HashToCurveStrategy::Ristretto255_SHA512_, input, dst);
   EXPECT_EQ(s1, s2);
 
   // Different input should produce different scalar
@@ -332,11 +336,9 @@ TEST_F(Ristretto255Test, StandardVectors) {
   // The canonical encoding of the basepoint
   // e2f2ae0a6abc4e71a884a961c500515f58e30b6aa582dd8db6a65945e08d2d76
   std::vector<uint8_t> expected_g = {
-      0xe2, 0xf2, 0xae, 0x0a, 0x6a, 0xbc, 0x4e, 0x71,
-      0xa8, 0x84, 0xa9, 0x61, 0xc5, 0x00, 0x51, 0x5f,
-      0x58, 0xe3, 0x0b, 0x6a, 0xa5, 0x82, 0xdd, 0x8d,
-      0xb6, 0xa6, 0x59, 0x45, 0xe0, 0x8d, 0x2d, 0x76
-  };
+      0xe2, 0xf2, 0xae, 0x0a, 0x6a, 0xbc, 0x4e, 0x71, 0xa8, 0x84, 0xa9,
+      0x61, 0xc5, 0x00, 0x51, 0x5f, 0x58, 0xe3, 0x0b, 0x6a, 0xa5, 0x82,
+      0xdd, 0x8d, 0xb6, 0xa6, 0x59, 0x45, 0xe0, 0x8d, 0x2d, 0x76};
   EXPECT_EQ(buf.size(), expected_g.size());
   EXPECT_EQ(std::memcmp(buf.data(), expected_g.data(), 32), 0)
       << "Generator encoding mismatch";

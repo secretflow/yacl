@@ -267,7 +267,8 @@ class OprfCtx {
     std::string dst = std::string(prefix) + ctx_str_;
     switch (cipher_suite_) {
       case OprfCipherSuite::ristretto255_Sha512:
-        return ec_->HashToCurve(HashToCurveStrategy::SHA512_R255MAP_RO_, str, dst);
+        return ec_->HashToCurve(HashToCurveStrategy::SHA512_R255MAP_RO_, str,
+                                dst);
       case OprfCipherSuite::decaf448_SHAKE256:
         YACL_THROW("Unsupported cipher suite: decaf448_SHAKE256");
       case OprfCipherSuite::P256_SHA256:
@@ -287,7 +288,8 @@ class OprfCtx {
     std::string dst = std::string(prefix) + ctx_str_;
     switch (cipher_suite_) {
       case OprfCipherSuite::ristretto255_Sha512:
-        return ec_->HashToScalar(HashToCurveStrategy::Ristretto255_SHA512_, str, dst);
+        return ec_->HashToScalar(HashToCurveStrategy::Ristretto255_SHA512_, str,
+                                 dst);
       case OprfCipherSuite::decaf448_SHAKE256:
         YACL_THROW("Unsupported cipher suite: decaf448_SHAKE256");
       case OprfCipherSuite::P256_SHA256:

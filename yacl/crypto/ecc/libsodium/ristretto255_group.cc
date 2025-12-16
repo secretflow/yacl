@@ -63,44 +63,42 @@ EcPoint Ristretto255Group::GetGenerator() const { return g_; }
 
 EcPoint Ristretto255Group::Add(const EcPoint& p1, const EcPoint& p2) const {
   EcPoint r(std::in_place_type<Array32>);
-  int ret = crypto_core_ristretto255_add(CastBytes(r), CastBytes(p1),
-                                         CastBytes(p2));
+  int ret =
+      crypto_core_ristretto255_add(CastBytes(r), CastBytes(p1), CastBytes(p2));
   YACL_ENFORCE(ret == 0, "ristretto255_add failed: invalid point");
   return r;
 }
 
 void Ristretto255Group::AddInplace(EcPoint* p1, const EcPoint& p2) const {
   Array32 temp;
-  int ret = crypto_core_ristretto255_add(temp.data(), CastBytes(*p1),
-                                         CastBytes(p2));
+  int ret =
+      crypto_core_ristretto255_add(temp.data(), CastBytes(*p1), CastBytes(p2));
   YACL_ENFORCE(ret == 0, "ristretto255_add failed: invalid point");
   std::memcpy(CastBytes(*p1), temp.data(), kPointBytes);
 }
 
 EcPoint Ristretto255Group::Sub(const EcPoint& p1, const EcPoint& p2) const {
   EcPoint r(std::in_place_type<Array32>);
-  int ret = crypto_core_ristretto255_sub(CastBytes(r), CastBytes(p1),
-                                         CastBytes(p2));
+  int ret =
+      crypto_core_ristretto255_sub(CastBytes(r), CastBytes(p1), CastBytes(p2));
   YACL_ENFORCE(ret == 0, "ristretto255_sub failed: invalid point");
   return r;
 }
 
 void Ristretto255Group::SubInplace(EcPoint* p1, const EcPoint& p2) const {
   Array32 temp;
-  int ret = crypto_core_ristretto255_sub(temp.data(), CastBytes(*p1),
-                                         CastBytes(p2));
+  int ret =
+      crypto_core_ristretto255_sub(temp.data(), CastBytes(*p1), CastBytes(p2));
   YACL_ENFORCE(ret == 0, "ristretto255_sub failed: invalid point");
   std::memcpy(CastBytes(*p1), temp.data(), kPointBytes);
 }
 
-EcPoint Ristretto255Group::Double(const EcPoint& p) const {
-  return Add(p, p);
-}
+EcPoint Ristretto255Group::Double(const EcPoint& p) const { return Add(p, p); }
 
 void Ristretto255Group::DoubleInplace(EcPoint* p) const {
   Array32 temp;
-  int ret = crypto_core_ristretto255_add(temp.data(), CastBytes(*p),
-                                         CastBytes(*p));
+  int ret =
+      crypto_core_ristretto255_add(temp.data(), CastBytes(*p), CastBytes(*p));
   YACL_ENFORCE(ret == 0, "ristretto255_add failed: invalid point");
   std::memcpy(CastBytes(*p), temp.data(), kPointBytes);
 }
@@ -241,8 +239,8 @@ void Ristretto255Group::SerializePoint(const EcPoint& point,
   std::memcpy(buf, CastBytes(point), kPointBytes);
 }
 
-EcPoint Ristretto255Group::DeserializePoint(ByteContainerView buf,
-                                            PointOctetFormat /* format */) const {
+EcPoint Ristretto255Group::DeserializePoint(
+    ByteContainerView buf, PointOctetFormat /* format */) const {
   YACL_ENFORCE(buf.size() >= kPointBytes,
                "Buffer too small for Ristretto255 point deserialization");
 
@@ -259,15 +257,17 @@ EcPoint Ristretto255Group::HashToCurve(HashToCurveStrategy strategy,
                                        std::string_view dst) const {
   switch (strategy) {
     case HashToCurveStrategy::SHA512_R255MAP_RO_: {
-      std::string_view final_dst = dst.empty()
-          ? "QUUX-V01-CS02-with-ristretto255_XMD:SHA-512_R255MAP_RO_"
-          : dst;
+      std::string_view final_dst =
+          dst.empty()
+              ? "QUUX-V01-CS02-with-ristretto255_XMD:SHA-512_R255MAP_RO_"
+              : dst;
       return yacl::HashToCurveRistretto255(str, final_dst);
     }
     case HashToCurveStrategy::SHA512_R255MAP_NU_: {
-      std::string_view final_dst = dst.empty()
-          ? "QUUX-V01-CS02-with-ristretto255_XMD:SHA-512_R255MAP_NU_"
-          : dst;
+      std::string_view final_dst =
+          dst.empty()
+              ? "QUUX-V01-CS02-with-ristretto255_XMD:SHA-512_R255MAP_NU_"
+              : dst;
       return yacl::EncodeToCurveRistretto255(str, final_dst);
     }
     case HashToCurveStrategy::Autonomous:
@@ -290,13 +290,13 @@ EcPoint Ristretto255Group::HashToCurve(HashToCurveStrategy strategy,
   return r;
 }
 
-yacl::math::MPInt Ristretto255Group::HashToScalar(
-    HashToCurveStrategy strategy, std::string_view str,
-    std::string_view dst) const {
+yacl::math::MPInt Ristretto255Group::HashToScalar(HashToCurveStrategy strategy,
+                                                  std::string_view str,
+                                                  std::string_view dst) const {
   if (strategy == HashToCurveStrategy::Ristretto255_SHA512_) {
-    std::string_view final_dst = dst.empty()
-        ? "QUUX-V01-CS02-with-ristretto255_XMD:SHA-512_R255MAP_"
-        : dst;
+    std::string_view final_dst =
+        dst.empty() ? "QUUX-V01-CS02-with-ristretto255_XMD:SHA-512_R255MAP_"
+                    : dst;
     return yacl::HashToScalarRistretto255(str, final_dst);
   }
 
