@@ -38,12 +38,16 @@ const HashToCurveCtx& GetRistretto255Ctx() {
   return ctx;
 }
 
+void CheckDstSize(std::string_view dst) {
+  YACL_ENFORCE((dst.size() >= 16) && (dst.size() <= 255),
+               "domain separation tag length: {} not in 16B-255B", dst.size());
+}
+
 }  // namespace
 
 crypto::EcPoint EncodeToCurveRistretto255(yacl::ByteContainerView buffer,
                                           std::string_view dst) {
-  YACL_ENFORCE((dst.size() >= 16) && (dst.size() <= 255),
-               "domain separation tag length: {} not in 16B-255B", dst.size());
+  CheckDstSize(dst);
 
   HashToCurveCtx ctx = GetRistretto255Ctx();
   std::vector<uint8_t> uniform_bytes =
@@ -56,8 +60,7 @@ crypto::EcPoint EncodeToCurveRistretto255(yacl::ByteContainerView buffer,
 
 crypto::EcPoint HashToCurveRistretto255(yacl::ByteContainerView buffer,
                                         std::string_view dst) {
-  YACL_ENFORCE((dst.size() >= 16) && (dst.size() <= 255),
-               "domain separation tag length: {} not in 16B-255B", dst.size());
+  CheckDstSize(dst);
 
   HashToCurveCtx ctx = GetRistretto255Ctx();
   std::vector<uint8_t> uniform_bytes =
@@ -74,8 +77,7 @@ crypto::EcPoint HashToCurveRistretto255(yacl::ByteContainerView buffer,
 
 math::MPInt HashToScalarRistretto255(yacl::ByteContainerView buffer,
                                      std::string_view dst) {
-  YACL_ENFORCE((dst.size() >= 16) && (dst.size() <= 255),
-               "domain separation tag length: {} not in 16B-255B", dst.size());
+  CheckDstSize(dst);
 
   HashToCurveCtx ctx = GetRistretto255Ctx();
   std::vector<uint8_t> uniform_bytes =

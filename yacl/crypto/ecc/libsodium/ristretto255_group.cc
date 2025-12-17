@@ -15,6 +15,7 @@
 #include "yacl/crypto/ecc/libsodium/ristretto255_group.h"
 
 #include <cstring>
+#include <string_view>
 #include <utility>
 
 #include "sodium/crypto_core_ristretto255.h"
@@ -30,6 +31,14 @@ namespace {
 constexpr size_t kPointBytes = crypto_core_ristretto255_BYTES;
 constexpr size_t kScalarBytes = crypto_core_ristretto255_SCALARBYTES;
 constexpr size_t kHashBytes = crypto_core_ristretto255_HASHBYTES;
+
+// Default DST (Domain Separation Tag) strings for RFC 9380 hash-to-curve
+constexpr std::string_view kDefaultDstRo =
+    "QUUX-V01-CS02-with-ristretto255_XMD:SHA-512_R255MAP_RO_";
+constexpr std::string_view kDefaultDstNu =
+    "QUUX-V01-CS02-with-ristretto255_XMD:SHA-512_R255MAP_NU_";
+constexpr std::string_view kDefaultDstScalar =
+    "QUUX-V01-CS02-with-ristretto255_XMD:SHA-512_R255MAP_";
 
 }  // namespace
 
@@ -257,17 +266,11 @@ EcPoint Ristretto255Group::HashToCurve(HashToCurveStrategy strategy,
                                        std::string_view dst) const {
   switch (strategy) {
     case HashToCurveStrategy::SHA512_R255MAP_RO_: {
-      std::string_view final_dst =
-          dst.empty()
-              ? "QUUX-V01-CS02-with-ristretto255_XMD:SHA-512_R255MAP_RO_"
-              : dst;
+      std::string_view final_dst = dst.empty() ? kDefaultDstRo : dst;
       return yacl::HashToCurveRistretto255(str, final_dst);
     }
     case HashToCurveStrategy::SHA512_R255MAP_NU_: {
-      std::string_view final_dst =
-          dst.empty()
-              ? "QUUX-V01-CS02-with-ristretto255_XMD:SHA-512_R255MAP_NU_"
-              : dst;
+      std::string_view final_dst = dst.empty() ? kDefaultDstNu : dst;
       return yacl::EncodeToCurveRistretto255(str, final_dst);
     }
     case HashToCurveStrategy::Autonomous:
@@ -294,9 +297,7 @@ yacl::math::MPInt Ristretto255Group::HashToScalar(HashToCurveStrategy strategy,
                                                   std::string_view str,
                                                   std::string_view dst) const {
   if (strategy == HashToCurveStrategy::Ristretto255_SHA512_) {
-    std::string_view final_dst =
-        dst.empty() ? "QUUX-V01-CS02-with-ristretto255_XMD:SHA-512_R255MAP_"
-                    : dst;
+    std::string_view final_dst = dst.empty() ? kDefaultDstScalar : dst;
     return yacl::HashToScalarRistretto255(str, final_dst);
   }
 
