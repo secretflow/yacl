@@ -23,6 +23,7 @@ yacl_cc_library(
     ],
     deps = [
         ":ed25519_group",
+        ":ristretto255_group",
         ":x25519_group",
     ],
     alwayslink = 1,
@@ -72,9 +73,32 @@ yacl_cc_library(
     ],
 )
 
+yacl_cc_library(
+    name = "ristretto255_group",
+    srcs = [
+        "ristretto255_group.cc",
+    ],
+    hdrs = [
+        "ristretto255_group.h",
+    ],
+    deps = [
+        ":sodium_group",
+        "//yacl/crypto/ecc/hash_to_curve:ristretto255",
+        "//yacl/crypto/hash:ssl_hash",
+    ],
+)
+
 yacl_cc_test(
     name = "ed25519_test",
     srcs = ["ed25519_test.cc"],
+    deps = [
+        ":libsodium",
+    ],
+)
+
+yacl_cc_test(
+    name = "ristretto255_test",
+    srcs = ["ristretto255_test.cc"],
     deps = [
         ":libsodium",
     ],

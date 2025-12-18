@@ -59,7 +59,7 @@ std::vector<uint8_t> I2OSP(size_t x, size_t xlen) {
 enum class OprfMode : uint8_t { OPRF = 0x00, VOPRF = 0x01, POPRF = 0x02 };
 
 enum class OprfCipherSuite : int {
-  ristretto255_Sha512,  // FIXME unsupported
+  ristretto255_Sha512,  // Supported via libsodium
   decaf448_SHAKE256,    // FIXME unsupported
   P256_SHA256,
   P384_SHA384,
@@ -229,9 +229,9 @@ class OprfCtx {
   DecomposeCipherSuite(const OprfCipherSuite& cipher_suite) {
     switch (cipher_suite) {
       case OprfCipherSuite::ristretto255_Sha512:
-        YACL_THROW("Unsupported cipher suite: ristretto255_Sha512");
-        // return {EcGroupFactory::Instance().Create("ristretto255"),
-        //         HashAlgorithm::SHA512};
+        return {EcGroupFactory::Instance().Create("ristretto255",
+                                                  yacl::ArgLib = "libsodium"),
+                HashAlgorithm::SHA512};
       case OprfCipherSuite::decaf448_SHAKE256:
         // return {EcGroupFactory::Instance().Create("decaf448"),
         //         HashAlgorithm::SHAKE512};
@@ -267,7 +267,8 @@ class OprfCtx {
     std::string dst = std::string(prefix) + ctx_str_;
     switch (cipher_suite_) {
       case OprfCipherSuite::ristretto255_Sha512:
-        YACL_THROW("Unsupported cipher suite: ristretto255_Sha512");
+        return ec_->HashToCurve(HashToCurveStrategy::SHA512_R255MAP_RO_, str,
+                                dst);
       case OprfCipherSuite::decaf448_SHAKE256:
         YACL_THROW("Unsupported cipher suite: decaf448_SHAKE256");
       case OprfCipherSuite::P256_SHA256:
@@ -287,7 +288,8 @@ class OprfCtx {
     std::string dst = std::string(prefix) + ctx_str_;
     switch (cipher_suite_) {
       case OprfCipherSuite::ristretto255_Sha512:
-        YACL_THROW("Unsupported cipher suite: ristretto255_Sha512");
+        return ec_->HashToScalar(HashToCurveStrategy::Ristretto255_SHA512_, str,
+                                 dst);
       case OprfCipherSuite::decaf448_SHAKE256:
         YACL_THROW("Unsupported cipher suite: decaf448_SHAKE256");
       case OprfCipherSuite::P256_SHA256:

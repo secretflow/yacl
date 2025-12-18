@@ -18,3 +18,4 @@
 #include "yacl/crypto/ecc/hash_to_curve/p256.h"
 #include "yacl/crypto/ecc/hash_to_curve/p384.h"
 #include "yacl/crypto/ecc/hash_to_curve/p521.h"
+#include "yacl/crypto/ecc/hash_to_curve/ristretto255.h"

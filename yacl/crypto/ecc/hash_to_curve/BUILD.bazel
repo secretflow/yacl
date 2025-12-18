@@ -26,6 +26,7 @@ yacl_cc_library(
         ":p256",
         ":p384",
         ":p521",
+        ":ristretto255",
     ],
 )
 
@@ -98,6 +99,23 @@ yacl_cc_library(
         "//yacl/crypto/hash:hash_utils",
         "//yacl/math/mpint",
         "@abseil-cpp//absl/strings",
+    ],
+)
+
+yacl_cc_library(
+    name = "ristretto255",
+    srcs = [
+        "ristretto255.cc",
+    ],
+    hdrs = [
+        "ristretto255.h",
+    ],
+    deps = [
+        ":hash_to_curve_util",
+        "//yacl/base:exception",
+        "//yacl/crypto/ecc:ec_point",
+        "//yacl/math/mpint",
+        "@libsodium",
     ],
 )
 
