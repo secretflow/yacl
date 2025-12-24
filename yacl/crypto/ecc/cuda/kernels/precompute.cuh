@@ -22,7 +22,8 @@ namespace yacl::crypto::cuda {
 
 // Fixed-base precomputation (Comb method)
 constexpr int kFixedBaseWindowSize = 4;
-constexpr int kNumWindows = (256 + kFixedBaseWindowSize - 1) / kFixedBaseWindowSize;
+constexpr int kNumWindows =
+    (256 + kFixedBaseWindowSize - 1) / kFixedBaseWindowSize;
 constexpr int kTableEntriesPerWindow = 1 << kFixedBaseWindowSize;
 constexpr int kFixedBaseTableSize = kNumWindows * kTableEntriesPerWindow;
 

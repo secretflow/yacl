@@ -93,11 +93,13 @@ int BigInt::CompareAbs(const BigInt& b) const {
 }
 
 int BigInt::CompareAbs(int64_t b) const {
-  return std::visit([b](const auto& a) { return a.CompareAbs(b); }, AsVar(*this));
+  return std::visit([b](const auto& a) { return a.CompareAbs(b); },
+                    AsVar(*this));
 }
 
 BigInt BigInt::Abs() const {
-  return std::visit([](const auto& a) -> BigInt { return a.Abs(); }, AsVar(*this));
+  return std::visit([](const auto& a) -> BigInt { return a.Abs(); },
+                    AsVar(*this));
 }
 
 size_t BigInt::BitCount() const {
@@ -106,7 +108,8 @@ size_t BigInt::BitCount() const {
 
 bool BigInt::IsPositive() const {
   return std::visit(
-      [](const auto& a) { return !a.IsNegative() && !a.IsZero(); }, AsVar(*this));
+      [](const auto& a) { return !a.IsNegative() && !a.IsZero(); },
+      AsVar(*this));
 }
 
 bool BigInt::IsNegative() const {
@@ -202,7 +205,8 @@ std::string BigInt::ToString() const {
 }
 
 std::string BigInt::ToHexString() const {
-  return std::visit([](const auto& a) { return a.ToHexString(); }, AsVar(*this));
+  return std::visit([](const auto& a) { return a.ToHexString(); },
+                    AsVar(*this));
 }
 
 yacl::Buffer BigInt::ToBytes(size_t byte_len, Endian endian) const {
@@ -232,7 +236,8 @@ void BigInt::FromMagBytes(yacl::ByteContainerView buffer, Endian endian) {
 }
 
 uint8_t BigInt::GetBit(size_t idx) const {
-  return std::visit([idx](const auto& a) { return a.GetBit(idx); }, AsVar(*this));
+  return std::visit([idx](const auto& a) { return a.GetBit(idx); },
+                    AsVar(*this));
 }
 
 void BigInt::SetBit(size_t idx, uint8_t bit) {

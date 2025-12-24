@@ -38,9 +38,7 @@ class Sm2BenchmarkFixture : public benchmark::Fixture {
     return s;
   }
 
-  EcPoint randomPoint() {
-    return cpu_ec_->MulBase(randomScalar());
-  }
+  EcPoint randomPoint() { return cpu_ec_->MulBase(randomScalar()); }
 
   std::shared_ptr<EcGroup> cuda_ec_;
   std::shared_ptr<EcGroup> cpu_ec_;
@@ -56,7 +54,8 @@ BENCHMARK_DEFINE_F(Sm2BenchmarkFixture, CPU_MulBase)(benchmark::State& state) {
 
   state.SetItemsProcessed(state.iterations());
 }
-BENCHMARK_REGISTER_F(Sm2BenchmarkFixture, CPU_MulBase)->Unit(benchmark::kMicrosecond);
+BENCHMARK_REGISTER_F(Sm2BenchmarkFixture, CPU_MulBase)
+    ->Unit(benchmark::kMicrosecond);
 
 BENCHMARK_DEFINE_F(Sm2BenchmarkFixture, CPU_Mul)(benchmark::State& state) {
   auto point = randomPoint();
@@ -69,7 +68,8 @@ BENCHMARK_DEFINE_F(Sm2BenchmarkFixture, CPU_Mul)(benchmark::State& state) {
 
   state.SetItemsProcessed(state.iterations());
 }
-BENCHMARK_REGISTER_F(Sm2BenchmarkFixture, CPU_Mul)->Unit(benchmark::kMicrosecond);
+BENCHMARK_REGISTER_F(Sm2BenchmarkFixture, CPU_Mul)
+    ->Unit(benchmark::kMicrosecond);
 
 BENCHMARK_DEFINE_F(Sm2BenchmarkFixture, CPU_Add)(benchmark::State& state) {
   auto p1 = randomPoint();
@@ -82,7 +82,8 @@ BENCHMARK_DEFINE_F(Sm2BenchmarkFixture, CPU_Add)(benchmark::State& state) {
 
   state.SetItemsProcessed(state.iterations());
 }
-BENCHMARK_REGISTER_F(Sm2BenchmarkFixture, CPU_Add)->Unit(benchmark::kMicrosecond);
+BENCHMARK_REGISTER_F(Sm2BenchmarkFixture, CPU_Add)
+    ->Unit(benchmark::kMicrosecond);
 
 BENCHMARK_DEFINE_F(Sm2BenchmarkFixture, CPU_BatchMul)(benchmark::State& state) {
   int count = state.range(0);
@@ -104,10 +105,14 @@ BENCHMARK_DEFINE_F(Sm2BenchmarkFixture, CPU_BatchMul)(benchmark::State& state) {
   state.SetItemsProcessed(state.iterations() * count);
 }
 BENCHMARK_REGISTER_F(Sm2BenchmarkFixture, CPU_BatchMul)
-    ->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)
+    ->Arg(100)
+    ->Arg(1000)
+    ->Arg(10000)
+    ->Arg(100000)
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_DEFINE_F(Sm2BenchmarkFixture, GPU_BatchMulBase)(benchmark::State& state) {
+BENCHMARK_DEFINE_F(Sm2BenchmarkFixture,
+                   GPU_BatchMulBase)(benchmark::State& state) {
   if (!cuda_ec_) {
     state.SkipWithError("CUDA not available");
     return;
@@ -131,7 +136,10 @@ BENCHMARK_DEFINE_F(Sm2BenchmarkFixture, GPU_BatchMulBase)(benchmark::State& stat
   state.SetItemsProcessed(state.iterations() * count);
 }
 BENCHMARK_REGISTER_F(Sm2BenchmarkFixture, GPU_BatchMulBase)
-    ->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)
+    ->Arg(100)
+    ->Arg(1000)
+    ->Arg(10000)
+    ->Arg(100000)
     ->Unit(benchmark::kMillisecond);
 BENCHMARK_REGISTER_F(Sm2BenchmarkFixture, GPU_BatchMulBase)
     ->Name("Sm2BenchmarkFixture/GPU_BatchMulBase_Large")
@@ -164,14 +172,18 @@ BENCHMARK_DEFINE_F(Sm2BenchmarkFixture, GPU_BatchMul)(benchmark::State& state) {
   state.SetItemsProcessed(state.iterations() * count);
 }
 BENCHMARK_REGISTER_F(Sm2BenchmarkFixture, GPU_BatchMul)
-    ->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)
+    ->Arg(100)
+    ->Arg(1000)
+    ->Arg(10000)
+    ->Arg(100000)
     ->Unit(benchmark::kMillisecond);
 BENCHMARK_REGISTER_F(Sm2BenchmarkFixture, GPU_BatchMul)
     ->Name("Sm2BenchmarkFixture/GPU_BatchMul_Large")
     ->Arg(1000000)
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_DEFINE_F(Sm2BenchmarkFixture, GPU_BatchMulSameScalar)(benchmark::State& state) {
+BENCHMARK_DEFINE_F(Sm2BenchmarkFixture,
+                   GPU_BatchMulSameScalar)(benchmark::State& state) {
   if (!cuda_ec_) {
     state.SkipWithError("CUDA not available");
     return;
@@ -196,7 +208,10 @@ BENCHMARK_DEFINE_F(Sm2BenchmarkFixture, GPU_BatchMulSameScalar)(benchmark::State
   state.SetItemsProcessed(state.iterations() * count);
 }
 BENCHMARK_REGISTER_F(Sm2BenchmarkFixture, GPU_BatchMulSameScalar)
-    ->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)
+    ->Arg(100)
+    ->Arg(1000)
+    ->Arg(10000)
+    ->Arg(100000)
     ->Unit(benchmark::kMillisecond);
 BENCHMARK_REGISTER_F(Sm2BenchmarkFixture, GPU_BatchMulSameScalar)
     ->Name("Sm2BenchmarkFixture/GPU_BatchMulSameScalar_Large")
@@ -229,14 +244,18 @@ BENCHMARK_DEFINE_F(Sm2BenchmarkFixture, GPU_BatchAdd)(benchmark::State& state) {
   state.SetItemsProcessed(state.iterations() * count);
 }
 BENCHMARK_REGISTER_F(Sm2BenchmarkFixture, GPU_BatchAdd)
-    ->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)
+    ->Arg(100)
+    ->Arg(1000)
+    ->Arg(10000)
+    ->Arg(100000)
     ->Unit(benchmark::kMillisecond);
 BENCHMARK_REGISTER_F(Sm2BenchmarkFixture, GPU_BatchAdd)
     ->Name("Sm2BenchmarkFixture/GPU_BatchAdd_Large")
     ->Arg(1000000)
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_DEFINE_F(Sm2BenchmarkFixture, PSI_CPU_HashAndMul)(benchmark::State& state) {
+BENCHMARK_DEFINE_F(Sm2BenchmarkFixture,
+                   PSI_CPU_HashAndMul)(benchmark::State& state) {
   int count = state.range(0);
   auto scalar = randomScalar();
 
@@ -257,10 +276,14 @@ BENCHMARK_DEFINE_F(Sm2BenchmarkFixture, PSI_CPU_HashAndMul)(benchmark::State& st
   state.SetItemsProcessed(state.iterations() * count);
 }
 BENCHMARK_REGISTER_F(Sm2BenchmarkFixture, PSI_CPU_HashAndMul)
-    ->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)
+    ->Arg(100)
+    ->Arg(1000)
+    ->Arg(10000)
+    ->Arg(100000)
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_DEFINE_F(Sm2BenchmarkFixture, PSI_GPU_HashAndMul)(benchmark::State& state) {
+BENCHMARK_DEFINE_F(Sm2BenchmarkFixture,
+                   PSI_GPU_HashAndMul)(benchmark::State& state) {
   if (!cuda_ec_) {
     state.SkipWithError("CUDA not available");
     return;
@@ -288,7 +311,10 @@ BENCHMARK_DEFINE_F(Sm2BenchmarkFixture, PSI_GPU_HashAndMul)(benchmark::State& st
   state.SetItemsProcessed(state.iterations() * count);
 }
 BENCHMARK_REGISTER_F(Sm2BenchmarkFixture, PSI_GPU_HashAndMul)
-    ->Arg(100)->Arg(1000)->Arg(10000)->Arg(100000)
+    ->Arg(100)
+    ->Arg(1000)
+    ->Arg(10000)
+    ->Arg(100000)
     ->Unit(benchmark::kMillisecond);
 BENCHMARK_REGISTER_F(Sm2BenchmarkFixture, PSI_GPU_HashAndMul)
     ->Name("Sm2BenchmarkFixture/PSI_GPU_HashAndMul_Large")
@@ -296,7 +322,8 @@ BENCHMARK_REGISTER_F(Sm2BenchmarkFixture, PSI_GPU_HashAndMul)
     ->Unit(benchmark::kMillisecond);
 
 // Large-scale correctness verification with sampling
-BENCHMARK_DEFINE_F(Sm2BenchmarkFixture, GPU_BatchMulBase_Verified)(benchmark::State& state) {
+BENCHMARK_DEFINE_F(Sm2BenchmarkFixture,
+                   GPU_BatchMulBase_Verified)(benchmark::State& state) {
   if (!cuda_ec_) {
     state.SkipWithError("CUDA not available");
     return;
@@ -335,7 +362,8 @@ BENCHMARK_REGISTER_F(Sm2BenchmarkFixture, GPU_BatchMulBase_Verified)
     ->Arg(1000000)
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_DEFINE_F(Sm2BenchmarkFixture, GPU_BatchMul_Verified)(benchmark::State& state) {
+BENCHMARK_DEFINE_F(Sm2BenchmarkFixture,
+                   GPU_BatchMul_Verified)(benchmark::State& state) {
   if (!cuda_ec_) {
     state.SkipWithError("CUDA not available");
     return;
@@ -375,7 +403,8 @@ BENCHMARK_REGISTER_F(Sm2BenchmarkFixture, GPU_BatchMul_Verified)
     ->Arg(1000000)
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK_DEFINE_F(Sm2BenchmarkFixture, PSI_GPU_HashAndMul_Verified)(benchmark::State& state) {
+BENCHMARK_DEFINE_F(Sm2BenchmarkFixture,
+                   PSI_GPU_HashAndMul_Verified)(benchmark::State& state) {
   if (!cuda_ec_) {
     state.SkipWithError("CUDA not available");
     return;

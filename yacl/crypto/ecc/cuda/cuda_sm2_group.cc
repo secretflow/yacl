@@ -62,9 +62,7 @@ CudaSm2Group::CudaSm2Group(const CurveMeta& meta)
   initCuda();
 }
 
-CudaSm2Group::~CudaSm2Group() {
-  cleanupCuda();
-}
+CudaSm2Group::~CudaSm2Group() { cleanupCuda(); }
 
 CudaSm2Group::CudaSm2Group(CudaSm2Group&& other) noexcept
     : EcGroupSketch(std::move(other)),
@@ -105,9 +103,9 @@ void CudaSm2Group::initCuda() {
         auto bytes = mont.ToMagBytes(Endian::little);
         GpuFieldElement out{};
         std::memset(out.limbs, 0, sizeof(out.limbs));
-        std::memcpy(out.limbs, bytes.data(),
-                    std::min(static_cast<size_t>(bytes.size()),
-                             sizeof(out.limbs)));
+        std::memcpy(
+            out.limbs, bytes.data(),
+            std::min(static_cast<size_t>(bytes.size()), sizeof(out.limbs)));
         return out;
       };
 
@@ -145,21 +143,13 @@ void CudaSm2Group::cleanupCuda() {
   }
 }
 
-std::string CudaSm2Group::GetLibraryName() const {
-  return kLibraryName;
-}
+std::string CudaSm2Group::GetLibraryName() const { return kLibraryName; }
 
-MPInt CudaSm2Group::GetCofactor() const {
-  return cpu_backend_->GetCofactor();
-}
+MPInt CudaSm2Group::GetCofactor() const { return cpu_backend_->GetCofactor(); }
 
-MPInt CudaSm2Group::GetField() const {
-  return cpu_backend_->GetField();
-}
+MPInt CudaSm2Group::GetField() const { return cpu_backend_->GetField(); }
 
-MPInt CudaSm2Group::GetOrder() const {
-  return cpu_backend_->GetOrder();
-}
+MPInt CudaSm2Group::GetOrder() const { return cpu_backend_->GetOrder(); }
 
 EcPoint CudaSm2Group::GetGenerator() const {
   return cpu_backend_->GetGenerator();
@@ -278,22 +268,26 @@ void CudaSm2Group::convertToGpuPoint(const EcPoint& point,
 
   auto xBytes = affine.x.ToMagBytes(Endian::little);
   std::memset(gpuPoint->x, 0, sizeof(gpuPoint->x));
-  std::memcpy(gpuPoint->x, xBytes.data(),
-              std::min(static_cast<size_t>(xBytes.size()), sizeof(gpuPoint->x)));
+  std::memcpy(
+      gpuPoint->x, xBytes.data(),
+      std::min(static_cast<size_t>(xBytes.size()), sizeof(gpuPoint->x)));
 
   auto yBytes = affine.y.ToMagBytes(Endian::little);
   std::memset(gpuPoint->y, 0, sizeof(gpuPoint->y));
-  std::memcpy(gpuPoint->y, yBytes.data(),
-              std::min(static_cast<size_t>(yBytes.size()), sizeof(gpuPoint->y)));
+  std::memcpy(
+      gpuPoint->y, yBytes.data(),
+      std::min(static_cast<size_t>(yBytes.size()), sizeof(gpuPoint->y)));
 }
 
 EcPoint CudaSm2Group::convertFromGpuPoint(const void* gpuPointRaw) const {
   const auto* gpuPoint = static_cast<const GpuPoint*>(gpuPointRaw);
 
-  std::vector<uint8_t> xBytes(reinterpret_cast<const uint8_t*>(gpuPoint->x),
-                              reinterpret_cast<const uint8_t*>(gpuPoint->x) + 32);
-  std::vector<uint8_t> yBytes(reinterpret_cast<const uint8_t*>(gpuPoint->y),
-                              reinterpret_cast<const uint8_t*>(gpuPoint->y) + 32);
+  std::vector<uint8_t> xBytes(
+      reinterpret_cast<const uint8_t*>(gpuPoint->x),
+      reinterpret_cast<const uint8_t*>(gpuPoint->x) + 32);
+  std::vector<uint8_t> yBytes(
+      reinterpret_cast<const uint8_t*>(gpuPoint->y),
+      reinterpret_cast<const uint8_t*>(gpuPoint->y) + 32);
 
   MPInt x, y;
   x.FromMagBytes(xBytes, Endian::little);
@@ -314,8 +308,9 @@ void CudaSm2Group::convertToGpuScalar(const MPInt& scalar,
   MPInt reduced = scalar.Mod(GetOrder());
   auto bytes = reduced.ToMagBytes(Endian::little);
   std::memset(gpuScalar->limbs, 0, sizeof(gpuScalar->limbs));
-  std::memcpy(gpuScalar->limbs, bytes.data(),
-              std::min(static_cast<size_t>(bytes.size()), sizeof(gpuScalar->limbs)));
+  std::memcpy(
+      gpuScalar->limbs, bytes.data(),
+      std::min(static_cast<size_t>(bytes.size()), sizeof(gpuScalar->limbs)));
 }
 
 void CudaSm2Group::batchMul(absl::Span<const EcPoint> points,
@@ -380,8 +375,8 @@ void CudaSm2Group::batchMulBase(absl::Span<const MPInt> scalars,
     convertToGpuScalar(scalars[i], &gpuScalars[i]);
   }
 
-  CudaEccError err = cuda::batchMulBase(gpuScalars.data(),
-                                        gpuResults.data(), count);
+  CudaEccError err =
+      cuda::batchMulBase(gpuScalars.data(), gpuResults.data(), count);
 
   if (err != CudaEccError::kSuccess) {
     for (size_t i = 0; i < scalars.size(); ++i) {
@@ -479,8 +474,8 @@ void CudaSm2Group::batchAdd(absl::Span<const EcPoint> p1s,
     convertToGpuPoint(p2s[i], &gpuP2s[i]);
   }
 
-  CudaEccError err = cuda::batchAdd(gpuP1s.data(), gpuP2s.data(),
-                                    gpuResults.data(), count);
+  CudaEccError err =
+      cuda::batchAdd(gpuP1s.data(), gpuP2s.data(), gpuResults.data(), count);
 
   if (err != CudaEccError::kSuccess) {
     for (size_t i = 0; i < p1s.size(); ++i) {
@@ -526,9 +521,8 @@ void CudaSm2Group::batchMulDoubleBase(absl::Span<const MPInt> s1s,
     convertToGpuPoint(points[i], &gpuPoints[i]);
   }
 
-  CudaEccError err =
-      cuda::batchMulDoubleBase(gpuS1.data(), gpuS2.data(), gpuPoints.data(),
-                               gpuResults.data(), count);
+  CudaEccError err = cuda::batchMulDoubleBase(
+      gpuS1.data(), gpuS2.data(), gpuPoints.data(), gpuResults.data(), count);
 
   if (err != CudaEccError::kSuccess) {
     for (size_t i = 0; i < s1s.size(); ++i) {
@@ -546,13 +540,9 @@ void CudaSm2Group::batchMulDoubleBase(absl::Span<const MPInt> s1s,
   }
 }
 
-bool CudaSm2Group::isGpuAvailable() {
-  return isCudaAvailable();
-}
+bool CudaSm2Group::isGpuAvailable() { return isCudaAvailable(); }
 
-int32_t CudaSm2Group::getRecommendedBatchSize() {
-  return 4096;
-}
+int32_t CudaSm2Group::getRecommendedBatchSize() { return 4096; }
 
 void CudaSm2Group::getGpuMemoryInfo(size_t* free, size_t* total) {
   cuda::getGpuMemoryInfo(free, total);

@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/ecc/cuda/kernels/sm2_kernels.cuh"
+#include <cuda_runtime.h>
+#include <stdio.h>
 
 #include <mutex>
 
-#include <cuda_runtime.h>
-#include <stdio.h>
+#include "yacl/crypto/ecc/cuda/kernels/sm2_kernels.cuh"
 
 namespace yacl::crypto::cuda {
 
@@ -32,67 +32,44 @@ __constant__ const uint64_t kSm2Prime[4] = {
 // R^2 mod p = (2^256)^2 mod p
 // Used for converting to Montgomery form
 __constant__ const uint64_t kSm2R2[4] = {
-    0x0000000200000003ULL,
-    0x00000002FFFFFFFFULL,
-    0x0000000100000001ULL,
-    0x0000000400000002ULL
-};
+    0x0000000200000003ULL, 0x00000002FFFFFFFFULL, 0x0000000100000001ULL,
+    0x0000000400000002ULL};
 
 // Montgomery parameter mu = -p^(-1) mod 2^64
 __constant__ const uint64_t kSm2Mu = 0x0000000000000001ULL;
 
 // R mod p = 2^256 mod p (1 in Montgomery form)
 __constant__ const uint64_t kSm2RModP[4] = {
-    0x0000000000000001ULL,
-    0x00000000FFFFFFFFULL,
-    0x0000000000000000ULL,
-    0x0000000100000000ULL
-};
+    0x0000000000000001ULL, 0x00000000FFFFFFFFULL, 0x0000000000000000ULL,
+    0x0000000100000000ULL};
 
 // SM2 curve parameter a = -3 mod p (normal form)
-__constant__ const GpuFieldElement kSm2A = {{
-    0xFFFFFFFFFFFFFFFCULL,
-    0xFFFFFFFF00000000ULL,
-    0xFFFFFFFFFFFFFFFFULL,
-    0xFFFFFFFEFFFFFFFFULL
-}};
+__constant__ const GpuFieldElement kSm2A = {
+    {0xFFFFFFFFFFFFFFFCULL, 0xFFFFFFFF00000000ULL, 0xFFFFFFFFFFFFFFFFULL,
+     0xFFFFFFFEFFFFFFFFULL}};
 
 // SM2 curve parameter b (normal form)
 // b = 0x28E9FA9E9D9F5E344D5A9E4BCF6509A7F39789F515AB8F92DDBCBD414D940E93
-__constant__ const GpuFieldElement kSm2B = {{
-    0xDDBCBD414D940E93ULL,
-    0xF39789F515AB8F92ULL,
-    0x4D5A9E4BCF6509A7ULL,
-    0x28E9FA9E9D9F5E34ULL
-}};
+__constant__ const GpuFieldElement kSm2B = {
+    {0xDDBCBD414D940E93ULL, 0xF39789F515AB8F92ULL, 0x4D5A9E4BCF6509A7ULL,
+     0x28E9FA9E9D9F5E34ULL}};
 
 // SM2 generator point G (affine coordinates, in normal form)
 // Gx = 0x32C4AE2C1F1981195F9904466A39C9948FE30BBFF2660BE1715A4589334C74C7
 // Gy = 0xBC3736A2F4F6779C59BDCEE36B692153D0A9877CC62A474002DF32E52139F0A0
 __constant__ const GpuAffinePoint kSm2Generator = {
     // x coordinate (normal form)
-    {{
-        0x715A4589334C74C7ULL,
-        0x8FE30BBFF2660BE1ULL,
-        0x5F9904466A39C994ULL,
-        0x32C4AE2C1F198119ULL
-    }},
+    {{0x715A4589334C74C7ULL, 0x8FE30BBFF2660BE1ULL, 0x5F9904466A39C994ULL,
+      0x32C4AE2C1F198119ULL}},
     // y coordinate (normal form)
-    {{
-        0x02DF32E52139F0A0ULL,
-        0xD0A9877CC62A4740ULL,
-        0x59BDCEE36B692153ULL,
-        0xBC3736A2F4F6779CULL
-    }}
-};
+    {{0x02DF32E52139F0A0ULL, 0xD0A9877CC62A4740ULL, 0x59BDCEE36B692153ULL,
+      0xBC3736A2F4F6779CULL}}};
 
-// SM2 curve order n = 0xFFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFF7203DF6B21C6052B53BBF40939D54123
+// SM2 curve order n =
+// 0xFFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFF7203DF6B21C6052B53BBF40939D54123
 __constant__ const uint64_t kSm2Order[4] = {
-    0x53BBF40939D54123ULL,
-    0x7203DF6B21C6052BULL,
-    0xFFFFFFFFFFFFFFFFULL,
-    0xFFFFFFFEFFFFFFFFULL
-};
+    0x53BBF40939D54123ULL, 0x7203DF6B21C6052BULL, 0xFFFFFFFFFFFFFFFFULL,
+    0xFFFFFFFEFFFFFFFFULL};
 
 // Precomputed generator table - use global memory instead of constant memory
 // (constant memory is limited to 64KB)
@@ -172,9 +149,7 @@ void cudaSm2Cleanup() {
   g_refCount = 0;
 }
 
-cudaStream_t cudaSm2GetStream() {
-  return g_stream;
-}
+cudaStream_t cudaSm2GetStream() { return g_stream; }
 
 void cudaSm2Sync(cudaStream_t stream) {
   if (stream == 0) {
@@ -366,8 +341,7 @@ __device__ __forceinline__ void addMulAcc(uint64_t acc, uint64_t lo,
 
 // Propagate a 65-bit carry (carry_lo + carry_hi*2^64) into t[start..end].
 __device__ __forceinline__ void addCarry(uint64_t* t, int start, int end,
-                                         uint64_t carry_lo,
-                                         uint64_t carry_hi) {
+                                         uint64_t carry_lo, uint64_t carry_hi) {
   uint64_t sum = t[start] + carry_lo;
   uint64_t carry = (sum < t[start]) ? 1 : 0;
   t[start] = sum;
@@ -383,7 +357,8 @@ __device__ __forceinline__ void addCarry(uint64_t* t, int start, int end,
 // Montgomery multiplication: r = a * b * R^(-1) mod p, where R = 2^256.
 //
 // NOTE: Keep this implementation correct-first. It is used by point arithmetic
-// and scalar multiplication; subtle carry bugs can easily create invalid points.
+// and scalar multiplication; subtle carry bugs can easily create invalid
+// points.
 __device__ void fpMul(const GpuFieldElement& a, const GpuFieldElement& b,
                       GpuFieldElement& r) {
   // Use a 2n+1 limb accumulator to avoid losing the top carry during reduction.
@@ -460,7 +435,8 @@ __device__ void affinePointToMont(const GpuAffinePoint& a, GpuAffinePoint& m) {
 }
 
 // Convert affine point from Montgomery form
-__device__ void affinePointFromMont(const GpuAffinePoint& m, GpuAffinePoint& a) {
+__device__ void affinePointFromMont(const GpuAffinePoint& m,
+                                    GpuAffinePoint& a) {
   fpFromMont(m.x, a.x);
   fpFromMont(m.y, a.y);
 }
@@ -477,12 +453,8 @@ __device__ void fpInv(const GpuFieldElement& a, GpuFieldElement& r) {
 
   // Binary exponentiation from LSB
   // This is a simplified version; production code should use optimized chain
-  const uint64_t exp[4] = {
-      0xFFFFFFFFFFFFFFFDULL,
-      0xFFFFFFFF00000000ULL,
-      0xFFFFFFFFFFFFFFFFULL,
-      0xFFFFFFFEFFFFFFFFULL
-  };
+  const uint64_t exp[4] = {0xFFFFFFFFFFFFFFFDULL, 0xFFFFFFFF00000000ULL,
+                           0xFFFFFFFFFFFFFFFFULL, 0xFFFFFFFEFFFFFFFFULL};
 
   for (int i = 0; i < 4; i++) {
     uint64_t e = exp[i];
@@ -588,9 +560,9 @@ __device__ void pointDouble(const GpuJacobianPoint& P, GpuJacobianPoint& R) {
   // Y3 = e*(d - X3) - 8*c
   fpSub(d, R.X, tmp);
   fpMul(e, tmp, R.Y);
-  fpDouble(c, tmp);      // 2c
-  fpDouble(tmp, tmp);    // 4c
-  fpDouble(tmp, tmp);    // 8c
+  fpDouble(c, tmp);    // 2c
+  fpDouble(tmp, tmp);  // 4c
+  fpDouble(tmp, tmp);  // 8c
   fpSub(R.Y, tmp, R.Y);
 
   // Z3 = 2*Y*Z
@@ -986,8 +958,8 @@ __device__ void scalarMulFixedBase(const GpuScalar& k, GpuJacobianPoint& R) {
 
     // NOTE: kFixedBaseWindowSize divides 64, so the 4-bit window never crosses
     // limbs. Keep the branch-free form for speed and simplicity.
-    const uint64_t window = (k.limbs[limbIdx] >> bitOffset) &
-                            ((1ULL << kFixedBaseWindowSize) - 1);
+    const uint64_t window =
+        (k.limbs[limbIdx] >> bitOffset) & ((1ULL << kFixedBaseWindowSize) - 1);
     if (window == 0) {
       continue;
     }
@@ -1026,7 +998,8 @@ __global__ void debugMontMulKernel(int32_t* results) {
   GpuFieldElement r_result;
   fpMul(r2, one_normal, r_result);  // Should give R mod p
 
-  GpuFieldElement r_expected = {{kSm2RModP[0], kSm2RModP[1], kSm2RModP[2], kSm2RModP[3]}};
+  GpuFieldElement r_expected = {
+      {kSm2RModP[0], kSm2RModP[1], kSm2RModP[2], kSm2RModP[3]}};
   results[2] = fpEqual(r_expected, r_result) ? 1 : 0;
 
   // Store all 4 limbs of one_mont (results 3-10)
@@ -1060,7 +1033,8 @@ __global__ void debugMontMulKernel(int32_t* results) {
   results[26] = (int32_t)(kSm2RModP[3] >> 32);
 }
 
-extern "C" CudaEccError debugMontMul(int32_t* hostResults, cudaStream_t stream) {
+extern "C" CudaEccError debugMontMul(int32_t* hostResults,
+                                     cudaStream_t stream) {
   if (stream == 0) stream = g_stream;
 
   if (hostResults == nullptr || stream == nullptr) {
@@ -1135,8 +1109,8 @@ __global__ void debugReadScalarKernel(const GpuScalar* scalar,
 }
 
 extern "C" CudaEccError debugReadScalar(const void* hostScalar,
-                                       uint64_t* hostResults,
-                                       cudaStream_t stream) {
+                                        uint64_t* hostResults,
+                                        cudaStream_t stream) {
   if (stream == 0) stream = g_stream;
 
   if (hostScalar == nullptr || hostResults == nullptr || stream == nullptr) {
@@ -1212,8 +1186,7 @@ __global__ void batchFixedBaseMulKernel(const GpuScalar* scalars,
 
 __global__ void batchVarBaseMulKernel(const GpuAffinePoint* points,
                                       const GpuScalar* scalars,
-                                      GpuAffinePoint* results,
-                                      int32_t count) {
+                                      GpuAffinePoint* results, int32_t count) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= count) return;
 
@@ -1250,8 +1223,7 @@ __global__ void batchSameScalarMulKernel(const GpuAffinePoint* points,
 
 __global__ void batchPointAddKernel(const GpuAffinePoint* p1s,
                                     const GpuAffinePoint* p2s,
-                                    GpuAffinePoint* results,
-                                    int32_t count) {
+                                    GpuAffinePoint* results, int32_t count) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= count) return;
 
@@ -1272,8 +1244,7 @@ __global__ void batchPointAddKernel(const GpuAffinePoint* p1s,
 }
 
 __global__ void batchPointDoubleKernel(const GpuAffinePoint* points,
-                                       GpuAffinePoint* results,
-                                       int32_t count) {
+                                       GpuAffinePoint* results, int32_t count) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= count) return;
 
@@ -1292,8 +1263,7 @@ __global__ void batchPointDoubleKernel(const GpuAffinePoint* points,
 }
 
 __global__ void batchPointNegateKernel(const GpuAffinePoint* points,
-                                       GpuAffinePoint* results,
-                                       int32_t count) {
+                                       GpuAffinePoint* results, int32_t count) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= count) return;
 
@@ -1311,8 +1281,7 @@ __global__ void batchPointNegateKernel(const GpuAffinePoint* points,
 }
 
 __global__ void batchIsOnCurveKernel(const GpuAffinePoint* points,
-                                     int32_t* results,
-                                     int32_t count) {
+                                     int32_t* results, int32_t count) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (idx >= count) return;
 
@@ -1356,10 +1325,8 @@ __global__ void batchDoubleBaseMulKernel(const GpuScalar* s1,
 
 // Host wrapper functions
 
-CudaEccError batchMulBase(const void* hostScalars,
-                          void* hostResults,
-                          int32_t count,
-                          cudaStream_t stream) {
+CudaEccError batchMulBase(const void* hostScalars, void* hostResults,
+                          int32_t count, cudaStream_t stream) {
   if (count <= 0 || hostScalars == nullptr || hostResults == nullptr) {
     return CudaEccError::kInvalidInput;
   }
@@ -1424,11 +1391,8 @@ CudaEccError batchMulBase(const void* hostScalars,
   return status;
 }
 
-CudaEccError batchMul(const void* hostPoints,
-                      const void* hostScalars,
-                      void* hostResults,
-                      int32_t count,
-                      cudaStream_t stream) {
+CudaEccError batchMul(const void* hostPoints, const void* hostScalars,
+                      void* hostResults, int32_t count, cudaStream_t stream) {
   if (count <= 0 || hostPoints == nullptr || hostScalars == nullptr ||
       hostResults == nullptr) {
     return CudaEccError::kInvalidInput;
@@ -1508,10 +1472,8 @@ CudaEccError batchMul(const void* hostPoints,
   return status;
 }
 
-CudaEccError batchMulSameScalar(const void* hostPoints,
-                                const void* hostScalar,
-                                void* hostResults,
-                                int32_t count,
+CudaEccError batchMulSameScalar(const void* hostPoints, const void* hostScalar,
+                                void* hostResults, int32_t count,
                                 cudaStream_t stream) {
   if (count <= 0 || hostPoints == nullptr || hostScalar == nullptr ||
       hostResults == nullptr) {
@@ -1591,12 +1553,9 @@ CudaEccError batchMulSameScalar(const void* hostPoints,
   return status;
 }
 
-CudaEccError batchMulDoubleBase(const void* hostS1,
-                                const void* hostS2,
-                                const void* hostPoints,
-                                void* hostResults,
-                                int32_t count,
-                                cudaStream_t stream) {
+CudaEccError batchMulDoubleBase(const void* hostS1, const void* hostS2,
+                                const void* hostPoints, void* hostResults,
+                                int32_t count, cudaStream_t stream) {
   if (count <= 0 || hostS1 == nullptr || hostS2 == nullptr ||
       hostPoints == nullptr || hostResults == nullptr) {
     return CudaEccError::kInvalidInput;
@@ -1692,11 +1651,8 @@ CudaEccError batchMulDoubleBase(const void* hostS1,
   return status;
 }
 
-CudaEccError batchAdd(const void* hostP1s,
-                      const void* hostP2s,
-                      void* hostResults,
-                      int32_t count,
-                      cudaStream_t stream) {
+CudaEccError batchAdd(const void* hostP1s, const void* hostP2s,
+                      void* hostResults, int32_t count, cudaStream_t stream) {
   if (count <= 0 || hostP1s == nullptr || hostP2s == nullptr ||
       hostResults == nullptr) {
     return CudaEccError::kInvalidInput;
@@ -1775,10 +1731,8 @@ CudaEccError batchAdd(const void* hostP1s,
   return status;
 }
 
-CudaEccError batchDouble(const void* hostPoints,
-                         void* hostResults,
-                         int32_t count,
-                         cudaStream_t stream) {
+CudaEccError batchDouble(const void* hostPoints, void* hostResults,
+                         int32_t count, cudaStream_t stream) {
   if (count <= 0 || hostPoints == nullptr || hostResults == nullptr) {
     return CudaEccError::kInvalidInput;
   }
@@ -1859,10 +1813,9 @@ void copyTableToConstantMemory(const GpuAffinePoint* hostTable) {
   }
 
   // Copy table to device global memory
-  cudaError_t err =
-      cudaMemcpy(h_generatorTableDevice, hostTable,
-                 kFixedBaseTableSize * sizeof(GpuAffinePoint),
-                 cudaMemcpyHostToDevice);
+  cudaError_t err = cudaMemcpy(h_generatorTableDevice, hostTable,
+                               kFixedBaseTableSize * sizeof(GpuAffinePoint),
+                               cudaMemcpyHostToDevice);
   if (err != cudaSuccess) {
     return;
   }

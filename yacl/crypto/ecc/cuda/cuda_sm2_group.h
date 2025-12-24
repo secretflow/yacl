@@ -103,19 +103,16 @@ class CudaSm2Group : public EcGroupSketch {
                     absl::Span<EcPoint> results) const;
 
   // results[i] = scalar * points[i]
-  void batchMulSameScalar(absl::Span<const EcPoint> points,
-                          const MPInt& scalar,
+  void batchMulSameScalar(absl::Span<const EcPoint> points, const MPInt& scalar,
                           absl::Span<EcPoint> results) const;
 
   // results[i] = scalar * HashToCurve(inputs[i])
   void batchHashAndMul(HashToCurveStrategy strategy,
                        absl::Span<const std::string_view> inputs,
-                       const MPInt& scalar,
-                       absl::Span<EcPoint> results) const;
+                       const MPInt& scalar, absl::Span<EcPoint> results) const;
 
   // results[i] = p1s[i] + p2s[i]
-  void batchAdd(absl::Span<const EcPoint> p1s,
-                absl::Span<const EcPoint> p2s,
+  void batchAdd(absl::Span<const EcPoint> p1s, absl::Span<const EcPoint> p2s,
                 absl::Span<EcPoint> results) const;
 
   // results[i] = s1s[i] * G + s2s[i] * points[i]

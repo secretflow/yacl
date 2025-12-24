@@ -12,13 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/ecc/cuda/cuda_sm2_group.h"
-
 #include <cstring>
 #include <vector>
 
 #include "gtest/gtest.h"
 
+#include "yacl/crypto/ecc/cuda/cuda_sm2_group.h"
 #include "yacl/crypto/ecc/cuda/kernels/sm2_kernels.cuh"
 #include "yacl/crypto/ecc/ecc_spi.h"
 
@@ -86,7 +85,7 @@ TEST_F(CudaSm2Test, DebugReadScalar) {
   EXPECT_EQ(results[1], 0);
   EXPECT_EQ(results[2], 0);
   EXPECT_EQ(results[3], 0);
-  EXPECT_EQ(results[4], 1);  // popcount
+  EXPECT_EQ(results[4], 1);                        // popcount
   EXPECT_EQ(static_cast<int64_t>(results[5]), 1);  // msb index
 }
 
@@ -158,7 +157,8 @@ TEST_F(CudaSm2Test, BatchMulDoubleBase) {
 
   std::vector<EcPoint> cuda_results(count);
   auto* cuda_group = dynamic_cast<CudaSm2Group*>(cuda_ec_.get());
-  cuda_group->batchMulDoubleBase(s1s, s2s, points, absl::MakeSpan(cuda_results));
+  cuda_group->batchMulDoubleBase(s1s, s2s, points,
+                                 absl::MakeSpan(cuda_results));
 
   for (int i = 0; i < count; ++i) {
     const auto cpu_result = cpu_ec_->MulDoubleBase(s1s[i], s2s[i], points[i]);
@@ -227,7 +227,8 @@ TEST_F(CudaSm2Test, RawMulBaseSmallScalars) {
     return {x, y};
   };
 
-  for (const MPInt scalar : {MPInt(1), MPInt(2), MPInt(3), MPInt(5), MPInt(7)}) {
+  for (const MPInt scalar :
+       {MPInt(1), MPInt(2), MPInt(3), MPInt(5), MPInt(7)}) {
     SCOPED_TRACE(std::string("scalar=") + scalar.ToHexString());
     const auto expected = cpu_ec_->MulBase(scalar);
 
@@ -306,8 +307,7 @@ TEST_F(CudaSm2Test, RawDoubleGenerator) {
   const GpuAffinePoint in{toGpuField(gen_affine.x), toGpuField(gen_affine.y)};
 
   GpuAffinePoint out{};
-  const auto err =
-      cuda::batchDouble(&in, &out, /*count=*/1, /*stream=*/0);
+  const auto err = cuda::batchDouble(&in, &out, /*count=*/1, /*stream=*/0);
   ASSERT_EQ(err, CudaEccError::kSuccess);
 
   const auto affine = toAffine(out);
@@ -423,8 +423,8 @@ TEST_F(CudaSm2Test, EdgeCases) {
 
 TEST_F(CudaSm2Test, Serialization) {
   auto point = randomPoint();
-  auto serialized = cuda_ec_->SerializePoint(
-      point, PointOctetFormat::X962Uncompressed);
+  auto serialized =
+      cuda_ec_->SerializePoint(point, PointOctetFormat::X962Uncompressed);
   auto deserialized = cuda_ec_->DeserializePoint(
       serialized, PointOctetFormat::X962Uncompressed);
   EXPECT_TRUE(cuda_ec_->PointEqual(point, deserialized));
