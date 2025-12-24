@@ -49,6 +49,15 @@ yacl_cc_library(
 )
 
 yacl_cc_library(
+    name = "spi_with_cuda_sm2",
+    deps = [
+        ":spi",
+        "//yacl/crypto/ecc/cuda:cuda",
+    ],
+    tags = ["manual"],
+)
+
+yacl_cc_library(
     name = "ec_point",
     srcs = [
         "ec_point.cc",

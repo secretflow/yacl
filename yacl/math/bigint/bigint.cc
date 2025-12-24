@@ -18,6 +18,12 @@ namespace yacl::math {
 
 namespace {
 
+inline const BigIntVar& AsVar(const BigInt& x) {
+  return static_cast<const BigIntVar&>(x);
+}
+
+inline BigIntVar& AsVar(BigInt& x) { return static_cast<BigIntVar&>(x); }
+
 template <typename RetType, typename Op>
 RetType ApplyBinaryOp(const BigInt& a, const BigInt& b, Op op) {
   return std::visit(
@@ -29,7 +35,7 @@ RetType ApplyBinaryOp(const BigInt& a, const BigInt& b, Op op) {
                      typeid(b).name());
         }
       },
-      a, b);
+      AsVar(a), AsVar(b));
 }
 
 template <typename Op>
@@ -45,7 +51,7 @@ BigInt ApplyTernaryOp(const BigInt& a, const BigInt& b, const BigInt& c,
                      typeid(a).name(), typeid(b).name(), typeid(c).name());
         }
       },
-      a, b, c);
+      AsVar(a), AsVar(b), AsVar(c));
 }
 
 template <typename Op>
@@ -59,25 +65,26 @@ void ApplyCompAssignOp(BigInt& a, const BigInt& b, Op op) {
                      typeid(a).name(), typeid(b).name());
         }
       },
-      a, b);
+      AsVar(a), AsVar(b));
 }
 
 }  // namespace
 
 void BigInt::Set(const std::string& num, int radix) {
-  std::visit([num, radix](auto& a) { a.Set(num, radix); }, *this);
+  std::visit([num, radix](auto& a) { a.Set(num, radix); }, AsVar(*this));
 }
 
 void BigInt::NegateInplace() {
-  std::visit([](auto& a) { a.NegateInplace(); }, *this);
+  std::visit([](auto& a) { a.NegateInplace(); }, AsVar(*this));
 }
 
 BigInt BigInt::Pow(uint32_t e) const {
-  return std::visit([e](const auto& a) -> BigInt { return a.Pow(e); }, *this);
+  return std::visit([e](const auto& a) -> BigInt { return a.Pow(e); },
+                    AsVar(*this));
 }
 
 void BigInt::PowInplace(uint32_t e) {
-  std::visit([e](auto& a) { a.PowInplace(e); }, *this);
+  std::visit([e](auto& a) { a.PowInplace(e); }, AsVar(*this));
 }
 
 int BigInt::CompareAbs(const BigInt& b) const {
@@ -86,40 +93,41 @@ int BigInt::CompareAbs(const BigInt& b) const {
 }
 
 int BigInt::CompareAbs(int64_t b) const {
-  return std::visit([b](const auto& a) { return a.CompareAbs(b); }, *this);
+  return std::visit([b](const auto& a) { return a.CompareAbs(b); }, AsVar(*this));
 }
 
 BigInt BigInt::Abs() const {
-  return std::visit([](const auto& a) -> BigInt { return a.Abs(); }, *this);
+  return std::visit([](const auto& a) -> BigInt { return a.Abs(); }, AsVar(*this));
 }
 
 size_t BigInt::BitCount() const {
-  return std::visit([](const auto& a) { return a.BitCount(); }, *this);
+  return std::visit([](const auto& a) { return a.BitCount(); }, AsVar(*this));
 }
 
 bool BigInt::IsPositive() const {
   return std::visit(
-      [](const auto& a) { return !a.IsNegative() && !a.IsZero(); }, *this);
+      [](const auto& a) { return !a.IsNegative() && !a.IsZero(); }, AsVar(*this));
 }
 
 bool BigInt::IsNegative() const {
-  return std::visit([](const auto& a) { return a.IsNegative(); }, *this);
+  return std::visit([](const auto& a) { return a.IsNegative(); }, AsVar(*this));
 }
 
 bool BigInt::IsZero() const {
-  return std::visit([](const auto& a) { return a.IsZero(); }, *this);
+  return std::visit([](const auto& a) { return a.IsZero(); }, AsVar(*this));
 }
 
 bool BigInt::IsOdd() const {
-  return std::visit([](const auto& a) { return a.IsOdd(); }, *this);
+  return std::visit([](const auto& a) { return a.IsOdd(); }, AsVar(*this));
 }
 
 bool BigInt::IsPrime() const {
-  return std::visit([](const auto& a) { return a.IsPrime(); }, *this);
+  return std::visit([](const auto& a) { return a.IsPrime(); }, AsVar(*this));
 }
 
 BigInt BigInt::RandomLtN(const BigInt& n) {
-  return std::visit([](const auto& n) -> BigInt { return n.RandomLtN(n); }, n);
+  return std::visit([](const auto& n) -> BigInt { return n.RandomLtN(n); },
+                    AsVar(n));
 }
 
 void BigInt::RandomLtN(const BigInt& n, BigInt* r) { *r = RandomLtN(n); }
@@ -190,23 +198,23 @@ BigInt BigInt::PowMod(const BigInt& e, const BigInt& mod) const {
 }
 
 std::string BigInt::ToString() const {
-  return std::visit([](const auto& a) { return a.ToString(); }, *this);
+  return std::visit([](const auto& a) { return a.ToString(); }, AsVar(*this));
 }
 
 std::string BigInt::ToHexString() const {
-  return std::visit([](const auto& a) { return a.ToHexString(); }, *this);
+  return std::visit([](const auto& a) { return a.ToHexString(); }, AsVar(*this));
 }
 
 yacl::Buffer BigInt::ToBytes(size_t byte_len, Endian endian) const {
   return std::visit(
       [byte_len, endian](const auto& a) { return a.ToBytes(byte_len, endian); },
-      *this);
+      AsVar(*this));
 }
 
 void BigInt::ToBytes(unsigned char* buf, size_t buf_len, Endian endian) const {
   std::visit([buf, buf_len,
               endian](const auto& a) { a.ToBytes(buf, buf_len, endian); },
-             *this);
+             AsVar(*this));
 }
 
 size_t BigInt::ToMagBytes(unsigned char* buf, size_t buf_len,
@@ -215,34 +223,34 @@ size_t BigInt::ToMagBytes(unsigned char* buf, size_t buf_len,
       [buf, buf_len, endian](const auto& a) {
         return a.ToMagBytes(buf, buf_len, endian);
       },
-      *this);
+      AsVar(*this));
 }
 
 void BigInt::FromMagBytes(yacl::ByteContainerView buffer, Endian endian) {
   std::visit([buffer, endian](auto& a) { a.FromMagBytes(buffer, endian); },
-             *this);
+             AsVar(*this));
 }
 
 uint8_t BigInt::GetBit(size_t idx) const {
-  return std::visit([idx](const auto& a) { return a.GetBit(idx); }, *this);
+  return std::visit([idx](const auto& a) { return a.GetBit(idx); }, AsVar(*this));
 }
 
 void BigInt::SetBit(size_t idx, uint8_t bit) {
-  std::visit([idx, bit](auto& a) { a.SetBit(idx, bit); }, *this);
+  std::visit([idx, bit](auto& a) { a.SetBit(idx, bit); }, AsVar(*this));
 }
 
 Buffer BigInt::Serialize() const {
-  return std::visit([](const auto& a) { return a.Serialize(); }, *this);
+  return std::visit([](const auto& a) { return a.Serialize(); }, AsVar(*this));
 }
 
 size_t BigInt::Serialize(uint8_t* buf, size_t buf_len) const {
   return std::visit(
       [buf, buf_len](const auto& a) { return a.Serialize(buf, buf_len); },
-      *this);
+      AsVar(*this));
 }
 
 void BigInt::Deserialize(ByteContainerView buffer) {
-  std::visit([buffer](auto& a) { a.Deserialize(buffer); }, *this);
+  std::visit([buffer](auto& a) { a.Deserialize(buffer); }, AsVar(*this));
 }
 
 BigInt& BigInt::operator+=(const BigInt& b) {
@@ -271,22 +279,22 @@ BigInt& BigInt::operator%=(const BigInt& b) {
 }
 
 BigInt& BigInt::operator+=(uint64_t b) {
-  std::visit([b](auto& a) { a += b; }, *this);
+  std::visit([b](auto& a) { a += b; }, AsVar(*this));
   return *this;
 }
 
 BigInt& BigInt::operator-=(uint64_t b) {
-  std::visit([b](auto& a) { a -= b; }, *this);
+  std::visit([b](auto& a) { a -= b; }, AsVar(*this));
   return *this;
 }
 
 BigInt& BigInt::operator*=(uint64_t b) {
-  std::visit([b](auto& a) { a *= b; }, *this);
+  std::visit([b](auto& a) { a *= b; }, AsVar(*this));
   return *this;
 }
 
 BigInt& BigInt::operator/=(uint64_t b) {
-  std::visit([b](auto& a) { a /= b; }, *this);
+  std::visit([b](auto& a) { a /= b; }, AsVar(*this));
   return *this;
 }
 
@@ -306,39 +314,39 @@ BigInt& BigInt::operator^=(const BigInt& b) {
 }
 
 BigInt& BigInt::operator<<=(size_t b) {
-  std::visit([b](auto& a) { a <<= b; }, *this);
+  std::visit([b](auto& a) { a <<= b; }, AsVar(*this));
   return *this;
 }
 
 BigInt& BigInt::operator>>=(size_t b) {
-  std::visit([b](auto& a) { a >>= b; }, *this);
+  std::visit([b](auto& a) { a >>= b; }, AsVar(*this));
   return *this;
 }
 
 BigInt& BigInt::operator++() {
-  std::visit([](auto& a) { ++a; }, *this);
+  std::visit([](auto& a) { ++a; }, AsVar(*this));
   return *this;
 }
 
 BigInt BigInt::operator++(int) {
   BigInt r = *this;
-  std::visit([](auto& a) { ++a; }, *this);
+  std::visit([](auto& a) { ++a; }, AsVar(*this));
   return r;
 }
 
 BigInt& BigInt::operator--() {
-  std::visit([](auto& a) { --a; }, *this);
+  std::visit([](auto& a) { --a; }, AsVar(*this));
   return *this;
 }
 
 BigInt BigInt::operator--(int) {
   BigInt r = *this;
-  std::visit([](auto& a) { --a; }, *this);
+  std::visit([](auto& a) { --a; }, AsVar(*this));
   return r;
 }
 
 BigInt BigInt::operator-() const {
-  return std::visit([](const auto& a) -> BigInt { return -a; }, *this);
+  return std::visit([](const auto& a) -> BigInt { return -a; }, AsVar(*this));
 }
 
 BigInt operator+(const BigInt& a, const BigInt& b) {
@@ -362,23 +370,23 @@ BigInt operator%(const BigInt& a, const BigInt& b) {
 }
 
 BigInt operator+(const BigInt& a, uint64_t b) {
-  return std::visit([b](const auto& a) -> BigInt { return a + b; }, a);
+  return std::visit([b](const auto& a) -> BigInt { return a + b; }, AsVar(a));
 }
 
 BigInt operator-(const BigInt& a, uint64_t b) {
-  return std::visit([b](const auto& a) -> BigInt { return a - b; }, a);
+  return std::visit([b](const auto& a) -> BigInt { return a - b; }, AsVar(a));
 }
 
 BigInt operator*(const BigInt& a, uint64_t b) {
-  return std::visit([b](const auto& a) -> BigInt { return a * b; }, a);
+  return std::visit([b](const auto& a) -> BigInt { return a * b; }, AsVar(a));
 }
 
 BigInt operator/(const BigInt& a, uint64_t b) {
-  return std::visit([b](const auto& a) -> BigInt { return a / b; }, a);
+  return std::visit([b](const auto& a) -> BigInt { return a / b; }, AsVar(a));
 }
 
 uint64_t operator%(const BigInt& a, uint64_t b) {
-  return std::visit([b](const auto& a) -> uint64_t { return a % b; }, a);
+  return std::visit([b](const auto& a) -> uint64_t { return a % b; }, AsVar(a));
 }
 
 BigInt operator&(const BigInt& a, const BigInt& b) {
@@ -418,35 +426,35 @@ bool operator!=(const BigInt& a, const BigInt& b) {
 }
 
 bool operator>(const BigInt& a, int64_t b) {
-  return std::visit([b](const auto& a) { return a > b; }, a);
+  return std::visit([b](const auto& a) { return a > b; }, AsVar(a));
 }
 
 bool operator<(const BigInt& a, int64_t b) {
-  return std::visit([b](const auto& a) { return a < b; }, a);
+  return std::visit([b](const auto& a) { return a < b; }, AsVar(a));
 }
 
 bool operator>=(const BigInt& a, int64_t b) {
-  return std::visit([b](const auto& a) { return a >= b; }, a);
+  return std::visit([b](const auto& a) { return a >= b; }, AsVar(a));
 }
 
 bool operator<=(const BigInt& a, int64_t b) {
-  return std::visit([b](const auto& a) { return a <= b; }, a);
+  return std::visit([b](const auto& a) { return a <= b; }, AsVar(a));
 }
 
 bool operator==(const BigInt& a, int64_t b) {
-  return std::visit([b](const auto& a) { return a == b; }, a);
+  return std::visit([b](const auto& a) { return a == b; }, AsVar(a));
 }
 
 bool operator!=(const BigInt& a, int64_t b) {
-  return std::visit([b](const auto& a) { return a != b; }, a);
+  return std::visit([b](const auto& a) { return a != b; }, AsVar(a));
 }
 
 BigInt operator<<(const BigInt& a, size_t b) {
-  return std::visit([b](const auto& a) -> BigInt { return a << b; }, a);
+  return std::visit([b](const auto& a) -> BigInt { return a << b; }, AsVar(a));
 }
 
 BigInt operator>>(const BigInt& a, size_t b) {
-  return std::visit([b](const auto& a) -> BigInt { return a >> b; }, a);
+  return std::visit([b](const auto& a) -> BigInt { return a >> b; }, AsVar(a));
 }
 
 std::ostream& operator<<(std::ostream& os, const BigInt& a) {

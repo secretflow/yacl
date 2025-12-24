@@ -54,6 +54,14 @@ bazel_dep(name = "platforms", version = "1.0.0")
 
 # self-hosted registry
 bazel_dep(name = "brpc", version = "1.15.0")
+single_version_override(
+    module_name = "brpc",
+    patch_strip = 1,
+    patches = [
+        "//bazel/patches:brpc_cc_proto_library.patch",
+    ],
+    version = "1.15.0",
+)
 bazel_dep(name = "cpu_features", version = "0.9.0")
 bazel_dep(name = "simplest-ot", version = "0.0.1")
 bazel_dep(name = "libtommath", version = "0.0.0-20240407-42b3fb0")
@@ -68,6 +76,16 @@ bazel_dep(name = "mcl", version = "1.99")
 bazel_dep(name = "leveldb", version = "1.23")
 bazel_dep(name = "openssl", version = "3.3.2.bcr.1")
 bazel_dep(name = "liboqs", version = "0.13.0")
+
+# CUDA support for GPU-accelerated SM2
+bazel_dep(name = "rules_cuda", version = "0.2.3")
+
+cuda = use_extension("@rules_cuda//cuda:extensions.bzl", "toolchain")
+cuda.local_toolchain(
+    name = "local_cuda",
+    toolkit_path = "",  # Auto-detect from CUDA_PATH or /usr/local/cuda
+)
+use_repo(cuda, "local_cuda")
 
 new_local_repository = use_repo_rule("@bazel_tools//tools/build_defs/repo:local.bzl", "new_local_repository")
 

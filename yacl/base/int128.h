@@ -83,7 +83,7 @@ inline int CountLZ(uint128_t v) {
 }
 
 inline int CountBitWidth(uint128_t v) {
-  return std::numeric_limits<uint128_t>::digits - CountLZ(v);
+  return 128 - CountLZ(v);
 }
 
 }  // namespace yacl

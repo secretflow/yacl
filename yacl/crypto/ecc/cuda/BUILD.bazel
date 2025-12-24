@@ -1,0 +1,87 @@
+# Copyright 2025 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:yacl.bzl", "yacl_cc_binary", "yacl_cc_library", "yacl_cc_test")
+load("@rules_cuda//cuda:defs.bzl", "cuda_library")
+
+package(default_visibility = ["//visibility:public"])
+
+# CUDA kernels for SM2 operations
+cuda_library(
+    name = "sm2_cuda_kernels",
+    srcs = [
+        "kernels/sm2_kernels.cu",
+    ],
+    hdrs = [
+        "kernels/gpu_types.cuh",
+        "kernels/field_ops.cuh",
+        "kernels/point_ops.cuh",
+        "kernels/precompute.cuh",
+        "kernels/sm2_kernels.cuh",
+    ],
+    copts = [
+        "-O3",
+        "--use_fast_math",
+    ],
+    deps = [
+        "@local_cuda//:cuda_runtime",
+    ],
+    tags = ["manual"],
+)
+
+# GPU-accelerated SM2 EcGroup implementation
+yacl_cc_library(
+    name = "cuda_sm2_group",
+    srcs = ["cuda_sm2_group.cc"],
+    hdrs = ["cuda_sm2_group.h"],
+    deps = [
+        ":sm2_cuda_kernels",
+        "//yacl/crypto/ecc:spi",
+        "//yacl/crypto/ecc/openssl",
+        "@abseil-cpp//absl/types:span",
+    ],
+    tags = ["manual"],
+)
+
+# SPI factory registration (alwayslink for static registration)
+yacl_cc_library(
+    name = "cuda",
+    srcs = ["cuda_sm2_factory.cc"],
+    deps = [":cuda_sm2_group"],
+    alwayslink = 1,
+    tags = ["manual"],
+)
+
+# Unit tests
+yacl_cc_test(
+    name = "cuda_sm2_test",
+    srcs = ["cuda_sm2_test.cc"],
+    deps = [
+        ":cuda",
+        "//yacl/crypto/ecc/openssl",
+    ],
+    tags = ["manual"],
+)
+
+# Benchmark (binary; not run as part of `bazel test`)
+yacl_cc_binary(
+    name = "bench_cuda_sm2",
+    srcs = ["benchmark/bench_cuda_sm2.cc"],
+    deps = [
+        ":cuda",
+        "//yacl/crypto/ecc/openssl",
+        "@google_benchmark//:benchmark_main",
+    ],
+    tags = ["manual"],
+)
