@@ -22,6 +22,7 @@ namespace examples::hesm2 {
 
 class Ciphertext {
  public:
+  Ciphertext() = default;
   Ciphertext(yacl::crypto::EcPoint c1, yacl::crypto::EcPoint c2)
       : c1_(std::move(c1)), c2_(std::move(c2)) {}
 
