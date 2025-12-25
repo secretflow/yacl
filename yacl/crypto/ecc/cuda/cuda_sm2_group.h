@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -127,11 +128,20 @@ class CudaSm2Group : public EcGroupSketch {
   static void getGpuMemoryInfo(size_t* free, size_t* total);
 
  private:
+  // Host-side affine point in normal (non-Montgomery) form for CUDA kernels.
+  // - Limb order is little-endian (x[0] is least significant 64 bits).
+  // - Point-at-infinity is encoded as (0, 0).
+  struct PackedAffinePoint {
+    uint64_t x[4];
+    uint64_t y[4];
+  };
+
   void initCuda();
   void cleanupCuda();
-  void convertToGpuPoint(const EcPoint& point, void* gpuPoint) const;
-  EcPoint convertFromGpuPoint(const void* gpuPoint) const;
-  void convertToGpuScalar(const MPInt& scalar, void* gpuScalar) const;
+  EcPoint toCpuPoint(const EcPoint& point) const;
+  void convertToCudaPoint(const EcPoint& point, PackedAffinePoint* out) const;
+  EcPoint convertFromCudaPoint(const PackedAffinePoint& p) const;
+  void convertToCudaScalar(const MPInt& scalar, void* gpuScalar) const;
 
   std::shared_ptr<EcGroup> cpu_backend_;
   int cuda_device_id_;

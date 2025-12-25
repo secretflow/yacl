@@ -54,6 +54,14 @@ __constant__ const GpuFieldElement kSm2B = {
     {0xDDBCBD414D940E93ULL, 0xF39789F515AB8F92ULL, 0x4D5A9E4BCF6509A7ULL,
      0x28E9FA9E9D9F5E34ULL}};
 
+// Montgomery form constants: vMont = v * R mod p.
+__constant__ const GpuFieldElement kSm2AMont = {
+    {0xFFFFFFFFFFFFFFFCULL, 0xFFFFFFFC00000003ULL, 0xFFFFFFFFFFFFFFFFULL,
+     0xFFFFFFFBFFFFFFFFULL}};
+__constant__ const GpuFieldElement kSm2BMont = {
+    {0x90D230632BC0DD42ULL, 0x71CF379AE9B537ABULL, 0x527981505EA51C3CULL,
+     0x240FE188BA20E2C8ULL}};
+
 // SM2 generator point G (affine coordinates, in normal form)
 // Gx = 0x32C4AE2C1F1981195F9904466A39C9948FE30BBFF2660BE1715A4589334C74C7
 // Gy = 0xBC3736A2F4F6779C59BDCEE36B692153D0A9877CC62A474002DF32E52139F0A0
@@ -81,6 +89,113 @@ static bool g_initialized = false;
 static int g_deviceId = -1;
 static int g_refCount = 0;
 static std::mutex g_mutex;
+
+namespace {
+
+struct Sm2DeviceWorkspace {
+  GpuAffinePoint* points = nullptr;
+  size_t points_capacity = 0;
+
+  GpuAffinePoint* points2 = nullptr;
+  size_t points2_capacity = 0;
+
+  GpuScalar* scalars = nullptr;
+  size_t scalars_capacity = 0;
+
+  GpuScalar* scalars2 = nullptr;
+  size_t scalars2_capacity = 0;
+
+  GpuAffinePoint* results = nullptr;
+  size_t results_capacity = 0;
+
+  uint8_t* digests = nullptr;
+  size_t digests_capacity = 0;  // bytes
+
+  int32_t* error = nullptr;
+  size_t error_capacity = 0;
+};
+
+Sm2DeviceWorkspace g_workspace;
+std::mutex g_workspace_mutex;
+
+template <typename T>
+cudaError_t ensureDeviceArray(T** ptr, size_t* capacity, size_t count) {
+  if (*capacity >= count) {
+    return cudaSuccess;
+  }
+  if (*ptr != nullptr) {
+    cudaFree(*ptr);
+    *ptr = nullptr;
+    *capacity = 0;
+  }
+  cudaError_t err = cudaMalloc(ptr, count * sizeof(T));
+  if (err != cudaSuccess) {
+    *ptr = nullptr;
+    *capacity = 0;
+    return err;
+  }
+  *capacity = count;
+  return cudaSuccess;
+}
+
+cudaError_t ensureDeviceBytes(uint8_t** ptr, size_t* capacity, size_t bytes) {
+  if (*capacity >= bytes) {
+    return cudaSuccess;
+  }
+  if (*ptr != nullptr) {
+    cudaFree(*ptr);
+    *ptr = nullptr;
+    *capacity = 0;
+  }
+  cudaError_t err = cudaMalloc(ptr, bytes);
+  if (err != cudaSuccess) {
+    *ptr = nullptr;
+    *capacity = 0;
+    return err;
+  }
+  *capacity = bytes;
+  return cudaSuccess;
+}
+
+void freeWorkspace() {
+  if (g_workspace.points != nullptr) {
+    cudaFree(g_workspace.points);
+    g_workspace.points = nullptr;
+    g_workspace.points_capacity = 0;
+  }
+  if (g_workspace.points2 != nullptr) {
+    cudaFree(g_workspace.points2);
+    g_workspace.points2 = nullptr;
+    g_workspace.points2_capacity = 0;
+  }
+  if (g_workspace.scalars != nullptr) {
+    cudaFree(g_workspace.scalars);
+    g_workspace.scalars = nullptr;
+    g_workspace.scalars_capacity = 0;
+  }
+  if (g_workspace.scalars2 != nullptr) {
+    cudaFree(g_workspace.scalars2);
+    g_workspace.scalars2 = nullptr;
+    g_workspace.scalars2_capacity = 0;
+  }
+  if (g_workspace.results != nullptr) {
+    cudaFree(g_workspace.results);
+    g_workspace.results = nullptr;
+    g_workspace.results_capacity = 0;
+  }
+  if (g_workspace.digests != nullptr) {
+    cudaFree(g_workspace.digests);
+    g_workspace.digests = nullptr;
+    g_workspace.digests_capacity = 0;
+  }
+  if (g_workspace.error != nullptr) {
+    cudaFree(g_workspace.error);
+    g_workspace.error = nullptr;
+    g_workspace.error_capacity = 0;
+  }
+}
+
+}  // namespace
 
 static inline CudaEccError toCudaEccError(cudaError_t err) {
   if (err == cudaSuccess) {
@@ -133,6 +248,11 @@ void cudaSm2Cleanup() {
     cudaStreamSynchronize(g_stream);
   }
 
+  {
+    std::lock_guard<std::mutex> ws_lock(g_workspace_mutex);
+    freeWorkspace();
+  }
+
   if (h_generatorTableDevice != nullptr) {
     GpuAffinePoint* null_table = nullptr;
     cudaMemcpyToSymbol(g_generatorTable, &null_table, sizeof(null_table));
@@ -175,31 +295,56 @@ const char* cudaSm2GetLastError() {
 // Montgomery multiplication using CIOS method
 
 // 256-bit addition with carry: r = a + b, returns carry
-__device__ uint64_t add256(const uint64_t* a, const uint64_t* b, uint64_t* r) {
+__device__ __forceinline__ uint64_t add256(const uint64_t* a,
+                                           const uint64_t* b, uint64_t* r) {
   uint64_t carry = 0;
-  for (int i = 0; i < 4; ++i) {
-    const uint64_t sum = a[i] + b[i];
-    const uint64_t c1 = (sum < a[i]) ? 1 : 0;
-    const uint64_t sum2 = sum + carry;
-    const uint64_t c2 = (sum2 < sum) ? 1 : 0;
-    r[i] = sum2;
-    carry = (c1 | c2);
-  }
+  uint64_t sum0 = a[0] + b[0];
+  carry = (sum0 < a[0]) ? 1 : 0;
+  r[0] = sum0;
+
+  uint64_t sum1 = a[1] + b[1];
+  uint64_t c1 = (sum1 < a[1]) ? 1 : 0;
+  uint64_t sum1c = sum1 + carry;
+  uint64_t c1c = (sum1c < sum1) ? 1 : 0;
+  r[1] = sum1c;
+  carry = (c1 | c1c);
+
+  uint64_t sum2 = a[2] + b[2];
+  uint64_t c2 = (sum2 < a[2]) ? 1 : 0;
+  uint64_t sum2c = sum2 + carry;
+  uint64_t c2c = (sum2c < sum2) ? 1 : 0;
+  r[2] = sum2c;
+  carry = (c2 | c2c);
+
+  uint64_t sum3 = a[3] + b[3];
+  uint64_t c3 = (sum3 < a[3]) ? 1 : 0;
+  uint64_t sum3c = sum3 + carry;
+  uint64_t c3c = (sum3c < sum3) ? 1 : 0;
+  r[3] = sum3c;
+  carry = (c3 | c3c);
 
   return carry;
 }
 
 // 256-bit subtraction with borrow: r = a - b, returns borrow
-__device__ uint64_t sub256(const uint64_t* a, const uint64_t* b, uint64_t* r) {
+__device__ __forceinline__ uint64_t sub256(const uint64_t* a,
+                                           const uint64_t* b, uint64_t* r) {
   uint64_t borrow = 0;
-  for (int i = 0; i < 4; ++i) {
-    const uint64_t bi = b[i];
-    const uint64_t tmp = a[i] - bi - borrow;
-    // If borrow is 0: underflow if a < b.
-    // If borrow is 1: underflow if a <= b.
-    borrow = borrow ? (a[i] <= bi) : (a[i] < bi);
-    r[i] = tmp;
-  }
+  uint64_t tmp0 = a[0] - b[0];
+  borrow = (a[0] < b[0]) ? 1 : 0;
+  r[0] = tmp0;
+
+  uint64_t tmp1 = a[1] - b[1] - borrow;
+  borrow = borrow ? (a[1] <= b[1]) : (a[1] < b[1]);
+  r[1] = tmp1;
+
+  uint64_t tmp2 = a[2] - b[2] - borrow;
+  borrow = borrow ? (a[2] <= b[2]) : (a[2] < b[2]);
+  r[2] = tmp2;
+
+  uint64_t tmp3 = a[3] - b[3] - borrow;
+  borrow = borrow ? (a[3] <= b[3]) : (a[3] < b[3]);
+  r[3] = tmp3;
 
   return borrow;
 }
@@ -300,6 +445,11 @@ __device__ void pointCopy(const GpuJacobianPoint& p, GpuJacobianPoint& r) {
 }
 
 __device__ void affineToJacobian(const GpuAffinePoint& a, GpuJacobianPoint& j) {
+  // Point-at-infinity is encoded as (0, 0) in affine form.
+  if (fpIsZero(a.x) && fpIsZero(a.y)) {
+    pointSetInfinity(j);
+    return;
+  }
   fpCopy(a.x, j.X);
   fpCopy(a.y, j.Y);
   fpSetOne(j.Z);  // Z = 1 in Montgomery form
@@ -410,8 +560,91 @@ __device__ void fpMul(const GpuFieldElement& a, const GpuFieldElement& b,
 
 // Montgomery squaring (optimized version of fpMul(a, a))
 __device__ void fpSqr(const GpuFieldElement& a, GpuFieldElement& r) {
-  // For simplicity, use fpMul. Can be optimized later.
-  fpMul(a, a, r);
+  // Optimized squaring with cached symmetric products.
+  //
+  // We keep the same row-wise accumulation (and carry boundaries) as fpMul,
+  // but avoid redundant a[i]*a[j] multiplications by caching (i<=j) products
+  // and reusing them for (j,i).
+  uint64_t t[9] = {0};
+
+  // t = a * a
+  uint64_t plo[4][4];
+  uint64_t phi[4][4];
+
+  // Diagonal
+  mul64(a.limbs[0], a.limbs[0], plo[0][0], phi[0][0]);
+  mul64(a.limbs[1], a.limbs[1], plo[1][1], phi[1][1]);
+  mul64(a.limbs[2], a.limbs[2], plo[2][2], phi[2][2]);
+  mul64(a.limbs[3], a.limbs[3], plo[3][3], phi[3][3]);
+
+  // Cross terms (fill symmetric entries).
+  mul64(a.limbs[0], a.limbs[1], plo[0][1], phi[0][1]);
+  plo[1][0] = plo[0][1];
+  phi[1][0] = phi[0][1];
+
+  mul64(a.limbs[0], a.limbs[2], plo[0][2], phi[0][2]);
+  plo[2][0] = plo[0][2];
+  phi[2][0] = phi[0][2];
+
+  mul64(a.limbs[0], a.limbs[3], plo[0][3], phi[0][3]);
+  plo[3][0] = plo[0][3];
+  phi[3][0] = phi[0][3];
+
+  mul64(a.limbs[1], a.limbs[2], plo[1][2], phi[1][2]);
+  plo[2][1] = plo[1][2];
+  phi[2][1] = phi[1][2];
+
+  mul64(a.limbs[1], a.limbs[3], plo[1][3], phi[1][3]);
+  plo[3][1] = plo[1][3];
+  phi[3][1] = phi[1][3];
+
+  mul64(a.limbs[2], a.limbs[3], plo[2][3], phi[2][3]);
+  plo[3][2] = plo[2][3];
+  phi[3][2] = phi[2][3];
+
+#pragma unroll
+  for (int i = 0; i < 4; ++i) {
+    uint64_t carry_lo = 0;
+    uint64_t carry_hi = 0;
+#pragma unroll
+    for (int j = 0; j < 4; ++j) {
+      addMulAcc(t[i + j], plo[i][j], phi[i][j], carry_lo, carry_hi, t[i + j],
+                carry_lo, carry_hi);
+    }
+    addCarry(t, i + 4, 8, carry_lo, carry_hi);
+  }
+
+  // Montgomery reduction (CIOS)
+#pragma unroll
+  for (int i = 0; i < 4; ++i) {
+    uint64_t m = t[i] * kSm2Mu;  // mu = -p^{-1} mod 2^64 (SM2: 1)
+    uint64_t carry_lo = 0;
+    uint64_t carry_hi = 0;
+#pragma unroll
+    for (int j = 0; j < 4; ++j) {
+      uint64_t lo, hi;
+      mul64(m, kSm2Prime[j], lo, hi);
+      addMulAcc(t[i + j], lo, hi, carry_lo, carry_hi, t[i + j], carry_lo,
+                carry_hi);
+    }
+    addCarry(t, i + 4, 8, carry_lo, carry_hi);
+  }
+
+  // Result is in t[4..7], with possible overflow in t[8].
+  r.limbs[0] = t[4];
+  r.limbs[1] = t[5];
+  r.limbs[2] = t[6];
+  r.limbs[3] = t[7];
+
+  // Final reduction: if r >= p or we have overflow, subtract p.
+  uint64_t tmp[4];
+  uint64_t borrow = sub256(r.limbs, kSm2Prime, tmp);
+  if (borrow == 0 || t[8] != 0) {
+    r.limbs[0] = tmp[0];
+    r.limbs[1] = tmp[1];
+    r.limbs[2] = tmp[2];
+    r.limbs[3] = tmp[3];
+  }
 }
 
 // Convert to Montgomery form: r = a * R mod p
@@ -441,33 +674,162 @@ __device__ void affinePointFromMont(const GpuAffinePoint& m,
   fpFromMont(m.y, a.y);
 }
 
+__device__ __forceinline__ uint32_t sm2PMinus2Bit(int bit) {
+  // p - 2 = 0xFFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFD
+  constexpr uint64_t kExp0 = 0xFFFFFFFFFFFFFFFDULL;
+  constexpr uint64_t kExp1 = 0xFFFFFFFF00000000ULL;
+  constexpr uint64_t kExp2 = 0xFFFFFFFFFFFFFFFFULL;
+  constexpr uint64_t kExp3 = 0xFFFFFFFEFFFFFFFFULL;
+
+  const int limb = bit >> 6;
+  const int offset = bit & 63;
+
+  uint64_t v = 0;
+  if (limb == 0) {
+    v = kExp0;
+  } else if (limb == 1) {
+    v = kExp1;
+  } else if (limb == 2) {
+    v = kExp2;
+  } else {
+    v = kExp3;
+  }
+  return static_cast<uint32_t>((v >> offset) & 1ULL);
+}
+
 // Field inversion using Fermat's little theorem: a^(-1) = a^(p-2) mod p
 __device__ void fpInv(const GpuFieldElement& a, GpuFieldElement& r) {
-  // Use square-and-multiply with precomputed exponent bits
+  // Sliding-window exponentiation (fixed exponent p-2).
   // p - 2 = 0xFFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFD
+  constexpr int kWindowSize = 3;
+  constexpr int kTableSize = 1 << (kWindowSize - 1);  // odd powers: 1..7
+
+  // Precompute odd powers: a^(2*i+1), i=0..kTableSize-1.
+  GpuFieldElement table[kTableSize];
+  fpCopy(a, table[0]);
+
+  GpuFieldElement a2;
+  fpSqr(a, a2);
+#pragma unroll
+  for (int i = 1; i < kTableSize; ++i) {
+    fpMul(table[i - 1], a2, table[i]);
+  }
 
   GpuFieldElement result;
   fpSetOne(result);
-  GpuFieldElement base;
-  fpCopy(a, base);
 
-  // Binary exponentiation from LSB
-  // This is a simplified version; production code should use optimized chain
-  const uint64_t exp[4] = {0xFFFFFFFFFFFFFFFDULL, 0xFFFFFFFF00000000ULL,
-                           0xFFFFFFFFFFFFFFFFULL, 0xFFFFFFFEFFFFFFFFULL};
-
-  for (int i = 0; i < 4; i++) {
-    uint64_t e = exp[i];
-    for (int j = 0; j < 64; j++) {
-      if (e & 1) {
-        fpMul(result, base, result);
-      }
-      fpSqr(base, base);
-      e >>= 1;
+  int i = 255;
+  while (i >= 0) {
+    if (sm2PMinus2Bit(i) == 0) {
+      fpSqr(result, result);
+      --i;
+      continue;
     }
+
+    int j = i - kWindowSize + 1;
+    if (j < 0) j = 0;
+    while (sm2PMinus2Bit(j) == 0) {
+      ++j;
+    }
+
+    uint32_t window = 0;
+    for (int k = i; k >= j; --k) {
+      fpSqr(result, result);
+      window = (window << 1) | sm2PMinus2Bit(k);
+    }
+
+    // window is odd and <= 2^kWindowSize - 1.
+    fpMul(result, table[(window - 1) >> 1], result);
+    i = j - 1;
   }
 
   fpCopy(result, r);
+}
+
+__device__ __forceinline__ uint32_t sm2PPlus1Over4Bit(int bit) {
+  // (p + 1) / 4 (since p % 4 == 3):
+  // 0x3FFFFFFFBFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFC00000004000000000000000
+  constexpr uint64_t kExp0 = 0x4000000000000000ULL;
+  constexpr uint64_t kExp1 = 0xFFFFFFFFC0000000ULL;
+  constexpr uint64_t kExp2 = 0xFFFFFFFFFFFFFFFFULL;
+  constexpr uint64_t kExp3 = 0x3FFFFFFFBFFFFFFFULL;
+
+  const int limb = bit >> 6;
+  const int offset = bit & 63;
+
+  uint64_t v = 0;
+  if (limb == 0) {
+    v = kExp0;
+  } else if (limb == 1) {
+    v = kExp1;
+  } else if (limb == 2) {
+    v = kExp2;
+  } else {
+    v = kExp3;
+  }
+  return static_cast<uint32_t>((v >> offset) & 1ULL);
+}
+
+// Field square root for SM2 prime field (p % 4 == 3).
+// Returns true if a quadratic residue (including 0), and writes sqrt(a) to r.
+__device__ __forceinline__ bool fpSqrt(const GpuFieldElement& a,
+                                       GpuFieldElement& r) {
+  if (fpIsZero(a)) {
+    fpSetZero(r);
+    return true;
+  }
+
+  // r = a^((p+1)/4)
+  constexpr int kWindowSize = 3;
+  constexpr int kTableSize = 1 << (kWindowSize - 1);  // odd powers: 1..7
+
+  GpuFieldElement table[kTableSize];
+  fpCopy(a, table[0]);
+
+  GpuFieldElement a2;
+  fpSqr(a, a2);
+#pragma unroll
+  for (int i = 1; i < kTableSize; ++i) {
+    fpMul(table[i - 1], a2, table[i]);
+  }
+
+  GpuFieldElement result;
+  fpSetOne(result);
+
+  // (p+1)/4 is 254-bit, start from bit 253.
+  int i = 253;
+  while (i >= 0) {
+    if (sm2PPlus1Over4Bit(i) == 0) {
+      fpSqr(result, result);
+      --i;
+      continue;
+    }
+
+    int j = i - kWindowSize + 1;
+    if (j < 0) j = 0;
+    while (sm2PPlus1Over4Bit(j) == 0) {
+      ++j;
+    }
+
+    uint32_t window = 0;
+    for (int k = i; k >= j; --k) {
+      fpSqr(result, result);
+      window = (window << 1) | sm2PPlus1Over4Bit(k);
+    }
+
+    fpMul(result, table[(window - 1) >> 1], result);
+    i = j - 1;
+  }
+
+  // Verify: r^2 == a.
+  GpuFieldElement check;
+  fpSqr(result, check);
+  if (!fpEqual(check, a)) {
+    return false;
+  }
+
+  fpCopy(result, r);
+  return true;
 }
 
 // Halving: r = a / 2 mod p
@@ -512,6 +874,101 @@ __device__ void jacobianToAffine(const GpuJacobianPoint& j, GpuAffinePoint& a) {
   fpMul(j.X, zInv2, a.x);
 
   // y = Y * Z^(-3)
+  fpMul(j.Y, zInv3, a.y);
+}
+
+template <int kBlockSize>
+__device__ __forceinline__ void blockExclusiveProdScan(GpuFieldElement* data) {
+  const int tid = threadIdx.x;
+
+  // Upsweep
+#pragma unroll
+  for (int offset = 1; offset < kBlockSize; offset <<= 1) {
+    const int idx = (tid + 1) * offset * 2 - 1;
+    if (idx < kBlockSize) {
+      GpuFieldElement tmp;
+      fpMul(data[idx - offset], data[idx], tmp);
+      fpCopy(tmp, data[idx]);
+    }
+    __syncthreads();
+  }
+
+  if (tid == 0) {
+    fpSetOne(data[kBlockSize - 1]);
+  }
+  __syncthreads();
+
+  // Downsweep
+#pragma unroll
+  for (int offset = kBlockSize >> 1; offset > 0; offset >>= 1) {
+    const int idx = (tid + 1) * offset * 2 - 1;
+    if (idx < kBlockSize) {
+      GpuFieldElement t0, t1, tmp;
+      fpCopy(data[idx - offset], t0);
+      fpCopy(data[idx], t1);
+      fpCopy(t1, data[idx - offset]);
+      fpMul(t0, t1, tmp);
+      fpCopy(tmp, data[idx]);
+    }
+    __syncthreads();
+  }
+}
+
+template <int kBlockSize>
+__device__ __forceinline__ void jacobianToAffineBatchInv(
+    const GpuJacobianPoint& j, bool active, GpuAffinePoint& a,
+    GpuFieldElement* sh_z, GpuFieldElement* sh_prefix, GpuFieldElement* sh_rev,
+    GpuFieldElement* sh_inv_total) {
+  const int tid = threadIdx.x;
+  const int rev = kBlockSize - 1 - tid;
+
+  const bool valid = active && !pointIsInfinity(j);
+
+  GpuFieldElement one;
+  fpSetOne(one);
+
+  if (valid) {
+    fpCopy(j.Z, sh_z[tid]);
+  } else {
+    fpCopy(one, sh_z[tid]);
+  }
+  __syncthreads();
+
+  // prefix[i] = prod_{k < i} z[k]
+  fpCopy(sh_z[tid], sh_prefix[tid]);
+  __syncthreads();
+  blockExclusiveProdScan<kBlockSize>(sh_prefix);
+
+  // rev-prefix for suffix: rev-prefix[rev] = prod_{k < rev} z_rev[k]
+  // suffix[i] = prod_{k > i} z[k] = rev-prefix[rev]
+  fpCopy(sh_z[rev], sh_rev[tid]);
+  __syncthreads();
+  blockExclusiveProdScan<kBlockSize>(sh_rev);
+
+  if (tid == 0) {
+    GpuFieldElement total;
+    fpMul(sh_prefix[kBlockSize - 1], sh_z[kBlockSize - 1], total);
+    fpInv(total, *sh_inv_total);
+  }
+  __syncthreads();
+
+  if (!valid) {
+    fpSetZero(a.x);
+    fpSetZero(a.y);
+    return;
+  }
+
+  GpuFieldElement suffix;
+  fpCopy(sh_rev[rev], suffix);
+
+  GpuFieldElement prod, zInv, zInv2, zInv3;
+  fpMul(sh_prefix[tid], suffix, prod);
+  fpMul(prod, *sh_inv_total, zInv);
+
+  fpSqr(zInv, zInv2);
+  fpMul(zInv2, zInv, zInv3);
+
+  fpMul(j.X, zInv2, a.x);
   fpMul(j.Y, zInv3, a.y);
 }
 
@@ -1168,98 +1625,408 @@ extern "C" CudaEccError debugReadScalar(const void* hostScalar,
   return status;
 }
 
+// SM3 (fixed 32-byte message) and HashToCurve helpers
+
+__device__ __forceinline__ uint32_t rotl32(uint32_t x, int n) {
+  return (x << n) | (x >> (32 - n));
+}
+
+__device__ __forceinline__ uint32_t loadBe32(const uint8_t* p) {
+  return (static_cast<uint32_t>(p[0]) << 24) |
+         (static_cast<uint32_t>(p[1]) << 16) |
+         (static_cast<uint32_t>(p[2]) << 8) | static_cast<uint32_t>(p[3]);
+}
+
+__device__ __forceinline__ uint64_t loadBe64(const uint8_t* p) {
+  return (static_cast<uint64_t>(loadBe32(p)) << 32) | loadBe32(p + 4);
+}
+
+__device__ __forceinline__ void storeBe32(uint8_t* out, uint32_t v) {
+  out[0] = static_cast<uint8_t>(v >> 24);
+  out[1] = static_cast<uint8_t>(v >> 16);
+  out[2] = static_cast<uint8_t>(v >> 8);
+  out[3] = static_cast<uint8_t>(v);
+}
+
+__device__ __forceinline__ uint32_t sm3P0(uint32_t x) {
+  return x ^ rotl32(x, 9) ^ rotl32(x, 17);
+}
+
+__device__ __forceinline__ uint32_t sm3P1(uint32_t x) {
+  return x ^ rotl32(x, 15) ^ rotl32(x, 23);
+}
+
+__device__ __forceinline__ uint32_t sm3FF(uint32_t x, uint32_t y, uint32_t z,
+                                          int j) {
+  if (j < 16) {
+    return x ^ y ^ z;
+  }
+  return (x & y) | (x & z) | (y & z);
+}
+
+__device__ __forceinline__ uint32_t sm3GG(uint32_t x, uint32_t y, uint32_t z,
+                                          int j) {
+  if (j < 16) {
+    return x ^ y ^ z;
+  }
+  return (x & y) | ((~x) & z);
+}
+
+// SM3 hash for exactly 32 bytes (single-block).
+__device__ __forceinline__ void sm3Hash32(const uint8_t* msg32,
+                                          uint8_t* digest32) {
+  // Message words W[0..15].
+  uint32_t W[68];
+#pragma unroll
+  for (int i = 0; i < 8; ++i) {
+    W[i] = loadBe32(msg32 + i * 4);
+  }
+  W[8] = 0x80000000U;
+#pragma unroll
+  for (int i = 9; i <= 13; ++i) {
+    W[i] = 0;
+  }
+  W[14] = 0;
+  W[15] = 256;  // 32 bytes * 8 bits
+
+  // Message expansion.
+  for (int j = 16; j < 68; ++j) {
+    const uint32_t x = W[j - 16] ^ W[j - 9] ^ rotl32(W[j - 3], 15);
+    W[j] = sm3P1(x) ^ rotl32(W[j - 13], 7) ^ W[j - 6];
+  }
+
+  // W' = W[j] ^ W[j+4]
+  uint32_t W1[64];
+  for (int j = 0; j < 64; ++j) {
+    W1[j] = W[j] ^ W[j + 4];
+  }
+
+  uint32_t A = 0x7380166FU;
+  uint32_t B = 0x4914B2B9U;
+  uint32_t C = 0x172442D7U;
+  uint32_t D = 0xDA8A0600U;
+  uint32_t E = 0xA96F30BCU;
+  uint32_t F = 0x163138AAU;
+  uint32_t G = 0xE38DEE4DU;
+  uint32_t H = 0xB0FB0E4EU;
+
+  for (int j = 0; j < 64; ++j) {
+    const uint32_t Tj = (j < 16) ? 0x79CC4519U : 0x7A879D8AU;
+    const uint32_t ss1 =
+        rotl32(rotl32(A, 12) + E + rotl32(Tj, j & 31), 7);
+    const uint32_t ss2 = ss1 ^ rotl32(A, 12);
+    const uint32_t tt1 = sm3FF(A, B, C, j) + D + ss2 + W1[j];
+    const uint32_t tt2 = sm3GG(E, F, G, j) + H + ss1 + W[j];
+    D = C;
+    C = rotl32(B, 9);
+    B = A;
+    A = tt1;
+    H = G;
+    G = rotl32(F, 19);
+    F = E;
+    E = sm3P0(tt2);
+  }
+
+  A ^= 0x7380166FU;
+  B ^= 0x4914B2B9U;
+  C ^= 0x172442D7U;
+  D ^= 0xDA8A0600U;
+  E ^= 0xA96F30BCU;
+  F ^= 0x163138AAU;
+  G ^= 0xE38DEE4DU;
+  H ^= 0xB0FB0E4EU;
+
+  storeBe32(digest32 + 0, A);
+  storeBe32(digest32 + 4, B);
+  storeBe32(digest32 + 8, C);
+  storeBe32(digest32 + 12, D);
+  storeBe32(digest32 + 16, E);
+  storeBe32(digest32 + 20, F);
+  storeBe32(digest32 + 24, G);
+  storeBe32(digest32 + 28, H);
+}
+
+__device__ __forceinline__ void digestToSm2X(const uint8_t* digest,
+                                             GpuFieldElement& x) {
+  // Interpret digest as a big-endian 256-bit integer and reduce mod p.
+  x.limbs[0] = loadBe64(digest + 24);
+  x.limbs[1] = loadBe64(digest + 16);
+  x.limbs[2] = loadBe64(digest + 8);
+  x.limbs[3] = loadBe64(digest + 0);
+
+  uint64_t tmp[4];
+  const uint64_t borrow = sub256(x.limbs, kSm2Prime, tmp);
+  if (borrow == 0) {
+    x.limbs[0] = tmp[0];
+    x.limbs[1] = tmp[1];
+    x.limbs[2] = tmp[2];
+    x.limbs[3] = tmp[3];
+  }
+}
+
+__device__ __forceinline__ bool hashToCurveTryAndRehashSmFromDigest(
+    const uint8_t* digest_in, GpuAffinePoint& pointMont) {
+  uint8_t digest[32];
+#pragma unroll
+  for (int i = 0; i < 32; ++i) {
+    digest[i] = digest_in[i];
+  }
+
+  constexpr int kMaxTries = 100;  // keep consistent with CPU guard
+  for (int t = 0; t < kMaxTries; ++t) {
+    GpuFieldElement xNorm;
+    digestToSm2X(digest, xNorm);
+
+    GpuFieldElement xMont;
+    fpToMont(xNorm, xMont);
+
+    // rhs = x^3 + a*x + b (all in Montgomery form)
+    GpuFieldElement x2, x3, ax, rhs;
+    fpSqr(xMont, x2);
+    fpMul(x2, xMont, x3);
+    fpMul(kSm2AMont, xMont, ax);
+    fpAdd(x3, ax, rhs);
+    fpAdd(rhs, kSm2BMont, rhs);
+
+    GpuFieldElement yMont;
+    if (fpSqrt(rhs, yMont)) {
+      // Choose y with even LSB (ybit = 0).
+      GpuFieldElement yNorm;
+      fpFromMont(yMont, yNorm);
+      if (yNorm.limbs[0] & 1ULL) {
+        fpNeg(yMont, yMont);
+      }
+
+      fpCopy(xMont, pointMont.x);
+      fpCopy(yMont, pointMont.y);
+      return true;
+    }
+
+    uint8_t next[32];
+    sm3Hash32(digest, next);
+#pragma unroll
+    for (int i = 0; i < 32; ++i) {
+      digest[i] = next[i];
+    }
+  }
+
+  return false;
+}
+
 // CUDA kernels
 
 __global__ void batchFixedBaseMulKernel(const GpuScalar* scalars,
                                         GpuAffinePoint* results,
                                         int32_t count) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx >= count) return;
+  const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  const bool active = (idx < count);
 
   GpuJacobianPoint jac;
+  if (active) {
+    scalarMulFixedBase(scalars[idx], jac);
+  } else {
+    pointSetInfinity(jac);
+  }
+
+  __shared__ GpuFieldElement sh_z[256];
+  __shared__ GpuFieldElement sh_prefix[256];
+  __shared__ GpuFieldElement sh_rev[256];
+  __shared__ GpuFieldElement sh_inv_total;
+
   GpuAffinePoint affineResult;
-  scalarMulFixedBase(scalars[idx], jac);
-  jacobianToAffine(jac, affineResult);
-  // Convert from Montgomery form to normal form for output
-  affinePointFromMont(affineResult, results[idx]);
+  jacobianToAffineBatchInv<256>(jac, active, affineResult, sh_z, sh_prefix,
+                                sh_rev, &sh_inv_total);
+
+  if (active) {
+    // Convert from Montgomery form to normal form for output
+    affinePointFromMont(affineResult, results[idx]);
+  }
 }
 
 __global__ void batchVarBaseMulKernel(const GpuAffinePoint* points,
                                       const GpuScalar* scalars,
                                       GpuAffinePoint* results, int32_t count) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx >= count) return;
+  const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  const bool active = (idx < count);
 
-  // Convert input point from normal form to Montgomery form
   GpuAffinePoint pointMont;
-  affinePointToMont(points[idx], pointMont);
+  if (active) {
+    // Convert input point from normal form to Montgomery form
+    affinePointToMont(points[idx], pointMont);
+  }
 
   GpuJacobianPoint jac;
+  if (active) {
+    scalarMulVarBase(pointMont, scalars[idx], jac);
+  } else {
+    pointSetInfinity(jac);
+  }
+
+  __shared__ GpuFieldElement sh_z[256];
+  __shared__ GpuFieldElement sh_prefix[256];
+  __shared__ GpuFieldElement sh_rev[256];
+  __shared__ GpuFieldElement sh_inv_total;
+
   GpuAffinePoint affineResult;
-  scalarMulVarBase(pointMont, scalars[idx], jac);
-  jacobianToAffine(jac, affineResult);
-  // Convert from Montgomery form to normal form for output
-  affinePointFromMont(affineResult, results[idx]);
+  jacobianToAffineBatchInv<256>(jac, active, affineResult, sh_z, sh_prefix,
+                                sh_rev, &sh_inv_total);
+
+  if (active) {
+    // Convert from Montgomery form to normal form for output
+    affinePointFromMont(affineResult, results[idx]);
+  }
 }
 
 __global__ void batchSameScalarMulKernel(const GpuAffinePoint* points,
                                          const GpuScalar* scalar,
                                          GpuAffinePoint* results,
                                          int32_t count) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx >= count) return;
+  const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  const bool active = (idx < count);
 
   // Convert input point from normal form to Montgomery form
   GpuAffinePoint pointMont;
-  affinePointToMont(points[idx], pointMont);
+  if (active) {
+    affinePointToMont(points[idx], pointMont);
+  }
 
   GpuJacobianPoint jac;
+  if (active) {
+    scalarMulVarBase(pointMont, *scalar, jac);
+  } else {
+    pointSetInfinity(jac);
+  }
+
+  __shared__ GpuFieldElement sh_z[256];
+  __shared__ GpuFieldElement sh_prefix[256];
+  __shared__ GpuFieldElement sh_rev[256];
+  __shared__ GpuFieldElement sh_inv_total;
+
   GpuAffinePoint affineResult;
-  scalarMulVarBase(pointMont, *scalar, jac);
-  jacobianToAffine(jac, affineResult);
-  // Convert from Montgomery form to normal form for output
+  jacobianToAffineBatchInv<256>(jac, active, affineResult, sh_z, sh_prefix,
+                                sh_rev, &sh_inv_total);
+
+  if (active) {
+    // Convert from Montgomery form to normal form for output
+    affinePointFromMont(affineResult, results[idx]);
+  }
+}
+
+__global__ void batchHashAndMulFromSm3DigestsKernel(const uint8_t* digests,
+                                                   const GpuScalar* scalar,
+                                                   GpuAffinePoint* results,
+                                                   int32_t count,
+                                                   int32_t* error_flag) {
+  const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  const bool active = (idx < count);
+
+  bool ok = false;
+  GpuJacobianPoint jac;
+
+  if (active) {
+    GpuAffinePoint hashPointMont;
+    ok = hashToCurveTryAndRehashSmFromDigest(digests + idx * 32, hashPointMont);
+    if (!ok) {
+      if (error_flag != nullptr) {
+        atomicExch(error_flag, 1);
+      }
+      pointSetInfinity(jac);
+    } else {
+      scalarMulVarBase(hashPointMont, *scalar, jac);
+    }
+  } else {
+    pointSetInfinity(jac);
+  }
+
+  __shared__ GpuFieldElement sh_z[256];
+  __shared__ GpuFieldElement sh_prefix[256];
+  __shared__ GpuFieldElement sh_rev[256];
+  __shared__ GpuFieldElement sh_inv_total;
+
+  GpuAffinePoint affineResult;
+  jacobianToAffineBatchInv<256>(jac, active && ok, affineResult, sh_z,
+                                sh_prefix, sh_rev, &sh_inv_total);
+
+  if (!active) {
+    return;
+  }
+  if (!ok) {
+    fpSetZero(results[idx].x);
+    fpSetZero(results[idx].y);
+    return;
+  }
   affinePointFromMont(affineResult, results[idx]);
 }
 
 __global__ void batchPointAddKernel(const GpuAffinePoint* p1s,
                                     const GpuAffinePoint* p2s,
                                     GpuAffinePoint* results, int32_t count) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx >= count) return;
+  const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  const bool active = (idx < count);
 
   // Convert input points from normal form to Montgomery form
   GpuAffinePoint p1Mont, p2Mont;
-  affinePointToMont(p1s[idx], p1Mont);
-  affinePointToMont(p2s[idx], p2Mont);
+  if (active) {
+    affinePointToMont(p1s[idx], p1Mont);
+    affinePointToMont(p2s[idx], p2Mont);
+  }
 
   GpuJacobianPoint jac1, jac2, jacR;
-  affineToJacobian(p1Mont, jac1);
-  affineToJacobian(p2Mont, jac2);
-  pointAdd(jac1, jac2, jacR);
+  if (active) {
+    affineToJacobian(p1Mont, jac1);
+    affineToJacobian(p2Mont, jac2);
+    pointAdd(jac1, jac2, jacR);
+  } else {
+    pointSetInfinity(jacR);
+  }
+
+  __shared__ GpuFieldElement sh_z[256];
+  __shared__ GpuFieldElement sh_prefix[256];
+  __shared__ GpuFieldElement sh_rev[256];
+  __shared__ GpuFieldElement sh_inv_total;
 
   GpuAffinePoint affineResult;
-  jacobianToAffine(jacR, affineResult);
-  // Convert from Montgomery form to normal form for output
-  affinePointFromMont(affineResult, results[idx]);
+  jacobianToAffineBatchInv<256>(jacR, active, affineResult, sh_z, sh_prefix,
+                                sh_rev, &sh_inv_total);
+
+  if (active) {
+    // Convert from Montgomery form to normal form for output
+    affinePointFromMont(affineResult, results[idx]);
+  }
 }
 
 __global__ void batchPointDoubleKernel(const GpuAffinePoint* points,
                                        GpuAffinePoint* results, int32_t count) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx >= count) return;
+  const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  const bool active = (idx < count);
 
   // Convert input point from normal form to Montgomery form
   GpuAffinePoint pointMont;
-  affinePointToMont(points[idx], pointMont);
+  if (active) {
+    affinePointToMont(points[idx], pointMont);
+  }
 
   GpuJacobianPoint jac, jacR;
-  affineToJacobian(pointMont, jac);
-  pointDouble(jac, jacR);
+  if (active) {
+    affineToJacobian(pointMont, jac);
+    pointDouble(jac, jacR);
+  } else {
+    pointSetInfinity(jacR);
+  }
+
+  __shared__ GpuFieldElement sh_z[256];
+  __shared__ GpuFieldElement sh_prefix[256];
+  __shared__ GpuFieldElement sh_rev[256];
+  __shared__ GpuFieldElement sh_inv_total;
 
   GpuAffinePoint affineResult;
-  jacobianToAffine(jacR, affineResult);
-  // Convert from Montgomery form to normal form for output
-  affinePointFromMont(affineResult, results[idx]);
+  jacobianToAffineBatchInv<256>(jacR, active, affineResult, sh_z, sh_prefix,
+                                sh_rev, &sh_inv_total);
+
+  if (active) {
+    // Convert from Montgomery form to normal form for output
+    affinePointFromMont(affineResult, results[idx]);
+  }
 }
 
 __global__ void batchPointNegateKernel(const GpuAffinePoint* points,
@@ -1299,28 +2066,42 @@ __global__ void batchDoubleBaseMulKernel(const GpuScalar* s1,
                                          const GpuAffinePoint* points,
                                          GpuAffinePoint* results,
                                          int32_t count) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (idx >= count) return;
+  const int idx = blockIdx.x * blockDim.x + threadIdx.x;
+  const bool active = (idx < count);
 
   // Convert input point from normal form to Montgomery form
   GpuAffinePoint pointMont;
-  affinePointToMont(points[idx], pointMont);
+  if (active) {
+    affinePointToMont(points[idx], pointMont);
+  }
 
   GpuJacobianPoint jac1, jac2, jacR;
+  if (active) {
+    // Compute s1 * G
+    scalarMulFixedBase(s1[idx], jac1);
 
-  // Compute s1 * G
-  scalarMulFixedBase(s1[idx], jac1);
+    // Compute s2 * P
+    scalarMulVarBase(pointMont, s2[idx], jac2);
 
-  // Compute s2 * P
-  scalarMulVarBase(pointMont, s2[idx], jac2);
+    // R = s1*G + s2*P
+    pointAdd(jac1, jac2, jacR);
+  } else {
+    pointSetInfinity(jacR);
+  }
 
-  // R = s1*G + s2*P
-  pointAdd(jac1, jac2, jacR);
+  __shared__ GpuFieldElement sh_z[256];
+  __shared__ GpuFieldElement sh_prefix[256];
+  __shared__ GpuFieldElement sh_rev[256];
+  __shared__ GpuFieldElement sh_inv_total;
 
   GpuAffinePoint affineResult;
-  jacobianToAffine(jacR, affineResult);
-  // Convert from Montgomery form to normal form for output
-  affinePointFromMont(affineResult, results[idx]);
+  jacobianToAffineBatchInv<256>(jacR, active, affineResult, sh_z, sh_prefix,
+                                sh_rev, &sh_inv_total);
+
+  if (active) {
+    // Convert from Montgomery form to normal form for output
+    affinePointFromMont(affineResult, results[idx]);
+  }
 }
 
 // Host wrapper functions
@@ -1335,60 +2116,39 @@ CudaEccError batchMulBase(const void* hostScalars, void* hostResults,
     return CudaEccError::kCudaError;
   }
 
-  // Allocate device memory
-  GpuScalar* devScalars = nullptr;
-  GpuAffinePoint* devResults = nullptr;
+  std::lock_guard<std::mutex> ws_lock(g_workspace_mutex);
 
-  size_t scalarBytes = count * sizeof(GpuScalar);
-  size_t pointBytes = count * sizeof(GpuAffinePoint);
-
-  cudaError_t err = cudaMalloc(&devScalars, scalarBytes);
+  cudaError_t err =
+      ensureDeviceArray(&g_workspace.scalars, &g_workspace.scalars_capacity,
+                        static_cast<size_t>(count));
+  if (err != cudaSuccess) return toCudaEccError(err);
+  err = ensureDeviceArray(&g_workspace.results, &g_workspace.results_capacity,
+                          static_cast<size_t>(count));
   if (err != cudaSuccess) return toCudaEccError(err);
 
-  err = cudaMalloc(&devResults, pointBytes);
-  if (err != cudaSuccess) {
-    cudaFree(devScalars);
-    return toCudaEccError(err);
-  }
+  const size_t scalarBytes = static_cast<size_t>(count) * sizeof(GpuScalar);
+  const size_t pointBytes =
+      static_cast<size_t>(count) * sizeof(GpuAffinePoint);
 
-  CudaEccError status = CudaEccError::kSuccess;
+  err = cudaMemcpyAsync(g_workspace.scalars, hostScalars, scalarBytes,
+                        cudaMemcpyHostToDevice, stream);
+  if (err != cudaSuccess) return toCudaEccError(err);
 
-  do {
-    err = cudaMemcpyAsync(devScalars, hostScalars, scalarBytes,
-                          cudaMemcpyHostToDevice, stream);
-    if (err != cudaSuccess) {
-      status = toCudaEccError(err);
-      break;
-    }
+  constexpr int kThreadsPerBlock = 256;
+  const int numBlocks = (count + kThreadsPerBlock - 1) / kThreadsPerBlock;
+  batchFixedBaseMulKernel<<<numBlocks, kThreadsPerBlock, 0, stream>>>(
+      g_workspace.scalars, g_workspace.results, count);
+  err = cudaPeekAtLastError();
+  if (err != cudaSuccess) return toCudaEccError(err);
 
-    const int threadsPerBlock = 256;
-    const int numBlocks = (count + threadsPerBlock - 1) / threadsPerBlock;
-    batchFixedBaseMulKernel<<<numBlocks, threadsPerBlock, 0, stream>>>(
-        devScalars, devResults, count);
-    err = cudaPeekAtLastError();
-    if (err != cudaSuccess) {
-      status = toCudaEccError(err);
-      break;
-    }
+  err = cudaMemcpyAsync(hostResults, g_workspace.results, pointBytes,
+                        cudaMemcpyDeviceToHost, stream);
+  if (err != cudaSuccess) return toCudaEccError(err);
 
-    err = cudaMemcpyAsync(hostResults, devResults, pointBytes,
-                          cudaMemcpyDeviceToHost, stream);
-    if (err != cudaSuccess) {
-      status = toCudaEccError(err);
-      break;
-    }
+  err = cudaStreamSynchronize(stream);
+  if (err != cudaSuccess) return toCudaEccError(err);
 
-    err = cudaStreamSynchronize(stream);
-    if (err != cudaSuccess) {
-      status = toCudaEccError(err);
-      break;
-    }
-  } while (false);
-
-  cudaFree(devScalars);
-  cudaFree(devResults);
-
-  return status;
+  return CudaEccError::kSuccess;
 }
 
 CudaEccError batchMul(const void* hostPoints, const void* hostScalars,
@@ -1402,74 +2162,45 @@ CudaEccError batchMul(const void* hostPoints, const void* hostScalars,
     return CudaEccError::kCudaError;
   }
 
-  GpuAffinePoint* devPoints = nullptr;
-  GpuScalar* devScalars = nullptr;
-  GpuAffinePoint* devResults = nullptr;
+  std::lock_guard<std::mutex> ws_lock(g_workspace_mutex);
 
-  size_t pointBytes = count * sizeof(GpuAffinePoint);
-  size_t scalarBytes = count * sizeof(GpuScalar);
-
-  cudaError_t err = cudaMalloc(&devPoints, pointBytes);
+  cudaError_t err =
+      ensureDeviceArray(&g_workspace.points, &g_workspace.points_capacity,
+                        static_cast<size_t>(count));
+  if (err != cudaSuccess) return toCudaEccError(err);
+  err = ensureDeviceArray(&g_workspace.scalars, &g_workspace.scalars_capacity,
+                          static_cast<size_t>(count));
+  if (err != cudaSuccess) return toCudaEccError(err);
+  err = ensureDeviceArray(&g_workspace.results, &g_workspace.results_capacity,
+                          static_cast<size_t>(count));
   if (err != cudaSuccess) return toCudaEccError(err);
 
-  err = cudaMalloc(&devScalars, scalarBytes);
-  if (err != cudaSuccess) {
-    cudaFree(devPoints);
-    return toCudaEccError(err);
-  }
+  const size_t pointBytes =
+      static_cast<size_t>(count) * sizeof(GpuAffinePoint);
+  const size_t scalarBytes = static_cast<size_t>(count) * sizeof(GpuScalar);
 
-  err = cudaMalloc(&devResults, pointBytes);
-  if (err != cudaSuccess) {
-    cudaFree(devPoints);
-    cudaFree(devScalars);
-    return toCudaEccError(err);
-  }
+  err = cudaMemcpyAsync(g_workspace.points, hostPoints, pointBytes,
+                        cudaMemcpyHostToDevice, stream);
+  if (err != cudaSuccess) return toCudaEccError(err);
+  err = cudaMemcpyAsync(g_workspace.scalars, hostScalars, scalarBytes,
+                        cudaMemcpyHostToDevice, stream);
+  if (err != cudaSuccess) return toCudaEccError(err);
 
-  CudaEccError status = CudaEccError::kSuccess;
+  constexpr int kThreadsPerBlock = 256;
+  const int numBlocks = (count + kThreadsPerBlock - 1) / kThreadsPerBlock;
+  batchVarBaseMulKernel<<<numBlocks, kThreadsPerBlock, 0, stream>>>(
+      g_workspace.points, g_workspace.scalars, g_workspace.results, count);
+  err = cudaPeekAtLastError();
+  if (err != cudaSuccess) return toCudaEccError(err);
 
-  do {
-    err = cudaMemcpyAsync(devPoints, hostPoints, pointBytes,
-                          cudaMemcpyHostToDevice, stream);
-    if (err != cudaSuccess) {
-      status = toCudaEccError(err);
-      break;
-    }
-    err = cudaMemcpyAsync(devScalars, hostScalars, scalarBytes,
-                          cudaMemcpyHostToDevice, stream);
-    if (err != cudaSuccess) {
-      status = toCudaEccError(err);
-      break;
-    }
+  err = cudaMemcpyAsync(hostResults, g_workspace.results, pointBytes,
+                        cudaMemcpyDeviceToHost, stream);
+  if (err != cudaSuccess) return toCudaEccError(err);
 
-    const int threadsPerBlock = 256;
-    const int numBlocks = (count + threadsPerBlock - 1) / threadsPerBlock;
-    batchVarBaseMulKernel<<<numBlocks, threadsPerBlock, 0, stream>>>(
-        devPoints, devScalars, devResults, count);
-    err = cudaPeekAtLastError();
-    if (err != cudaSuccess) {
-      status = toCudaEccError(err);
-      break;
-    }
+  err = cudaStreamSynchronize(stream);
+  if (err != cudaSuccess) return toCudaEccError(err);
 
-    err = cudaMemcpyAsync(hostResults, devResults, pointBytes,
-                          cudaMemcpyDeviceToHost, stream);
-    if (err != cudaSuccess) {
-      status = toCudaEccError(err);
-      break;
-    }
-
-    err = cudaStreamSynchronize(stream);
-    if (err != cudaSuccess) {
-      status = toCudaEccError(err);
-      break;
-    }
-  } while (false);
-
-  cudaFree(devPoints);
-  cudaFree(devScalars);
-  cudaFree(devResults);
-
-  return status;
+  return CudaEccError::kSuccess;
 }
 
 CudaEccError batchMulSameScalar(const void* hostPoints, const void* hostScalar,
@@ -1484,73 +2215,44 @@ CudaEccError batchMulSameScalar(const void* hostPoints, const void* hostScalar,
     return CudaEccError::kCudaError;
   }
 
-  GpuAffinePoint* devPoints = nullptr;
-  GpuScalar* devScalar = nullptr;
-  GpuAffinePoint* devResults = nullptr;
+  std::lock_guard<std::mutex> ws_lock(g_workspace_mutex);
 
-  size_t pointBytes = count * sizeof(GpuAffinePoint);
-
-  cudaError_t err = cudaMalloc(&devPoints, pointBytes);
+  cudaError_t err =
+      ensureDeviceArray(&g_workspace.points, &g_workspace.points_capacity,
+                        static_cast<size_t>(count));
+  if (err != cudaSuccess) return toCudaEccError(err);
+  err = ensureDeviceArray(&g_workspace.scalars, &g_workspace.scalars_capacity,
+                          1);
+  if (err != cudaSuccess) return toCudaEccError(err);
+  err = ensureDeviceArray(&g_workspace.results, &g_workspace.results_capacity,
+                          static_cast<size_t>(count));
   if (err != cudaSuccess) return toCudaEccError(err);
 
-  err = cudaMalloc(&devScalar, sizeof(GpuScalar));
-  if (err != cudaSuccess) {
-    cudaFree(devPoints);
-    return toCudaEccError(err);
-  }
+  const size_t pointBytes =
+      static_cast<size_t>(count) * sizeof(GpuAffinePoint);
 
-  err = cudaMalloc(&devResults, pointBytes);
-  if (err != cudaSuccess) {
-    cudaFree(devPoints);
-    cudaFree(devScalar);
-    return toCudaEccError(err);
-  }
+  err = cudaMemcpyAsync(g_workspace.points, hostPoints, pointBytes,
+                        cudaMemcpyHostToDevice, stream);
+  if (err != cudaSuccess) return toCudaEccError(err);
+  err = cudaMemcpyAsync(g_workspace.scalars, hostScalar, sizeof(GpuScalar),
+                        cudaMemcpyHostToDevice, stream);
+  if (err != cudaSuccess) return toCudaEccError(err);
 
-  CudaEccError status = CudaEccError::kSuccess;
+  constexpr int kThreadsPerBlock = 256;
+  const int numBlocks = (count + kThreadsPerBlock - 1) / kThreadsPerBlock;
+  batchSameScalarMulKernel<<<numBlocks, kThreadsPerBlock, 0, stream>>>(
+      g_workspace.points, g_workspace.scalars, g_workspace.results, count);
+  err = cudaPeekAtLastError();
+  if (err != cudaSuccess) return toCudaEccError(err);
 
-  do {
-    err = cudaMemcpyAsync(devPoints, hostPoints, pointBytes,
-                          cudaMemcpyHostToDevice, stream);
-    if (err != cudaSuccess) {
-      status = toCudaEccError(err);
-      break;
-    }
-    err = cudaMemcpyAsync(devScalar, hostScalar, sizeof(GpuScalar),
-                          cudaMemcpyHostToDevice, stream);
-    if (err != cudaSuccess) {
-      status = toCudaEccError(err);
-      break;
-    }
+  err = cudaMemcpyAsync(hostResults, g_workspace.results, pointBytes,
+                        cudaMemcpyDeviceToHost, stream);
+  if (err != cudaSuccess) return toCudaEccError(err);
 
-    const int threadsPerBlock = 256;
-    const int numBlocks = (count + threadsPerBlock - 1) / threadsPerBlock;
-    batchSameScalarMulKernel<<<numBlocks, threadsPerBlock, 0, stream>>>(
-        devPoints, devScalar, devResults, count);
-    err = cudaPeekAtLastError();
-    if (err != cudaSuccess) {
-      status = toCudaEccError(err);
-      break;
-    }
+  err = cudaStreamSynchronize(stream);
+  if (err != cudaSuccess) return toCudaEccError(err);
 
-    err = cudaMemcpyAsync(hostResults, devResults, pointBytes,
-                          cudaMemcpyDeviceToHost, stream);
-    if (err != cudaSuccess) {
-      status = toCudaEccError(err);
-      break;
-    }
-
-    err = cudaStreamSynchronize(stream);
-    if (err != cudaSuccess) {
-      status = toCudaEccError(err);
-      break;
-    }
-  } while (false);
-
-  cudaFree(devPoints);
-  cudaFree(devScalar);
-  cudaFree(devResults);
-
-  return status;
+  return CudaEccError::kSuccess;
 }
 
 CudaEccError batchMulDoubleBase(const void* hostS1, const void* hostS2,
@@ -1565,90 +2267,52 @@ CudaEccError batchMulDoubleBase(const void* hostS1, const void* hostS2,
     return CudaEccError::kCudaError;
   }
 
-  GpuScalar* devS1 = nullptr;
-  GpuScalar* devS2 = nullptr;
-  GpuAffinePoint* devPoints = nullptr;
-  GpuAffinePoint* devResults = nullptr;
+  std::lock_guard<std::mutex> ws_lock(g_workspace_mutex);
 
-  const size_t scalarBytes = count * sizeof(GpuScalar);
-  const size_t pointBytes = count * sizeof(GpuAffinePoint);
-
-  cudaError_t err = cudaMalloc(&devS1, scalarBytes);
+  cudaError_t err =
+      ensureDeviceArray(&g_workspace.scalars, &g_workspace.scalars_capacity,
+                        static_cast<size_t>(count));
+  if (err != cudaSuccess) return toCudaEccError(err);
+  err = ensureDeviceArray(&g_workspace.scalars2, &g_workspace.scalars2_capacity,
+                          static_cast<size_t>(count));
+  if (err != cudaSuccess) return toCudaEccError(err);
+  err = ensureDeviceArray(&g_workspace.points, &g_workspace.points_capacity,
+                          static_cast<size_t>(count));
+  if (err != cudaSuccess) return toCudaEccError(err);
+  err = ensureDeviceArray(&g_workspace.results, &g_workspace.results_capacity,
+                          static_cast<size_t>(count));
   if (err != cudaSuccess) return toCudaEccError(err);
 
-  err = cudaMalloc(&devS2, scalarBytes);
-  if (err != cudaSuccess) {
-    cudaFree(devS1);
-    return toCudaEccError(err);
-  }
+  const size_t scalarBytes = static_cast<size_t>(count) * sizeof(GpuScalar);
+  const size_t pointBytes =
+      static_cast<size_t>(count) * sizeof(GpuAffinePoint);
 
-  err = cudaMalloc(&devPoints, pointBytes);
-  if (err != cudaSuccess) {
-    cudaFree(devS1);
-    cudaFree(devS2);
-    return toCudaEccError(err);
-  }
+  err = cudaMemcpyAsync(g_workspace.scalars, hostS1, scalarBytes,
+                        cudaMemcpyHostToDevice, stream);
+  if (err != cudaSuccess) return toCudaEccError(err);
+  err = cudaMemcpyAsync(g_workspace.scalars2, hostS2, scalarBytes,
+                        cudaMemcpyHostToDevice, stream);
+  if (err != cudaSuccess) return toCudaEccError(err);
+  err = cudaMemcpyAsync(g_workspace.points, hostPoints, pointBytes,
+                        cudaMemcpyHostToDevice, stream);
+  if (err != cudaSuccess) return toCudaEccError(err);
 
-  err = cudaMalloc(&devResults, pointBytes);
-  if (err != cudaSuccess) {
-    cudaFree(devS1);
-    cudaFree(devS2);
-    cudaFree(devPoints);
-    return toCudaEccError(err);
-  }
+  constexpr int kThreadsPerBlock = 256;
+  const int numBlocks = (count + kThreadsPerBlock - 1) / kThreadsPerBlock;
+  batchDoubleBaseMulKernel<<<numBlocks, kThreadsPerBlock, 0, stream>>>(
+      g_workspace.scalars, g_workspace.scalars2, g_workspace.points,
+      g_workspace.results, count);
+  err = cudaPeekAtLastError();
+  if (err != cudaSuccess) return toCudaEccError(err);
 
-  CudaEccError status = CudaEccError::kSuccess;
+  err = cudaMemcpyAsync(hostResults, g_workspace.results, pointBytes,
+                        cudaMemcpyDeviceToHost, stream);
+  if (err != cudaSuccess) return toCudaEccError(err);
 
-  do {
-    err = cudaMemcpyAsync(devS1, hostS1, scalarBytes, cudaMemcpyHostToDevice,
-                          stream);
-    if (err != cudaSuccess) {
-      status = toCudaEccError(err);
-      break;
-    }
-    err = cudaMemcpyAsync(devS2, hostS2, scalarBytes, cudaMemcpyHostToDevice,
-                          stream);
-    if (err != cudaSuccess) {
-      status = toCudaEccError(err);
-      break;
-    }
-    err = cudaMemcpyAsync(devPoints, hostPoints, pointBytes,
-                          cudaMemcpyHostToDevice, stream);
-    if (err != cudaSuccess) {
-      status = toCudaEccError(err);
-      break;
-    }
+  err = cudaStreamSynchronize(stream);
+  if (err != cudaSuccess) return toCudaEccError(err);
 
-    const int threadsPerBlock = 256;
-    const int numBlocks = (count + threadsPerBlock - 1) / threadsPerBlock;
-    batchDoubleBaseMulKernel<<<numBlocks, threadsPerBlock, 0, stream>>>(
-        devS1, devS2, devPoints, devResults, count);
-    err = cudaPeekAtLastError();
-    if (err != cudaSuccess) {
-      status = toCudaEccError(err);
-      break;
-    }
-
-    err = cudaMemcpyAsync(hostResults, devResults, pointBytes,
-                          cudaMemcpyDeviceToHost, stream);
-    if (err != cudaSuccess) {
-      status = toCudaEccError(err);
-      break;
-    }
-
-    err = cudaStreamSynchronize(stream);
-    if (err != cudaSuccess) {
-      status = toCudaEccError(err);
-      break;
-    }
-  } while (false);
-
-  cudaFree(devS1);
-  cudaFree(devS2);
-  cudaFree(devPoints);
-  cudaFree(devResults);
-
-  return status;
+  return CudaEccError::kSuccess;
 }
 
 CudaEccError batchAdd(const void* hostP1s, const void* hostP2s,
@@ -1662,73 +2326,44 @@ CudaEccError batchAdd(const void* hostP1s, const void* hostP2s,
     return CudaEccError::kCudaError;
   }
 
-  GpuAffinePoint* devP1s = nullptr;
-  GpuAffinePoint* devP2s = nullptr;
-  GpuAffinePoint* devResults = nullptr;
+  std::lock_guard<std::mutex> ws_lock(g_workspace_mutex);
 
-  size_t pointBytes = count * sizeof(GpuAffinePoint);
-
-  cudaError_t err = cudaMalloc(&devP1s, pointBytes);
+  cudaError_t err =
+      ensureDeviceArray(&g_workspace.points, &g_workspace.points_capacity,
+                        static_cast<size_t>(count));
+  if (err != cudaSuccess) return toCudaEccError(err);
+  err = ensureDeviceArray(&g_workspace.points2, &g_workspace.points2_capacity,
+                          static_cast<size_t>(count));
+  if (err != cudaSuccess) return toCudaEccError(err);
+  err = ensureDeviceArray(&g_workspace.results, &g_workspace.results_capacity,
+                          static_cast<size_t>(count));
   if (err != cudaSuccess) return toCudaEccError(err);
 
-  err = cudaMalloc(&devP2s, pointBytes);
-  if (err != cudaSuccess) {
-    cudaFree(devP1s);
-    return toCudaEccError(err);
-  }
+  const size_t pointBytes =
+      static_cast<size_t>(count) * sizeof(GpuAffinePoint);
 
-  err = cudaMalloc(&devResults, pointBytes);
-  if (err != cudaSuccess) {
-    cudaFree(devP1s);
-    cudaFree(devP2s);
-    return toCudaEccError(err);
-  }
+  err = cudaMemcpyAsync(g_workspace.points, hostP1s, pointBytes,
+                        cudaMemcpyHostToDevice, stream);
+  if (err != cudaSuccess) return toCudaEccError(err);
+  err = cudaMemcpyAsync(g_workspace.points2, hostP2s, pointBytes,
+                        cudaMemcpyHostToDevice, stream);
+  if (err != cudaSuccess) return toCudaEccError(err);
 
-  CudaEccError status = CudaEccError::kSuccess;
+  constexpr int kThreadsPerBlock = 256;
+  const int numBlocks = (count + kThreadsPerBlock - 1) / kThreadsPerBlock;
+  batchPointAddKernel<<<numBlocks, kThreadsPerBlock, 0, stream>>>(
+      g_workspace.points, g_workspace.points2, g_workspace.results, count);
+  err = cudaPeekAtLastError();
+  if (err != cudaSuccess) return toCudaEccError(err);
 
-  do {
-    err = cudaMemcpyAsync(devP1s, hostP1s, pointBytes, cudaMemcpyHostToDevice,
-                          stream);
-    if (err != cudaSuccess) {
-      status = toCudaEccError(err);
-      break;
-    }
-    err = cudaMemcpyAsync(devP2s, hostP2s, pointBytes, cudaMemcpyHostToDevice,
-                          stream);
-    if (err != cudaSuccess) {
-      status = toCudaEccError(err);
-      break;
-    }
+  err = cudaMemcpyAsync(hostResults, g_workspace.results, pointBytes,
+                        cudaMemcpyDeviceToHost, stream);
+  if (err != cudaSuccess) return toCudaEccError(err);
 
-    const int threadsPerBlock = 256;
-    const int numBlocks = (count + threadsPerBlock - 1) / threadsPerBlock;
-    batchPointAddKernel<<<numBlocks, threadsPerBlock, 0, stream>>>(
-        devP1s, devP2s, devResults, count);
-    err = cudaPeekAtLastError();
-    if (err != cudaSuccess) {
-      status = toCudaEccError(err);
-      break;
-    }
+  err = cudaStreamSynchronize(stream);
+  if (err != cudaSuccess) return toCudaEccError(err);
 
-    err = cudaMemcpyAsync(hostResults, devResults, pointBytes,
-                          cudaMemcpyDeviceToHost, stream);
-    if (err != cudaSuccess) {
-      status = toCudaEccError(err);
-      break;
-    }
-
-    err = cudaStreamSynchronize(stream);
-    if (err != cudaSuccess) {
-      status = toCudaEccError(err);
-      break;
-    }
-  } while (false);
-
-  cudaFree(devP1s);
-  cudaFree(devP2s);
-  cudaFree(devResults);
-
-  return status;
+  return CudaEccError::kSuccess;
 }
 
 CudaEccError batchDouble(const void* hostPoints, void* hostResults,
@@ -1741,58 +2376,105 @@ CudaEccError batchDouble(const void* hostPoints, void* hostResults,
     return CudaEccError::kCudaError;
   }
 
-  GpuAffinePoint* devPoints = nullptr;
-  GpuAffinePoint* devResults = nullptr;
+  std::lock_guard<std::mutex> ws_lock(g_workspace_mutex);
 
-  size_t pointBytes = count * sizeof(GpuAffinePoint);
-
-  cudaError_t err = cudaMalloc(&devPoints, pointBytes);
+  cudaError_t err =
+      ensureDeviceArray(&g_workspace.points, &g_workspace.points_capacity,
+                        static_cast<size_t>(count));
+  if (err != cudaSuccess) return toCudaEccError(err);
+  err = ensureDeviceArray(&g_workspace.results, &g_workspace.results_capacity,
+                          static_cast<size_t>(count));
   if (err != cudaSuccess) return toCudaEccError(err);
 
-  err = cudaMalloc(&devResults, pointBytes);
-  if (err != cudaSuccess) {
-    cudaFree(devPoints);
-    return toCudaEccError(err);
+  const size_t pointBytes =
+      static_cast<size_t>(count) * sizeof(GpuAffinePoint);
+
+  err = cudaMemcpyAsync(g_workspace.points, hostPoints, pointBytes,
+                        cudaMemcpyHostToDevice, stream);
+  if (err != cudaSuccess) return toCudaEccError(err);
+
+  constexpr int kThreadsPerBlock = 256;
+  const int numBlocks = (count + kThreadsPerBlock - 1) / kThreadsPerBlock;
+  batchPointDoubleKernel<<<numBlocks, kThreadsPerBlock, 0, stream>>>(
+      g_workspace.points, g_workspace.results, count);
+  err = cudaPeekAtLastError();
+  if (err != cudaSuccess) return toCudaEccError(err);
+
+  err = cudaMemcpyAsync(hostResults, g_workspace.results, pointBytes,
+                        cudaMemcpyDeviceToHost, stream);
+  if (err != cudaSuccess) return toCudaEccError(err);
+
+  err = cudaStreamSynchronize(stream);
+  if (err != cudaSuccess) return toCudaEccError(err);
+
+  return CudaEccError::kSuccess;
+}
+
+CudaEccError batchHashAndMulFromSm3Digests(const void* hostDigests,
+                                          const void* hostScalar,
+                                          void* hostResults, int32_t count,
+                                          cudaStream_t stream) {
+  if (count <= 0 || hostDigests == nullptr || hostScalar == nullptr ||
+      hostResults == nullptr) {
+    return CudaEccError::kInvalidInput;
+  }
+  if (stream == 0) stream = g_stream;
+  if (stream == nullptr) {
+    return CudaEccError::kCudaError;
   }
 
-  CudaEccError status = CudaEccError::kSuccess;
+  std::lock_guard<std::mutex> ws_lock(g_workspace_mutex);
 
-  do {
-    err = cudaMemcpyAsync(devPoints, hostPoints, pointBytes,
-                          cudaMemcpyHostToDevice, stream);
-    if (err != cudaSuccess) {
-      status = toCudaEccError(err);
-      break;
-    }
+  const size_t digestBytes = static_cast<size_t>(count) * 32;
+  const size_t pointBytes = static_cast<size_t>(count) * sizeof(GpuAffinePoint);
 
-    const int threadsPerBlock = 256;
-    const int numBlocks = (count + threadsPerBlock - 1) / threadsPerBlock;
-    batchPointDoubleKernel<<<numBlocks, threadsPerBlock, 0, stream>>>(
-        devPoints, devResults, count);
-    err = cudaPeekAtLastError();
-    if (err != cudaSuccess) {
-      status = toCudaEccError(err);
-      break;
-    }
+  cudaError_t err =
+      ensureDeviceBytes(&g_workspace.digests, &g_workspace.digests_capacity,
+                        digestBytes);
+  if (err != cudaSuccess) return toCudaEccError(err);
+  err =
+      ensureDeviceArray(&g_workspace.scalars, &g_workspace.scalars_capacity, 1);
+  if (err != cudaSuccess) return toCudaEccError(err);
+  err = ensureDeviceArray(&g_workspace.results, &g_workspace.results_capacity,
+                          static_cast<size_t>(count));
+  if (err != cudaSuccess) return toCudaEccError(err);
+  err = ensureDeviceArray(&g_workspace.error, &g_workspace.error_capacity, 1);
+  if (err != cudaSuccess) return toCudaEccError(err);
 
-    err = cudaMemcpyAsync(hostResults, devResults, pointBytes,
-                          cudaMemcpyDeviceToHost, stream);
-    if (err != cudaSuccess) {
-      status = toCudaEccError(err);
-      break;
-    }
+  err = cudaMemcpyAsync(g_workspace.digests, hostDigests, digestBytes,
+                        cudaMemcpyHostToDevice, stream);
+  if (err != cudaSuccess) return toCudaEccError(err);
+  err = cudaMemcpyAsync(g_workspace.scalars, hostScalar, sizeof(GpuScalar),
+                        cudaMemcpyHostToDevice, stream);
+  if (err != cudaSuccess) return toCudaEccError(err);
+  err = cudaMemsetAsync(g_workspace.error, 0, sizeof(int32_t), stream);
+  if (err != cudaSuccess) return toCudaEccError(err);
 
-    err = cudaStreamSynchronize(stream);
-    if (err != cudaSuccess) {
-      status = toCudaEccError(err);
-      break;
-    }
-  } while (false);
+  constexpr int kThreadsPerBlock = 256;
+  const int numBlocks = (count + kThreadsPerBlock - 1) / kThreadsPerBlock;
+  batchHashAndMulFromSm3DigestsKernel<<<numBlocks, kThreadsPerBlock, 0,
+                                       stream>>>(
+      g_workspace.digests, g_workspace.scalars, g_workspace.results, count,
+      g_workspace.error);
+  err = cudaPeekAtLastError();
+  if (err != cudaSuccess) return toCudaEccError(err);
 
-  cudaFree(devPoints);
-  cudaFree(devResults);
+  err = cudaMemcpyAsync(hostResults, g_workspace.results, pointBytes,
+                        cudaMemcpyDeviceToHost, stream);
+  if (err != cudaSuccess) return toCudaEccError(err);
 
-  return status;
+  int32_t hostError = 0;
+  err = cudaMemcpyAsync(&hostError, g_workspace.error, sizeof(int32_t),
+                        cudaMemcpyDeviceToHost, stream);
+  if (err != cudaSuccess) return toCudaEccError(err);
+
+  err = cudaStreamSynchronize(stream);
+  if (err != cudaSuccess) return toCudaEccError(err);
+
+  if (hostError != 0) {
+    return CudaEccError::kNotOnCurve;
+  }
+  return CudaEccError::kSuccess;
 }
 
 void copyTableToConstantMemory(const GpuAffinePoint* hostTable) {

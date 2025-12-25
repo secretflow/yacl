@@ -49,6 +49,7 @@ yacl_cc_library(
         ":sm2_cuda_kernels",
         "//yacl/crypto/ecc:spi",
         "//yacl/crypto/ecc/openssl",
+        "//yacl/crypto/hash:ssl_hash",
         "@abseil-cpp//absl/types:span",
     ],
     tags = ["manual"],

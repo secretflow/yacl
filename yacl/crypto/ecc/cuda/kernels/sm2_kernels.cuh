@@ -71,6 +71,10 @@ CudaEccError batchAdd(const void* hostP1s, const void* hostP2s,
                       cudaStream_t stream = 0);
 CudaEccError batchDouble(const void* hostPoints, void* hostResults,
                          int32_t count, cudaStream_t stream = 0);
+CudaEccError batchHashAndMulFromSm3Digests(const void* hostDigests,
+                                          const void* hostScalar,
+                                          void* hostResults, int32_t count,
+                                          cudaStream_t stream = 0);
 
 // Debug/utility functions
 extern "C" CudaEccError debugMontMul(int32_t* hostResults,

@@ -14,12 +14,20 @@
 
 #include "yacl/crypto/ecc/cuda/cuda_sm2_group.h"
 
+#include <condition_variable>
 #include <cstring>
+#include <functional>
+#include <mutex>
 #include <stdexcept>
+#include <string_view>
+#include <thread>
 #include <utility>
+#include <vector>
 
 #include "yacl/crypto/ecc/cuda/kernels/sm2_kernels.cuh"
 #include "yacl/crypto/ecc/ecc_spi.h"
+#include "yacl/crypto/openssl_wrappers.h"
+#include "yacl/utils/parallel.h"
 
 namespace yacl::crypto::cuda {
 
@@ -27,15 +35,80 @@ namespace {
 
 constexpr char kLibraryName[] = "CUDA_SM2";
 constexpr int kDefaultDeviceId = 0;
-
-// GPU point structure for data transfer (must match CUDA kernel types)
-struct GpuPoint {
-  uint64_t x[4];
-  uint64_t y[4];
-};
+constexpr size_t kSm2FieldBytes = 32;
 
 struct GpuScalarData {
   uint64_t limbs[4];
+};
+
+const MPInt& Sm2FieldP() {
+  static const MPInt p(
+      "0xFFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFF");
+  return p;
+}
+
+const MPInt& Sm2CurveB() {
+  static const MPInt b(
+      "0x28E9FA9E9D9F5E344D5A9E4BCF6509A7F39789F515AB8F92DDBCBD414D940E93");
+  return b;
+}
+
+class Sm3OneShot {
+ public:
+  Sm3OneShot() : ctx_(EVP_MD_CTX_new()) { YACL_ENFORCE(ctx_ != nullptr); }
+
+  void Digest(std::string_view data, uint8_t out[kSm2FieldBytes]) {
+    unsigned int out_len = 0;
+    OSSL_RET_1(EVP_MD_CTX_reset(ctx_.get()));
+    OSSL_RET_1(EVP_DigestInit_ex(ctx_.get(), EVP_sm3(), nullptr));
+    OSSL_RET_1(EVP_DigestUpdate(ctx_.get(), data.data(), data.size()));
+    OSSL_RET_1(EVP_DigestFinal_ex(ctx_.get(), out, &out_len));
+    YACL_ENFORCE(out_len == kSm2FieldBytes);
+  }
+
+ private:
+  openssl::UniqueMdCtx ctx_;
+};
+
+template <typename T>
+class PinnedHostBuffer {
+ public:
+  PinnedHostBuffer() = default;
+  PinnedHostBuffer(const PinnedHostBuffer&) = delete;
+  PinnedHostBuffer& operator=(const PinnedHostBuffer&) = delete;
+
+  ~PinnedHostBuffer() { Reset(); }
+
+  T* data() { return ptr_; }
+  const T* data() const { return ptr_; }
+  size_t capacity() const { return capacity_; }
+
+  bool Ensure(size_t count) {
+    if (count <= capacity_) {
+      return true;
+    }
+    Reset();
+    void* p = nullptr;
+    const cudaError_t err = cudaMallocHost(&p, count * sizeof(T));
+    if (err != cudaSuccess) {
+      return false;
+    }
+    ptr_ = static_cast<T*>(p);
+    capacity_ = count;
+    return true;
+  }
+
+  void Reset() {
+    if (ptr_ != nullptr) {
+      cudaFreeHost(ptr_);
+      ptr_ = nullptr;
+      capacity_ = 0;
+    }
+  }
+
+ private:
+  T* ptr_ = nullptr;
+  size_t capacity_ = 0;
 };
 
 }  // namespace
@@ -161,26 +234,38 @@ std::string CudaSm2Group::ToString() const {
 }
 
 EcPoint CudaSm2Group::Add(const EcPoint& p1, const EcPoint& p2) const {
-  return cpu_backend_->Add(p1, p2);
+  return cpu_backend_->Add(toCpuPoint(p1), toCpuPoint(p2));
 }
 
 void CudaSm2Group::AddInplace(EcPoint* p1, const EcPoint& p2) const {
-  cpu_backend_->AddInplace(p1, p2);
+  YACL_ENFORCE(p1 != nullptr);
+  if (!std::holds_alternative<AnyPtr>(*p1)) {
+    *p1 = toCpuPoint(*p1);
+  }
+  cpu_backend_->AddInplace(p1, toCpuPoint(p2));
 }
 
 EcPoint CudaSm2Group::Double(const EcPoint& p) const {
-  return cpu_backend_->Double(p);
+  return cpu_backend_->Double(toCpuPoint(p));
 }
 
 void CudaSm2Group::DoubleInplace(EcPoint* p) const {
+  YACL_ENFORCE(p != nullptr);
+  if (!std::holds_alternative<AnyPtr>(*p)) {
+    *p = toCpuPoint(*p);
+  }
   cpu_backend_->DoubleInplace(p);
 }
 
 EcPoint CudaSm2Group::Mul(const EcPoint& point, const MPInt& scalar) const {
-  return cpu_backend_->Mul(point, scalar);
+  return cpu_backend_->Mul(toCpuPoint(point), scalar);
 }
 
 void CudaSm2Group::MulInplace(EcPoint* point, const MPInt& scalar) const {
+  YACL_ENFORCE(point != nullptr);
+  if (!std::holds_alternative<AnyPtr>(*point)) {
+    *point = toCpuPoint(*point);
+  }
   cpu_backend_->MulInplace(point, scalar);
 }
 
@@ -190,14 +275,18 @@ EcPoint CudaSm2Group::MulBase(const MPInt& scalar) const {
 
 EcPoint CudaSm2Group::MulDoubleBase(const MPInt& s1, const MPInt& s2,
                                     const EcPoint& p2) const {
-  return cpu_backend_->MulDoubleBase(s1, s2, p2);
+  return cpu_backend_->MulDoubleBase(s1, s2, toCpuPoint(p2));
 }
 
 EcPoint CudaSm2Group::Negate(const EcPoint& point) const {
-  return cpu_backend_->Negate(point);
+  return cpu_backend_->Negate(toCpuPoint(point));
 }
 
 void CudaSm2Group::NegateInplace(EcPoint* point) const {
+  YACL_ENFORCE(point != nullptr);
+  if (!std::holds_alternative<AnyPtr>(*point)) {
+    *point = toCpuPoint(*point);
+  }
   cpu_backend_->NegateInplace(point);
 }
 
@@ -206,6 +295,9 @@ EcPoint CudaSm2Group::CopyPoint(const EcPoint& point) const {
 }
 
 AffinePoint CudaSm2Group::GetAffinePoint(const EcPoint& point) const {
+  if (std::holds_alternative<AffinePoint>(point)) {
+    return std::get<AffinePoint>(point);
+  }
   return cpu_backend_->GetAffinePoint(point);
 }
 
@@ -215,17 +307,76 @@ uint64_t CudaSm2Group::GetSerializeLength(PointOctetFormat format) const {
 
 Buffer CudaSm2Group::SerializePoint(const EcPoint& point,
                                     PointOctetFormat format) const {
-  return cpu_backend_->SerializePoint(point, format);
+  Buffer buf;
+  SerializePoint(point, format, &buf);
+  return buf;
 }
 
 void CudaSm2Group::SerializePoint(const EcPoint& point, PointOctetFormat format,
                                   Buffer* buf) const {
-  cpu_backend_->SerializePoint(point, format, buf);
+  YACL_ENFORCE(buf != nullptr);
+  if (!std::holds_alternative<AffinePoint>(point)) {
+    cpu_backend_->SerializePoint(point, format, buf);
+    return;
+  }
+
+  const auto& ap = std::get<AffinePoint>(point);
+  if (ap.x.IsZero() && ap.y.IsZero()) {
+    buf->resize(1);
+    buf->data<uint8_t>()[0] = 0x00;
+    return;
+  }
+
+  enum class SerMode : uint8_t {
+    kCompressed = 0,
+    kUncompressed = 1,
+    kHybrid = 2,
+  };
+
+  SerMode mode;
+  switch (format) {
+    case PointOctetFormat::X962Uncompressed:
+      mode = SerMode::kUncompressed;
+      break;
+    case PointOctetFormat::X962Hybrid:
+      mode = SerMode::kHybrid;
+      break;
+    default:
+      mode = SerMode::kCompressed;
+      break;
+  }
+
+  if (mode == SerMode::kCompressed) {
+    buf->resize(1 + kSm2FieldBytes);
+    uint8_t* out = buf->data<uint8_t>();
+    out[0] = ap.y.IsOdd() ? 0x03 : 0x02;
+    ap.x.ToBytes(out + 1, kSm2FieldBytes, Endian::big);
+    return;
+  }
+
+  buf->resize(1 + 2 * kSm2FieldBytes);
+  uint8_t* out = buf->data<uint8_t>();
+  if (mode == SerMode::kUncompressed) {
+    out[0] = 0x04;
+  } else {
+    out[0] = ap.y.IsOdd() ? 0x07 : 0x06;
+  }
+  ap.x.ToBytes(out + 1, kSm2FieldBytes, Endian::big);
+  ap.y.ToBytes(out + 1 + kSm2FieldBytes, kSm2FieldBytes, Endian::big);
 }
 
 void CudaSm2Group::SerializePoint(const EcPoint& point, PointOctetFormat format,
                                   uint8_t* buf, uint64_t buf_size) const {
-  cpu_backend_->SerializePoint(point, format, buf, buf_size);
+  if (!std::holds_alternative<AffinePoint>(point)) {
+    cpu_backend_->SerializePoint(point, format, buf, buf_size);
+    return;
+  }
+  Buffer tmp;
+  SerializePoint(point, format, &tmp);
+  const uint64_t tmp_size = static_cast<uint64_t>(tmp.size());
+  YACL_ENFORCE(buf_size >= tmp_size, "buf size is small than needed {}",
+               tmp_size);
+  std::memcpy(buf, tmp.data<uint8_t>(), tmp.size());
 }
 
 EcPoint CudaSm2Group::DeserializePoint(ByteContainerView buf,
@@ -246,71 +397,121 @@ yacl::math::MPInt CudaSm2Group::HashToScalar(HashToCurveStrategy strategy,
 }
 
 size_t CudaSm2Group::HashPoint(const EcPoint& point) const {
-  return cpu_backend_->HashPoint(point);
+  if (!std::holds_alternative<AffinePoint>(point)) {
+    return cpu_backend_->HashPoint(point);
+  }
+
+  const auto& ap = std::get<AffinePoint>(point);
+  if (ap.x.IsZero() && ap.y.IsZero()) {
+    return 0;
+  }
+
+  const size_t len = (ap.x.BitCount() + 7) / 8;
+  if (len == 0) {
+    return std::hash<std::string_view>{}({}) + ap.y.IsOdd();
+  }
+
+  YACL_ENFORCE(len <= kSm2FieldBytes);
+  unsigned char buf[kSm2FieldBytes];
+  ap.x.ToMagBytes(buf, len, Endian::little);
+  return std::hash<std::string_view>{}(
+             {reinterpret_cast<const char*>(buf), len}) +
+         ap.y.IsOdd();
 }
 
 bool CudaSm2Group::PointEqual(const EcPoint& p1, const EcPoint& p2) const {
-  return cpu_backend_->PointEqual(p1, p2);
+  if (std::holds_alternative<AnyPtr>(p1) && std::holds_alternative<AnyPtr>(p2)) {
+    return cpu_backend_->PointEqual(p1, p2);
+  }
+  const auto a1 = GetAffinePoint(p1);
+  const auto a2 = GetAffinePoint(p2);
+  return a1 == a2;
 }
 
 bool CudaSm2Group::IsInCurveGroup(const EcPoint& point) const {
-  return cpu_backend_->IsInCurveGroup(point);
+  if (!std::holds_alternative<AffinePoint>(point)) {
+    return cpu_backend_->IsInCurveGroup(point);
+  }
+
+  const auto& ap = std::get<AffinePoint>(point);
+  if (ap.x.IsZero() && ap.y.IsZero()) {
+    return true;
+  }
+  if (ap.x.IsNegative() || ap.y.IsNegative()) {
+    return false;
+  }
+  if (ap.x >= Sm2FieldP() || ap.y >= Sm2FieldP()) {
+    return false;
+  }
+
+  const MPInt p = Sm2FieldP();
+  const MPInt a = p - 3;
+  const MPInt x = ap.x % p;
+  const MPInt y = ap.y % p;
+
+  const MPInt y2 = (y * y) % p;
+  const MPInt x2 = (x * x) % p;
+  const MPInt x3 = (x2 * x) % p;
+  const MPInt rhs = (x3 + (a * x) + Sm2CurveB()) % p;
+  return y2 == rhs;
 }
 
 bool CudaSm2Group::IsInfinity(const EcPoint& point) const {
-  return cpu_backend_->IsInfinity(point);
+  if (!std::holds_alternative<AffinePoint>(point)) {
+    return cpu_backend_->IsInfinity(point);
+  }
+  const auto& ap = std::get<AffinePoint>(point);
+  return ap.x.IsZero() && ap.y.IsZero();
 }
 
-void CudaSm2Group::convertToGpuPoint(const EcPoint& point,
-                                     void* gpuPointRaw) const {
-  auto* gpuPoint = static_cast<GpuPoint*>(gpuPointRaw);
-  AffinePoint affine = cpu_backend_->GetAffinePoint(point);
-
-  auto xBytes = affine.x.ToMagBytes(Endian::little);
-  std::memset(gpuPoint->x, 0, sizeof(gpuPoint->x));
-  std::memcpy(
-      gpuPoint->x, xBytes.data(),
-      std::min(static_cast<size_t>(xBytes.size()), sizeof(gpuPoint->x)));
-
-  auto yBytes = affine.y.ToMagBytes(Endian::little);
-  std::memset(gpuPoint->y, 0, sizeof(gpuPoint->y));
-  std::memcpy(
-      gpuPoint->y, yBytes.data(),
-      std::min(static_cast<size_t>(yBytes.size()), sizeof(gpuPoint->y)));
+EcPoint CudaSm2Group::toCpuPoint(const EcPoint& point) const {
+  if (std::holds_alternative<AnyPtr>(point)) {
+    return point;
+  }
+  if (std::holds_alternative<AffinePoint>(point)) {
+    const auto& ap = std::get<AffinePoint>(point);
+    if (ap.x.IsZero() && ap.y.IsZero()) {
+      return cpu_backend_->MulBase(MPInt(0));
+    }
+  }
+  return cpu_backend_->CopyPoint(point);
 }
 
-EcPoint CudaSm2Group::convertFromGpuPoint(const void* gpuPointRaw) const {
-  const auto* gpuPoint = static_cast<const GpuPoint*>(gpuPointRaw);
-
-  std::vector<uint8_t> xBytes(
-      reinterpret_cast<const uint8_t*>(gpuPoint->x),
-      reinterpret_cast<const uint8_t*>(gpuPoint->x) + 32);
-  std::vector<uint8_t> yBytes(
-      reinterpret_cast<const uint8_t*>(gpuPoint->y),
-      reinterpret_cast<const uint8_t*>(gpuPoint->y) + 32);
-
-  MPInt x, y;
-  x.FromMagBytes(xBytes, Endian::little);
-  y.FromMagBytes(yBytes, Endian::little);
-
-  // Point-at-infinity is encoded as (0, 0)
-  if (x.IsZero() && y.IsZero()) {
-    return cpu_backend_->MulBase(MPInt(0));
+void CudaSm2Group::convertToCudaPoint(const EcPoint& point,
+                                      PackedAffinePoint* out) const {
+  YACL_ENFORCE(out != nullptr);
+  AffinePoint affine;
+  if (std::holds_alternative<AffinePoint>(point)) {
+    affine = std::get<AffinePoint>(point);
+  } else {
+    affine = cpu_backend_->GetAffinePoint(point);
   }
 
-  AffinePoint affine{x, y};
-  return cpu_backend_->CopyPoint(EcPoint(affine));
+  affine.x.ToBytes(reinterpret_cast<unsigned char*>(out->x), kSm2FieldBytes,
+                   Endian::little);
+  affine.y.ToBytes(reinterpret_cast<unsigned char*>(out->y), kSm2FieldBytes,
+                   Endian::little);
 }
 
-void CudaSm2Group::convertToGpuScalar(const MPInt& scalar,
-                                      void* gpuScalarRaw) const {
+EcPoint CudaSm2Group::convertFromCudaPoint(const PackedAffinePoint& p) const {
+  MPInt x, y;
+  x.FromMagBytes(yacl::ByteContainerView(p.x, kSm2FieldBytes), Endian::little);
+  y.FromMagBytes(yacl::ByteContainerView(p.y, kSm2FieldBytes), Endian::little);
+
+  // Point-at-infinity is encoded as (0, 0).
+  if (x.IsZero() && y.IsZero()) {
+    return EcPoint(AffinePoint{});
+  }
+
+  return EcPoint(AffinePoint{x, y});
+}
+
+void CudaSm2Group::convertToCudaScalar(const MPInt& scalar,
+                                       void* gpuScalarRaw) const {
   auto* gpuScalar = static_cast<GpuScalarData*>(gpuScalarRaw);
   MPInt reduced = scalar.Mod(GetOrder());
-  auto bytes = reduced.ToMagBytes(Endian::little);
-  std::memset(gpuScalar->limbs, 0, sizeof(gpuScalar->limbs));
-  std::memcpy(
-      gpuScalar->limbs, bytes.data(),
-      std::min(static_cast<size_t>(bytes.size()), sizeof(gpuScalar->limbs)));
+  reduced.ToBytes(reinterpret_cast<unsigned char*>(gpuScalar->limbs),
+                  kSm2FieldBytes, Endian::little);
 }
 
 void CudaSm2Group::batchMul(absl::Span<const EcPoint> points,
@@ -321,19 +522,19 @@ void CudaSm2Group::batchMul(absl::Span<const EcPoint> points,
 
   if (!cuda_initialized_ || points.empty()) {
     for (size_t i = 0; i < points.size(); ++i) {
-      results[i] = cpu_backend_->Mul(points[i], scalars[i]);
+      results[i] = cpu_backend_->Mul(toCpuPoint(points[i]), scalars[i]);
     }
     return;
   }
 
   int32_t count = static_cast<int32_t>(points.size());
-  std::vector<GpuPoint> gpuPoints(count);
+  std::vector<PackedAffinePoint> gpuPoints(count);
   std::vector<GpuScalarData> gpuScalars(count);
-  std::vector<GpuPoint> gpuResults(count);
+  std::vector<PackedAffinePoint> gpuResults(count);
 
   for (int32_t i = 0; i < count; ++i) {
-    convertToGpuPoint(points[i], &gpuPoints[i]);
-    convertToGpuScalar(scalars[i], &gpuScalars[i]);
+    convertToCudaPoint(points[i], &gpuPoints[i]);
+    convertToCudaScalar(scalars[i], &gpuScalars[i]);
   }
 
   CudaEccError err = cuda::batchMul(gpuPoints.data(), gpuScalars.data(),
@@ -341,17 +542,13 @@ void CudaSm2Group::batchMul(absl::Span<const EcPoint> points,
 
   if (err != CudaEccError::kSuccess) {
     for (size_t i = 0; i < points.size(); ++i) {
-      results[i] = cpu_backend_->Mul(points[i], scalars[i]);
+      results[i] = cpu_backend_->Mul(toCpuPoint(points[i]), scalars[i]);
     }
     return;
   }
 
   for (int32_t i = 0; i < count; ++i) {
-    try {
-      results[i] = convertFromGpuPoint(&gpuResults[i]);
-    } catch (const std::exception&) {
-      results[i] = cpu_backend_->Mul(points[i], scalars[i]);
-    }
+    results[i] = convertFromCudaPoint(gpuResults[i]);
   }
 }
 
@@ -369,10 +566,10 @@ void CudaSm2Group::batchMulBase(absl::Span<const MPInt> scalars,
   int32_t count = static_cast<int32_t>(scalars.size());
 
   std::vector<GpuScalarData> gpuScalars(count);
-  std::vector<GpuPoint> gpuResults(count);
+  std::vector<PackedAffinePoint> gpuResults(count);
 
   for (int32_t i = 0; i < count; ++i) {
-    convertToGpuScalar(scalars[i], &gpuScalars[i]);
+    convertToCudaScalar(scalars[i], &gpuScalars[i]);
   }
 
   CudaEccError err =
@@ -386,11 +583,7 @@ void CudaSm2Group::batchMulBase(absl::Span<const MPInt> scalars,
   }
 
   for (int32_t i = 0; i < count; ++i) {
-    try {
-      results[i] = convertFromGpuPoint(&gpuResults[i]);
-    } catch (const std::exception&) {
-      results[i] = cpu_backend_->MulBase(scalars[i]);
-    }
+    results[i] = convertFromCudaPoint(gpuResults[i]);
   }
 }
 
@@ -401,38 +594,34 @@ void CudaSm2Group::batchMulSameScalar(absl::Span<const EcPoint> points,
 
   if (!cuda_initialized_ || points.empty()) {
     for (size_t i = 0; i < points.size(); ++i) {
-      results[i] = cpu_backend_->Mul(points[i], scalar);
+      results[i] = cpu_backend_->Mul(toCpuPoint(points[i]), scalar);
     }
     return;
   }
 
   int32_t count = static_cast<int32_t>(points.size());
 
-  std::vector<GpuPoint> gpuPoints(count);
+  std::vector<PackedAffinePoint> gpuPoints(count);
   GpuScalarData gpuScalar;
-  std::vector<GpuPoint> gpuResults(count);
+  std::vector<PackedAffinePoint> gpuResults(count);
 
   for (int32_t i = 0; i < count; ++i) {
-    convertToGpuPoint(points[i], &gpuPoints[i]);
+    convertToCudaPoint(points[i], &gpuPoints[i]);
   }
-  convertToGpuScalar(scalar, &gpuScalar);
+  convertToCudaScalar(scalar, &gpuScalar);
 
   CudaEccError err = cuda::batchMulSameScalar(gpuPoints.data(), &gpuScalar,
                                               gpuResults.data(), count);
 
   if (err != CudaEccError::kSuccess) {
     for (size_t i = 0; i < points.size(); ++i) {
-      results[i] = cpu_backend_->Mul(points[i], scalar);
+      results[i] = cpu_backend_->Mul(toCpuPoint(points[i]), scalar);
     }
     return;
   }
 
   for (int32_t i = 0; i < count; ++i) {
-    try {
-      results[i] = convertFromGpuPoint(&gpuResults[i]);
-    } catch (const std::exception&) {
-      results[i] = cpu_backend_->Mul(points[i], scalar);
-    }
+    results[i] = convertFromCudaPoint(gpuResults[i]);
   }
 }
 
@@ -442,12 +631,295 @@ void CudaSm2Group::batchHashAndMul(HashToCurveStrategy strategy,
                                    absl::Span<EcPoint> results) const {
   YACL_ENFORCE(inputs.size() == results.size());
 
-  // HashToCurve on CPU, then batch multiplication on GPU
-  std::vector<EcPoint> hashedPoints(inputs.size());
-  for (size_t i = 0; i < inputs.size(); ++i) {
-    hashedPoints[i] = cpu_backend_->HashToCurve(strategy, inputs[i], "");
+  auto cpuFallback = [&]() {
+    std::vector<EcPoint> hashedPoints(inputs.size());
+    for (size_t i = 0; i < inputs.size(); ++i) {
+      hashedPoints[i] = cpu_backend_->HashToCurve(strategy, inputs[i], "");
+    }
+    batchMulSameScalar(hashedPoints, scalar, results);
+  };
+
+  if (!cuda_initialized_ || inputs.empty() ||
+      strategy != HashToCurveStrategy::TryAndRehash_SM) {
+    cpuFallback();
+    return;
   }
-  batchMulSameScalar(hashedPoints, scalar, results);
+
+  const int32_t count = static_cast<int32_t>(inputs.size());
+
+  GpuScalarData gpuScalar;
+  convertToCudaScalar(scalar, &gpuScalar);
+
+  auto runGpuNonPipelined = [&]() -> bool {
+    thread_local PinnedHostBuffer<uint8_t> digests_buf;
+    thread_local PinnedHostBuffer<PackedAffinePoint> results_buf;
+
+    const bool pinned_ok =
+        digests_buf.Ensure(static_cast<size_t>(count) * kSm2FieldBytes) &&
+        results_buf.Ensure(static_cast<size_t>(count));
+
+    if (!pinned_ok) {
+      // Fallback to pageable host memory if pinned allocation fails.
+      std::vector<uint8_t> digests(static_cast<size_t>(count) * kSm2FieldBytes);
+      std::vector<PackedAffinePoint> gpuResults(count);
+      yacl::parallel_for(
+          0, count, getRecommendedBatchSize(), [&](int64_t begin, int64_t end) {
+            thread_local Sm3OneShot hasher;
+            for (int64_t i = begin; i < end; ++i) {
+              hasher.Digest(
+                  inputs[static_cast<size_t>(i)],
+                  digests.data() +
+                      static_cast<size_t>(i) * kSm2FieldBytes);
+            }
+          });
+
+      const CudaEccError err = cuda::batchHashAndMulFromSm3Digests(
+          digests.data(), &gpuScalar, gpuResults.data(), count);
+      if (err != CudaEccError::kSuccess) {
+        return false;
+      }
+
+      yacl::parallel_for(
+          0, count, getRecommendedBatchSize(), [&](int64_t begin, int64_t end) {
+            for (int64_t i = begin; i < end; ++i) {
+              const auto idx = static_cast<size_t>(i);
+              results[idx] = convertFromCudaPoint(gpuResults[idx]);
+            }
+          });
+      return true;
+    }
+
+    uint8_t* digests = digests_buf.data();
+    PackedAffinePoint* gpuResults = results_buf.data();
+
+    yacl::parallel_for(
+        0, count, getRecommendedBatchSize(), [&](int64_t begin, int64_t end) {
+          thread_local Sm3OneShot hasher;
+          for (int64_t i = begin; i < end; ++i) {
+            hasher.Digest(inputs[static_cast<size_t>(i)],
+                          digests + static_cast<size_t>(i) * kSm2FieldBytes);
+          }
+        });
+
+    const CudaEccError err = cuda::batchHashAndMulFromSm3Digests(
+        digests, &gpuScalar, gpuResults, count);
+    if (err != CudaEccError::kSuccess) {
+      return false;
+    }
+
+    yacl::parallel_for(
+        0, count, getRecommendedBatchSize(), [&](int64_t begin, int64_t end) {
+          for (int64_t i = begin; i < end; ++i) {
+            const auto idx = static_cast<size_t>(i);
+            results[idx] = convertFromCudaPoint(gpuResults[idx]);
+          }
+        });
+    return true;
+  };
+
+  // Pipelined path (double-buffering) for large batches.
+  constexpr int32_t kChunkSize = 131072;  // 128K
+  const bool enable_pipeline = (count >= 2 * kChunkSize);
+
+  if (!enable_pipeline) {
+    if (!runGpuNonPipelined()) {
+      cpuFallback();
+    }
+    return;
+  }
+
+  struct PipelineSlot {
+    PinnedHostBuffer<uint8_t> digests;
+    PinnedHostBuffer<PackedAffinePoint> results;
+    std::vector<uint8_t> digests_vec;
+    std::vector<PackedAffinePoint> results_vec;
+    bool use_pinned = true;
+
+    bool Ensure(int32_t n, bool prefer_pinned) {
+      use_pinned = prefer_pinned &&
+                   digests.Ensure(static_cast<size_t>(n) * kSm2FieldBytes) &&
+                   results.Ensure(static_cast<size_t>(n));
+      if (use_pinned) {
+        return true;
+      }
+
+      digests_vec.resize(static_cast<size_t>(n) * kSm2FieldBytes);
+      results_vec.resize(static_cast<size_t>(n));
+      return true;
+    }
+
+    uint8_t* DigestsData() {
+      return use_pinned ? digests.data() : digests_vec.data();
+    }
+    PackedAffinePoint* ResultsData() {
+      return use_pinned ? results.data() : results_vec.data();
+    }
+  };
+
+  thread_local PipelineSlot slots[2];
+
+  struct SlotState {
+    int32_t offset = 0;
+    int32_t n = 0;
+    bool digests_ready = false;
+    bool results_ready = false;
+    CudaEccError status = CudaEccError::kSuccess;
+  };
+
+  SlotState state[2];
+  std::mutex mu;
+  std::condition_variable cv;
+  bool stop = false;
+
+  const int32_t num_chunks = (count + kChunkSize - 1) / kChunkSize;
+
+  std::thread gpu_worker([&]() {
+    cudaSetDevice(cuda_device_id_);
+    for (int32_t chunk = 0; chunk < num_chunks; ++chunk) {
+      const int slot = chunk & 1;
+
+      std::unique_lock<std::mutex> lock(mu);
+      cv.wait(lock, [&] { return stop || state[slot].digests_ready; });
+      if (stop) {
+        return;
+      }
+
+      const int32_t n = state[slot].n;
+      state[slot].digests_ready = false;
+      lock.unlock();
+
+      const CudaEccError st = cuda::batchHashAndMulFromSm3Digests(
+          slots[slot].DigestsData(), &gpuScalar, slots[slot].ResultsData(), n);
+
+      lock.lock();
+      state[slot].status = st;
+      state[slot].results_ready = true;
+      if (st != CudaEccError::kSuccess) {
+        stop = true;
+      }
+      lock.unlock();
+      cv.notify_all();
+
+      if (st != CudaEccError::kSuccess) {
+        return;
+      }
+    }
+  });
+
+  auto convertChunk = [&](int slot) {
+    const int32_t off = state[slot].offset;
+    const int32_t n = state[slot].n;
+    auto* gpuResults = slots[slot].ResultsData();
+
+    yacl::parallel_for(
+        0, n, getRecommendedBatchSize(), [&](int64_t begin, int64_t end) {
+          for (int64_t i = begin; i < end; ++i) {
+            const auto idx = static_cast<size_t>(i);
+            results[static_cast<size_t>(off) + idx] =
+                convertFromCudaPoint(gpuResults[idx]);
+          }
+        });
+  };
+
+  bool prefer_pinned = true;
+
+  for (int32_t chunk = 0; chunk < num_chunks; ++chunk) {
+    const int slot = chunk & 1;
+    const int32_t off = chunk * kChunkSize;
+    const int32_t n = std::min(kChunkSize, count - off);
+
+    if (!slots[slot].Ensure(n, prefer_pinned)) {
+      {
+        std::lock_guard<std::mutex> lock(mu);
+        stop = true;
+      }
+      cv.notify_all();
+      break;
+    }
+    if (!slots[slot].use_pinned) {
+      prefer_pinned = false;
+    }
+
+    // Prepare digests for this chunk.
+    uint8_t* digests = slots[slot].DigestsData();
+    yacl::parallel_for(
+        off, off + n, getRecommendedBatchSize(), [&](int64_t begin, int64_t end) {
+          thread_local Sm3OneShot hasher;
+          for (int64_t i = begin; i < end; ++i) {
+            const auto local = static_cast<size_t>(i - off);
+            hasher.Digest(inputs[static_cast<size_t>(i)],
+                          digests + local * kSm2FieldBytes);
+          }
+        });
+
+    {
+      std::lock_guard<std::mutex> lock(mu);
+      state[slot].offset = off;
+      state[slot].n = n;
+      state[slot].status = CudaEccError::kSuccess;
+      state[slot].results_ready = false;
+      state[slot].digests_ready = true;
+    }
+    cv.notify_all();
+
+    // Consume previous chunk's results.
+    if (chunk > 0) {
+      const int prev_slot = (chunk - 1) & 1;
+      std::unique_lock<std::mutex> lock(mu);
+      cv.wait(lock, [&] { return stop || state[prev_slot].results_ready; });
+      if (stop) {
+        lock.unlock();
+        break;
+      }
+      const CudaEccError st = state[prev_slot].status;
+      state[prev_slot].results_ready = false;
+      lock.unlock();
+
+      if (st != CudaEccError::kSuccess) {
+        {
+          std::lock_guard<std::mutex> guard(mu);
+          stop = true;
+        }
+        cv.notify_all();
+        break;
+      }
+      convertChunk(prev_slot);
+    }
+  }
+
+  // Consume last chunk's results.
+  const int last_slot = (num_chunks - 1) & 1;
+  {
+    std::unique_lock<std::mutex> lock(mu);
+    cv.wait(lock, [&] { return stop || state[last_slot].results_ready; });
+    if (stop) {
+      lock.unlock();
+      gpu_worker.join();
+      if (!runGpuNonPipelined()) {
+        cpuFallback();
+      }
+      return;
+    }
+    const CudaEccError st = state[last_slot].status;
+    state[last_slot].results_ready = false;
+    lock.unlock();
+
+    if (st != CudaEccError::kSuccess) {
+      std::lock_guard<std::mutex> guard(mu);
+      stop = true;
+    } else {
+      convertChunk(last_slot);
+    }
+  }
+
+  gpu_worker.join();
+
+  if (stop) {
+    if (!runGpuNonPipelined()) {
+      cpuFallback();
+    }
+    return;
+  }
 }
 
 void CudaSm2Group::batchAdd(absl::Span<const EcPoint> p1s,
@@ -458,20 +930,20 @@ void CudaSm2Group::batchAdd(absl::Span<const EcPoint> p1s,
 
   if (!cuda_initialized_ || p1s.empty()) {
     for (size_t i = 0; i < p1s.size(); ++i) {
-      results[i] = cpu_backend_->Add(p1s[i], p2s[i]);
+      results[i] = cpu_backend_->Add(toCpuPoint(p1s[i]), toCpuPoint(p2s[i]));
     }
     return;
   }
 
   int32_t count = static_cast<int32_t>(p1s.size());
 
-  std::vector<GpuPoint> gpuP1s(count);
-  std::vector<GpuPoint> gpuP2s(count);
-  std::vector<GpuPoint> gpuResults(count);
+  std::vector<PackedAffinePoint> gpuP1s(count);
+  std::vector<PackedAffinePoint> gpuP2s(count);
+  std::vector<PackedAffinePoint> gpuResults(count);
 
   for (int32_t i = 0; i < count; ++i) {
-    convertToGpuPoint(p1s[i], &gpuP1s[i]);
-    convertToGpuPoint(p2s[i], &gpuP2s[i]);
+    convertToCudaPoint(p1s[i], &gpuP1s[i]);
+    convertToCudaPoint(p2s[i], &gpuP2s[i]);
   }
 
   CudaEccError err =
@@ -479,17 +951,13 @@ void CudaSm2Group::batchAdd(absl::Span<const EcPoint> p1s,
 
   if (err != CudaEccError::kSuccess) {
     for (size_t i = 0; i < p1s.size(); ++i) {
-      results[i] = cpu_backend_->Add(p1s[i], p2s[i]);
+      results[i] = cpu_backend_->Add(toCpuPoint(p1s[i]), toCpuPoint(p2s[i]));
     }
     return;
   }
 
   for (int32_t i = 0; i < count; ++i) {
-    try {
-      results[i] = convertFromGpuPoint(&gpuResults[i]);
-    } catch (const std::exception&) {
-      results[i] = cpu_backend_->Add(p1s[i], p2s[i]);
-    }
+    results[i] = convertFromCudaPoint(gpuResults[i]);
   }
 }
 
@@ -503,7 +971,8 @@ void CudaSm2Group::batchMulDoubleBase(absl::Span<const MPInt> s1s,
 
   if (!cuda_initialized_ || s1s.empty()) {
     for (size_t i = 0; i < s1s.size(); ++i) {
-      results[i] = cpu_backend_->MulDoubleBase(s1s[i], s2s[i], points[i]);
+      results[i] =
+          cpu_backend_->MulDoubleBase(s1s[i], s2s[i], toCpuPoint(points[i]));
     }
     return;
   }
@@ -512,13 +981,13 @@ void CudaSm2Group::batchMulDoubleBase(absl::Span<const MPInt> s1s,
 
   std::vector<GpuScalarData> gpuS1(count);
   std::vector<GpuScalarData> gpuS2(count);
-  std::vector<GpuPoint> gpuPoints(count);
-  std::vector<GpuPoint> gpuResults(count);
+  std::vector<PackedAffinePoint> gpuPoints(count);
+  std::vector<PackedAffinePoint> gpuResults(count);
 
   for (int32_t i = 0; i < count; ++i) {
-    convertToGpuScalar(s1s[i], &gpuS1[i]);
-    convertToGpuScalar(s2s[i], &gpuS2[i]);
-    convertToGpuPoint(points[i], &gpuPoints[i]);
+    convertToCudaScalar(s1s[i], &gpuS1[i]);
+    convertToCudaScalar(s2s[i], &gpuS2[i]);
+    convertToCudaPoint(points[i], &gpuPoints[i]);
   }
 
   CudaEccError err = cuda::batchMulDoubleBase(
@@ -526,17 +995,14 @@ void CudaSm2Group::batchMulDoubleBase(absl::Span<const MPInt> s1s,
 
   if (err != CudaEccError::kSuccess) {
     for (size_t i = 0; i < s1s.size(); ++i) {
-      results[i] = cpu_backend_->MulDoubleBase(s1s[i], s2s[i], points[i]);
+      results[i] =
+          cpu_backend_->MulDoubleBase(s1s[i], s2s[i], toCpuPoint(points[i]));
     }
     return;
   }
 
   for (int32_t i = 0; i < count; ++i) {
-    try {
-      results[i] = convertFromGpuPoint(&gpuResults[i]);
-    } catch (const std::exception&) {
-      results[i] = cpu_backend_->MulDoubleBase(s1s[i], s2s[i], points[i]);
-    }
+    results[i] = convertFromCudaPoint(gpuResults[i]);
   }
 }
 

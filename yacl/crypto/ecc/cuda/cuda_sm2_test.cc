@@ -428,6 +428,19 @@ TEST_F(CudaSm2Test, Serialization) {
   auto deserialized = cuda_ec_->DeserializePoint(
       serialized, PointOctetFormat::X962Uncompressed);
   EXPECT_TRUE(cuda_ec_->PointEqual(point, deserialized));
+
+  // Batch outputs are represented as AffinePoint; ensure serialization works.
+  auto* cuda_group = dynamic_cast<CudaSm2Group*>(cuda_ec_.get());
+  std::vector<MPInt> scalars{randomScalar()};
+  std::vector<EcPoint> batch_points(1);
+  cuda_group->batchMulBase(scalars, absl::MakeSpan(batch_points));
+
+  auto serialized2 =
+      cuda_ec_->SerializePoint(batch_points[0],
+                               PointOctetFormat::X962Uncompressed);
+  auto deserialized2 = cuda_ec_->DeserializePoint(
+      serialized2, PointOctetFormat::X962Uncompressed);
+  EXPECT_TRUE(cuda_ec_->PointEqual(batch_points[0], deserialized2));
 }
 
 }  // namespace
