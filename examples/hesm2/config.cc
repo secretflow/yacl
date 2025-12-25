@@ -38,7 +38,6 @@ void InitializeConfig() {
   // 检查是否成功创建
   if (!ec_group) {
     YACL_THROW("Failed to create SM2 curve using OpenSSL");
-    return;
   }
   // 检查文件是否存在，如果存在则从文件加载
   std::string filet1 = "cuckoo_t1.dat";

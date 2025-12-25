@@ -427,8 +427,8 @@ yacl::Buffer SerializeCiphertexts(const std::vector<Ciphertext>& cts,
     return yacl::Buffer();
   }
   const auto& ec_group = pk.GetEcGroup();
-  uint64_t single_ct_len = kEccPointLen * 2;
-  uint64_t total_len = cts.size() * single_ct_len;
+  size_t single_ct_len = kEccPointLen * 2;
+  size_t total_len = cts.size() * single_ct_len;
   yacl::Buffer out(total_len);
   uint8_t* ptr = out.data<uint8_t>();
   for (const auto& ct : cts) {
@@ -455,7 +455,7 @@ std::vector<Ciphertext> DeserializeCiphertexts(yacl::ByteContainerView buf,
     return {};
   }
   const auto& ec_group = pk.GetEcGroup();
-  uint64_t single_ct_len = kEccPointLen * 2;
+  size_t single_ct_len = kEccPointLen * 2;
   YACL_ENFORCE(buf.size() % single_ct_len == 0,
                "Invalid buffer size for ciphertexts. Must be multiple of {}",
                single_ct_len);

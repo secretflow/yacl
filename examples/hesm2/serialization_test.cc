@@ -1,8 +1,25 @@
-#include <iostream>
+// Copyright 2025 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include <gtest/gtest.h>
+#include <spdlog/spdlog.h>
+
 #include <vector>
 
 #include "hesm2/ahesm2.h"
 #include "hesm2/ciphertext.h"
+#include "hesm2/config.h"
 #include "hesm2/public_key.h"
 
 #include "yacl/crypto/ecc/ecc_spi.h"
@@ -12,36 +29,43 @@ using namespace examples::hesm2;
 using namespace yacl::crypto;
 using namespace yacl::math;
 
-void TestCiphertextSerialization() {
-  std::cout << "Testing Ciphertext Serialization..." << std::endl;
+TEST(SerializationTest, PublicKey) {
+  SPDLOG_INFO("Testing PublicKey Serialization...");
   std::shared_ptr<EcGroup> ec_group = EcGroupFactory::Instance().Create("sm2");
+  ASSERT_NE(ec_group, nullptr);
   MPInt sk_val;
   MPInt::RandomLtN(ec_group->GetOrder(), &sk_val);
   auto pk_point = ec_group->MulBase(sk_val);
+  PublicKey pk(pk_point, ec_group);
 
+  yacl::Buffer buf = pk.Serialize();
+  PublicKey pk_des = PublicKey::Deserialize(buf, ec_group);
+  EXPECT_TRUE(ec_group->PointEqual(pk.GetPoint(), pk_des.GetPoint()));
+}
+
+TEST(SerializationTest, Ciphertext) {
+  SPDLOG_INFO("Testing Ciphertext Serialization...");
+  std::shared_ptr<EcGroup> ec_group = EcGroupFactory::Instance().Create("sm2");
+  ASSERT_NE(ec_group, nullptr);
+  MPInt sk_val;
+  MPInt::RandomLtN(ec_group->GetOrder(), &sk_val);
+  auto pk_point = ec_group->MulBase(sk_val);
   PublicKey pk(pk_point, ec_group);
 
   auto c0 = Encrypt(yacl::math::MPInt(0), pk);
   yacl::Buffer buf = SerializeCiphertext(c0, pk);
-  // Deserialize
   Ciphertext ct_des = DeserializeCiphertext(buf, pk);
-
-  // Check equality using PointEqual
-  if (ec_group->PointEqual(c0.GetC1(), ct_des.GetC1()) &&
-      ec_group->PointEqual(c0.GetC2(), ct_des.GetC2())) {
-    std::cout << "Ciphertext Serialization Test Passed!" << std::endl;
-  } else {
-    std::cout << "Ciphertext Serialization Test Failed!" << std::endl;
-    exit(1);
-  }
+  EXPECT_TRUE(ec_group->PointEqual(c0.GetC1(), ct_des.GetC1()));
+  EXPECT_TRUE(ec_group->PointEqual(c0.GetC2(), ct_des.GetC2()));
 }
-void TestCiphertextVectorSerialization() {
-  std::cout << "Testing Ciphertext Vector Serialization..." << std::endl;
+
+TEST(SerializationTest, CiphertextVector) {
+  SPDLOG_INFO("Testing Ciphertext Vector Serialization...");
   std::shared_ptr<EcGroup> ec_group = EcGroupFactory::Instance().Create("sm2");
+  ASSERT_NE(ec_group, nullptr);
   MPInt sk_val;
   MPInt::RandomLtN(ec_group->GetOrder(), &sk_val);
   auto pk_point = ec_group->MulBase(sk_val);
-
   PublicKey pk(pk_point, ec_group);
 
   std::vector<Ciphertext> cts;
@@ -50,53 +74,12 @@ void TestCiphertextVectorSerialization() {
     cts.push_back(Encrypt(m, pk));
   }
 
-  // Serialize
   yacl::Buffer buf = SerializeCiphertexts(cts, pk);
-
-  // Deserialize
   std::vector<Ciphertext> cts_des = DeserializeCiphertexts(buf, pk);
 
-  if (cts_des.size() != cts.size()) {
-    std::cout << "Vector Size Mismatch!" << std::endl;
-    exit(1);
-  }
-
+  ASSERT_EQ(cts_des.size(), cts.size());
   for (size_t i = 0; i < cts_des.size(); ++i) {
-    if (!ec_group->PointEqual(cts[i].GetC1(), cts_des[i].GetC1()) ||
-        !ec_group->PointEqual(cts[i].GetC2(), cts_des[i].GetC2())) {
-      std::cout << "Vector Element " << i << " Mismatch!" << std::endl;
-      exit(1);
-    }
+    EXPECT_TRUE(ec_group->PointEqual(cts[i].GetC1(), cts_des[i].GetC1()));
+    EXPECT_TRUE(ec_group->PointEqual(cts[i].GetC2(), cts_des[i].GetC2()));
   }
-  std::cout << "Ciphertext Vector Serialization Test Passed!" << std::endl;
-}
-
-void TestPublicKeySerialization() {
-  std::cout << "Testing PublicKey Serialization..." << std::endl;
-  std::shared_ptr<EcGroup> ec_group = EcGroupFactory::Instance().Create("sm2");
-  MPInt sk_val;
-  MPInt::RandomLtN(ec_group->GetOrder(), &sk_val);
-  auto pk_point = ec_group->MulBase(sk_val);
-
-  PublicKey pk(pk_point, ec_group);
-
-  // Serialize
-  yacl::Buffer buf = pk.Serialize();
-
-  // Deserialize
-  PublicKey pk_des = PublicKey::Deserialize(buf, ec_group);
-
-  if (ec_group->PointEqual(pk.GetPoint(), pk_des.GetPoint())) {
-    std::cout << "PublicKey Serialization Test Passed!" << std::endl;
-  } else {
-    std::cout << "PublicKey Serialization Test Failed!" << std::endl;
-    exit(1);
-  }
-}
-
-int main() {
-  TestPublicKeySerialization();
-  TestCiphertextSerialization();
-  TestCiphertextVectorSerialization();
-  return 0;
 }
