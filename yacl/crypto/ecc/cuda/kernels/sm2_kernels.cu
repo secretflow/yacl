@@ -738,6 +738,8 @@ __device__ __forceinline__ uint32_t sm2PMinus2Bit(int bit) {
 __device__ void fpInv(const GpuFieldElement& a, GpuFieldElement& r) {
   // Sliding-window exponentiation (fixed exponent p-2).
   // p - 2 = 0xFFFFFFFEFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000FFFFFFFFFFFFFFFD
+  // TODO: Consider a faster constant-time inversion (e.g. dedicated addition
+  // chain) if this becomes a performance bottleneck.
   constexpr int kWindowSize = 3;
   constexpr int kTableSize = 1 << (kWindowSize - 1);  // odd powers: 1..7
 
