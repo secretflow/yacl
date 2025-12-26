@@ -21,7 +21,7 @@
 
 module(
     name = "yacl",
-    version = "0.4.5b13-nightly-20251225",
+    version = "0.4.5b13-nightly-20251226",
     compatibility_level = 1,
 )
 
