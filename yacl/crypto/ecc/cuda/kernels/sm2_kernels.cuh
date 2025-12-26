@@ -16,6 +16,8 @@
 
 #include <cuda_runtime.h>
 
+#include <functional>
+
 #include "yacl/crypto/ecc/cuda/kernels/gpu_types.cuh"
 #include "yacl/crypto/ecc/cuda/kernels/point_ops.cuh"
 #include "yacl/crypto/ecc/cuda/kernels/precompute.cuh"
@@ -26,6 +28,11 @@ namespace yacl::crypto::cuda {
 int cudaSm2Init(int deviceId = 0);
 void cudaSm2Cleanup();
 cudaStream_t cudaSm2GetStream();
+
+// Register a cleanup callback to be invoked during cudaSm2Cleanup().
+// Use this to register thread-local resources (e.g., pinned host buffers)
+// that need explicit cleanup before CUDA runtime is destroyed.
+void cudaSm2RegisterCleanup(std::function<void()> cleanup);
 
 // Batch scalar multiplication kernels
 __global__ void batchFixedBaseMulKernel(const GpuScalar* scalars,
@@ -72,9 +79,9 @@ CudaEccError batchAdd(const void* hostP1s, const void* hostP2s,
 CudaEccError batchDouble(const void* hostPoints, void* hostResults,
                          int32_t count, cudaStream_t stream = 0);
 CudaEccError batchHashAndMulFromSm3Digests(const void* hostDigests,
-                                          const void* hostScalar,
-                                          void* hostResults, int32_t count,
-                                          cudaStream_t stream = 0);
+                                           const void* hostScalar,
+                                           void* hostResults, int32_t count,
+                                           cudaStream_t stream = 0);
 
 // Debug/utility functions
 extern "C" CudaEccError debugMontMul(int32_t* hostResults,

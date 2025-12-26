@@ -77,7 +77,10 @@ class PinnedHostBuffer {
   PinnedHostBuffer(const PinnedHostBuffer&) = delete;
   PinnedHostBuffer& operator=(const PinnedHostBuffer&) = delete;
 
-  ~PinnedHostBuffer() { Reset(); }
+  // Destructor is intentionally empty - cleanup is handled via registered
+  // callbacks to avoid issues with thread_local destruction order vs CUDA
+  // runtime shutdown.
+  ~PinnedHostBuffer() = default;
 
   T* data() { return ptr_; }
   const T* data() const { return ptr_; }
@@ -95,6 +98,21 @@ class PinnedHostBuffer {
     }
     ptr_ = static_cast<T*>(p);
     capacity_ = count;
+
+    // Register cleanup callback on first successful allocation.
+    // This ensures the buffer is freed before CUDA runtime shutdown.
+    if (!registered_) {
+      T** ptr_ref = &ptr_;
+      size_t* cap_ref = &capacity_;
+      cuda::cudaSm2RegisterCleanup([ptr_ref, cap_ref]() {
+        if (*ptr_ref != nullptr) {
+          cudaFreeHost(*ptr_ref);
+          *ptr_ref = nullptr;
+          *cap_ref = 0;
+        }
+      });
+      registered_ = true;
+    }
     return true;
   }
 
@@ -109,6 +127,7 @@ class PinnedHostBuffer {
  private:
   T* ptr_ = nullptr;
   size_t capacity_ = 0;
+  bool registered_ = false;
 };
 
 }  // namespace
@@ -420,7 +439,8 @@ size_t CudaSm2Group::HashPoint(const EcPoint& point) const {
 }
 
 bool CudaSm2Group::PointEqual(const EcPoint& p1, const EcPoint& p2) const {
-  if (std::holds_alternative<AnyPtr>(p1) && std::holds_alternative<AnyPtr>(p2)) {
+  if (std::holds_alternative<AnyPtr>(p1) &&
+      std::holds_alternative<AnyPtr>(p2)) {
     return cpu_backend_->PointEqual(p1, p2);
   }
   const auto a1 = GetAffinePoint(p1);
@@ -668,8 +688,7 @@ void CudaSm2Group::batchHashAndMul(HashToCurveStrategy strategy,
             for (int64_t i = begin; i < end; ++i) {
               hasher.Digest(
                   inputs[static_cast<size_t>(i)],
-                  digests.data() +
-                      static_cast<size_t>(i) * kSm2FieldBytes);
+                  digests.data() + static_cast<size_t>(i) * kSm2FieldBytes);
             }
           });
 
@@ -707,13 +726,13 @@ void CudaSm2Group::batchHashAndMul(HashToCurveStrategy strategy,
       return false;
     }
 
-    yacl::parallel_for(
-        0, count, getRecommendedBatchSize(), [&](int64_t begin, int64_t end) {
-          for (int64_t i = begin; i < end; ++i) {
-            const auto idx = static_cast<size_t>(i);
-            results[idx] = convertFromCudaPoint(gpuResults[idx]);
-          }
-        });
+    yacl::parallel_for(0, count, getRecommendedBatchSize(),
+                       [&](int64_t begin, int64_t end) {
+                         for (int64_t i = begin; i < end; ++i) {
+                           const auto idx = static_cast<size_t>(i);
+                           results[idx] = convertFromCudaPoint(gpuResults[idx]);
+                         }
+                       });
     return true;
   };
 
@@ -811,14 +830,14 @@ void CudaSm2Group::batchHashAndMul(HashToCurveStrategy strategy,
     const int32_t n = state[slot].n;
     auto* gpuResults = slots[slot].ResultsData();
 
-    yacl::parallel_for(
-        0, n, getRecommendedBatchSize(), [&](int64_t begin, int64_t end) {
-          for (int64_t i = begin; i < end; ++i) {
-            const auto idx = static_cast<size_t>(i);
-            results[static_cast<size_t>(off) + idx] =
-                convertFromCudaPoint(gpuResults[idx]);
-          }
-        });
+    yacl::parallel_for(0, n, getRecommendedBatchSize(),
+                       [&](int64_t begin, int64_t end) {
+                         for (int64_t i = begin; i < end; ++i) {
+                           const auto idx = static_cast<size_t>(i);
+                           results[static_cast<size_t>(off) + idx] =
+                               convertFromCudaPoint(gpuResults[idx]);
+                         }
+                       });
   };
 
   bool prefer_pinned = true;
@@ -842,15 +861,15 @@ void CudaSm2Group::batchHashAndMul(HashToCurveStrategy strategy,
 
     // Prepare digests for this chunk.
     uint8_t* digests = slots[slot].DigestsData();
-    yacl::parallel_for(
-        off, off + n, getRecommendedBatchSize(), [&](int64_t begin, int64_t end) {
-          thread_local Sm3OneShot hasher;
-          for (int64_t i = begin; i < end; ++i) {
-            const auto local = static_cast<size_t>(i - off);
-            hasher.Digest(inputs[static_cast<size_t>(i)],
-                          digests + local * kSm2FieldBytes);
-          }
-        });
+    yacl::parallel_for(off, off + n, getRecommendedBatchSize(),
+                       [&](int64_t begin, int64_t end) {
+                         thread_local Sm3OneShot hasher;
+                         for (int64_t i = begin; i < end; ++i) {
+                           const auto local = static_cast<size_t>(i - off);
+                           hasher.Digest(inputs[static_cast<size_t>(i)],
+                                         digests + local * kSm2FieldBytes);
+                         }
+                       });
 
     {
       std::lock_guard<std::mutex> lock(mu);

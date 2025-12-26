@@ -15,7 +15,9 @@
 #include <cuda_runtime.h>
 #include <stdio.h>
 
+#include <functional>
 #include <mutex>
+#include <vector>
 
 #include "yacl/crypto/ecc/cuda/kernels/sm2_kernels.cuh"
 
@@ -115,8 +117,62 @@ struct Sm2DeviceWorkspace {
   size_t error_capacity = 0;
 };
 
-Sm2DeviceWorkspace g_workspace;
-std::mutex g_workspace_mutex;
+// Thread-local workspace for device memory, avoiding global lock contention.
+// Each thread has its own workspace to enable parallel batch operations.
+thread_local Sm2DeviceWorkspace tl_workspace;
+
+// Registry for thread-local workspace cleanup.
+// When a thread first uses tl_workspace, it registers a cleanup callback.
+// cudaSm2Cleanup() invokes all registered callbacks.
+std::vector<std::function<void()>> g_workspace_cleanups;
+std::mutex g_workspace_cleanups_mutex;
+thread_local bool tl_workspace_registered = false;
+
+void registerWorkspaceCleanup() {
+  if (tl_workspace_registered) {
+    return;
+  }
+  Sm2DeviceWorkspace* ws = &tl_workspace;
+  std::lock_guard<std::mutex> lock(g_workspace_cleanups_mutex);
+  g_workspace_cleanups.push_back([ws]() {
+    if (ws->points != nullptr) {
+      cudaFree(ws->points);
+      ws->points = nullptr;
+      ws->points_capacity = 0;
+    }
+    if (ws->points2 != nullptr) {
+      cudaFree(ws->points2);
+      ws->points2 = nullptr;
+      ws->points2_capacity = 0;
+    }
+    if (ws->scalars != nullptr) {
+      cudaFree(ws->scalars);
+      ws->scalars = nullptr;
+      ws->scalars_capacity = 0;
+    }
+    if (ws->scalars2 != nullptr) {
+      cudaFree(ws->scalars2);
+      ws->scalars2 = nullptr;
+      ws->scalars2_capacity = 0;
+    }
+    if (ws->results != nullptr) {
+      cudaFree(ws->results);
+      ws->results = nullptr;
+      ws->results_capacity = 0;
+    }
+    if (ws->digests != nullptr) {
+      cudaFree(ws->digests);
+      ws->digests = nullptr;
+      ws->digests_capacity = 0;
+    }
+    if (ws->error != nullptr) {
+      cudaFree(ws->error);
+      ws->error = nullptr;
+      ws->error_capacity = 0;
+    }
+  });
+  tl_workspace_registered = true;
+}
 
 template <typename T>
 cudaError_t ensureDeviceArray(T** ptr, size_t* capacity, size_t count) {
@@ -157,42 +213,12 @@ cudaError_t ensureDeviceBytes(uint8_t** ptr, size_t* capacity, size_t bytes) {
   return cudaSuccess;
 }
 
-void freeWorkspace() {
-  if (g_workspace.points != nullptr) {
-    cudaFree(g_workspace.points);
-    g_workspace.points = nullptr;
-    g_workspace.points_capacity = 0;
+void cleanupAllWorkspaces() {
+  std::lock_guard<std::mutex> lock(g_workspace_cleanups_mutex);
+  for (auto& cleanup : g_workspace_cleanups) {
+    cleanup();
   }
-  if (g_workspace.points2 != nullptr) {
-    cudaFree(g_workspace.points2);
-    g_workspace.points2 = nullptr;
-    g_workspace.points2_capacity = 0;
-  }
-  if (g_workspace.scalars != nullptr) {
-    cudaFree(g_workspace.scalars);
-    g_workspace.scalars = nullptr;
-    g_workspace.scalars_capacity = 0;
-  }
-  if (g_workspace.scalars2 != nullptr) {
-    cudaFree(g_workspace.scalars2);
-    g_workspace.scalars2 = nullptr;
-    g_workspace.scalars2_capacity = 0;
-  }
-  if (g_workspace.results != nullptr) {
-    cudaFree(g_workspace.results);
-    g_workspace.results = nullptr;
-    g_workspace.results_capacity = 0;
-  }
-  if (g_workspace.digests != nullptr) {
-    cudaFree(g_workspace.digests);
-    g_workspace.digests = nullptr;
-    g_workspace.digests_capacity = 0;
-  }
-  if (g_workspace.error != nullptr) {
-    cudaFree(g_workspace.error);
-    g_workspace.error = nullptr;
-    g_workspace.error_capacity = 0;
-  }
+  g_workspace_cleanups.clear();
 }
 
 }  // namespace
@@ -248,10 +274,8 @@ void cudaSm2Cleanup() {
     cudaStreamSynchronize(g_stream);
   }
 
-  {
-    std::lock_guard<std::mutex> ws_lock(g_workspace_mutex);
-    freeWorkspace();
-  }
+  // Clean up all thread-local workspaces via registered callbacks.
+  cleanupAllWorkspaces();
 
   if (h_generatorTableDevice != nullptr) {
     GpuAffinePoint* null_table = nullptr;
@@ -270,6 +294,11 @@ void cudaSm2Cleanup() {
 }
 
 cudaStream_t cudaSm2GetStream() { return g_stream; }
+
+void cudaSm2RegisterCleanup(std::function<void()> cleanup) {
+  std::lock_guard<std::mutex> lock(g_workspace_cleanups_mutex);
+  g_workspace_cleanups.push_back(std::move(cleanup));
+}
 
 void cudaSm2Sync(cudaStream_t stream) {
   if (stream == 0) {
@@ -295,8 +324,8 @@ const char* cudaSm2GetLastError() {
 // Montgomery multiplication using CIOS method
 
 // 256-bit addition with carry: r = a + b, returns carry
-__device__ __forceinline__ uint64_t add256(const uint64_t* a,
-                                           const uint64_t* b, uint64_t* r) {
+__device__ __forceinline__ uint64_t add256(const uint64_t* a, const uint64_t* b,
+                                           uint64_t* r) {
   uint64_t carry = 0;
   uint64_t sum0 = a[0] + b[0];
   carry = (sum0 < a[0]) ? 1 : 0;
@@ -327,8 +356,8 @@ __device__ __forceinline__ uint64_t add256(const uint64_t* a,
 }
 
 // 256-bit subtraction with borrow: r = a - b, returns borrow
-__device__ __forceinline__ uint64_t sub256(const uint64_t* a,
-                                           const uint64_t* b, uint64_t* r) {
+__device__ __forceinline__ uint64_t sub256(const uint64_t* a, const uint64_t* b,
+                                           uint64_t* r) {
   uint64_t borrow = 0;
   uint64_t tmp0 = a[0] - b[0];
   borrow = (a[0] < b[0]) ? 1 : 0;
@@ -1712,8 +1741,7 @@ __device__ __forceinline__ void sm3Hash32(const uint8_t* msg32,
 
   for (int j = 0; j < 64; ++j) {
     const uint32_t Tj = (j < 16) ? 0x79CC4519U : 0x7A879D8AU;
-    const uint32_t ss1 =
-        rotl32(rotl32(A, 12) + E + rotl32(Tj, j & 31), 7);
+    const uint32_t ss1 = rotl32(rotl32(A, 12) + E + rotl32(Tj, j & 31), 7);
     const uint32_t ss2 = ss1 ^ rotl32(A, 12);
     const uint32_t tt1 = sm3FF(A, B, C, j) + D + ss2 + W1[j];
     const uint32_t tt2 = sm3GG(E, F, G, j) + H + ss1 + W[j];
@@ -1913,10 +1941,10 @@ __global__ void batchSameScalarMulKernel(const GpuAffinePoint* points,
 }
 
 __global__ void batchHashAndMulFromSm3DigestsKernel(const uint8_t* digests,
-                                                   const GpuScalar* scalar,
-                                                   GpuAffinePoint* results,
-                                                   int32_t count,
-                                                   int32_t* error_flag) {
+                                                    const GpuScalar* scalar,
+                                                    GpuAffinePoint* results,
+                                                    int32_t count,
+                                                    int32_t* error_flag) {
   const int idx = blockIdx.x * blockDim.x + threadIdx.x;
   const bool active = (idx < count);
 
@@ -2116,32 +2144,31 @@ CudaEccError batchMulBase(const void* hostScalars, void* hostResults,
     return CudaEccError::kCudaError;
   }
 
-  std::lock_guard<std::mutex> ws_lock(g_workspace_mutex);
+  registerWorkspaceCleanup();
 
   cudaError_t err =
-      ensureDeviceArray(&g_workspace.scalars, &g_workspace.scalars_capacity,
+      ensureDeviceArray(&tl_workspace.scalars, &tl_workspace.scalars_capacity,
                         static_cast<size_t>(count));
   if (err != cudaSuccess) return toCudaEccError(err);
-  err = ensureDeviceArray(&g_workspace.results, &g_workspace.results_capacity,
+  err = ensureDeviceArray(&tl_workspace.results, &tl_workspace.results_capacity,
                           static_cast<size_t>(count));
   if (err != cudaSuccess) return toCudaEccError(err);
 
   const size_t scalarBytes = static_cast<size_t>(count) * sizeof(GpuScalar);
-  const size_t pointBytes =
-      static_cast<size_t>(count) * sizeof(GpuAffinePoint);
+  const size_t pointBytes = static_cast<size_t>(count) * sizeof(GpuAffinePoint);
 
-  err = cudaMemcpyAsync(g_workspace.scalars, hostScalars, scalarBytes,
+  err = cudaMemcpyAsync(tl_workspace.scalars, hostScalars, scalarBytes,
                         cudaMemcpyHostToDevice, stream);
   if (err != cudaSuccess) return toCudaEccError(err);
 
   constexpr int kThreadsPerBlock = 256;
   const int numBlocks = (count + kThreadsPerBlock - 1) / kThreadsPerBlock;
   batchFixedBaseMulKernel<<<numBlocks, kThreadsPerBlock, 0, stream>>>(
-      g_workspace.scalars, g_workspace.results, count);
+      tl_workspace.scalars, tl_workspace.results, count);
   err = cudaPeekAtLastError();
   if (err != cudaSuccess) return toCudaEccError(err);
 
-  err = cudaMemcpyAsync(hostResults, g_workspace.results, pointBytes,
+  err = cudaMemcpyAsync(hostResults, tl_workspace.results, pointBytes,
                         cudaMemcpyDeviceToHost, stream);
   if (err != cudaSuccess) return toCudaEccError(err);
 
@@ -2162,38 +2189,37 @@ CudaEccError batchMul(const void* hostPoints, const void* hostScalars,
     return CudaEccError::kCudaError;
   }
 
-  std::lock_guard<std::mutex> ws_lock(g_workspace_mutex);
+  registerWorkspaceCleanup();
 
   cudaError_t err =
-      ensureDeviceArray(&g_workspace.points, &g_workspace.points_capacity,
+      ensureDeviceArray(&tl_workspace.points, &tl_workspace.points_capacity,
                         static_cast<size_t>(count));
   if (err != cudaSuccess) return toCudaEccError(err);
-  err = ensureDeviceArray(&g_workspace.scalars, &g_workspace.scalars_capacity,
+  err = ensureDeviceArray(&tl_workspace.scalars, &tl_workspace.scalars_capacity,
                           static_cast<size_t>(count));
   if (err != cudaSuccess) return toCudaEccError(err);
-  err = ensureDeviceArray(&g_workspace.results, &g_workspace.results_capacity,
+  err = ensureDeviceArray(&tl_workspace.results, &tl_workspace.results_capacity,
                           static_cast<size_t>(count));
   if (err != cudaSuccess) return toCudaEccError(err);
 
-  const size_t pointBytes =
-      static_cast<size_t>(count) * sizeof(GpuAffinePoint);
+  const size_t pointBytes = static_cast<size_t>(count) * sizeof(GpuAffinePoint);
   const size_t scalarBytes = static_cast<size_t>(count) * sizeof(GpuScalar);
 
-  err = cudaMemcpyAsync(g_workspace.points, hostPoints, pointBytes,
+  err = cudaMemcpyAsync(tl_workspace.points, hostPoints, pointBytes,
                         cudaMemcpyHostToDevice, stream);
   if (err != cudaSuccess) return toCudaEccError(err);
-  err = cudaMemcpyAsync(g_workspace.scalars, hostScalars, scalarBytes,
+  err = cudaMemcpyAsync(tl_workspace.scalars, hostScalars, scalarBytes,
                         cudaMemcpyHostToDevice, stream);
   if (err != cudaSuccess) return toCudaEccError(err);
 
   constexpr int kThreadsPerBlock = 256;
   const int numBlocks = (count + kThreadsPerBlock - 1) / kThreadsPerBlock;
   batchVarBaseMulKernel<<<numBlocks, kThreadsPerBlock, 0, stream>>>(
-      g_workspace.points, g_workspace.scalars, g_workspace.results, count);
+      tl_workspace.points, tl_workspace.scalars, tl_workspace.results, count);
   err = cudaPeekAtLastError();
   if (err != cudaSuccess) return toCudaEccError(err);
 
-  err = cudaMemcpyAsync(hostResults, g_workspace.results, pointBytes,
+  err = cudaMemcpyAsync(hostResults, tl_workspace.results, pointBytes,
                         cudaMemcpyDeviceToHost, stream);
   if (err != cudaSuccess) return toCudaEccError(err);
 
@@ -2215,37 +2241,36 @@ CudaEccError batchMulSameScalar(const void* hostPoints, const void* hostScalar,
     return CudaEccError::kCudaError;
   }
 
-  std::lock_guard<std::mutex> ws_lock(g_workspace_mutex);
+  registerWorkspaceCleanup();
 
   cudaError_t err =
-      ensureDeviceArray(&g_workspace.points, &g_workspace.points_capacity,
+      ensureDeviceArray(&tl_workspace.points, &tl_workspace.points_capacity,
                         static_cast<size_t>(count));
   if (err != cudaSuccess) return toCudaEccError(err);
-  err = ensureDeviceArray(&g_workspace.scalars, &g_workspace.scalars_capacity,
+  err = ensureDeviceArray(&tl_workspace.scalars, &tl_workspace.scalars_capacity,
                           1);
   if (err != cudaSuccess) return toCudaEccError(err);
-  err = ensureDeviceArray(&g_workspace.results, &g_workspace.results_capacity,
+  err = ensureDeviceArray(&tl_workspace.results, &tl_workspace.results_capacity,
                           static_cast<size_t>(count));
   if (err != cudaSuccess) return toCudaEccError(err);
 
-  const size_t pointBytes =
-      static_cast<size_t>(count) * sizeof(GpuAffinePoint);
+  const size_t pointBytes = static_cast<size_t>(count) * sizeof(GpuAffinePoint);
 
-  err = cudaMemcpyAsync(g_workspace.points, hostPoints, pointBytes,
+  err = cudaMemcpyAsync(tl_workspace.points, hostPoints, pointBytes,
                         cudaMemcpyHostToDevice, stream);
   if (err != cudaSuccess) return toCudaEccError(err);
-  err = cudaMemcpyAsync(g_workspace.scalars, hostScalar, sizeof(GpuScalar),
+  err = cudaMemcpyAsync(tl_workspace.scalars, hostScalar, sizeof(GpuScalar),
                         cudaMemcpyHostToDevice, stream);
   if (err != cudaSuccess) return toCudaEccError(err);
 
   constexpr int kThreadsPerBlock = 256;
   const int numBlocks = (count + kThreadsPerBlock - 1) / kThreadsPerBlock;
   batchSameScalarMulKernel<<<numBlocks, kThreadsPerBlock, 0, stream>>>(
-      g_workspace.points, g_workspace.scalars, g_workspace.results, count);
+      tl_workspace.points, tl_workspace.scalars, tl_workspace.results, count);
   err = cudaPeekAtLastError();
   if (err != cudaSuccess) return toCudaEccError(err);
 
-  err = cudaMemcpyAsync(hostResults, g_workspace.results, pointBytes,
+  err = cudaMemcpyAsync(hostResults, tl_workspace.results, pointBytes,
                         cudaMemcpyDeviceToHost, stream);
   if (err != cudaSuccess) return toCudaEccError(err);
 
@@ -2267,45 +2292,45 @@ CudaEccError batchMulDoubleBase(const void* hostS1, const void* hostS2,
     return CudaEccError::kCudaError;
   }
 
-  std::lock_guard<std::mutex> ws_lock(g_workspace_mutex);
+  registerWorkspaceCleanup();
 
   cudaError_t err =
-      ensureDeviceArray(&g_workspace.scalars, &g_workspace.scalars_capacity,
+      ensureDeviceArray(&tl_workspace.scalars, &tl_workspace.scalars_capacity,
                         static_cast<size_t>(count));
   if (err != cudaSuccess) return toCudaEccError(err);
-  err = ensureDeviceArray(&g_workspace.scalars2, &g_workspace.scalars2_capacity,
+  err =
+      ensureDeviceArray(&tl_workspace.scalars2, &tl_workspace.scalars2_capacity,
+                        static_cast<size_t>(count));
+  if (err != cudaSuccess) return toCudaEccError(err);
+  err = ensureDeviceArray(&tl_workspace.points, &tl_workspace.points_capacity,
                           static_cast<size_t>(count));
   if (err != cudaSuccess) return toCudaEccError(err);
-  err = ensureDeviceArray(&g_workspace.points, &g_workspace.points_capacity,
-                          static_cast<size_t>(count));
-  if (err != cudaSuccess) return toCudaEccError(err);
-  err = ensureDeviceArray(&g_workspace.results, &g_workspace.results_capacity,
+  err = ensureDeviceArray(&tl_workspace.results, &tl_workspace.results_capacity,
                           static_cast<size_t>(count));
   if (err != cudaSuccess) return toCudaEccError(err);
 
   const size_t scalarBytes = static_cast<size_t>(count) * sizeof(GpuScalar);
-  const size_t pointBytes =
-      static_cast<size_t>(count) * sizeof(GpuAffinePoint);
+  const size_t pointBytes = static_cast<size_t>(count) * sizeof(GpuAffinePoint);
 
-  err = cudaMemcpyAsync(g_workspace.scalars, hostS1, scalarBytes,
+  err = cudaMemcpyAsync(tl_workspace.scalars, hostS1, scalarBytes,
                         cudaMemcpyHostToDevice, stream);
   if (err != cudaSuccess) return toCudaEccError(err);
-  err = cudaMemcpyAsync(g_workspace.scalars2, hostS2, scalarBytes,
+  err = cudaMemcpyAsync(tl_workspace.scalars2, hostS2, scalarBytes,
                         cudaMemcpyHostToDevice, stream);
   if (err != cudaSuccess) return toCudaEccError(err);
-  err = cudaMemcpyAsync(g_workspace.points, hostPoints, pointBytes,
+  err = cudaMemcpyAsync(tl_workspace.points, hostPoints, pointBytes,
                         cudaMemcpyHostToDevice, stream);
   if (err != cudaSuccess) return toCudaEccError(err);
 
   constexpr int kThreadsPerBlock = 256;
   const int numBlocks = (count + kThreadsPerBlock - 1) / kThreadsPerBlock;
   batchDoubleBaseMulKernel<<<numBlocks, kThreadsPerBlock, 0, stream>>>(
-      g_workspace.scalars, g_workspace.scalars2, g_workspace.points,
-      g_workspace.results, count);
+      tl_workspace.scalars, tl_workspace.scalars2, tl_workspace.points,
+      tl_workspace.results, count);
   err = cudaPeekAtLastError();
   if (err != cudaSuccess) return toCudaEccError(err);
 
-  err = cudaMemcpyAsync(hostResults, g_workspace.results, pointBytes,
+  err = cudaMemcpyAsync(hostResults, tl_workspace.results, pointBytes,
                         cudaMemcpyDeviceToHost, stream);
   if (err != cudaSuccess) return toCudaEccError(err);
 
@@ -2326,37 +2351,36 @@ CudaEccError batchAdd(const void* hostP1s, const void* hostP2s,
     return CudaEccError::kCudaError;
   }
 
-  std::lock_guard<std::mutex> ws_lock(g_workspace_mutex);
+  registerWorkspaceCleanup();
 
   cudaError_t err =
-      ensureDeviceArray(&g_workspace.points, &g_workspace.points_capacity,
+      ensureDeviceArray(&tl_workspace.points, &tl_workspace.points_capacity,
                         static_cast<size_t>(count));
   if (err != cudaSuccess) return toCudaEccError(err);
-  err = ensureDeviceArray(&g_workspace.points2, &g_workspace.points2_capacity,
+  err = ensureDeviceArray(&tl_workspace.points2, &tl_workspace.points2_capacity,
                           static_cast<size_t>(count));
   if (err != cudaSuccess) return toCudaEccError(err);
-  err = ensureDeviceArray(&g_workspace.results, &g_workspace.results_capacity,
+  err = ensureDeviceArray(&tl_workspace.results, &tl_workspace.results_capacity,
                           static_cast<size_t>(count));
   if (err != cudaSuccess) return toCudaEccError(err);
 
-  const size_t pointBytes =
-      static_cast<size_t>(count) * sizeof(GpuAffinePoint);
+  const size_t pointBytes = static_cast<size_t>(count) * sizeof(GpuAffinePoint);
 
-  err = cudaMemcpyAsync(g_workspace.points, hostP1s, pointBytes,
+  err = cudaMemcpyAsync(tl_workspace.points, hostP1s, pointBytes,
                         cudaMemcpyHostToDevice, stream);
   if (err != cudaSuccess) return toCudaEccError(err);
-  err = cudaMemcpyAsync(g_workspace.points2, hostP2s, pointBytes,
+  err = cudaMemcpyAsync(tl_workspace.points2, hostP2s, pointBytes,
                         cudaMemcpyHostToDevice, stream);
   if (err != cudaSuccess) return toCudaEccError(err);
 
   constexpr int kThreadsPerBlock = 256;
   const int numBlocks = (count + kThreadsPerBlock - 1) / kThreadsPerBlock;
   batchPointAddKernel<<<numBlocks, kThreadsPerBlock, 0, stream>>>(
-      g_workspace.points, g_workspace.points2, g_workspace.results, count);
+      tl_workspace.points, tl_workspace.points2, tl_workspace.results, count);
   err = cudaPeekAtLastError();
   if (err != cudaSuccess) return toCudaEccError(err);
 
-  err = cudaMemcpyAsync(hostResults, g_workspace.results, pointBytes,
+  err = cudaMemcpyAsync(hostResults, tl_workspace.results, pointBytes,
                         cudaMemcpyDeviceToHost, stream);
   if (err != cudaSuccess) return toCudaEccError(err);
 
@@ -2376,31 +2400,30 @@ CudaEccError batchDouble(const void* hostPoints, void* hostResults,
     return CudaEccError::kCudaError;
   }
 
-  std::lock_guard<std::mutex> ws_lock(g_workspace_mutex);
+  registerWorkspaceCleanup();
 
   cudaError_t err =
-      ensureDeviceArray(&g_workspace.points, &g_workspace.points_capacity,
+      ensureDeviceArray(&tl_workspace.points, &tl_workspace.points_capacity,
                         static_cast<size_t>(count));
   if (err != cudaSuccess) return toCudaEccError(err);
-  err = ensureDeviceArray(&g_workspace.results, &g_workspace.results_capacity,
+  err = ensureDeviceArray(&tl_workspace.results, &tl_workspace.results_capacity,
                           static_cast<size_t>(count));
   if (err != cudaSuccess) return toCudaEccError(err);
 
-  const size_t pointBytes =
-      static_cast<size_t>(count) * sizeof(GpuAffinePoint);
+  const size_t pointBytes = static_cast<size_t>(count) * sizeof(GpuAffinePoint);
 
-  err = cudaMemcpyAsync(g_workspace.points, hostPoints, pointBytes,
+  err = cudaMemcpyAsync(tl_workspace.points, hostPoints, pointBytes,
                         cudaMemcpyHostToDevice, stream);
   if (err != cudaSuccess) return toCudaEccError(err);
 
   constexpr int kThreadsPerBlock = 256;
   const int numBlocks = (count + kThreadsPerBlock - 1) / kThreadsPerBlock;
   batchPointDoubleKernel<<<numBlocks, kThreadsPerBlock, 0, stream>>>(
-      g_workspace.points, g_workspace.results, count);
+      tl_workspace.points, tl_workspace.results, count);
   err = cudaPeekAtLastError();
   if (err != cudaSuccess) return toCudaEccError(err);
 
-  err = cudaMemcpyAsync(hostResults, g_workspace.results, pointBytes,
+  err = cudaMemcpyAsync(hostResults, tl_workspace.results, pointBytes,
                         cudaMemcpyDeviceToHost, stream);
   if (err != cudaSuccess) return toCudaEccError(err);
 
@@ -2411,9 +2434,9 @@ CudaEccError batchDouble(const void* hostPoints, void* hostResults,
 }
 
 CudaEccError batchHashAndMulFromSm3Digests(const void* hostDigests,
-                                          const void* hostScalar,
-                                          void* hostResults, int32_t count,
-                                          cudaStream_t stream) {
+                                           const void* hostScalar,
+                                           void* hostResults, int32_t count,
+                                           cudaStream_t stream) {
   if (count <= 0 || hostDigests == nullptr || hostScalar == nullptr ||
       hostResults == nullptr) {
     return CudaEccError::kInvalidInput;
@@ -2423,48 +2446,47 @@ CudaEccError batchHashAndMulFromSm3Digests(const void* hostDigests,
     return CudaEccError::kCudaError;
   }
 
-  std::lock_guard<std::mutex> ws_lock(g_workspace_mutex);
+  registerWorkspaceCleanup();
 
   const size_t digestBytes = static_cast<size_t>(count) * 32;
   const size_t pointBytes = static_cast<size_t>(count) * sizeof(GpuAffinePoint);
 
-  cudaError_t err =
-      ensureDeviceBytes(&g_workspace.digests, &g_workspace.digests_capacity,
-                        digestBytes);
+  cudaError_t err = ensureDeviceBytes(
+      &tl_workspace.digests, &tl_workspace.digests_capacity, digestBytes);
   if (err != cudaSuccess) return toCudaEccError(err);
-  err =
-      ensureDeviceArray(&g_workspace.scalars, &g_workspace.scalars_capacity, 1);
+  err = ensureDeviceArray(&tl_workspace.scalars, &tl_workspace.scalars_capacity,
+                          1);
   if (err != cudaSuccess) return toCudaEccError(err);
-  err = ensureDeviceArray(&g_workspace.results, &g_workspace.results_capacity,
+  err = ensureDeviceArray(&tl_workspace.results, &tl_workspace.results_capacity,
                           static_cast<size_t>(count));
   if (err != cudaSuccess) return toCudaEccError(err);
-  err = ensureDeviceArray(&g_workspace.error, &g_workspace.error_capacity, 1);
+  err = ensureDeviceArray(&tl_workspace.error, &tl_workspace.error_capacity, 1);
   if (err != cudaSuccess) return toCudaEccError(err);
 
-  err = cudaMemcpyAsync(g_workspace.digests, hostDigests, digestBytes,
+  err = cudaMemcpyAsync(tl_workspace.digests, hostDigests, digestBytes,
                         cudaMemcpyHostToDevice, stream);
   if (err != cudaSuccess) return toCudaEccError(err);
-  err = cudaMemcpyAsync(g_workspace.scalars, hostScalar, sizeof(GpuScalar),
+  err = cudaMemcpyAsync(tl_workspace.scalars, hostScalar, sizeof(GpuScalar),
                         cudaMemcpyHostToDevice, stream);
   if (err != cudaSuccess) return toCudaEccError(err);
-  err = cudaMemsetAsync(g_workspace.error, 0, sizeof(int32_t), stream);
+  err = cudaMemsetAsync(tl_workspace.error, 0, sizeof(int32_t), stream);
   if (err != cudaSuccess) return toCudaEccError(err);
 
   constexpr int kThreadsPerBlock = 256;
   const int numBlocks = (count + kThreadsPerBlock - 1) / kThreadsPerBlock;
   batchHashAndMulFromSm3DigestsKernel<<<numBlocks, kThreadsPerBlock, 0,
-                                       stream>>>(
-      g_workspace.digests, g_workspace.scalars, g_workspace.results, count,
-      g_workspace.error);
+                                        stream>>>(
+      tl_workspace.digests, tl_workspace.scalars, tl_workspace.results, count,
+      tl_workspace.error);
   err = cudaPeekAtLastError();
   if (err != cudaSuccess) return toCudaEccError(err);
 
-  err = cudaMemcpyAsync(hostResults, g_workspace.results, pointBytes,
+  err = cudaMemcpyAsync(hostResults, tl_workspace.results, pointBytes,
                         cudaMemcpyDeviceToHost, stream);
   if (err != cudaSuccess) return toCudaEccError(err);
 
   int32_t hostError = 0;
-  err = cudaMemcpyAsync(&hostError, g_workspace.error, sizeof(int32_t),
+  err = cudaMemcpyAsync(&hostError, tl_workspace.error, sizeof(int32_t),
                         cudaMemcpyDeviceToHost, stream);
   if (err != cudaSuccess) return toCudaEccError(err);
 
