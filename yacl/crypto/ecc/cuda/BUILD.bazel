@@ -32,7 +32,6 @@ cuda_library(
     ],
     copts = [
         "-O3",
-        "--use_fast_math",
     ],
     deps = [
         "@local_cuda//:cuda_runtime",

@@ -216,7 +216,9 @@ cudaError_t ensureDeviceBytes(uint8_t** ptr, size_t* capacity, size_t bytes) {
 void cleanupAllWorkspaces() {
   std::lock_guard<std::mutex> lock(g_workspace_cleanups_mutex);
   for (auto& cleanup : g_workspace_cleanups) {
-    cleanup();
+    if (cleanup) {
+      cleanup();
+    }
   }
   g_workspace_cleanups.clear();
 }
@@ -279,9 +281,12 @@ void cudaSm2Cleanup() {
 
   if (h_generatorTableDevice != nullptr) {
     GpuAffinePoint* null_table = nullptr;
-    cudaMemcpyToSymbol(g_generatorTable, &null_table, sizeof(null_table));
-    cudaFree(h_generatorTableDevice);
-    h_generatorTableDevice = nullptr;
+    const cudaError_t sym_err =
+        cudaMemcpyToSymbol(g_generatorTable, &null_table, sizeof(null_table));
+    if (sym_err == cudaSuccess) {
+      cudaFree(h_generatorTableDevice);
+      h_generatorTableDevice = nullptr;
+    }
   }
 
   if (g_stream != nullptr) {
@@ -296,6 +301,9 @@ void cudaSm2Cleanup() {
 cudaStream_t cudaSm2GetStream() { return g_stream; }
 
 void cudaSm2RegisterCleanup(std::function<void()> cleanup) {
+  if (!cleanup) {
+    return;
+  }
   std::lock_guard<std::mutex> lock(g_workspace_cleanups_mutex);
   g_workspace_cleanups.push_back(std::move(cleanup));
 }
@@ -2507,6 +2515,7 @@ void copyTableToConstantMemory(const GpuAffinePoint* hostTable) {
   std::lock_guard<std::mutex> lock(g_mutex);
 
   // Allocate global memory for the table
+  bool allocated = false;
   if (h_generatorTableDevice == nullptr) {
     cudaError_t err = cudaMalloc(&h_generatorTableDevice,
                                  kFixedBaseTableSize * sizeof(GpuAffinePoint));
@@ -2514,6 +2523,7 @@ void copyTableToConstantMemory(const GpuAffinePoint* hostTable) {
       h_generatorTableDevice = nullptr;
       return;
     }
+    allocated = true;
   }
 
   // Copy table to device global memory
@@ -2525,8 +2535,15 @@ void copyTableToConstantMemory(const GpuAffinePoint* hostTable) {
   }
 
   // Update the device pointer
-  cudaMemcpyToSymbol(g_generatorTable, &h_generatorTableDevice,
-                     sizeof(GpuAffinePoint*));
+  err = cudaMemcpyToSymbol(g_generatorTable, &h_generatorTableDevice,
+                           sizeof(GpuAffinePoint*));
+  if (err != cudaSuccess) {
+    if (allocated) {
+      cudaFree(h_generatorTableDevice);
+      h_generatorTableDevice = nullptr;
+    }
+    return;
+  }
 }
 
 }  // namespace yacl::crypto::cuda

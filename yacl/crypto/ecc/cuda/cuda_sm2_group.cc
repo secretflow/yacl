@@ -17,12 +17,15 @@
 #include <condition_variable>
 #include <cstring>
 #include <functional>
+#include <limits>
 #include <mutex>
 #include <stdexcept>
 #include <string_view>
 #include <thread>
 #include <utility>
 #include <vector>
+
+#include "spdlog/spdlog.h"
 
 #include "yacl/crypto/ecc/cuda/kernels/sm2_kernels.cuh"
 #include "yacl/crypto/ecc/ecc_spi.h"
@@ -36,6 +39,11 @@ namespace {
 constexpr char kLibraryName[] = "CUDA_SM2";
 constexpr int kDefaultDeviceId = 0;
 constexpr size_t kSm2FieldBytes = 32;
+
+void WarnCudaFallback(std::string_view op, CudaEccError err, int32_t count) {
+  SPDLOG_WARN("CudaSm2Group: {} failed (err={}, count={}), fallback to CPU", op,
+              static_cast<int>(err), count);
+}
 
 struct GpuScalarData {
   uint64_t limbs[4];
@@ -547,6 +555,8 @@ void CudaSm2Group::batchMul(absl::Span<const EcPoint> points,
     return;
   }
 
+  YACL_ENFORCE(points.size() <=
+               static_cast<size_t>(std::numeric_limits<int32_t>::max()));
   int32_t count = static_cast<int32_t>(points.size());
   std::vector<PackedAffinePoint> gpuPoints(count);
   std::vector<GpuScalarData> gpuScalars(count);
@@ -561,6 +571,7 @@ void CudaSm2Group::batchMul(absl::Span<const EcPoint> points,
                                     gpuResults.data(), count);
 
   if (err != CudaEccError::kSuccess) {
+    WarnCudaFallback("batchMul", err, count);
     for (size_t i = 0; i < points.size(); ++i) {
       results[i] = cpu_backend_->Mul(toCpuPoint(points[i]), scalars[i]);
     }
@@ -583,6 +594,8 @@ void CudaSm2Group::batchMulBase(absl::Span<const MPInt> scalars,
     return;
   }
 
+  YACL_ENFORCE(scalars.size() <=
+               static_cast<size_t>(std::numeric_limits<int32_t>::max()));
   int32_t count = static_cast<int32_t>(scalars.size());
 
   std::vector<GpuScalarData> gpuScalars(count);
@@ -596,6 +609,7 @@ void CudaSm2Group::batchMulBase(absl::Span<const MPInt> scalars,
       cuda::batchMulBase(gpuScalars.data(), gpuResults.data(), count);
 
   if (err != CudaEccError::kSuccess) {
+    WarnCudaFallback("batchMulBase", err, count);
     for (size_t i = 0; i < scalars.size(); ++i) {
       results[i] = cpu_backend_->MulBase(scalars[i]);
     }
@@ -619,6 +633,8 @@ void CudaSm2Group::batchMulSameScalar(absl::Span<const EcPoint> points,
     return;
   }
 
+  YACL_ENFORCE(points.size() <=
+               static_cast<size_t>(std::numeric_limits<int32_t>::max()));
   int32_t count = static_cast<int32_t>(points.size());
 
   std::vector<PackedAffinePoint> gpuPoints(count);
@@ -634,6 +650,7 @@ void CudaSm2Group::batchMulSameScalar(absl::Span<const EcPoint> points,
                                               gpuResults.data(), count);
 
   if (err != CudaEccError::kSuccess) {
+    WarnCudaFallback("batchMulSameScalar", err, count);
     for (size_t i = 0; i < points.size(); ++i) {
       results[i] = cpu_backend_->Mul(toCpuPoint(points[i]), scalar);
     }
@@ -665,11 +682,14 @@ void CudaSm2Group::batchHashAndMul(HashToCurveStrategy strategy,
     return;
   }
 
+  YACL_ENFORCE(inputs.size() <=
+               static_cast<size_t>(std::numeric_limits<int32_t>::max()));
   const int32_t count = static_cast<int32_t>(inputs.size());
 
   GpuScalarData gpuScalar;
   convertToCudaScalar(scalar, &gpuScalar);
 
+  CudaEccError last_gpu_err = CudaEccError::kSuccess;
   auto runGpuNonPipelined = [&]() -> bool {
     thread_local PinnedHostBuffer<uint8_t> digests_buf;
     thread_local PinnedHostBuffer<PackedAffinePoint> results_buf;
@@ -695,6 +715,7 @@ void CudaSm2Group::batchHashAndMul(HashToCurveStrategy strategy,
       const CudaEccError err = cuda::batchHashAndMulFromSm3Digests(
           digests.data(), &gpuScalar, gpuResults.data(), count);
       if (err != CudaEccError::kSuccess) {
+        last_gpu_err = err;
         return false;
       }
 
@@ -723,6 +744,7 @@ void CudaSm2Group::batchHashAndMul(HashToCurveStrategy strategy,
     const CudaEccError err = cuda::batchHashAndMulFromSm3Digests(
         digests, &gpuScalar, gpuResults, count);
     if (err != CudaEccError::kSuccess) {
+      last_gpu_err = err;
       return false;
     }
 
@@ -742,6 +764,7 @@ void CudaSm2Group::batchHashAndMul(HashToCurveStrategy strategy,
 
   if (!enable_pipeline) {
     if (!runGpuNonPipelined()) {
+      WarnCudaFallback("batchHashAndMul", last_gpu_err, count);
       cpuFallback();
     }
     return;
@@ -915,6 +938,7 @@ void CudaSm2Group::batchHashAndMul(HashToCurveStrategy strategy,
       lock.unlock();
       gpu_worker.join();
       if (!runGpuNonPipelined()) {
+        WarnCudaFallback("batchHashAndMul", last_gpu_err, count);
         cpuFallback();
       }
       return;
@@ -935,6 +959,7 @@ void CudaSm2Group::batchHashAndMul(HashToCurveStrategy strategy,
 
   if (stop) {
     if (!runGpuNonPipelined()) {
+      WarnCudaFallback("batchHashAndMul", last_gpu_err, count);
       cpuFallback();
     }
     return;
@@ -954,6 +979,8 @@ void CudaSm2Group::batchAdd(absl::Span<const EcPoint> p1s,
     return;
   }
 
+  YACL_ENFORCE(p1s.size() <=
+               static_cast<size_t>(std::numeric_limits<int32_t>::max()));
   int32_t count = static_cast<int32_t>(p1s.size());
 
   std::vector<PackedAffinePoint> gpuP1s(count);
@@ -969,6 +996,7 @@ void CudaSm2Group::batchAdd(absl::Span<const EcPoint> p1s,
       cuda::batchAdd(gpuP1s.data(), gpuP2s.data(), gpuResults.data(), count);
 
   if (err != CudaEccError::kSuccess) {
+    WarnCudaFallback("batchAdd", err, count);
     for (size_t i = 0; i < p1s.size(); ++i) {
       results[i] = cpu_backend_->Add(toCpuPoint(p1s[i]), toCpuPoint(p2s[i]));
     }
@@ -996,6 +1024,8 @@ void CudaSm2Group::batchMulDoubleBase(absl::Span<const MPInt> s1s,
     return;
   }
 
+  YACL_ENFORCE(s1s.size() <=
+               static_cast<size_t>(std::numeric_limits<int32_t>::max()));
   int32_t count = static_cast<int32_t>(s1s.size());
 
   std::vector<GpuScalarData> gpuS1(count);
@@ -1013,6 +1043,7 @@ void CudaSm2Group::batchMulDoubleBase(absl::Span<const MPInt> s1s,
       gpuS1.data(), gpuS2.data(), gpuPoints.data(), gpuResults.data(), count);
 
   if (err != CudaEccError::kSuccess) {
+    WarnCudaFallback("batchMulDoubleBase", err, count);
     for (size_t i = 0; i < s1s.size(); ++i) {
       results[i] =
           cpu_backend_->MulDoubleBase(s1s[i], s2s[i], toCpuPoint(points[i]));
