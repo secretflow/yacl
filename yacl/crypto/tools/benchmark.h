@@ -121,7 +121,7 @@ BENCHMARK_DEFINE_F(TheoreticalToolBench, CCRHASH_INPLACE)
   }
 }
 
-// 1st arg = numer of desired outputs
+// 1st arg = number of desired outputs
 BENCHMARK_DEFINE_F(PrgBench, PrgAesEcb)
 (benchmark::State& state) {
   std::vector<uint128_t> out;
@@ -136,7 +136,7 @@ BENCHMARK_DEFINE_F(PrgBench, PrgAesEcb)
   }
 }
 
-// 1st arg = numer of desired outputs
+// 1st arg = number of desired outputs
 BENCHMARK_DEFINE_F(PrgBench, PrgSm4Ecb)
 (benchmark::State& state) {
   std::vector<uint128_t> out;

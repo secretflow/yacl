@@ -30,7 +30,7 @@ enum class OtStoreType { Normal, Compact };
 
 // OT Receiver (for 1-out-of-2 OT)
 //
-// Data structure that stores multiple ot receier's data (a.k.a. the choice and
+// Data structure that stores multiple ot receiver's data (a.k.a. the choice and
 // the chosen 1-out-of-2 message)
 class OtRecvStore : public SliceBase {
  public:
@@ -57,7 +57,7 @@ class OtRecvStore : public SliceBase {
   // reset ot store
   void Reset();
 
-  // get the avaliable ot number for this slice
+  // get the available ot number for this slice
   uint64_t Size() const { return GetUseSize(); }
 
   // -----------------
@@ -152,7 +152,7 @@ class OtSendStore : public SliceBase {
   // reset ot store
   void Reset();
 
-  // get the avaliable ot number for this slice
+  // get the available ot number for this slice
   uint64_t Size() const;
 
   // access the delta of the cot

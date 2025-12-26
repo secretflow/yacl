@@ -28,7 +28,7 @@
 
 namespace yacl::math {
 
-// Galois Field GF(2^n) implmentation
+// Galois Field GF(2^n) implementation
 // (As of now, only support GF(2^64) & GF(2^128))
 //
 // Galois Field GF(2^n) could be viewed as GF(2)[X]/(P),
@@ -132,7 +132,7 @@ inline uint64_t GfMul(absl::Span<const uint64_t> a,
 }
 
 // NOTE The subfield (a.k.a GF(2^64)) is mapped to the larger field (a.k.a
-// GF(2^128)) to proceed with arithmatic operations. Therefore, all subfield ops
+// GF(2^128)) to proceed with arithmetic operations. Therefore, all subfield ops
 // such as multiplications and additions are defined in GF(2^128)
 //
 uint128_t GfMul(absl::Span<const uint128_t> a, absl::Span<const uint64_t> b);
@@ -149,7 +149,7 @@ inline uint128_t GfMul(uint64_t a, uint128_t b) {
 // GF Universal Hash
 // ------------------------
 
-// see difference between universal hash and collision-resistent hash functions:
+// see difference between universal hash and collision-resistant hash functions:
 // https://crypto.stackexchange.com/a/88247/61581
 template <typename T>
 T UniversalHash(T seed, absl::Span<const T> data) {

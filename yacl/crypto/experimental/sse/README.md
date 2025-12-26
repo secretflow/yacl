@@ -10,7 +10,7 @@ https://eprint.iacr.org/2013/169.pdf
 
 This paper proposes a highly scalable searchable symmetric encryption (SSE) scheme that aims to solve the search problem in large-scale encrypted datasets, especially to support Boolean queries (e.g., logical operations such as AND, OR, NOT, etc.). While traditional SSE schemes usually support only simple keyword searches, this scheme is able to handle more complex Boolean queries by improving the index structure and query processing, allowing users to combine multiple keywords for searching.
 
-## Implemention
+## Implementation
 
 1. **T-Set Instantiation**
     - `tset.h`

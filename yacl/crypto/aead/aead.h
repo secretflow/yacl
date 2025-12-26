@@ -30,7 +30,7 @@ namespace yacl::crypto {
 // + https://datatracker.ietf.org/doc/html/rfc5116
 //
 // NOTE Strictly, mac-then-encrypt algorithm is not aead, we add those
-// algorithms only for backword compatiability.
+// algorithms only for backward compatibility.
 
 enum class AeadAlgorithm : int {
   UNKNOWN = 0,
@@ -66,7 +66,7 @@ class AeadCtx {
     return GetKeySize(algorithm_);
   }
 
-  // Staticlly get the key size of an AEAD algorithm
+  // Statically get the key size of an AEAD algorithm
   static size_t GetKeySize(AeadAlgorithm algorithm);
 
   // Get the mac size of the AEAD algorithm that is stored insize AeadCtx
@@ -78,7 +78,7 @@ class AeadCtx {
     return GetMacSize(algorithm_);
   }
 
-  // Staticlly get the mac size of an AEAD algorithm
+  // Statically get the mac size of an AEAD algorithm
   //
   // NOTE in case of mac-then-encrypt algorithm, this function fetches the
   // encrypted mac size
@@ -107,7 +107,7 @@ class AeadCtx {
                ByteContainerView key, ByteContainerView iv,
                absl::Span<uint8_t> plaintext, ByteContainerView aad = "") const;
 
-  // Staticlly encrypts plaintext into ciphertext and mac. The input arguments
+  // Statically encrypts plaintext into ciphertext and mac. The input arguments
   // are the AEAD algorithm, the plaintext, the symmetric encryption key, the
   // initialization vector (iv), and the optional additional-authenticated-data
   // (aad).
@@ -119,7 +119,7 @@ class AeadCtx {
                       absl::Span<uint8_t> ciphertext, absl::Span<uint8_t> mac,
                       ByteContainerView aad = "");
 
-  // Staticlly decrypts ciphertext and mac into ciphertext. The input
+  // Statically decrypts ciphertext and mac into ciphertext. The input
   // arguments are the AEAD algorithm, the ciphertext, the mac, the symmetric
   // encryption key, the initialization vector (iv), and the optional
   // additional-authenticated-data (aad).

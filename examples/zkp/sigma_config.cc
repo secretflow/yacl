@@ -25,7 +25,7 @@ const std::vector<SigmaConfig> kSigmaConfig = {
     {SigmaType::Dlog, 1, 1, 1, 1},
     {SigmaType::Pedersen, 2, 2, 2, 1},
     {SigmaType::DlogEq, 1, 1, 2, 2},
-    {SigmaType::DHTripple, 1, 1, 2, 2},
+    {SigmaType::DHTriple, 1, 1, 2, 2},
     // number of witness, random witness and generators should be the same and
     // at least 1
     {SigmaType::Representation, 0, 0, 0, 1, true},
