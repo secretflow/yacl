@@ -200,12 +200,9 @@ void CudaSm2Group::initCuda() {
 
       auto toMontField = [&](const MPInt& v) -> GpuFieldElement {
         MPInt mont = (v * r) % field;
-        auto bytes = mont.ToMagBytes(Endian::little);
         GpuFieldElement out{};
-        std::memset(out.limbs, 0, sizeof(out.limbs));
-        std::memcpy(
-            out.limbs, bytes.data(),
-            std::min(static_cast<size_t>(bytes.size()), sizeof(out.limbs)));
+        mont.ToBytes(reinterpret_cast<unsigned char*>(out.limbs),
+                     kSm2FieldBytes, Endian::little);
         return out;
       };
 
