@@ -74,13 +74,15 @@ class BigInt : public BigIntVar {
   // T could be (u)int8/16/32/64/128 or float/double
   template <typename T>
   void Set(T value) {
-    std::visit([value](auto& a) { a.template Set<T>(value); }, *this);
+    std::visit([value](auto& a) { a.template Set<T>(value); },
+               static_cast<BigIntVar&>(*this));
   }
 
   // T could be (u)int8/16/32/64/128
   template <typename T>
   [[nodiscard]] T Get() const {
-    return std::visit([](auto& a) { return a.template Get<T>(); }, *this);
+    return std::visit([](auto& a) { return a.template Get<T>(); },
+                      static_cast<const BigIntVar&>(*this));
   }
 
   BigInt& operator+=(const BigInt& b);
@@ -235,7 +237,7 @@ struct std::hash<yacl::math::BigInt> {
   size_t operator()(const yacl::math::BigInt& x) const {
     return std::visit(
         [](const auto& a) { return std::hash<std::decay_t<decltype(a)>>{}(a); },
-        x);
+        static_cast<const yacl::math::BigIntVar&>(x));
   }
 };
 
