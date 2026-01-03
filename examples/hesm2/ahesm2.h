@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <vector>
+
 #include "hesm2/ciphertext.h"
 #include "hesm2/private_key.h"
 
@@ -38,5 +40,18 @@ Ciphertext HSub(const Ciphertext& ciphertext1, const Ciphertext& ciphertext2,
 
 Ciphertext HMul(const Ciphertext& ciphertext1, const yacl::math::MPInt& scalar,
                 const PublicKey& pk);
+
+DecryptResult ZeroCheck(const Ciphertext& ciphertext, const PrivateKey& sk);
+
+yacl::Buffer SerializeCiphertext(const Ciphertext& ct, const PublicKey& pk);
+
+Ciphertext DeserializeCiphertext(yacl::ByteContainerView buf,
+                                 const PublicKey& pk);
+
+yacl::Buffer SerializeCiphertexts(const std::vector<Ciphertext>& cts,
+                                  const PublicKey& pk);
+
+std::vector<Ciphertext> DeserializeCiphertexts(yacl::ByteContainerView buf,
+                                               const PublicKey& pk);
 
 }  // namespace examples::hesm2
