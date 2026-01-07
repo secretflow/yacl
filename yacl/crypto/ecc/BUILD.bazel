@@ -50,11 +50,11 @@ yacl_cc_library(
 
 yacl_cc_library(
     name = "spi_with_cuda_sm2",
+    tags = ["manual"],
     deps = [
         ":spi",
-        "//yacl/crypto/ecc/cuda:cuda",
+        "//yacl/crypto/ecc/cuda",
     ],
-    tags = ["manual"],
 )
 
 yacl_cc_library(

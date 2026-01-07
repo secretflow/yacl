@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("//bazel:yacl.bzl", "yacl_cc_binary", "yacl_cc_library", "yacl_cc_test")
 load("@rules_cuda//cuda:defs.bzl", "cuda_library")
+load("//bazel:yacl.bzl", "yacl_cc_binary", "yacl_cc_library", "yacl_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -24,8 +24,8 @@ cuda_library(
         "kernels/sm2_kernels.cu",
     ],
     hdrs = [
-        "kernels/gpu_types.cuh",
         "kernels/field_ops.cuh",
+        "kernels/gpu_types.cuh",
         "kernels/point_ops.cuh",
         "kernels/precompute.cuh",
         "kernels/sm2_kernels.cuh",
@@ -33,10 +33,10 @@ cuda_library(
     copts = [
         "-O3",
     ],
+    tags = ["manual"],
     deps = [
         "@local_cuda//:cuda_runtime",
     ],
-    tags = ["manual"],
 )
 
 # GPU-accelerated SM2 EcGroup implementation
@@ -44,6 +44,7 @@ yacl_cc_library(
     name = "cuda_sm2_group",
     srcs = ["cuda_sm2_group.cc"],
     hdrs = ["cuda_sm2_group.h"],
+    tags = ["manual"],
     deps = [
         ":sm2_cuda_kernels",
         "//yacl/crypto/ecc:spi",
@@ -51,37 +52,36 @@ yacl_cc_library(
         "//yacl/crypto/hash:ssl_hash",
         "@abseil-cpp//absl/types:span",
     ],
-    tags = ["manual"],
 )
 
 # SPI factory registration (alwayslink for static registration)
 yacl_cc_library(
     name = "cuda",
     srcs = ["cuda_sm2_factory.cc"],
+    tags = ["manual"],
     deps = [":cuda_sm2_group"],
     alwayslink = 1,
-    tags = ["manual"],
 )
 
 # Unit tests
 yacl_cc_test(
     name = "cuda_sm2_test",
     srcs = ["cuda_sm2_test.cc"],
+    tags = ["manual"],
     deps = [
         ":cuda",
         "//yacl/crypto/ecc/openssl",
     ],
-    tags = ["manual"],
 )
 
 # Benchmark (binary; not run as part of `bazel test`)
 yacl_cc_binary(
     name = "bench_cuda_sm2",
     srcs = ["benchmark/bench_cuda_sm2.cc"],
+    tags = ["manual"],
     deps = [
         ":cuda",
         "//yacl/crypto/ecc/openssl",
         "@google_benchmark//:benchmark_main",
     ],
-    tags = ["manual"],
 )
