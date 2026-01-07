@@ -12,19 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@yacl//bazel:yacl.bzl", "yacl_cc_binary")
+load("@yacl//bazel:yacl.bzl", "yacl_cc_library", "yacl_cc_test")
 
 package(default_visibility = ["//visibility:public"])
 
-yacl_cc_binary(
-    name = "sm2_example",
+yacl_cc_library(
+    name = "hesm2",
     srcs = [
         "ahesm2.cc",
+        "config.cc",
+    ],
+    hdrs = [
         "ahesm2.h",
         "ciphertext.h",
-        "config.cc",
         "config.h",
-        "main.cc",
         "private_key.h",
         "public_key.h",
         "t1.h",
@@ -34,7 +35,31 @@ yacl_cc_binary(
         "@yacl//yacl/crypto/ecc:spi",
         "@yacl//yacl/crypto/ecc/openssl",
         "@yacl//yacl/math/mpint",
-        "@yacl//yacl/utils:cuckoo_index",  # 添加 cuckoo_index 依赖
+        "@yacl//yacl/utils:cuckoo_index",
+        "@yacl//yacl/utils/spi",
+    ],
+)
+
+yacl_cc_test(
+    name = "serialization_test",
+    srcs = ["serialization_test.cc"],
+    deps = [
+        ":hesm2",
+        "@yacl//yacl/crypto/ecc:spi",
+        "@yacl//yacl/crypto/ecc/openssl",
+        "@yacl//yacl/math/mpint",
+        "@yacl//yacl/utils/spi",
+    ],
+)
+
+yacl_cc_test(
+    name = "hesm2_test",
+    srcs = ["hesm2_test.cc"],
+    deps = [
+        ":hesm2",
+        "@yacl//yacl/crypto/ecc:spi",
+        "@yacl//yacl/crypto/ecc/openssl",
+        "@yacl//yacl/math/mpint",
         "@yacl//yacl/utils/spi",
     ],
 )
