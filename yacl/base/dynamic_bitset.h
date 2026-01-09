@@ -224,7 +224,9 @@ class dynamic_bitset {
    * @since      1.0.0
    */
   static constexpr size_type bits_per_block =
-      std::numeric_limits<block_type>::digits;
+      std::numeric_limits<block_type>::digits != 0
+          ? std::numeric_limits<block_type>::digits
+          : sizeof(block_type) * 8;
 
   /**
    * @brief      Maximum value of @ref size_type, returned for invalid
@@ -2292,7 +2294,7 @@ constexpr dynamic_bitset<Block, Allocator>::dynamic_bitset(
     return;
   }
 
-  constexpr size_t u128_bits_number = std::numeric_limits<uint128_t>::digits;
+  constexpr size_t u128_bits_number = sizeof(uint128_t) * 8;
   constexpr size_t init_val_required_blocks = u128_bits_number / bits_per_block;
   if constexpr (init_val_required_blocks == 1) {
     m_blocks[0] = init_val;
@@ -3178,7 +3180,7 @@ dynamic_bitset<Block, Allocator>::block_count(
   constexpr size_t u_bits_number = std::numeric_limits<uint16_t>::digits;
   constexpr size_t ul_bits_number = std::numeric_limits<uint32_t>::digits;
   constexpr size_t ull_bits_number = std::numeric_limits<uint64_t>::digits;
-  constexpr size_t u128_bits_number = std::numeric_limits<uint128_t>::digits;
+  constexpr size_t u128_bits_number = sizeof(uint128_t) * 8;
 
   if constexpr (bits_per_block <= u_bits_number) {
     return static_cast<size_type>(
@@ -3190,9 +3192,12 @@ dynamic_bitset<Block, Allocator>::block_count(
     return static_cast<size_type>(
         __builtin_popcountll(static_cast<uint64_t>(block)));
   } else if constexpr (bits_per_block <= u128_bits_number) {
-    return static_cast<size_type>(
-        __builtin_popcountll(absl::Uint128High64(block)) +
-        __builtin_popcountll(absl::Uint128Low64(block)));
+    if constexpr (std::is_constructible_v<uint128_t, block_type>) {
+      const uint128_t v = static_cast<uint128_t>(block);
+      return static_cast<size_type>(
+          __builtin_popcountll(static_cast<uint64_t>(v)) +
+          __builtin_popcountll(static_cast<uint64_t>(v >> 64)));
+    }
   }
 #endif
 
@@ -3229,7 +3234,7 @@ dynamic_bitset<Block, Allocator>::block_count(const block_type& block,
   constexpr size_t u_bits_number = std::numeric_limits<uint16_t>::digits;
   constexpr size_t ul_bits_number = std::numeric_limits<uint32_t>::digits;
   constexpr size_t ull_bits_number = std::numeric_limits<uint64_t>::digits;
-  constexpr size_t u128_bits_number = std::numeric_limits<uint128_t>::digits;
+  constexpr size_t u128_bits_number = sizeof(uint128_t) * 8;
   if constexpr (bits_per_block <= u_bits_number) {
     return static_cast<size_type>(
         __builtin_popcount(static_cast<uint16_t>(shifted_block)));
@@ -3240,9 +3245,12 @@ dynamic_bitset<Block, Allocator>::block_count(const block_type& block,
     return static_cast<size_type>(
         __builtin_popcountll(static_cast<uint64_t>(shifted_block)));
   } else if constexpr (bits_per_block <= u128_bits_number) {
-    return static_cast<size_type>(
-        __builtin_popcountll(absl::Uint128High64(block)) +
-        __builtin_popcountll(absl::Uint128Low64(block)));
+    if constexpr (std::is_constructible_v<uint128_t, block_type>) {
+      const uint128_t v = static_cast<uint128_t>(shifted_block);
+      return static_cast<size_type>(
+          __builtin_popcountll(static_cast<uint64_t>(v)) +
+          __builtin_popcountll(static_cast<uint64_t>(v >> 64)));
+    }
   }
 #endif
 
@@ -3272,7 +3280,7 @@ dynamic_bitset<Block, Allocator>::count_block_trailing_zero(
   constexpr size_t u_bits_number = std::numeric_limits<uint16_t>::digits;
   constexpr size_t ul_bits_number = std::numeric_limits<uint32_t>::digits;
   constexpr size_t ull_bits_number = std::numeric_limits<uint64_t>::digits;
-  constexpr size_t u128_bits_number = std::numeric_limits<uint128_t>::digits;
+  constexpr size_t u128_bits_number = sizeof(uint128_t) * 8;
   if constexpr (bits_per_block <= u_bits_number) {
     return static_cast<size_type>(__builtin_ctz(static_cast<uint16_t>(block)));
   } else if constexpr (bits_per_block <= ul_bits_number) {
@@ -3281,13 +3289,15 @@ dynamic_bitset<Block, Allocator>::count_block_trailing_zero(
     return static_cast<size_type>(
         __builtin_ctzll(static_cast<uint64_t>(block)));
   } else if constexpr (bits_per_block <= u128_bits_number) {
-    if (absl::Uint128Low64(block) == 0) {
-      return static_cast<size_type>(
-          __builtin_ctzll(absl::Uint128High64(block)) + 64);
-    } else {
-      return static_cast<size_type>(__builtin_ctzll(absl::Uint128Low64(block)));
+    if constexpr (std::is_constructible_v<uint128_t, block_type>) {
+      const uint128_t v = static_cast<uint128_t>(block);
+      const uint64_t lo = static_cast<uint64_t>(v);
+      if (lo == 0) {
+        return static_cast<size_type>(
+            __builtin_ctzll(static_cast<uint64_t>(v >> 64)) + 64);
+      }
+      return static_cast<size_type>(__builtin_ctzll(lo));
     }
-    return 0;
   }
 
 #elif DYNAMIC_BITSET_CAN_USE_MSVC_BUILTIN_BITSCANFORWARD

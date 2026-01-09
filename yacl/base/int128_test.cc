@@ -19,32 +19,18 @@
 #include "yacl/crypto/rand/rand.h"
 
 TEST(Int128Test, NumericLimitsTest) {
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Winteger-overflow"
-#else
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Woverflow"
-#endif
-  EXPECT_EQ(std::numeric_limits<int128_t>::max() + 1,
-            std::numeric_limits<int128_t>::min());
-  EXPECT_EQ(std::numeric_limits<int128_t>::min() - 1,
-            std::numeric_limits<int128_t>::max());
-#ifdef __clang__
-#pragma clang diagnostic pop
-#else
-#pragma GCC diagnostic pop
-#endif
+  EXPECT_EQ(yacl::Int128Max(),
+            yacl::MakeInt128(std::numeric_limits<int64_t>::max(),
+                             std::numeric_limits<uint64_t>::max()));
+  EXPECT_EQ(yacl::Int128Min(),
+            yacl::MakeInt128(std::numeric_limits<int64_t>::min(), 0));
 }
 
 TEST(Uint128Test, NumericLimitsTest) {
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Woverflow"
-  EXPECT_EQ(std::numeric_limits<uint128_t>::max() + 1,
-            std::numeric_limits<uint128_t>::min());
-  EXPECT_EQ(std::numeric_limits<uint128_t>::min() - 1,
-            std::numeric_limits<uint128_t>::max());
-#pragma GCC diagnostic pop
+  EXPECT_EQ(yacl::Uint128Max(),
+            yacl::MakeUint128(std::numeric_limits<uint64_t>::max(),
+                              std::numeric_limits<uint64_t>::max()));
+  EXPECT_EQ(yacl::Uint128Min(), 0);
 }
 
 static_assert(std::is_integral_v<int128_t>);
@@ -88,7 +74,7 @@ TEST(Int128Test, CountLzTest) {
   x = yacl::crypto::FastRandU128();
   EXPECT_EQ(yacl::CountLZ(x), yacl::CountLZ(x));
 
-  x = std::numeric_limits<uint128_t>::max();
+  x = yacl::Uint128Max();
   int offset = yacl::crypto::RandLtN(128);
   x >>= offset;
   EXPECT_EQ(yacl::CountLZ(x), offset);
