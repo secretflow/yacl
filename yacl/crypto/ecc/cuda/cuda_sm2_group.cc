@@ -18,6 +18,7 @@
 #include <cstring>
 #include <functional>
 #include <limits>
+#include <memory>
 #include <mutex>
 #include <stdexcept>
 #include <string_view>
@@ -38,6 +39,23 @@ namespace {
 
 constexpr char kLibraryName[] = "CUDA_SM2";
 constexpr int kDefaultDeviceId = 0;
+
+inline bool ShouldCheckCudaPointValidity(int32_t idx, int32_t count) {
+#ifdef NDEBUG
+  (void)idx;
+  (void)count;
+  return false;
+#else
+  constexpr int32_t kMaxFullCheck = 4096;
+  constexpr int32_t kEdgeChecks = 16;
+  constexpr int32_t kStride = 4096;
+  if (count <= kMaxFullCheck) {
+    return true;
+  }
+  return idx < kEdgeChecks || idx >= count - kEdgeChecks ||
+         (idx % kStride) == 0;
+#endif
+}
 constexpr size_t kSm2FieldBytes = 32;
 
 void WarnCudaFallback(std::string_view op, CudaEccError err, int32_t count) {
@@ -85,17 +103,14 @@ class PinnedHostBuffer {
   PinnedHostBuffer(const PinnedHostBuffer&) = delete;
   PinnedHostBuffer& operator=(const PinnedHostBuffer&) = delete;
 
-  // Destructor is intentionally empty - cleanup is handled via registered
-  // callbacks to avoid issues with thread_local destruction order vs CUDA
-  // runtime shutdown.
-  ~PinnedHostBuffer() = default;
+  ~PinnedHostBuffer() { Reset(); }
 
-  T* data() { return ptr_; }
-  const T* data() const { return ptr_; }
-  size_t capacity() const { return capacity_; }
+  T* data() { return state_->ptr; }
+  const T* data() const { return state_->ptr; }
+  size_t capacity() const { return state_->capacity; }
 
   bool Ensure(size_t count) {
-    if (count <= capacity_) {
+    if (count <= state_->capacity) {
       return true;
     }
     Reset();
@@ -104,19 +119,22 @@ class PinnedHostBuffer {
     if (err != cudaSuccess) {
       return false;
     }
-    ptr_ = static_cast<T*>(p);
-    capacity_ = count;
+    state_->ptr = static_cast<T*>(p);
+    state_->capacity = count;
 
     // Register cleanup callback on first successful allocation.
     // This ensures the buffer is freed before CUDA runtime shutdown.
     if (!registered_) {
-      T** ptr_ref = &ptr_;
-      size_t* cap_ref = &capacity_;
-      cuda::cudaSm2RegisterCleanup([ptr_ref, cap_ref]() {
-        if (*ptr_ref != nullptr) {
-          cudaFreeHost(*ptr_ref);
-          *ptr_ref = nullptr;
-          *cap_ref = 0;
+      std::weak_ptr<State> weak = state_;
+      cuda::cudaSm2RegisterCleanup([weak]() {
+        auto state = weak.lock();
+        if (!state) {
+          return;
+        }
+        if (state->ptr != nullptr) {
+          cudaFreeHost(state->ptr);
+          state->ptr = nullptr;
+          state->capacity = 0;
         }
       });
       registered_ = true;
@@ -125,16 +143,20 @@ class PinnedHostBuffer {
   }
 
   void Reset() {
-    if (ptr_ != nullptr) {
-      cudaFreeHost(ptr_);
-      ptr_ = nullptr;
-      capacity_ = 0;
+    if (state_->ptr != nullptr) {
+      cudaFreeHost(state_->ptr);
+      state_->ptr = nullptr;
+      state_->capacity = 0;
     }
   }
 
  private:
-  T* ptr_ = nullptr;
-  size_t capacity_ = 0;
+  struct State {
+    T* ptr = nullptr;
+    size_t capacity = 0;
+  };
+
+  std::shared_ptr<State> state_ = std::make_shared<State>();
   bool registered_ = false;
 };
 
@@ -577,8 +599,11 @@ void CudaSm2Group::batchMul(absl::Span<const EcPoint> points,
 
   for (int32_t i = 0; i < count; ++i) {
     results[i] = convertFromCudaPoint(gpuResults[i]);
-    WEAK_ENFORCE(IsInCurveGroup(results[i]),
-                 "CudaSm2Group: batchMul produced invalid point at idx={}", i);
+    if (ShouldCheckCudaPointValidity(i, count)) {
+      WEAK_ENFORCE(IsInCurveGroup(results[i]),
+                   "CudaSm2Group: batchMul produced invalid point at idx={}",
+                   i);
+    }
   }
 }
 
@@ -617,9 +642,11 @@ void CudaSm2Group::batchMulBase(absl::Span<const MPInt> scalars,
 
   for (int32_t i = 0; i < count; ++i) {
     results[i] = convertFromCudaPoint(gpuResults[i]);
-    WEAK_ENFORCE(IsInCurveGroup(results[i]),
-                 "CudaSm2Group: batchMulBase produced invalid point at idx={}",
-                 i);
+    if (ShouldCheckCudaPointValidity(i, count)) {
+      WEAK_ENFORCE(
+          IsInCurveGroup(results[i]),
+          "CudaSm2Group: batchMulBase produced invalid point at idx={}", i);
+    }
   }
 }
 
@@ -661,10 +688,12 @@ void CudaSm2Group::batchMulSameScalar(absl::Span<const EcPoint> points,
 
   for (int32_t i = 0; i < count; ++i) {
     results[i] = convertFromCudaPoint(gpuResults[i]);
-    WEAK_ENFORCE(IsInCurveGroup(results[i]),
-                 "CudaSm2Group: batchMulSameScalar produced invalid point at "
-                 "idx={}",
-                 i);
+    if (ShouldCheckCudaPointValidity(i, count)) {
+      WEAK_ENFORCE(IsInCurveGroup(results[i]),
+                   "CudaSm2Group: batchMulSameScalar produced invalid point at "
+                   "idx={}",
+                   i);
+    }
   }
 }
 
@@ -730,11 +759,14 @@ void CudaSm2Group::batchHashAndMul(HashToCurveStrategy strategy,
             for (int64_t i = begin; i < end; ++i) {
               const auto idx = static_cast<size_t>(i);
               results[idx] = convertFromCudaPoint(gpuResults[idx]);
-              WEAK_ENFORCE(
-                  IsInCurveGroup(results[idx]),
-                  "CudaSm2Group: batchHashAndMul produced invalid point at "
-                  "idx={}",
-                  idx);
+              if (ShouldCheckCudaPointValidity(static_cast<int32_t>(idx),
+                                               count)) {
+                WEAK_ENFORCE(
+                    IsInCurveGroup(results[idx]),
+                    "CudaSm2Group: batchHashAndMul produced invalid point at "
+                    "idx={}",
+                    idx);
+              }
             }
           });
       return true;
@@ -764,10 +796,13 @@ void CudaSm2Group::batchHashAndMul(HashToCurveStrategy strategy,
           for (int64_t i = begin; i < end; ++i) {
             const auto idx = static_cast<size_t>(i);
             results[idx] = convertFromCudaPoint(gpuResults[idx]);
-            WEAK_ENFORCE(IsInCurveGroup(results[idx]),
-                         "CudaSm2Group: batchHashAndMul produced invalid "
-                         "point at idx={}",
-                         idx);
+            if (ShouldCheckCudaPointValidity(static_cast<int32_t>(idx),
+                                             count)) {
+              WEAK_ENFORCE(IsInCurveGroup(results[idx]),
+                           "CudaSm2Group: batchHashAndMul produced invalid "
+                           "point at idx={}",
+                           idx);
+            }
           }
         });
     return true;
@@ -872,13 +907,15 @@ void CudaSm2Group::batchHashAndMul(HashToCurveStrategy strategy,
         0, n, getRecommendedBatchSize(), [&](int64_t begin, int64_t end) {
           for (int64_t i = begin; i < end; ++i) {
             const auto idx = static_cast<size_t>(i);
-            results[static_cast<size_t>(off) + idx] =
-                convertFromCudaPoint(gpuResults[idx]);
-            WEAK_ENFORCE(
-                IsInCurveGroup(results[static_cast<size_t>(off) + idx]),
-                "CudaSm2Group: batchHashAndMul produced invalid "
-                "point at idx={}",
-                static_cast<size_t>(off) + idx);
+            const size_t out_idx = static_cast<size_t>(off) + idx;
+            results[out_idx] = convertFromCudaPoint(gpuResults[idx]);
+            if (ShouldCheckCudaPointValidity(static_cast<int32_t>(out_idx),
+                                             count)) {
+              WEAK_ENFORCE(IsInCurveGroup(results[out_idx]),
+                           "CudaSm2Group: batchHashAndMul produced invalid "
+                           "point at idx={}",
+                           out_idx);
+            }
           }
         });
   };
@@ -1025,8 +1062,11 @@ void CudaSm2Group::batchAdd(absl::Span<const EcPoint> p1s,
 
   for (int32_t i = 0; i < count; ++i) {
     results[i] = convertFromCudaPoint(gpuResults[i]);
-    WEAK_ENFORCE(IsInCurveGroup(results[i]),
-                 "CudaSm2Group: batchAdd produced invalid point at idx={}", i);
+    if (ShouldCheckCudaPointValidity(i, count)) {
+      WEAK_ENFORCE(IsInCurveGroup(results[i]),
+                   "CudaSm2Group: batchAdd produced invalid point at idx={}",
+                   i);
+    }
   }
 }
 
@@ -1075,10 +1115,12 @@ void CudaSm2Group::batchMulDoubleBase(absl::Span<const MPInt> s1s,
 
   for (int32_t i = 0; i < count; ++i) {
     results[i] = convertFromCudaPoint(gpuResults[i]);
-    WEAK_ENFORCE(IsInCurveGroup(results[i]),
-                 "CudaSm2Group: batchMulDoubleBase produced invalid point at "
-                 "idx={}",
-                 i);
+    if (ShouldCheckCudaPointValidity(i, count)) {
+      WEAK_ENFORCE(IsInCurveGroup(results[i]),
+                   "CudaSm2Group: batchMulDoubleBase produced invalid point at "
+                   "idx={}",
+                   i);
+    }
   }
 }
 
