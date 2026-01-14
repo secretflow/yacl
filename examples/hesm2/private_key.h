@@ -16,7 +16,6 @@
 
 #include "hesm2/public_key.h"
 
-#include "yacl/base/exception.h"
 #include "yacl/crypto/ecc/ecc_spi.h"
 #include "yacl/math/mpint/mp_int.h"
 
@@ -37,14 +36,12 @@ class PrivateKey {
 
  private:
   void Initialize() {
-    yacl::math::MPInt::RandomLtN(ec_group_->GetOrder(), &k_);
-    YACL_ENFORCE(!k_.IsZero(), "Private key must not be zero");
+    yacl::math::MPInt k;
+    yacl::math::MPInt::RandomLtN(ec_group_->GetOrder(), &k);
     public_key_ = GeneratePublicKey();
   }
 
   PublicKey GeneratePublicKey() const {
-    YACL_ENFORCE(!k_.IsZero(),
-                 "Cannot generate public key: private key is zero");
     auto generator = ec_group_->GetGenerator();
     auto point = ec_group_->Mul(generator, k_);
     return {point, ec_group_};

@@ -181,9 +181,6 @@ TEST_P(BrpcLinkWithLimitTest, Async) {
   sender_->GetLink()->SetMaxBytesPerChunk(size_limit_per_call);
   const size_t test_size = 128 + (std::rand() % 128);
   std::vector<std::string> sended_data(test_size);
-  for (size_t i = 0; i < test_size; i++) {
-    sended_data[i] = RandStr(size_to_send);
-  }
 
   auto read = [&] {
     for (size_t i = 0; i < test_size; i++) {
@@ -200,6 +197,7 @@ TEST_P(BrpcLinkWithLimitTest, Async) {
   auto start = std::chrono::steady_clock::now();
   for (size_t i = 0; i < test_size; i++) {
     const std::string key = fmt::format("Key_{}", i);
+    sended_data[i] = RandStr(size_to_send);
     sender_->SendAsync(key, ByteContainerView{sended_data[i]});
   }
   auto end = std::chrono::steady_clock::now();
@@ -223,9 +221,6 @@ TEST_P(BrpcLinkWithLimitTest, AsyncWithThrottleLimit) {
   sender_->GetLink()->SetMaxBytesPerChunk(size_limit_per_call);
   const size_t test_size = 128 + (std::rand() % 128);
   std::vector<std::string> sended_data(test_size);
-  for (size_t i = 0; i < test_size; i++) {
-    sended_data[i] = RandStr(size_to_send);
-  }
 
   auto read = [&] {
     for (size_t i = 0; i < test_size; i++) {
@@ -242,6 +237,7 @@ TEST_P(BrpcLinkWithLimitTest, AsyncWithThrottleLimit) {
   auto start = std::chrono::steady_clock::now();
   for (size_t i = 0; i < test_size; i++) {
     const std::string key = fmt::format("Key_{}", i);
+    sended_data[i] = RandStr(size_to_send);
     sender_->SendAsyncThrottled(key, ByteContainerView{sended_data[i]});
   }
   auto end = std::chrono::steady_clock::now();

@@ -26,9 +26,9 @@
 #include "yacl/math/mpint/mp_int.h"
 
 namespace examples::hesm2 {
-constexpr size_t kEccPointLen = 33;
 
 Ciphertext Encrypt(const yacl::math::MPInt& message, const PublicKey& pk) {
+  YACL_ENFORCE(message.Abs() <= yacl::math::MPInt(Mmax));
   const auto& ec_group = pk.GetEcGroup();
   auto generator = ec_group->GetGenerator();
   yacl::math::MPInt r;
@@ -170,17 +170,6 @@ DecryptResult Decrypt(const Ciphertext& ciphertext, const PrivateKey& sk) {
   }
   SPDLOG_INFO("Decrypt failed. |m| should be <= {}", Mmax);
   return {yacl::math::MPInt(0), false};
-}
-
-DecryptResult ZeroCheck(const Ciphertext& ciphertext, const PrivateKey& sk) {
-  const auto& ec_group = sk.GetEcGroup();
-  auto c1_sk = ec_group->Mul(ciphertext.GetC1(), sk.GetK());
-  const auto& c2 = ciphertext.GetC2();
-  // check m = 0
-  if (ec_group->PointEqual(c1_sk, c2)) {
-    return {yacl::math::MPInt(0), true};
-  }
-  return {yacl::math::MPInt(-1), false};
 }
 
 DecryptResult search(int start, int end, const yacl::math::MPInt& affm_gx,
@@ -380,102 +369,6 @@ Ciphertext HMul(const Ciphertext& ciphertext1, const yacl::math::MPInt& scalar,
   const auto& ec_group = pk.GetEcGroup();
   auto c1 = ec_group->Mul(ciphertext1.GetC1(), scalar);
   auto c2 = ec_group->Mul(ciphertext1.GetC2(), scalar);
-  auto ct = Ciphertext(c1, c2);
-  if (scalar.IsZero()) {
-    ct = HAdd(ct, Encrypt(yacl::math::MPInt(0), pk), pk);
-  }
-  return ct;
+  return Ciphertext{c1, c2};
 }
-
-yacl::Buffer SerializeCiphertext(const Ciphertext& ct, const PublicKey& pk) {
-  yacl::Buffer out(kEccPointLen * 2);
-  const auto& ec_group = pk.GetEcGroup();
-
-  uint8_t* ptr = out.data<uint8_t>();
-  auto buf_c1 = ec_group->SerializePoint(
-      ct.GetC1(), yacl::crypto::PointOctetFormat::X962Compressed);
-  YACL_ENFORCE(buf_c1.size() == kEccPointLen, "Unexpected C1 length, got {}",
-               buf_c1.size());
-  std::memcpy(ptr, buf_c1.data(), kEccPointLen);
-  ptr += kEccPointLen;
-  auto buf_c2 = ec_group->SerializePoint(
-      ct.GetC2(), yacl::crypto::PointOctetFormat::X962Compressed);
-  YACL_ENFORCE(buf_c2.size() == kEccPointLen, "Unexpected C2 length, got {}",
-               buf_c2.size());
-  std::memcpy(ptr, buf_c2.data(), kEccPointLen);
-  return out;
-}
-
-Ciphertext DeserializeCiphertext(yacl::ByteContainerView buf,
-                                 const PublicKey& pk) {
-  YACL_ENFORCE(buf.size() == kEccPointLen * 2,
-               "Invalid ciphertext buffer size: expected {}, got {}",
-               kEccPointLen * 2, buf.size());
-  const auto& ec_group = pk.GetEcGroup();
-  auto c1 = ec_group->DeserializePoint(
-      buf.subspan(0, kEccPointLen),
-      yacl::crypto::PointOctetFormat::X962Compressed);
-  auto c2 = ec_group->DeserializePoint(
-      buf.subspan(kEccPointLen, kEccPointLen),
-      yacl::crypto::PointOctetFormat::X962Compressed);
-  return Ciphertext(std::move(c1), std::move(c2));
-}
-
-yacl::Buffer SerializeCiphertexts(const std::vector<Ciphertext>& cts,
-                                  const PublicKey& pk) {
-  if (cts.empty()) {
-    return yacl::Buffer();
-  }
-  const auto& ec_group = pk.GetEcGroup();
-  size_t single_ct_len = kEccPointLen * 2;
-  size_t total_len = cts.size() * single_ct_len;
-  yacl::Buffer out(total_len);
-  uint8_t* ptr = out.data<uint8_t>();
-  for (const auto& ct : cts) {
-    auto buf_c1 = ec_group->SerializePoint(
-        ct.GetC1(), yacl::crypto::PointOctetFormat::X962Compressed);
-    YACL_ENFORCE(buf_c1.size() == kEccPointLen, "Unexpected C1 length, got {}",
-                 buf_c1.size());
-    std::memcpy(ptr, buf_c1.data(), kEccPointLen);
-    ptr += kEccPointLen;
-    auto buf_c2 = ec_group->SerializePoint(
-        ct.GetC2(), yacl::crypto::PointOctetFormat::X962Compressed);
-    YACL_ENFORCE(buf_c2.size() == kEccPointLen, "Unexpected C2 length, got {}",
-                 buf_c2.size());
-    std::memcpy(ptr, buf_c2.data(), kEccPointLen);
-    ptr += kEccPointLen;
-  }
-
-  return out;
-}
-
-std::vector<Ciphertext> DeserializeCiphertexts(yacl::ByteContainerView buf,
-                                               const PublicKey& pk) {
-  if (buf.size() == 0) {
-    return {};
-  }
-  const auto& ec_group = pk.GetEcGroup();
-  size_t single_ct_len = kEccPointLen * 2;
-  YACL_ENFORCE(buf.size() % single_ct_len == 0,
-               "Invalid buffer size for ciphertexts. Must be multiple of {}",
-               single_ct_len);
-  size_t count = buf.size() / single_ct_len;
-  std::vector<Ciphertext> results;
-  results.reserve(count);
-  const uint8_t* ptr = buf.data();
-  for (size_t i = 0; i < count; ++i) {
-    auto c1 = ec_group->DeserializePoint(
-        yacl::ByteContainerView(ptr, kEccPointLen),
-        yacl::crypto::PointOctetFormat::X962Compressed);
-    ptr += kEccPointLen;
-    auto c2 = ec_group->DeserializePoint(
-        yacl::ByteContainerView(ptr, kEccPointLen),
-        yacl::crypto::PointOctetFormat::X962Compressed);
-    ptr += kEccPointLen;
-    results.emplace_back(std::move(c1), std::move(c2));
-  }
-
-  return results;
-}
-
 }  // namespace examples::hesm2

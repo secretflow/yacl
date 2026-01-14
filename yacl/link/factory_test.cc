@@ -14,13 +14,6 @@
 
 #include "yacl/link/factory.h"
 
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <unistd.h>
-
-#include <cerrno>
-#include <cstring>
 #include <future>
 #include <limits>
 #include <unordered_map>
@@ -45,35 +38,6 @@ enum class SslMode {
   RSA_SHA256,  // mode = 1
   SM2_SM3,     // mode = 2
 };
-
-inline int PickUnusedPort() {
-  int fd = ::socket(AF_INET, SOCK_STREAM, 0);
-  if (fd < 0) {
-    YACL_THROW("socket() failed: {}", std::strerror(errno));
-  }
-
-  sockaddr_in addr{};
-  addr.sin_family = AF_INET;
-  addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-  addr.sin_port = htons(0);
-
-  if (::bind(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) != 0) {
-    int err = errno;
-    ::close(fd);
-    YACL_THROW("bind() failed: {}", std::strerror(err));
-  }
-
-  socklen_t len = sizeof(addr);
-  if (::getsockname(fd, reinterpret_cast<sockaddr*>(&addr), &len) != 0) {
-    int err = errno;
-    ::close(fd);
-    YACL_THROW("getsockname() failed: {}", std::strerror(err));
-  }
-
-  int port = ntohs(addr.sin_port);
-  ::close(fd);
-  return port;
-}
 
 inline std::pair<std::string, std::string> GenCertFiles(
     const std::string& prefix, const SslMode mode) {
@@ -123,16 +87,8 @@ inline std::pair<std::string, std::string> GenCertFiles(
 inline ContextDesc MakeDesc(int count, const SslMode mode) {
   ContextDesc desc;
   desc.id = fmt::format("world_{}", count);
-  int alice_port = PickUnusedPort();
-  int bob_port = PickUnusedPort();
-  while (bob_port == alice_port) {
-    bob_port = PickUnusedPort();
-  }
-
-  desc.parties.push_back(
-      ContextDesc::Party("alice", fmt::format("127.0.0.1:{}", alice_port)));
-  desc.parties.push_back(
-      ContextDesc::Party("bob", fmt::format("127.0.0.1:{}", bob_port)));
+  desc.parties.push_back(ContextDesc::Party("alice", "127.0.0.1:63927"));
+  desc.parties.push_back(ContextDesc::Party("bob", "127.0.0.1:63921"));
   if (mode != SslMode::NONE) {
     desc.enable_ssl = true;
     desc.server_ssl_opts.ciphers = "";  // auto detect

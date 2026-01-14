@@ -31,19 +31,6 @@ class PublicKey {
     return ec_group_;
   }
 
-  yacl::Buffer Serialize() const {
-    return ec_group_->SerializePoint(
-        point_, yacl::crypto::PointOctetFormat::X962Compressed);
-  }
-
-  static PublicKey Deserialize(
-      yacl::ByteContainerView buf,
-      std::shared_ptr<yacl::crypto::EcGroup> ec_group) {
-    auto point = ec_group->DeserializePoint(
-        buf, yacl::crypto::PointOctetFormat::X962Compressed);
-    return PublicKey(std::move(point), std::move(ec_group));
-  }
-
  private:
   yacl::crypto::EcPoint point_;
   std::shared_ptr<yacl::crypto::EcGroup> ec_group_;

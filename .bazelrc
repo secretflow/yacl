@@ -41,8 +41,8 @@ build:macos --macos_minimum_os=13.0
 build:macos --host_macos_minimum_os=13.0
 build:macos --action_env MACOSX_DEPLOYMENT_TARGET=13.0
 
-# NOTE: Keep Linux builds compatible with older GCC toolchains (e.g. GCC 9),
-# which do not recognize some newer warning flags.
+# NOTE: fix build on linux_aarch64, since `build:linux_aarch64` works only if `--config linux_aarch64` option included.
+build:linux --cxxopt=-Wno-mismatched-new-delete
 
 build:asan --features=asan
 build:ubsan --features=ubsan
@@ -51,7 +51,6 @@ build:ubsan --features=ubsan
 test --keep_going
 test --test_output=errors
 test --test_timeout=360
-test --test_env=CUDA_VISIBLE_DEVICES
 
 # make sure brpc is built with tongsuo in gm mode
 # this flag is used by the brpc project

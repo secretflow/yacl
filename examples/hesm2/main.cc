@@ -1,30 +1,17 @@
-# 加法同态SM2+FastECDLP
+// Copyright 2024 Guowei Ling.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
-本代码是SM2加法同态加密 ([密码学报 2022](http://www.jcr.cacrnet.org.cn/CN/10.13868/j.cnki.jcr.000532)) 结合FastECDLP([IEEE TIFS 2023](https://ieeexplore.ieee.org/document/10145804))。
-
-注：本实现的SM2加法同态加密并非是标准SM2公钥加密算法。标准SM2公钥加密算法并不具备加同态性。
-
-## 快速开始
-
-首先，进入项目目录并构建示例：
-
-```bash
-cd examples
-
-bazel build --linkopt=-ldl //...
-
-bazel build --linkopt=-ldl //hesm2:sm2_example
-
-./bazel-bin/hesm2/sm2_example
-```
-
-**注：** 第一次使用需要生成预计算表，请等待几分钟。
-
-## 示例代码
-
-以下是一个简单的使用示例，展示了如何进行参数配置、加密、同态运算及解密操作。
-
-```cpp
 #include <iostream>
 
 #include "hesm2/ahesm2.h"
@@ -83,15 +70,3 @@ int main() {
 
   return 0;
 }
-```
-
-## 高阶使用
-
-您可以通过修改config.cc中的以下两个参数修改明文空间。
-
-```cpp
-int Ilen      = 12;   // l2-1
-int Jlen      = 20;       // l1-1
-```
-
-明文空间的绝对值大小为：(1<<Ilen)*(1<<(1+Jlen))+(1<<Jlen)。因此，本实现的默认明文空间为：[-8590983168,8590983168]。如果您需要更大的明文空间，请直接修改。另外，注意需要删除掉在bazel-bin/examples/HESM2/目录下的cuckoo_t1.dat和t2.dat（该实现会自动帮您重新生成预计算表）。

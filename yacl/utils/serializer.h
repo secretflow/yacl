@@ -101,11 +101,10 @@ template <typename... Ts, std::size_t... Is>
 std::tuple<Ts...> DoDeserializeAsTuple(std::index_sequence<Is...>,
                                        yacl::ByteContainerView in) {
   std::size_t off = 0;
-  msgpack::zone z;
   std::tuple<Ts...> res;
-  (..., msgpack::unpack(z, reinterpret_cast<const char *>(in.data()), in.size(),
+  (..., msgpack::unpack(reinterpret_cast<const char *>(in.data()), in.size(),
                         off, ref_or_copy)
-            .convert(std::get<Is>(res)));
+            ->convert(std::get<Is>(res)));
 
   return res;
 }
@@ -120,12 +119,11 @@ inline auto DeserializeVars(yacl::ByteContainerView in) ->
                                 std::tuple_element_t<0, std::tuple<Ts...>>,
                                 std::tuple<Ts...>> {
   if constexpr (sizeof...(Ts) == 1) {
-    msgpack::zone z;
-    auto msg = msgpack::unpack(z, reinterpret_cast<const char *>(in.data()),
+    auto msg = msgpack::unpack(reinterpret_cast<const char *>(in.data()),
                                in.size(), internal::ref_or_copy);
 
     std::tuple_element_t<0, std::tuple<Ts...>> res;
-    msg.convert(res);
+    msg->convert(res);
     return res;
   } else {
     return internal::DoDeserializeAsTuple<Ts...>(
@@ -136,10 +134,9 @@ inline auto DeserializeVars(yacl::ByteContainerView in) ->
 template <typename... Ts>
 inline size_t DeserializeVarsTo(yacl::ByteContainerView in, Ts *...vars) {
   std::size_t off = 0;
-  msgpack::zone z;
-  (..., msgpack::unpack(z, reinterpret_cast<const char *>(in.data()), in.size(),
+  (..., msgpack::unpack(reinterpret_cast<const char *>(in.data()), in.size(),
                         off, internal::ref_or_copy)
-            .convert(*vars));
+            ->convert(*vars));
   return off;
 }
 
