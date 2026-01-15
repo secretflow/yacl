@@ -13,9 +13,9 @@ cd examples
 
 bazel build --linkopt=-ldl //...
 
-bazel build --linkopt=-ldl //hesm2:sm2_example
+bazel build --linkopt=-ldl //hesm2:hesm2_test
 
-./bazel-bin/hesm2/sm2_example
+./bazel-bin/hesm2/hesm2_test
 ```
 
 **注：** 第一次使用需要生成预计算表，请等待几分钟。
