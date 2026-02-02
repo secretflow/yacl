@@ -31,9 +31,9 @@ namespace {
 
 namespace detail {
 
-using u32 = std::uint32_t;
-using u64 = std::uint64_t;
-using u128 = ::uint128_t;
+using u32 = std::uint32_t;  // NOLINT(readability-identifier-naming)
+using u64 = std::uint64_t;  // NOLINT(readability-identifier-naming)
+using u128 = ::uint128_t;   // NOLINT(readability-identifier-naming)
 
 struct NTTPrime {
   u32 mod;
@@ -520,44 +520,40 @@ NTT64Cache& ensure_ntt64_cache(std::size_t prime_idx, u32 n) {
   return C;
 }
 
-void ntt64_cached(std::size_t prime_idx, std::vector<u64>& a, bool invert) {
-  const u32 n = static_cast<u32>(a.size());
-  NTT64Cache& C = ensure_ntt64_cache(prime_idx, n);
-  const u64 mod = C.mod;
-  const u64 mod2 = mod + mod;
-  const u32 cache_n = C.cache_n;
-
+// Cached NTT64: no pow_mod in hot path
 #ifndef NDEBUG
+void ntt64_debug_reduce_inputs(u64* a, u32 n, u64 mod) {
   for (u32 i = 0; i < n; ++i) {
     if (a[i] >= mod) {
       a[i] %= mod;
     }
   }
+}
 #endif
 
-  const auto& rev = bitrev_table(n);
+void bit_reverse_permute_u64(u64* a, u32 n, const std::vector<u32>& rev) {
   for (u32 i = 0; i < n; ++i) {
     const u32 j = rev[i];
     if (i < j) {
       std::swap(a[i], a[j]);
     }
   }
+}
 
-  u64* A = a.data();
-  const u64* RT = invert ? C.iroot.data() : C.root.data();
-
+void ntt64_transform(u64* a, u32 n, u32 cache_n, const u64* root_table, u64 mod,
+                     u64 mod2) {
   for (u32 len = 2; len <= n; len <<= 1) {
     const u32 half = len >> 1;
     const u32 step = cache_n / len;
 
     for (u32 blk = 0; blk < n; blk += len) {
-      u64* p = A + blk;
+      u64* p = a + blk;
       u64* q = p + half;
 
       u32 idx = 0;
       for (u32 j = 0; j < half; ++j) {
         u64 x = p[j];
-        u64 y = mul_mod64(q[j], RT[idx], mod);
+        u64 y = mul_mod64(q[j], root_table[idx], mod);
 
         u64 u = x + y;
         if (u >= mod2) {
@@ -575,19 +571,44 @@ void ntt64_cached(std::size_t prime_idx, std::vector<u64>& a, bool invert) {
       }
     }
   }
+}
 
-  if (invert) {
-    const int logn = absl::countr_zero(n);
-    const u64 inv_n = C.inv_n_by_log[logn];
-
-    for (u32 i = 0; i < n; ++i) {
-      u64 x = a[i];
-      if (x >= mod) {
-        x -= mod;
-      }
-      a[i] = mul_mod64(x, inv_n, mod);
+void ntt64_apply_inverse_scale(u64* a, u32 n, u64 mod, u64 inv_n) {
+  for (u32 i = 0; i < n; ++i) {
+    u64 x = a[i];
+    if (x >= mod) {
+      x -= mod;
     }
+    a[i] = mul_mod64(x, inv_n, mod);
   }
+}
+
+void ntt64_cached(std::size_t prime_idx, std::vector<u64>& a, bool invert) {
+  const u32 n = static_cast<u32>(a.size());
+  NTT64Cache& C = ensure_ntt64_cache(prime_idx, n);
+  const u64 mod = C.mod;
+  const u64 mod2 = mod + mod;
+  const u32 cache_n = C.cache_n;
+  u64* A = a.data();
+
+#ifndef NDEBUG
+  ntt64_debug_reduce_inputs(A, n, mod);
+#endif
+
+  const auto& rev = bitrev_table(n);
+  bit_reverse_permute_u64(A, n, rev);
+
+  const u64* RT = invert ? C.iroot.data() : C.root.data();
+
+  ntt64_transform(A, n, cache_n, RT, mod, mod2);
+
+  if (!invert) {
+    return;
+  }
+
+  const int logn = absl::countr_zero(n);
+  const u64 inv_n = C.inv_n_by_log[logn];
+  ntt64_apply_inverse_scale(A, n, mod, inv_n);
 }
 
 struct NTT64ConvScratch {
@@ -1164,21 +1185,9 @@ std::vector<Fp> MulCoeffsNaiveTrunc(const FpContext& f,
   return out;
 }
 
-std::vector<Fp> MulCoeffsNTTTrunc(const FpContext& f, const std::vector<Fp>& a,
-                                  std::size_t an, const std::vector<Fp>& b,
-                                  std::size_t bn, std::size_t out_need) {
-  const std::size_t min_dim = std::min(an, bn);
-  const u64 p = f.GetModulus();
-
-  static constexpr std::size_t kWideCutover =
-      4096;  // out_need >= 4096 才切到 64 位 NTT
-  const bool wide_ntt = (p > (1ULL << 40)) && (out_need >= kWideCutover);
-  const std::size_t prime_count = wide_ntt
-                                      ? detail::select_prime_count64(p, min_dim)
-                                      : detail::select_prime_count(p, min_dim);
-
 #ifndef NDEBUG
-  // Debug guard: ensure CRT product covers coefficient bound.
+void assert_crt_product_covers_bound(bool wide_ntt, std::size_t prime_count,
+                                     std::size_t min_dim, u64 p) {
   const double log2_bound = std::log2(static_cast<double>(min_dim)) +
                             2.0 * std::log2(static_cast<double>(p));
   double log2_M = 0.0;
@@ -1192,46 +1201,57 @@ std::vector<Fp> MulCoeffsNTTTrunc(const FpContext& f, const std::vector<Fp>& a,
     }
   }
   assert(log2_M > log2_bound + 2.0);
+}
 #endif
 
+std::vector<Fp> MulCoeffsNTTTruncWide(const FpContext& f,
+                                     const std::vector<Fp>& a, std::size_t an,
+                                     const std::vector<Fp>& b, std::size_t bn,
+                                     std::size_t out_need,
+                                     std::size_t prime_count) {
   std::vector<Fp> out(out_need, f.Zero());
+  const u64 p = f.GetModulus();
 
-  if (wide_ntt) {
-    std::vector<std::vector<detail::u64>> residues(prime_count);
+  std::vector<std::vector<detail::u64>> residues(prime_count);
+  for (std::size_t idxp = 0; idxp < prime_count; ++idxp) {
+    const detail::u64 mod = detail::kNTT64[idxp].mod;
 
-    for (std::size_t idxp = 0; idxp < prime_count; ++idxp) {
-      const detail::u64 mod = detail::kNTT64[idxp].mod;
-
-      std::vector<detail::u64> A64(an);
-      std::vector<detail::u64> B64(bn);
-      for (std::size_t i = 0; i < an; ++i) {
-        A64[i] = a[i].v % mod;
-      }
-      for (std::size_t j = 0; j < bn; ++j) {
-        B64[j] = b[j].v % mod;
-      }
-
-      detail::convolution_mod_ntt64_into(residues[idxp], A64, B64, idxp);
-      if (residues[idxp].size() > out_need) {
-        residues[idxp].resize(out_need);
-      }
+    std::vector<detail::u64> A64(an);
+    std::vector<detail::u64> B64(bn);
+    for (std::size_t i = 0; i < an; ++i) {
+      A64[i] = a[i].v % mod;
+    }
+    for (std::size_t j = 0; j < bn; ++j) {
+      B64[j] = b[j].v % mod;
     }
 
-    detail::CRT3Plan64 crt_plan(p);
-    std::array<detail::u64, 3> r{};
-
-    for (std::size_t i = 0; i < out_need; ++i) {
-      for (std::size_t idxp = 0; idxp < 3; ++idxp) {
-        r[idxp] = residues[idxp][i];
-      }
-      const u64 val = crt_plan.combine_to_mod_p(r.data());
-      out[i] = Fp{val};
+    detail::convolution_mod_ntt64_into(residues[idxp], A64, B64, idxp);
+    if (residues[idxp].size() > out_need) {
+      residues[idxp].resize(out_need);
     }
-    return out;
   }
 
-  std::vector<std::vector<detail::u32>> residues(prime_count);
+  detail::CRT3Plan64 crt_plan(p);
+  std::array<detail::u64, 3> r{};
+  for (std::size_t i = 0; i < out_need; ++i) {
+    for (std::size_t idxp = 0; idxp < 3; ++idxp) {
+      r[idxp] = residues[idxp][i];
+    }
+    out[i] = Fp{crt_plan.combine_to_mod_p(r.data())};
+  }
+  return out;
+}
 
+std::vector<Fp> MulCoeffsNTTTruncNarrow(const FpContext& f,
+                                       const std::vector<Fp>& a,
+                                       std::size_t an,
+                                       const std::vector<Fp>& b,
+                                       std::size_t bn, std::size_t out_need,
+                                       std::size_t prime_count) {
+  std::vector<Fp> out(out_need, f.Zero());
+  const u64 p = f.GetModulus();
+
+  std::vector<std::vector<detail::u32>> residues(prime_count);
   for (std::size_t idxp = 0; idxp < prime_count; ++idxp) {
     const auto prm = detail::kNTT[idxp];
 
@@ -1260,28 +1280,49 @@ std::vector<Fp> MulCoeffsNTTTrunc(const FpContext& f, const std::vector<Fp>& a,
   if (prime_count <= 3) {
     detail::CRT3Plan crt_plan(p);
     std::array<detail::u32, 3> r{};
-
     for (std::size_t i = 0; i < out_need; ++i) {
       for (std::size_t idxp = 0; idxp < 3; ++idxp) {
         r[idxp] = residues[idxp][i];
       }
-      const u64 val = crt_plan.combine_to_mod_p(r.data());
-      out[i] = Fp{val};
+      out[i] = Fp{crt_plan.combine_to_mod_p(r.data())};
     }
-  } else {
-    detail::CRT5Plan crt_plan(p);
-    std::array<detail::u32, 5> r{};
-
-    for (std::size_t i = 0; i < out_need; ++i) {
-      for (std::size_t idxp = 0; idxp < prime_count; ++idxp) {
-        r[idxp] = residues[idxp][i];
-      }
-      const u64 val = crt_plan.combine_to_mod_p(r.data());
-      out[i] = Fp{val};
-    }
+    return out;
   }
 
+  detail::CRT5Plan crt_plan(p);
+  std::array<detail::u32, 5> r{};
+  for (std::size_t i = 0; i < out_need; ++i) {
+    for (std::size_t idxp = 0; idxp < prime_count; ++idxp) {
+      r[idxp] = residues[idxp][i];
+    }
+    out[i] = Fp{crt_plan.combine_to_mod_p(r.data())};
+  }
   return out;
+}
+
+std::vector<Fp> MulCoeffsNTTTrunc(const FpContext& f, const std::vector<Fp>& a,
+                                  std::size_t an, const std::vector<Fp>& b,
+                                  std::size_t bn, std::size_t out_need) {
+  const std::size_t min_dim = std::min(an, bn);
+  const u64 p = f.GetModulus();
+
+  static constexpr std::size_t kWideCutover =
+      4096;  // out_need >= 4096 才切到 64 位 NTT
+  const bool wide_ntt = (p > (1ULL << 40)) && (out_need >= kWideCutover);
+  const std::size_t prime_count = wide_ntt
+                                      ? detail::select_prime_count64(p, min_dim)
+                                      : detail::select_prime_count(p, min_dim);
+
+#ifndef NDEBUG
+  // Debug guard: ensure CRT product covers coefficient bound.
+  assert_crt_product_covers_bound(wide_ntt, prime_count, min_dim, p);
+#endif
+
+  if (wide_ntt) {
+    return MulCoeffsNTTTruncWide(f, a, an, b, bn, out_need, prime_count);
+  }
+
+  return MulCoeffsNTTTruncNarrow(f, a, an, b, bn, out_need, prime_count);
 }
 
 std::vector<Fp> MulCoeffsTrunc(const FpContext& f, const std::vector<Fp>& a,
