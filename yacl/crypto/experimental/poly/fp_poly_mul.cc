@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/experimental/poly/fp_poly.h"
-
 #include <algorithm>
 #include <array>
 #include <cassert>
@@ -21,6 +19,8 @@
 #include <cstdint>
 #include <utility>
 #include <vector>
+
+#include "yacl/crypto/experimental/poly/fp_poly.h"
 
 #ifdef BIGNUM_WITH_GMP
 #include "yacl/math/bigint/gmp/gmp_loader.h"
@@ -365,8 +365,8 @@ void convolution_mod_ntt_into(std::vector<u32>& fa, const std::vector<u32>& a,
     ntt_n <<= 1;
   }
 
-  if (static_cast<int>(absl::countr_zero(
-          static_cast<unsigned long long>(ntt_n))) > prm.max_base) {
+  if (static_cast<int>(absl::countr_zero(static_cast<u64>(ntt_n))) >
+      prm.max_base) {
     YACL_THROW_ARGUMENT_ERROR(
         "convolution_mod_ntt_into: NTT length exceeds prime capability");
   }
@@ -616,8 +616,8 @@ void convolution_mod_ntt64_into(std::vector<u64>& out,
     ntt_n <<= 1;
   }
 
-  if (static_cast<int>(absl::countr_zero(
-          static_cast<unsigned long long>(ntt_n))) > prm.max_base) {
+  if (static_cast<int>(absl::countr_zero(static_cast<u64>(ntt_n))) >
+      prm.max_base) {
     YACL_THROW_ARGUMENT_ERROR(
         "convolution_mod_ntt64_into: NTT length exceeds prime capability");
   }
@@ -729,7 +729,7 @@ std::size_t select_prime_count64(u64 p, std::size_t min_dim) {
 
 // Forward decl for CRT3Plan
 u128 crt3_u128(u32 r0, u32 r1, u32 r2, u32 m0, u32 m1, u32 m2,
-               u32 inv_m0_mod_m1, u32 inv_m01_mod_m2, u128 M01);
+               u32 inv_m0_mod_m1, u32 inv_m01_mod_m2, u128 m01);
 
 // Decide how many NTT primes are needed to cover coefficient bound.
 // bound ~ min(n,m) * (p-1)^2; we use log2 to compare.
@@ -833,7 +833,7 @@ struct CRT3Plan {
 
 // CRT for 3 primes -> u128 in [0, m0*m1*m2)
 u128 crt3_u128(u32 r0, u32 r1, u32 r2, u32 m0, u32 m1, u32 m2,
-               u32 inv_m0_mod_m1, u32 inv_m01_mod_m2, u128 M01) {
+               u32 inv_m0_mod_m1, u32 inv_m01_mod_m2, u128 m01) {
   // x = r0 + m0 * t1  (mod m0*m1)
   u32 t1 = (r1 >= r0) ? (r1 - r0) : (r1 + m1 - static_cast<u32>(r0 % m1));
   t1 = static_cast<u32>(static_cast<u64>(t1) * inv_m0_mod_m1 % m1);
@@ -844,7 +844,7 @@ u128 crt3_u128(u32 r0, u32 r1, u32 r2, u32 m0, u32 m1, u32 m2,
   u32 x_mod_m2 = static_cast<u32>(x % m2);
   u32 t2 = (r2 >= x_mod_m2) ? (r2 - x_mod_m2) : (r2 + m2 - x_mod_m2);
   t2 = static_cast<u32>(static_cast<u64>(t2) * inv_m01_mod_m2 % m2);
-  x += M01 * static_cast<u128>(t2);
+  x += m01 * static_cast<u128>(t2);
   return x;
 }
 
@@ -1142,10 +1142,11 @@ std::vector<Fp> mul_kronecker_coeffs(const FpContext& F,
 
 }  // namespace detail
 
-std::vector<Fp> MulCoeffsNaiveTrunc(const FpContext& F, const std::vector<Fp>& a,
-                                   std::size_t an, const std::vector<Fp>& b,
-                                   std::size_t bn, std::size_t out_need) {
-  std::vector<Fp> out(out_need, F.Zero());
+std::vector<Fp> MulCoeffsNaiveTrunc(const FpContext& f,
+                                    const std::vector<Fp>& a, std::size_t an,
+                                    const std::vector<Fp>& b, std::size_t bn,
+                                    std::size_t out_need) {
+  std::vector<Fp> out(out_need, f.Zero());
   for (std::size_t i = 0; i < an; ++i) {
     const Fp ai = a[i];
     if (ai.v == 0) {
@@ -1157,17 +1158,17 @@ std::vector<Fp> MulCoeffsNaiveTrunc(const FpContext& F, const std::vector<Fp>& a
       if (bj.v == 0) {
         continue;
       }
-      out[i + j] = F.Add(out[i + j], F.Mul(ai, bj));
+      out[i + j] = f.Add(out[i + j], f.Mul(ai, bj));
     }
   }
   return out;
 }
 
-std::vector<Fp> MulCoeffsNTTTrunc(const FpContext& F, const std::vector<Fp>& a,
-                                 std::size_t an, const std::vector<Fp>& b,
-                                 std::size_t bn, std::size_t out_need) {
+std::vector<Fp> MulCoeffsNTTTrunc(const FpContext& f, const std::vector<Fp>& a,
+                                  std::size_t an, const std::vector<Fp>& b,
+                                  std::size_t bn, std::size_t out_need) {
   const std::size_t min_dim = std::min(an, bn);
-  const u64 p = F.GetModulus();
+  const u64 p = f.GetModulus();
 
   static constexpr std::size_t kWideCutover =
       4096;  // out_need >= 4096 才切到 64 位 NTT
@@ -1193,7 +1194,7 @@ std::vector<Fp> MulCoeffsNTTTrunc(const FpContext& F, const std::vector<Fp>& a,
   assert(log2_M > log2_bound + 2.0);
 #endif
 
-  std::vector<Fp> out(out_need, F.Zero());
+  std::vector<Fp> out(out_need, f.Zero());
 
   if (wide_ntt) {
     std::vector<std::vector<detail::u64>> residues(prime_count);
@@ -1242,12 +1243,12 @@ std::vector<Fp> MulCoeffsNTTTrunc(const FpContext& F, const std::vector<Fp>& a,
     const detail::u64 im = CC.barrett_im;
 
     for (std::size_t i = 0; i < an; ++i) {
-      A32[i] = detail::barrett_reduce_u64(static_cast<detail::u64>(a[i].v), mod,
-                                          im);
+      A32[i] =
+          detail::barrett_reduce_u64(static_cast<detail::u64>(a[i].v), mod, im);
     }
     for (std::size_t j = 0; j < bn; ++j) {
-      B32[j] = detail::barrett_reduce_u64(static_cast<detail::u64>(b[j].v), mod,
-                                          im);
+      B32[j] =
+          detail::barrett_reduce_u64(static_cast<detail::u64>(b[j].v), mod, im);
     }
 
     detail::convolution_mod_ntt_into(residues[idxp], A32, B32, idxp);
@@ -1283,7 +1284,7 @@ std::vector<Fp> MulCoeffsNTTTrunc(const FpContext& F, const std::vector<Fp>& a,
   return out;
 }
 
-std::vector<Fp> MulCoeffsTrunc(const FpContext& F, const std::vector<Fp>& a,
+std::vector<Fp> MulCoeffsTrunc(const FpContext& f, const std::vector<Fp>& a,
                                const std::vector<Fp>& b, std::size_t k,
                                bool allow_gmp) {
   if (k == 0 || a.empty() || b.empty()) {
@@ -1312,10 +1313,10 @@ std::vector<Fp> MulCoeffsTrunc(const FpContext& F, const std::vector<Fp>& a,
 
   // 小规模继续用朴素（避免 NTT 常数）
   if (out_need <= 256 || min_dim <= 64) {
-    return MulCoeffsNaiveTrunc(F, a, an, b, bn, out_need);
+    return MulCoeffsNaiveTrunc(f, a, an, b, bn, out_need);
   }
 
-  return MulCoeffsNTTTrunc(F, a, an, b, bn, out_need);
+  return MulCoeffsNTTTrunc(f, a, an, b, bn, out_need);
 }
 
 }  // namespace

@@ -93,7 +93,7 @@ FpPolynomial FpPolynomial::TruncPoly(const FpPolynomial& f, size_type k) {
   for (size_type i = 0; i < take; ++i) {
     v[i] = f.c_[i];
   }
-  return FpPolynomial(F, std::move(v));
+  return {F, std::move(v)};
 }
 
 FpPolynomial FpPolynomial::ReversePoly(const FpPolynomial& f, size_type n) {
@@ -109,7 +109,7 @@ FpPolynomial FpPolynomial::ReversePoly(const FpPolynomial& f, size_type n) {
       v[i] = f.c_[src];
     }
   }
-  return FpPolynomial(F, std::move(v));
+  return {F, std::move(v)};
 }
 
 FpPolynomial FpPolynomial::InvSeriesPoly(const FpPolynomial& f, size_type k) {
