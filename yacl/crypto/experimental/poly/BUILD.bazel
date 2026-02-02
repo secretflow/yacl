@@ -20,6 +20,9 @@ yacl_cc_library(
     name = "poly",
     srcs = [
         "fp_poly.cc",
+        "fp_poly_div.cc",
+        "fp_poly_interp.cc",
+        "fp_poly_mul.cc",
     ],
     hdrs = [
         "prime_field.h",
