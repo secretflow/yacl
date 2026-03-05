@@ -10,6 +10,7 @@
 #include <utility>
 
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/commitment.h"
+#include "yacl/crypto/experimental/threshold_ecdsa/crypto/bigint_utils.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/encoding.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/random.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/transcript.h"
@@ -30,6 +31,19 @@ constexpr uint32_t kMinAuxRsaKeygenBits = 2048;
 constexpr size_t kMaxPaillierKeygenAttempts = 32;
 constexpr char kPhase1CommitDomain[] = "GG2019/keygen/phase1";
 constexpr char kSchnorrProofId[] = "GG2019/Schnorr/v1";
+
+BigInt MpzToMpInt(const mpz_class& value) {
+  return BigInt(value.get_str(10), 10);
+}
+
+mpz_class MpIntToMpz(const BigInt& value) {
+  mpz_class out;
+  const std::string decimal = value.ToString();
+  if (mpz_set_str(out.get_mpz_t(), decimal.c_str(), 10) != 0) {
+    TECDSA_THROW("failed to convert MPInt to mpz_class");
+  }
+  return out;
+}
 
 void ValidateParticipantsOrThrow(const std::vector<PartyIndex>& participants, PartyIndex self_id) {
   if (participants.size() < 2) {
@@ -145,17 +159,17 @@ Scalar ReadScalar(std::span<const uint8_t> input, size_t* offset) {
   return Scalar::FromCanonicalBytes(view);
 }
 
-void AppendMpzField(const mpz_class& value, Bytes* out) {
-  const Bytes encoded = EncodeMpz(value);
+void AppendMpIntField(const BigInt& value, Bytes* out) {
+  const Bytes encoded = EncodeMpInt(value);
   AppendSizedField(encoded, out);
 }
 
-mpz_class ReadMpzField(std::span<const uint8_t> input,
-                       size_t* offset,
-                       size_t max_len,
-                       const char* field_name) {
+BigInt ReadMpIntField(std::span<const uint8_t> input,
+                      size_t* offset,
+                      size_t max_len,
+                      const char* field_name) {
   const Bytes encoded = ReadSizedField(input, offset, max_len, field_name);
-  return DecodeMpz(encoded, max_len);
+  return DecodeMpInt(encoded, max_len);
 }
 
 Scalar RandomNonZeroScalar() {
@@ -172,16 +186,14 @@ Scalar EvaluatePolynomialAt(const std::vector<Scalar>& coefficients, PartyIndex 
     TECDSA_THROW_ARGUMENT("Polynomial coefficients must not be empty");
   }
 
-  const mpz_class q = Scalar::ModulusQ();
-  const mpz_class x = mpz_class(party_id) % q;
+  const BigInt& q = Scalar::ModulusQMpInt();
+  const BigInt x = BigInt(party_id).Mod(q);
 
-  mpz_class acc = 0;
-  mpz_class power = 1;
+  BigInt acc(0);
+  BigInt power(1);
   for (const Scalar& coefficient : coefficients) {
-    acc += coefficient.value() * power;
-    acc %= q;
-    power *= x;
-    power %= q;
+    acc = bigint::NormalizeMod(acc + coefficient.mp_value() * power, q);
+    power = bigint::NormalizeMod(power * x, q);
   }
   return Scalar(acc);
 }
@@ -204,17 +216,20 @@ Scalar BuildSchnorrChallenge(const Bytes& session_id,
   return transcript.challenge_scalar_mod_q();
 }
 
-const mpz_class& MinPaillierModulusQ8() {
-  static const mpz_class q_to_8 = []() {
-    mpz_class out;
-    mpz_pow_ui(out.get_mpz_t(), Scalar::ModulusQ().get_mpz_t(), 8);
+const BigInt& MinPaillierModulusQ8() {
+  static const BigInt q_to_8 = []() {
+    BigInt out(1);
+    const BigInt& q = Scalar::ModulusQMpInt();
+    for (size_t i = 0; i < 8; ++i) {
+      out *= q;
+    }
     return out;
   }();
   return q_to_8;
 }
 
 void ValidatePaillierPublicKeyOrThrow(const PaillierPublicKey& pub) {
-  if (pub.n <= MinPaillierModulusQ8()) {
+  if (MpzToMpInt(pub.n) <= MinPaillierModulusQ8()) {
     TECDSA_THROW_ARGUMENT("Paillier modulus must satisfy N > q^8");
   }
 }
@@ -452,10 +467,10 @@ Envelope KeygenSession::BuildPhase1CommitEnvelope() {
   Bytes payload;
   payload.reserve(kCommitmentLen + 4 + 4 * 512 + 4 + 64);
   payload.insert(payload.end(), local_commitment_.begin(), local_commitment_.end());
-  AppendMpzField(local_paillier_public_.n, &payload);
-  AppendMpzField(local_aux_rsa_params_.n_tilde, &payload);
-  AppendMpzField(local_aux_rsa_params_.h1, &payload);
-  AppendMpzField(local_aux_rsa_params_.h2, &payload);
+  AppendMpIntField(local_paillier_->modulus_n_bigint(), &payload);
+  AppendMpIntField(MpzToMpInt(local_aux_rsa_params_.n_tilde), &payload);
+  AppendMpIntField(MpzToMpInt(local_aux_rsa_params_.h1), &payload);
+  AppendMpIntField(MpzToMpInt(local_aux_rsa_params_.h2), &payload);
   const Bytes aux_param_proof_wire = EncodeAuxRsaParamProof(local_aux_param_proof_);
   AppendSizedField(aux_param_proof_wire, &payload);
 
@@ -696,10 +711,10 @@ void KeygenSession::EnsureLocalPaillierPrepared() {
 
   for (size_t attempt = 0; attempt < kMaxPaillierKeygenAttempts; ++attempt) {
     auto candidate = std::make_shared<PaillierProvider>(paillier_modulus_bits_);
-    PaillierPublicKey candidate_pub{.n = candidate->modulus_n()};
-    if (candidate_pub.n > MinPaillierModulusQ8()) {
+    const BigInt candidate_n = candidate->modulus_n_bigint();
+    if (candidate_n > MinPaillierModulusQ8()) {
       local_paillier_ = std::move(candidate);
-      local_paillier_public_ = std::move(candidate_pub);
+      local_paillier_public_ = PaillierPublicKey{.n = MpIntToMpz(candidate_n)};
       result_.local_paillier = local_paillier_;
       result_.all_paillier_public[self_id()] = local_paillier_public_;
       return;
@@ -773,10 +788,10 @@ bool KeygenSession::HandlePhase1CommitEnvelope(const Envelope& envelope) {
     Bytes commitment(envelope.payload.begin(), envelope.payload.begin() + static_cast<std::ptrdiff_t>(kCommitmentLen));
     offset += kCommitmentLen;
 
-    const mpz_class paillier_n = ReadMpzField(
+    const BigInt paillier_n = ReadMpIntField(
         envelope.payload, &offset, kMaxPaillierModulusFieldLen, "keygen phase1 Paillier modulus");
 
-    const PaillierPublicKey pub{.n = paillier_n};
+    const PaillierPublicKey pub{.n = MpIntToMpz(paillier_n)};
     ValidatePaillierPublicKeyOrThrow(pub);
 
     AuxRsaParams aux_params;
@@ -786,14 +801,17 @@ bool KeygenSession::HandlePhase1CommitEnvelope(const Envelope& envelope) {
       if (strict_mode_) {
         TECDSA_THROW_ARGUMENT("legacy phase1 payload shape is not allowed in strict mode");
       }
-      aux_params = DeriveAuxRsaParamsFromModulus(paillier_n, envelope.from);
+      aux_params = DeriveAuxRsaParamsFromModulus(pub.n, envelope.from);
     } else {
-      aux_params.n_tilde = ReadMpzField(
-          envelope.payload, &offset, kMaxPaillierModulusFieldLen, "keygen phase1 aux Ntilde");
+      aux_params.n_tilde =
+          MpIntToMpz(ReadMpIntField(
+              envelope.payload, &offset, kMaxPaillierModulusFieldLen, "keygen phase1 aux Ntilde"));
       aux_params.h1 =
-          ReadMpzField(envelope.payload, &offset, kMaxPaillierModulusFieldLen, "keygen phase1 aux h1");
+          MpIntToMpz(ReadMpIntField(
+              envelope.payload, &offset, kMaxPaillierModulusFieldLen, "keygen phase1 aux h1"));
       aux_params.h2 =
-          ReadMpzField(envelope.payload, &offset, kMaxPaillierModulusFieldLen, "keygen phase1 aux h2");
+          MpIntToMpz(ReadMpIntField(
+              envelope.payload, &offset, kMaxPaillierModulusFieldLen, "keygen phase1 aux h2"));
       if (!ValidateAuxRsaParams(aux_params)) {
         TECDSA_THROW_ARGUMENT("invalid aux RSA parameters");
       }
@@ -1055,11 +1073,12 @@ bool KeygenSession::VerifyDealerShareForSelf(PartyIndex dealer, const Scalar& sh
 
   try {
     ECPoint rhs = commitments[0];
-    mpz_class power = mpz_class(self_id()) % Scalar::ModulusQ();
+    const BigInt& q = Scalar::ModulusQMpInt();
+    const BigInt self = BigInt(self_id());
+    BigInt power = self.Mod(q);
     for (size_t k = 1; k < commitments.size(); ++k) {
       rhs = rhs.Add(commitments[k].Mul(Scalar(power)));
-      power *= self_id();
-      power %= Scalar::ModulusQ();
+      power = bigint::NormalizeMod(power * self, q);
     }
 
     const ECPoint lhs = ECPoint::GeneratorMultiply(share);
