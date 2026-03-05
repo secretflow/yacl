@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include "yacl/crypto/experimental/threshold_ecdsa/crypto/bigint_utils.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/encoding.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/hash.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/random.h"
@@ -44,6 +45,19 @@ constexpr size_t kSquareFreeGmr98Rounds = 24;
 constexpr size_t kMaxSquareFreeGmr98Rounds = 128;
 constexpr size_t kMaxSquareFreeGmr98ChallengeAttempts = 64;
 constexpr size_t kMaxAuxParamGenerationAttempts = 128;
+
+BigInt MpzToMpInt(const mpz_class& value) {
+  return BigInt(value.get_str(10), 10);
+}
+
+mpz_class MpIntToMpz(const BigInt& value) {
+  mpz_class out;
+  const std::string decimal = value.ToString();
+  if (mpz_set_str(out.get_mpz_t(), decimal.c_str(), 10) != 0) {
+    TECDSA_THROW("failed to convert MPInt to mpz_class");
+  }
+  return out;
+}
 
 struct SquareFreeStrictPayload {
   Bytes nonce;
@@ -300,80 +314,106 @@ std::pair<ProofMetadata, Bytes> DecodeProofWire(std::span<const uint8_t> encoded
   return {ProofMetadata{}, Bytes(encoded.begin(), encoded.end())};
 }
 
-mpz_class RandomBelow(const mpz_class& upper_exclusive) {
+BigInt RandomBelow(const BigInt& upper_exclusive) {
   if (upper_exclusive <= 0) {
     TECDSA_THROW_ARGUMENT("random upper bound must be positive");
   }
-
-  const size_t bit_len = mpz_sizeinbase(upper_exclusive.get_mpz_t(), 2);
-  const size_t byte_len = std::max<size_t>(1, (bit_len + 7) / 8);
-  while (true) {
-    const Bytes random = Csprng::RandomBytes(byte_len);
-    mpz_class candidate;
-    mpz_import(candidate.get_mpz_t(), random.size(), 1, sizeof(uint8_t), 1, 0, random.data());
-    if (candidate < upper_exclusive) {
-      return candidate;
-    }
-  }
+  return bigint::RandomBelow(upper_exclusive);
 }
 
-mpz_class RandomZnStar(const mpz_class& modulus_n) {
+mpz_class RandomBelow(const mpz_class& upper_exclusive) {
+  return MpIntToMpz(RandomBelow(MpzToMpInt(upper_exclusive)));
+}
+
+BigInt RandomZnStar(const BigInt& modulus_n) {
   if (modulus_n <= 2) {
     TECDSA_THROW_ARGUMENT("modulus must be > 2");
   }
-
-  mpz_class candidate;
-  mpz_class gcd;
-  do {
-    candidate = RandomBelow(modulus_n);
-    mpz_gcd(gcd.get_mpz_t(), candidate.get_mpz_t(), modulus_n.get_mpz_t());
-  } while (candidate == 0 || gcd != 1);
-  return candidate;
+  return bigint::RandomZnStar(modulus_n);
 }
 
-bool IsInRange(const mpz_class& value, const mpz_class& modulus) {
+mpz_class RandomZnStar(const mpz_class& modulus_n) {
+  return MpIntToMpz(RandomZnStar(MpzToMpInt(modulus_n)));
+}
+
+bool IsInRange(const BigInt& value, const BigInt& modulus) {
   return value >= 0 && value < modulus;
 }
 
-bool IsZnStarResidue(const mpz_class& value, const mpz_class& modulus) {
+bool IsZnStarResidue(const BigInt& value, const BigInt& modulus) {
   if (!IsInRange(value, modulus) || value == 0) {
     return false;
   }
-  mpz_class gcd;
-  mpz_gcd(gcd.get_mpz_t(), value.get_mpz_t(), modulus.get_mpz_t());
+  const BigInt gcd = BigInt::Gcd(value, modulus);
   return gcd == 1;
 }
 
-mpz_class NormalizeMod(const mpz_class& value, const mpz_class& modulus) {
-  mpz_class out = value % modulus;
-  if (out < 0) {
-    out += modulus;
-  }
-  return out;
+bool IsZnStarResidue(const mpz_class& value, const mpz_class& modulus) {
+  return IsZnStarResidue(MpzToMpInt(value), MpzToMpInt(modulus));
 }
 
-mpz_class MulMod(const mpz_class& lhs, const mpz_class& rhs, const mpz_class& modulus) {
+BigInt NormalizeMod(const BigInt& value, const BigInt& modulus) {
+  return bigint::NormalizeMod(value, modulus);
+}
+
+mpz_class NormalizeMod(const mpz_class& value, const mpz_class& modulus) {
+  return MpIntToMpz(NormalizeMod(MpzToMpInt(value), MpzToMpInt(modulus)));
+}
+
+BigInt MulMod(const BigInt& lhs, const BigInt& rhs, const BigInt& modulus) {
   return NormalizeMod(lhs * rhs, modulus);
 }
 
-mpz_class PowMod(const mpz_class& base, const mpz_class& exp, const mpz_class& modulus) {
+mpz_class MulMod(const mpz_class& lhs, const mpz_class& rhs, const mpz_class& modulus) {
+  return MpIntToMpz(MulMod(MpzToMpInt(lhs), MpzToMpInt(rhs), MpzToMpInt(modulus)));
+}
+
+BigInt PowMod(const BigInt& base, const BigInt& exp, const BigInt& modulus) {
   if (exp < 0) {
     TECDSA_THROW_ARGUMENT("modular exponent must be non-negative");
   }
-  mpz_class out;
-  mpz_powm(out.get_mpz_t(), base.get_mpz_t(), exp.get_mpz_t(), modulus.get_mpz_t());
-  return out;
+  return bigint::PowMod(base, exp, modulus);
+}
+
+mpz_class PowMod(const mpz_class& base, const mpz_class& exp, const mpz_class& modulus) {
+  return MpIntToMpz(PowMod(MpzToMpInt(base), MpzToMpInt(exp), MpzToMpInt(modulus)));
+}
+
+std::optional<BigInt> InvertMod(const BigInt& value, const BigInt& modulus) {
+  return bigint::TryInvertMod(value, modulus);
 }
 
 std::optional<mpz_class> InvertMod(const mpz_class& value, const mpz_class& modulus) {
-  if (modulus <= 1) {
+  const auto out = InvertMod(MpzToMpInt(value), MpzToMpInt(modulus));
+  if (!out.has_value()) {
     return std::nullopt;
   }
-  mpz_class inverse;
-  if (mpz_invert(inverse.get_mpz_t(), value.get_mpz_t(), modulus.get_mpz_t()) == 0) {
-    return std::nullopt;
+  return MpIntToMpz(*out);
+}
+
+bool IsPerfectSquare(const BigInt& value) {
+  if (value < 0) {
+    return false;
   }
-  return inverse;
+  if (value <= 1) {
+    return true;
+  }
+
+  BigInt low(1);
+  BigInt high = BigInt(1) << (((value.BitCount() + 1) / 2) + 1);
+  while (low <= high) {
+    const BigInt mid = (low + high) >> 1;
+    const BigInt sq = mid * mid;
+    if (sq == value) {
+      return true;
+    }
+    if (sq < value) {
+      low = mid + BigInt(1);
+    } else {
+      high = mid - BigInt(1);
+    }
+  }
+  return false;
 }
 
 Bytes BuildWeakDigestFromFields(const char* proof_id,
@@ -623,13 +663,16 @@ mpz_class PickCoprimeDeterministic(const mpz_class& modulus, const mpz_class& se
 
 }  // namespace
 
-bool IsZnStarElement(const mpz_class& value, const mpz_class& modulus) {
+bool IsZnStarElement(const BigInt& value, const BigInt& modulus) {
   if (modulus <= 2 || value <= 0 || value >= modulus) {
     return false;
   }
-  mpz_class gcd;
-  mpz_gcd(gcd.get_mpz_t(), value.get_mpz_t(), modulus.get_mpz_t());
+  const BigInt gcd = BigInt::Gcd(value, modulus);
   return gcd == 1;
+}
+
+bool IsZnStarElement(const mpz_class& value, const mpz_class& modulus) {
+  return IsZnStarElement(MpzToMpInt(value), MpzToMpInt(modulus));
 }
 
 bool ValidateAuxRsaParams(const AuxRsaParams& params) {
@@ -708,14 +751,14 @@ AuxRsaParamProof DecodeAuxRsaParamProof(std::span<const uint8_t> encoded, size_t
   };
 }
 
-bool IsLikelySquareFreeModulus(const mpz_class& modulus_n) {
+bool IsLikelySquareFreeModulus(const BigInt& modulus_n) {
   if (modulus_n <= 2) {
     return false;
   }
-  if (mpz_even_p(modulus_n.get_mpz_t()) != 0) {
+  if (modulus_n.IsEven()) {
     return false;
   }
-  if (mpz_perfect_square_p(modulus_n.get_mpz_t()) != 0) {
+  if (IsPerfectSquare(modulus_n)) {
     return false;
   }
 
@@ -736,12 +779,16 @@ bool IsLikelySquareFreeModulus(const mpz_class& modulus_n) {
 
   for (unsigned long prime : kSmallPrimes) {
     const unsigned long prime_square = prime * prime;
-    if (mpz_divisible_ui_p(modulus_n.get_mpz_t(), prime_square) != 0) {
+    if (modulus_n.Mod(BigInt(prime_square)) == 0) {
       return false;
     }
   }
 
   return true;
+}
+
+bool IsLikelySquareFreeModulus(const mpz_class& modulus_n) {
+  return IsLikelySquareFreeModulus(MpzToMpInt(modulus_n));
 }
 
 AuxRsaParams GenerateAuxRsaParams(uint32_t modulus_bits, PartyIndex party_id) {

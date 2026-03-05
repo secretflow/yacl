@@ -8,8 +8,11 @@
 
 #include "yacl/crypto/experimental/threshold_ecdsa/common/bytes.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/protocol/types.h"
+#include "yacl/math/mpint/mp_int.h"
 
 namespace tecdsa {
+
+using BigInt = yacl::math::MPInt;
 
 enum class StrictProofScheme : uint32_t {
   kUnknown = 0,
@@ -62,8 +65,10 @@ struct AuxRsaParamProof {
 };
 
 bool IsZnStarElement(const mpz_class& value, const mpz_class& modulus);
+bool IsZnStarElement(const BigInt& value, const BigInt& modulus);
 bool ValidateAuxRsaParams(const AuxRsaParams& params);
 bool IsLikelySquareFreeModulus(const mpz_class& modulus_n);
+bool IsLikelySquareFreeModulus(const BigInt& modulus_n);
 bool IsStrictProofScheme(StrictProofScheme scheme);
 bool IsDevProofScheme(StrictProofScheme scheme);
 bool HasProofCapability(const ProofMetadata& metadata, uint32_t capability_mask);
