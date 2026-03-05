@@ -18,6 +18,8 @@ add_library(tecdsa_core
   crypto/commitment.cc
   crypto/encoding.cc
   crypto/paillier.cc
+  crypto/strict_proofs_codec.cc
+  crypto/strict_proofs_math.cc
   crypto/strict_proofs.cc
   crypto/transcript.cc
   net/envelope.cc
