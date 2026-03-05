@@ -31,6 +31,13 @@ add_library(tecdsa_core
   protocol/keygen_session_phase2.cc
   protocol/keygen_session_phase3.cc
   protocol/keygen_session.cc
+  protocol/sign_session_codec.cc
+  protocol/sign_session_math.cc
+  protocol/sign_session_transcript.cc
+  protocol/sign_session_mta_proofs.cc
+  protocol/sign_session_phase_core.cc
+  protocol/sign_session_phase_handlers.cc
+  protocol/sign_session_phase_state.cc
   protocol/sign_session.cc
 )
 
@@ -56,7 +63,11 @@ target_link_libraries(protocol_infrastructure_tests PRIVATE tecdsa_core)
 add_executable(keygen_flow_tests tests/keygen_flow_test.cc)
 target_link_libraries(keygen_flow_tests PRIVATE tecdsa_core)
 
-add_executable(sign_flow_tests tests/sign_flow_test.cc)
+add_executable(sign_flow_tests
+  tests/sign_flow_test.cc
+  tests/sign_flow_test_cases.cc
+  tests/sign_flow_test_support.cc
+)
 target_link_libraries(sign_flow_tests PRIVATE tecdsa_core)
 
 enable_testing()
