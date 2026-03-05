@@ -26,6 +26,10 @@ add_library(tecdsa_core
   net/in_memory_transport.cc
   protocol/session.cc
   protocol/session_router.cc
+  protocol/keygen_session_codec.cc
+  protocol/keygen_session_phase1.cc
+  protocol/keygen_session_phase2.cc
+  protocol/keygen_session_phase3.cc
   protocol/keygen_session.cc
   protocol/sign_session.cc
 )
