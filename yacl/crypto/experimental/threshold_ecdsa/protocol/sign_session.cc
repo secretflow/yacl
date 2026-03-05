@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/commitment.h"
+#include "yacl/crypto/experimental/threshold_ecdsa/crypto/bigint_utils.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/ecdsa_verify.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/encoding.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/random.h"
@@ -48,15 +49,6 @@ using AuxRsaParams = SignSessionConfig::AuxRsaParams;
 
 BigInt MpzToMpInt(const mpz_class& value) {
   return BigInt(value.get_str(10), 10);
-}
-
-mpz_class MpIntToMpz(const BigInt& value) {
-  mpz_class out;
-  const std::string decimal = value.ToString();
-  if (mpz_set_str(out.get_mpz_t(), decimal.c_str(), 10) != 0) {
-    TECDSA_THROW("failed to convert MPInt to mpz_class");
-  }
-  return out;
 }
 
 struct MtaProofContext {
@@ -244,45 +236,25 @@ std::string MakeResponderRequestKey(PartyIndex initiator, uint8_t type_code) {
   return out;
 }
 
-mpz_class RandomBelow(const mpz_class& upper_exclusive) {
+BigInt RandomBelow(const BigInt& upper_exclusive) {
   if (upper_exclusive <= 0) {
     TECDSA_THROW_ARGUMENT("random upper bound must be positive");
   }
-
-  const size_t bit_len = mpz_sizeinbase(upper_exclusive.get_mpz_t(), 2);
-  const size_t byte_len = std::max<size_t>(1, (bit_len + 7) / 8);
-
-  while (true) {
-    const Bytes random = Csprng::RandomBytes(byte_len);
-    mpz_class candidate;
-    mpz_import(candidate.get_mpz_t(), random.size(), 1, sizeof(uint8_t), 1, 0, random.data());
-    if (candidate < upper_exclusive) {
-      return candidate;
-    }
-  }
+  return bigint::RandomBelow(upper_exclusive);
 }
 
-mpz_class SampleZnStar(const mpz_class& modulus_n) {
+BigInt SampleZnStar(const BigInt& modulus_n) {
   if (modulus_n <= 2) {
     TECDSA_THROW_ARGUMENT("Paillier modulus must be > 2");
   }
-
-  mpz_class candidate;
-  mpz_class gcd;
-  do {
-    candidate = RandomBelow(modulus_n);
-    mpz_gcd(gcd.get_mpz_t(), candidate.get_mpz_t(), modulus_n.get_mpz_t());
-  } while (candidate == 0 || gcd != 1);
-
-  return candidate;
+  return bigint::RandomZnStar(modulus_n);
 }
 
-bool IsZnStarElement(const mpz_class& value, const mpz_class& modulus) {
+bool IsZnStarElement(const BigInt& value, const BigInt& modulus) {
   if (value <= 0 || value >= modulus) {
     return false;
   }
-  mpz_class gcd;
-  mpz_gcd(gcd.get_mpz_t(), value.get_mpz_t(), modulus.get_mpz_t());
+  const BigInt gcd = BigInt::Gcd(value, modulus);
   return gcd == 1;
 }
 
@@ -292,37 +264,49 @@ void ValidateAuxRsaParamsOrThrow(const AuxRsaParams& params) {
   }
 }
 
-const mpz_class& QPow3() {
-  static const mpz_class q_pow_3 = []() {
-    mpz_class out;
-    mpz_pow_ui(out.get_mpz_t(), Scalar::ModulusQ().get_mpz_t(), 3);
+const BigInt& QPow3() {
+  static const BigInt q_pow_3 = []() {
+    BigInt out(1);
+    const BigInt& q = Scalar::ModulusQMpInt();
+    for (size_t i = 0; i < 3; ++i) {
+      out *= q;
+    }
     return out;
   }();
   return q_pow_3;
 }
 
-const mpz_class& QPow5() {
-  static const mpz_class q_pow_5 = []() {
-    mpz_class out;
-    mpz_pow_ui(out.get_mpz_t(), Scalar::ModulusQ().get_mpz_t(), 5);
+const BigInt& QPow5() {
+  static const BigInt q_pow_5 = []() {
+    BigInt out(1);
+    const BigInt& q = Scalar::ModulusQMpInt();
+    for (size_t i = 0; i < 5; ++i) {
+      out *= q;
+    }
     return out;
   }();
   return q_pow_5;
 }
 
-const mpz_class& QPow7() {
-  static const mpz_class q_pow_7 = []() {
-    mpz_class out;
-    mpz_pow_ui(out.get_mpz_t(), Scalar::ModulusQ().get_mpz_t(), 7);
+const BigInt& QPow7() {
+  static const BigInt q_pow_7 = []() {
+    BigInt out(1);
+    const BigInt& q = Scalar::ModulusQMpInt();
+    for (size_t i = 0; i < 7; ++i) {
+      out *= q;
+    }
     return out;
   }();
   return q_pow_7;
 }
 
-const mpz_class& MinPaillierModulusQ8() {
-  static const mpz_class q_pow_8 = []() {
-    mpz_class out;
-    mpz_pow_ui(out.get_mpz_t(), Scalar::ModulusQ().get_mpz_t(), 8);
+const BigInt& MinPaillierModulusQ8() {
+  static const BigInt q_pow_8 = []() {
+    BigInt out(1);
+    const BigInt& q = Scalar::ModulusQMpInt();
+    for (size_t i = 0; i < 8; ++i) {
+      out *= q;
+    }
     return out;
   }();
   return q_pow_8;
@@ -342,58 +326,31 @@ bool StrictMetadataCompatible(const ProofMetadata& expected, const ProofMetadata
   return IsProofMetadataCompatible(expected, candidate, /*require_strict_scheme=*/true);
 }
 
-mpz_class NormalizeMod(const mpz_class& value, const mpz_class& modulus) {
-  mpz_class out = value % modulus;
-  if (out < 0) {
-    out += modulus;
-  }
-  return out;
+BigInt NormalizeMod(const BigInt& value, const BigInt& modulus) {
+  return bigint::NormalizeMod(value, modulus);
 }
 
-mpz_class MulMod(const mpz_class& lhs, const mpz_class& rhs, const mpz_class& modulus) {
+BigInt MulMod(const BigInt& lhs, const BigInt& rhs, const BigInt& modulus) {
   return NormalizeMod(lhs * rhs, modulus);
 }
 
-mpz_class PowMod(const mpz_class& base, const mpz_class& exp, const mpz_class& modulus) {
+BigInt PowMod(const BigInt& base, const BigInt& exp, const BigInt& modulus) {
   if (exp < 0) {
     TECDSA_THROW_ARGUMENT("modular exponent must be non-negative");
   }
-  mpz_class out;
-  mpz_powm(out.get_mpz_t(), base.get_mpz_t(), exp.get_mpz_t(), modulus.get_mpz_t());
-  return out;
+  return bigint::PowMod(base, exp, modulus);
 }
 
-std::optional<mpz_class> InvertMod(const mpz_class& value, const mpz_class& modulus) {
-  mpz_class inverse;
-  if (mpz_invert(inverse.get_mpz_t(), value.get_mpz_t(), modulus.get_mpz_t()) == 0) {
-    return std::nullopt;
-  }
-  return inverse;
+std::optional<BigInt> InvertMod(const BigInt& value, const BigInt& modulus) {
+  return bigint::TryInvertMod(value, modulus);
 }
 
-bool IsInRange(const mpz_class& value, const mpz_class& modulus) {
+bool IsInRange(const BigInt& value, const BigInt& modulus) {
   return value >= 0 && value < modulus;
 }
 
-Bytes ExportFixedWidth(const mpz_class& value, size_t width) {
-  if (value < 0) {
-    TECDSA_THROW_ARGUMENT("cannot export negative integer to fixed width");
-  }
-
-  Bytes out(width, 0);
-  if (value == 0) {
-    return out;
-  }
-
-  Bytes encoded((mpz_sizeinbase(value.get_mpz_t(), 2) + 7) / 8);
-  size_t count = 0;
-  mpz_export(encoded.data(), &count, 1, sizeof(uint8_t), 1, 0, value.get_mpz_t());
-  encoded.resize(count);
-  if (encoded.size() > width) {
-    TECDSA_THROW_ARGUMENT("integer does not fit fixed-width buffer");
-  }
-  std::copy(encoded.begin(), encoded.end(), out.begin() + static_cast<std::ptrdiff_t>(width - encoded.size()));
-  return out;
+Bytes ExportFixedWidth(const BigInt& value, size_t width) {
+  return bigint::ToFixedWidth(value, width);
 }
 
 const Bytes& CurveNameBytes() {
@@ -404,7 +361,7 @@ const Bytes& CurveNameBytes() {
 }
 
 const Bytes& ModulusQBytes() {
-  static const Bytes kQBytes = ExportFixedWidth(Scalar::ModulusQ(), 32);
+  static const Bytes kQBytes = ExportFixedWidth(Scalar::ModulusQMpInt(), 32);
   return kQBytes;
 }
 
@@ -442,21 +399,21 @@ void AppendCommonMtaTranscriptFields(Transcript* transcript,
 }
 
 Scalar BuildA1RangeChallenge(const MtaProofContext& ctx,
-                             const mpz_class& n,
-                             const mpz_class& gamma,
+                             const BigInt& n,
+                             const BigInt& gamma,
                              const AuxRsaParams& aux,
-                             const mpz_class& c,
+                             const BigInt& c,
                              const BigInt& z,
                              const BigInt& u,
                              const BigInt& w) {
   Transcript transcript;
   AppendCommonMtaTranscriptFields(&transcript, kA1RangeProofId, ctx);
-  const Bytes n_bytes = EncodeMpz(n);
-  const Bytes gamma_bytes = EncodeMpz(gamma);
-  const Bytes n_tilde_bytes = EncodeMpz(aux.n_tilde);
-  const Bytes h1_bytes = EncodeMpz(aux.h1);
-  const Bytes h2_bytes = EncodeMpz(aux.h2);
-  const Bytes c_bytes = EncodeMpz(c);
+  const Bytes n_bytes = EncodeMpInt(n);
+  const Bytes gamma_bytes = EncodeMpInt(gamma);
+  const Bytes n_tilde_bytes = EncodeMpInt(MpzToMpInt(aux.n_tilde));
+  const Bytes h1_bytes = EncodeMpInt(MpzToMpInt(aux.h1));
+  const Bytes h2_bytes = EncodeMpInt(MpzToMpInt(aux.h2));
+  const Bytes c_bytes = EncodeMpInt(c);
   const Bytes z_bytes = EncodeMpInt(z);
   const Bytes u_bytes = EncodeMpInt(u);
   const Bytes w_bytes = EncodeMpInt(w);
@@ -475,22 +432,22 @@ Scalar BuildA1RangeChallenge(const MtaProofContext& ctx,
 }
 
 Scalar BuildA2MtAwcChallenge(const MtaProofContext& ctx,
-                             const mpz_class& n,
-                             const mpz_class& gamma,
+                             const BigInt& n,
+                             const BigInt& gamma,
                              const AuxRsaParams& aux,
-                             const mpz_class& c1,
-                             const mpz_class& c2,
+                             const BigInt& c1,
+                             const BigInt& c2,
                              const ECPoint& statement_x,
                              const A2MtAwcProof& proof) {
   Transcript transcript;
   AppendCommonMtaTranscriptFields(&transcript, kA2MtAwcProofId, ctx);
-  const Bytes n_bytes = EncodeMpz(n);
-  const Bytes gamma_bytes = EncodeMpz(gamma);
-  const Bytes n_tilde_bytes = EncodeMpz(aux.n_tilde);
-  const Bytes h1_bytes = EncodeMpz(aux.h1);
-  const Bytes h2_bytes = EncodeMpz(aux.h2);
-  const Bytes c1_bytes = EncodeMpz(c1);
-  const Bytes c2_bytes = EncodeMpz(c2);
+  const Bytes n_bytes = EncodeMpInt(n);
+  const Bytes gamma_bytes = EncodeMpInt(gamma);
+  const Bytes n_tilde_bytes = EncodeMpInt(MpzToMpInt(aux.n_tilde));
+  const Bytes h1_bytes = EncodeMpInt(MpzToMpInt(aux.h1));
+  const Bytes h2_bytes = EncodeMpInt(MpzToMpInt(aux.h2));
+  const Bytes c1_bytes = EncodeMpInt(c1);
+  const Bytes c2_bytes = EncodeMpInt(c2);
   const Bytes x_bytes = EncodePoint(statement_x);
   const Bytes u_bytes = EncodePoint(proof.u);
   const Bytes z_bytes = EncodeMpInt(proof.z);
@@ -518,21 +475,21 @@ Scalar BuildA2MtAwcChallenge(const MtaProofContext& ctx,
 }
 
 Scalar BuildA3MtAChallenge(const MtaProofContext& ctx,
-                           const mpz_class& n,
-                           const mpz_class& gamma,
+                           const BigInt& n,
+                           const BigInt& gamma,
                            const AuxRsaParams& aux,
-                           const mpz_class& c1,
-                           const mpz_class& c2,
+                           const BigInt& c1,
+                           const BigInt& c2,
                            const A3MtAProof& proof) {
   Transcript transcript;
   AppendCommonMtaTranscriptFields(&transcript, kA3MtAProofId, ctx);
-  const Bytes n_bytes = EncodeMpz(n);
-  const Bytes gamma_bytes = EncodeMpz(gamma);
-  const Bytes n_tilde_bytes = EncodeMpz(aux.n_tilde);
-  const Bytes h1_bytes = EncodeMpz(aux.h1);
-  const Bytes h2_bytes = EncodeMpz(aux.h2);
-  const Bytes c1_bytes = EncodeMpz(c1);
-  const Bytes c2_bytes = EncodeMpz(c2);
+  const Bytes n_bytes = EncodeMpInt(n);
+  const Bytes gamma_bytes = EncodeMpInt(gamma);
+  const Bytes n_tilde_bytes = EncodeMpInt(MpzToMpInt(aux.n_tilde));
+  const Bytes h1_bytes = EncodeMpInt(MpzToMpInt(aux.h1));
+  const Bytes h2_bytes = EncodeMpInt(MpzToMpInt(aux.h2));
+  const Bytes c1_bytes = EncodeMpInt(c1);
+  const Bytes c2_bytes = EncodeMpInt(c2);
   const Bytes z_bytes = EncodeMpInt(proof.z);
   const Bytes z2_bytes = EncodeMpInt(proof.z2);
   const Bytes t_bytes = EncodeMpInt(proof.t);
@@ -556,217 +513,185 @@ Scalar BuildA3MtAChallenge(const MtaProofContext& ctx,
 }
 
 A1RangeProof ProveA1Range(const MtaProofContext& ctx,
-                          const mpz_class& n,
+                          const BigInt& n,
                           const AuxRsaParams& verifier_aux,
-                          const mpz_class& c,
-                          const mpz_class& witness_m,
-                          const mpz_class& witness_r) {
-  const mpz_class n2 = n * n;
-  const mpz_class gamma = n + 1;
-  const mpz_class q_mul_n_tilde = Scalar::ModulusQ() * verifier_aux.n_tilde;
-  const mpz_class q3_mul_n_tilde = QPow3() * verifier_aux.n_tilde;
+                          const BigInt& c,
+                          const BigInt& witness_m,
+                          const BigInt& witness_r) {
+  const BigInt n2 = n * n;
+  const BigInt gamma = n + BigInt(1);
+  const BigInt n_tilde = MpzToMpInt(verifier_aux.n_tilde);
+  const BigInt h1 = MpzToMpInt(verifier_aux.h1);
+  const BigInt h2 = MpzToMpInt(verifier_aux.h2);
+  const BigInt q_mul_n_tilde = Scalar::ModulusQMpInt() * n_tilde;
+  const BigInt q3_mul_n_tilde = QPow3() * n_tilde;
 
   while (true) {
-    const mpz_class alpha = RandomBelow(QPow3());
-    const mpz_class beta = SampleZnStar(n);
-    const mpz_class gamma_rand = RandomBelow(q3_mul_n_tilde);
-    const mpz_class rho = RandomBelow(q_mul_n_tilde);
+    const BigInt alpha = RandomBelow(QPow3());
+    const BigInt beta = SampleZnStar(n);
+    const BigInt gamma_rand = RandomBelow(q3_mul_n_tilde);
+    const BigInt rho = RandomBelow(q_mul_n_tilde);
 
-    const mpz_class z =
-        MulMod(PowMod(verifier_aux.h1, witness_m, verifier_aux.n_tilde),
-               PowMod(verifier_aux.h2, rho, verifier_aux.n_tilde),
-               verifier_aux.n_tilde);
-    const mpz_class u =
-        MulMod(PowMod(gamma, alpha, n2),
-               PowMod(beta, n, n2),
-               n2);
-    const mpz_class w =
-        MulMod(PowMod(verifier_aux.h1, alpha, verifier_aux.n_tilde),
-               PowMod(verifier_aux.h2, gamma_rand, verifier_aux.n_tilde),
-               verifier_aux.n_tilde);
+    const BigInt z = MulMod(PowMod(h1, witness_m, n_tilde), PowMod(h2, rho, n_tilde), n_tilde);
+    const BigInt u = MulMod(PowMod(gamma, alpha, n2), PowMod(beta, n, n2), n2);
+    const BigInt w = MulMod(PowMod(h1, alpha, n_tilde), PowMod(h2, gamma_rand, n_tilde), n_tilde);
 
-    const BigInt z_big = MpzToMpInt(z);
-    const BigInt u_big = MpzToMpInt(u);
-    const BigInt w_big = MpzToMpInt(w);
-    const Scalar e_scalar = BuildA1RangeChallenge(ctx, n, gamma, verifier_aux, c, z_big, u_big, w_big);
-    const mpz_class& e = e_scalar.value();
-    const mpz_class s = MulMod(PowMod(witness_r, e, n), beta, n);
-    const mpz_class s1 = (e * witness_m) + alpha;
-    const mpz_class s2 = (e * rho) + gamma_rand;
+    const Scalar e_scalar = BuildA1RangeChallenge(ctx, n, gamma, verifier_aux, c, z, u, w);
+    const BigInt e = e_scalar.mp_value();
+    const BigInt s = MulMod(PowMod(witness_r, e, n), beta, n);
+    const BigInt s1 = (e * witness_m) + alpha;
+    const BigInt s2 = (e * rho) + gamma_rand;
     if (s1 > QPow3()) {
       continue;
     }
 
     return A1RangeProof{
-        .z = std::move(z_big),
-        .u = std::move(u_big),
-        .w = std::move(w_big),
-        .s = MpzToMpInt(s),
-        .s1 = MpzToMpInt(s1),
-        .s2 = MpzToMpInt(s2),
+        .z = z,
+        .u = u,
+        .w = w,
+        .s = s,
+        .s1 = s1,
+        .s2 = s2,
     };
   }
 }
 
 bool VerifyA1Range(const MtaProofContext& ctx,
-                   const mpz_class& n,
+                   const BigInt& n,
                    const AuxRsaParams& verifier_aux,
-                   const mpz_class& c,
+                   const BigInt& c,
                    const A1RangeProof& proof) {
-  const mpz_class n2 = n * n;
-  const mpz_class gamma = n + 1;
-  const mpz_class proof_z = MpIntToMpz(proof.z);
-  const mpz_class proof_u = MpIntToMpz(proof.u);
-  const mpz_class proof_w = MpIntToMpz(proof.w);
-  const mpz_class proof_s = MpIntToMpz(proof.s);
-  const mpz_class proof_s1 = MpIntToMpz(proof.s1);
-  const mpz_class proof_s2 = MpIntToMpz(proof.s2);
+  const BigInt n2 = n * n;
+  const BigInt gamma = n + BigInt(1);
+  const BigInt n_tilde = MpzToMpInt(verifier_aux.n_tilde);
+  const BigInt h1 = MpzToMpInt(verifier_aux.h1);
+  const BigInt h2 = MpzToMpInt(verifier_aux.h2);
 
-  if (!IsInRange(c, n2) || !IsInRange(proof_u, n2) ||
-      !IsInRange(proof_z, verifier_aux.n_tilde) ||
-      !IsInRange(proof_w, verifier_aux.n_tilde) ||
-      !IsZnStarElement(proof_s, n)) {
+  if (!IsInRange(c, n2) || !IsInRange(proof.u, n2) ||
+      !IsInRange(proof.z, n_tilde) ||
+      !IsInRange(proof.w, n_tilde) ||
+      !IsZnStarElement(proof.s, n)) {
     return false;
   }
-  if (proof_s1 < 0 || proof_s1 > QPow3()) {
+  if (proof.s1 < 0 || proof.s1 > QPow3()) {
     return false;
   }
-  if (proof_s2 < 0) {
+  if (proof.s2 < 0) {
     return false;
   }
 
   const Scalar e_scalar = BuildA1RangeChallenge(ctx, n, gamma, verifier_aux, c, proof.z, proof.u, proof.w);
-  const mpz_class& e = e_scalar.value();
+  const BigInt e = e_scalar.mp_value();
 
-  const mpz_class c_pow_e = PowMod(c, e, n2);
-  const std::optional<mpz_class> c_pow_e_inv = InvertMod(c_pow_e, n2);
+  const BigInt c_pow_e = PowMod(c, e, n2);
+  const std::optional<BigInt> c_pow_e_inv = InvertMod(c_pow_e, n2);
   if (!c_pow_e_inv.has_value()) {
     return false;
   }
 
-  mpz_class rhs_u = MulMod(PowMod(gamma, proof_s1, n2), PowMod(proof_s, n, n2), n2);
+  BigInt rhs_u = MulMod(PowMod(gamma, proof.s1, n2), PowMod(proof.s, n, n2), n2);
   rhs_u = MulMod(rhs_u, *c_pow_e_inv, n2);
-  if (NormalizeMod(proof_u, n2) != rhs_u) {
+  if (NormalizeMod(proof.u, n2) != rhs_u) {
     return false;
   }
 
-  const mpz_class lhs_n_tilde =
-      MulMod(PowMod(verifier_aux.h1, proof_s1, verifier_aux.n_tilde),
-             PowMod(verifier_aux.h2, proof_s2, verifier_aux.n_tilde),
-             verifier_aux.n_tilde);
-  const mpz_class rhs_n_tilde =
-      MulMod(proof_w, PowMod(proof_z, e, verifier_aux.n_tilde), verifier_aux.n_tilde);
+  const BigInt lhs_n_tilde = MulMod(PowMod(h1, proof.s1, n_tilde), PowMod(h2, proof.s2, n_tilde), n_tilde);
+  const BigInt rhs_n_tilde = MulMod(proof.w, PowMod(proof.z, e, n_tilde), n_tilde);
   return lhs_n_tilde == rhs_n_tilde;
 }
 
 A2MtAwcProof ProveA2MtAwc(const MtaProofContext& ctx,
-                          const mpz_class& n,
+                          const BigInt& n,
                           const AuxRsaParams& verifier_aux,
-                          const mpz_class& c1,
-                          const mpz_class& c2,
+                          const BigInt& c1,
+                          const BigInt& c2,
                           const ECPoint& statement_x,
-                          const mpz_class& witness_x,
-                          const mpz_class& witness_y,
-                          const mpz_class& witness_r) {
-  const mpz_class n2 = n * n;
-  const mpz_class gamma = n + 1;
-  const mpz_class q_mul_n_tilde = Scalar::ModulusQ() * verifier_aux.n_tilde;
-  const mpz_class q3_mul_n_tilde = QPow3() * verifier_aux.n_tilde;
+                          const BigInt& witness_x,
+                          const BigInt& witness_y,
+                          const BigInt& witness_r) {
+  const BigInt n2 = n * n;
+  const BigInt gamma = n + BigInt(1);
+  const BigInt n_tilde = MpzToMpInt(verifier_aux.n_tilde);
+  const BigInt h1 = MpzToMpInt(verifier_aux.h1);
+  const BigInt h2 = MpzToMpInt(verifier_aux.h2);
+  const BigInt q_mul_n_tilde = Scalar::ModulusQMpInt() * n_tilde;
+  const BigInt q3_mul_n_tilde = QPow3() * n_tilde;
 
   while (true) {
-    const mpz_class alpha = RandomBelow(QPow3());
+    const BigInt alpha = RandomBelow(QPow3());
     const Scalar alpha_scalar(alpha);
     if (alpha_scalar.value() == 0) {
       continue;
     }
 
-    const mpz_class rho = RandomBelow(q_mul_n_tilde);
-    const mpz_class rho2 = RandomBelow(q3_mul_n_tilde);
-    const mpz_class sigma = RandomBelow(q_mul_n_tilde);
-    const mpz_class beta = SampleZnStar(n);
-    const mpz_class gamma_rand = RandomBelow(QPow7());
-    const mpz_class tau = RandomBelow(q3_mul_n_tilde);
+    const BigInt rho = RandomBelow(q_mul_n_tilde);
+    const BigInt rho2 = RandomBelow(q3_mul_n_tilde);
+    const BigInt sigma = RandomBelow(q_mul_n_tilde);
+    const BigInt beta = SampleZnStar(n);
+    const BigInt gamma_rand = RandomBelow(QPow7());
+    const BigInt tau = RandomBelow(q3_mul_n_tilde);
 
     const ECPoint u = ECPoint::GeneratorMultiply(alpha_scalar);
-    const mpz_class z =
-        MulMod(PowMod(verifier_aux.h1, witness_x, verifier_aux.n_tilde),
-               PowMod(verifier_aux.h2, rho, verifier_aux.n_tilde),
-               verifier_aux.n_tilde);
-    const mpz_class z2 =
-        MulMod(PowMod(verifier_aux.h1, alpha, verifier_aux.n_tilde),
-               PowMod(verifier_aux.h2, rho2, verifier_aux.n_tilde),
-               verifier_aux.n_tilde);
-    const mpz_class t =
-        MulMod(PowMod(verifier_aux.h1, witness_y, verifier_aux.n_tilde),
-               PowMod(verifier_aux.h2, sigma, verifier_aux.n_tilde),
-               verifier_aux.n_tilde);
+    const BigInt z = MulMod(PowMod(h1, witness_x, n_tilde), PowMod(h2, rho, n_tilde), n_tilde);
+    const BigInt z2 = MulMod(PowMod(h1, alpha, n_tilde), PowMod(h2, rho2, n_tilde), n_tilde);
+    const BigInt t = MulMod(PowMod(h1, witness_y, n_tilde), PowMod(h2, sigma, n_tilde), n_tilde);
 
-    mpz_class v = MulMod(PowMod(c1, alpha, n2), PowMod(gamma, gamma_rand, n2), n2);
+    BigInt v = MulMod(PowMod(c1, alpha, n2), PowMod(gamma, gamma_rand, n2), n2);
     v = MulMod(v, PowMod(beta, n, n2), n2);
-    const mpz_class w =
-        MulMod(PowMod(verifier_aux.h1, gamma_rand, verifier_aux.n_tilde),
-               PowMod(verifier_aux.h2, tau, verifier_aux.n_tilde),
-               verifier_aux.n_tilde);
+    const BigInt w = MulMod(PowMod(h1, gamma_rand, n_tilde), PowMod(h2, tau, n_tilde), n_tilde);
 
     A2MtAwcProof proof{
         .u = u,
-        .z = MpzToMpInt(z),
-        .z2 = MpzToMpInt(z2),
-        .t = MpzToMpInt(t),
-        .v = MpzToMpInt(v),
-        .w = MpzToMpInt(w),
+        .z = z,
+        .z2 = z2,
+        .t = t,
+        .v = v,
+        .w = w,
     };
     const Scalar e_scalar =
         BuildA2MtAwcChallenge(ctx, n, gamma, verifier_aux, c1, c2, statement_x, proof);
-    const mpz_class& e = e_scalar.value();
+    const BigInt e = e_scalar.mp_value();
 
-    const mpz_class s = MulMod(PowMod(witness_r, e, n), beta, n);
-    const mpz_class s1 = (e * witness_x) + alpha;
-    const mpz_class s2 = (e * rho) + rho2;
-    const mpz_class t1 = (e * witness_y) + gamma_rand;
-    const mpz_class t2 = (e * sigma) + tau;
+    const BigInt s = MulMod(PowMod(witness_r, e, n), beta, n);
+    const BigInt s1 = (e * witness_x) + alpha;
+    const BigInt s2 = (e * rho) + rho2;
+    const BigInt t1 = (e * witness_y) + gamma_rand;
+    const BigInt t2 = (e * sigma) + tau;
     if (s1 > QPow3() || t1 > QPow7()) {
       continue;
     }
-    proof.s = MpzToMpInt(s);
-    proof.s1 = MpzToMpInt(s1);
-    proof.s2 = MpzToMpInt(s2);
-    proof.t1 = MpzToMpInt(t1);
-    proof.t2 = MpzToMpInt(t2);
+    proof.s = s;
+    proof.s1 = s1;
+    proof.s2 = s2;
+    proof.t1 = t1;
+    proof.t2 = t2;
     return proof;
   }
 }
 
 bool VerifyA2MtAwc(const MtaProofContext& ctx,
-                   const mpz_class& n,
+                   const BigInt& n,
                    const AuxRsaParams& verifier_aux,
-                   const mpz_class& c1,
-                   const mpz_class& c2,
+                   const BigInt& c1,
+                   const BigInt& c2,
                    const ECPoint& statement_x,
                    const A2MtAwcProof& proof) {
-  const mpz_class n2 = n * n;
-  const mpz_class gamma = n + 1;
-  const mpz_class proof_z = MpIntToMpz(proof.z);
-  const mpz_class proof_z2 = MpIntToMpz(proof.z2);
-  const mpz_class proof_t = MpIntToMpz(proof.t);
-  const mpz_class proof_v = MpIntToMpz(proof.v);
-  const mpz_class proof_w = MpIntToMpz(proof.w);
-  const mpz_class proof_s = MpIntToMpz(proof.s);
-  const mpz_class proof_s1 = MpIntToMpz(proof.s1);
-  const mpz_class proof_s2 = MpIntToMpz(proof.s2);
-  const mpz_class proof_t1 = MpIntToMpz(proof.t1);
-  const mpz_class proof_t2 = MpIntToMpz(proof.t2);
+  const BigInt n2 = n * n;
+  const BigInt gamma = n + BigInt(1);
+  const BigInt n_tilde = MpzToMpInt(verifier_aux.n_tilde);
+  const BigInt h1 = MpzToMpInt(verifier_aux.h1);
+  const BigInt h2 = MpzToMpInt(verifier_aux.h2);
 
   if (!IsInRange(c1, n2) || !IsInRange(c2, n2) ||
-      !IsInRange(proof_v, n2) || !IsInRange(proof_z, verifier_aux.n_tilde) ||
-      !IsInRange(proof_z2, verifier_aux.n_tilde) ||
-      !IsInRange(proof_t, verifier_aux.n_tilde) ||
-      !IsInRange(proof_w, verifier_aux.n_tilde) ||
-      !IsZnStarElement(proof_s, n)) {
+      !IsInRange(proof.v, n2) || !IsInRange(proof.z, n_tilde) ||
+      !IsInRange(proof.z2, n_tilde) ||
+      !IsInRange(proof.t, n_tilde) ||
+      !IsInRange(proof.w, n_tilde) ||
+      !IsZnStarElement(proof.s, n)) {
     return false;
   }
-  if (proof_s1 < 0 || proof_s1 > QPow3() || proof_t1 < 0 || proof_t1 > QPow7() ||
-      proof_s2 < 0 || proof_t2 < 0) {
+  if (proof.s1 < 0 || proof.s1 > QPow3() || proof.t1 < 0 || proof.t1 > QPow7() ||
+      proof.s2 < 0 || proof.t2 < 0) {
     return false;
   }
 
@@ -790,159 +715,127 @@ bool VerifyA2MtAwc(const MtaProofContext& ctx,
     return false;
   }
 
-  const mpz_class& e = e_scalar.value();
-  const mpz_class lhs_nt_1 =
-      MulMod(PowMod(verifier_aux.h1, proof_s1, verifier_aux.n_tilde),
-             PowMod(verifier_aux.h2, proof_s2, verifier_aux.n_tilde),
-             verifier_aux.n_tilde);
-  const mpz_class rhs_nt_1 =
-      MulMod(PowMod(proof_z, e, verifier_aux.n_tilde), proof_z2, verifier_aux.n_tilde);
+  const BigInt e = e_scalar.mp_value();
+  const BigInt lhs_nt_1 = MulMod(PowMod(h1, proof.s1, n_tilde), PowMod(h2, proof.s2, n_tilde), n_tilde);
+  const BigInt rhs_nt_1 = MulMod(PowMod(proof.z, e, n_tilde), proof.z2, n_tilde);
   if (lhs_nt_1 != rhs_nt_1) {
     return false;
   }
 
-  const mpz_class lhs_nt_2 =
-      MulMod(PowMod(verifier_aux.h1, proof_t1, verifier_aux.n_tilde),
-             PowMod(verifier_aux.h2, proof_t2, verifier_aux.n_tilde),
-             verifier_aux.n_tilde);
-  const mpz_class rhs_nt_2 =
-      MulMod(PowMod(proof_t, e, verifier_aux.n_tilde), proof_w, verifier_aux.n_tilde);
+  const BigInt lhs_nt_2 = MulMod(PowMod(h1, proof.t1, n_tilde), PowMod(h2, proof.t2, n_tilde), n_tilde);
+  const BigInt rhs_nt_2 = MulMod(PowMod(proof.t, e, n_tilde), proof.w, n_tilde);
   if (lhs_nt_2 != rhs_nt_2) {
     return false;
   }
 
-  mpz_class lhs_paillier = MulMod(PowMod(c1, proof_s1, n2), PowMod(proof_s, n, n2), n2);
-  lhs_paillier = MulMod(lhs_paillier, PowMod(gamma, proof_t1, n2), n2);
-  const mpz_class rhs_paillier = MulMod(PowMod(c2, e, n2), proof_v, n2);
+  BigInt lhs_paillier = MulMod(PowMod(c1, proof.s1, n2), PowMod(proof.s, n, n2), n2);
+  lhs_paillier = MulMod(lhs_paillier, PowMod(gamma, proof.t1, n2), n2);
+  const BigInt rhs_paillier = MulMod(PowMod(c2, e, n2), proof.v, n2);
   return lhs_paillier == rhs_paillier;
 }
 
 A3MtAProof ProveA3MtA(const MtaProofContext& ctx,
-                      const mpz_class& n,
+                      const BigInt& n,
                       const AuxRsaParams& verifier_aux,
-                      const mpz_class& c1,
-                      const mpz_class& c2,
-                      const mpz_class& witness_x,
-                      const mpz_class& witness_y,
-                      const mpz_class& witness_r) {
-  const mpz_class n2 = n * n;
-  const mpz_class gamma = n + 1;
-  const mpz_class q_mul_n_tilde = Scalar::ModulusQ() * verifier_aux.n_tilde;
-  const mpz_class q3_mul_n_tilde = QPow3() * verifier_aux.n_tilde;
+                      const BigInt& c1,
+                      const BigInt& c2,
+                      const BigInt& witness_x,
+                      const BigInt& witness_y,
+                      const BigInt& witness_r) {
+  const BigInt n2 = n * n;
+  const BigInt gamma = n + BigInt(1);
+  const BigInt n_tilde = MpzToMpInt(verifier_aux.n_tilde);
+  const BigInt h1 = MpzToMpInt(verifier_aux.h1);
+  const BigInt h2 = MpzToMpInt(verifier_aux.h2);
+  const BigInt q_mul_n_tilde = Scalar::ModulusQMpInt() * n_tilde;
+  const BigInt q3_mul_n_tilde = QPow3() * n_tilde;
 
   while (true) {
-    const mpz_class alpha = RandomBelow(QPow3());
-    const mpz_class rho = RandomBelow(q_mul_n_tilde);
-    const mpz_class rho2 = RandomBelow(q3_mul_n_tilde);
-    const mpz_class sigma = RandomBelow(q_mul_n_tilde);
-    const mpz_class beta = SampleZnStar(n);
-    const mpz_class gamma_rand = RandomBelow(QPow7());
-    const mpz_class tau = RandomBelow(q3_mul_n_tilde);
+    const BigInt alpha = RandomBelow(QPow3());
+    const BigInt rho = RandomBelow(q_mul_n_tilde);
+    const BigInt rho2 = RandomBelow(q3_mul_n_tilde);
+    const BigInt sigma = RandomBelow(q_mul_n_tilde);
+    const BigInt beta = SampleZnStar(n);
+    const BigInt gamma_rand = RandomBelow(QPow7());
+    const BigInt tau = RandomBelow(q3_mul_n_tilde);
 
-    const mpz_class z =
-        MulMod(PowMod(verifier_aux.h1, witness_x, verifier_aux.n_tilde),
-               PowMod(verifier_aux.h2, rho, verifier_aux.n_tilde),
-               verifier_aux.n_tilde);
-    const mpz_class z2 =
-        MulMod(PowMod(verifier_aux.h1, alpha, verifier_aux.n_tilde),
-               PowMod(verifier_aux.h2, rho2, verifier_aux.n_tilde),
-               verifier_aux.n_tilde);
-    const mpz_class t =
-        MulMod(PowMod(verifier_aux.h1, witness_y, verifier_aux.n_tilde),
-               PowMod(verifier_aux.h2, sigma, verifier_aux.n_tilde),
-               verifier_aux.n_tilde);
-    mpz_class v = MulMod(PowMod(c1, alpha, n2), PowMod(gamma, gamma_rand, n2), n2);
+    const BigInt z = MulMod(PowMod(h1, witness_x, n_tilde), PowMod(h2, rho, n_tilde), n_tilde);
+    const BigInt z2 = MulMod(PowMod(h1, alpha, n_tilde), PowMod(h2, rho2, n_tilde), n_tilde);
+    const BigInt t = MulMod(PowMod(h1, witness_y, n_tilde), PowMod(h2, sigma, n_tilde), n_tilde);
+    BigInt v = MulMod(PowMod(c1, alpha, n2), PowMod(gamma, gamma_rand, n2), n2);
     v = MulMod(v, PowMod(beta, n, n2), n2);
-    const mpz_class w =
-        MulMod(PowMod(verifier_aux.h1, gamma_rand, verifier_aux.n_tilde),
-               PowMod(verifier_aux.h2, tau, verifier_aux.n_tilde),
-               verifier_aux.n_tilde);
+    const BigInt w = MulMod(PowMod(h1, gamma_rand, n_tilde), PowMod(h2, tau, n_tilde), n_tilde);
 
     A3MtAProof proof{
-        .z = MpzToMpInt(z),
-        .z2 = MpzToMpInt(z2),
-        .t = MpzToMpInt(t),
-        .v = MpzToMpInt(v),
-        .w = MpzToMpInt(w),
+        .z = z,
+        .z2 = z2,
+        .t = t,
+        .v = v,
+        .w = w,
     };
     const Scalar e_scalar = BuildA3MtAChallenge(ctx, n, gamma, verifier_aux, c1, c2, proof);
-    const mpz_class& e = e_scalar.value();
+    const BigInt e = e_scalar.mp_value();
 
-    const mpz_class s = MulMod(PowMod(witness_r, e, n), beta, n);
-    const mpz_class s1 = (e * witness_x) + alpha;
-    const mpz_class s2 = (e * rho) + rho2;
-    const mpz_class t1 = (e * witness_y) + gamma_rand;
-    const mpz_class t2 = (e * sigma) + tau;
+    const BigInt s = MulMod(PowMod(witness_r, e, n), beta, n);
+    const BigInt s1 = (e * witness_x) + alpha;
+    const BigInt s2 = (e * rho) + rho2;
+    const BigInt t1 = (e * witness_y) + gamma_rand;
+    const BigInt t2 = (e * sigma) + tau;
     if (s1 > QPow3() || t1 > QPow7()) {
       continue;
     }
-    proof.s = MpzToMpInt(s);
-    proof.s1 = MpzToMpInt(s1);
-    proof.s2 = MpzToMpInt(s2);
-    proof.t1 = MpzToMpInt(t1);
-    proof.t2 = MpzToMpInt(t2);
+    proof.s = s;
+    proof.s1 = s1;
+    proof.s2 = s2;
+    proof.t1 = t1;
+    proof.t2 = t2;
     return proof;
   }
 }
 
 bool VerifyA3MtA(const MtaProofContext& ctx,
-                 const mpz_class& n,
+                 const BigInt& n,
                  const AuxRsaParams& verifier_aux,
-                 const mpz_class& c1,
-                 const mpz_class& c2,
+                 const BigInt& c1,
+                 const BigInt& c2,
                  const A3MtAProof& proof) {
-  const mpz_class n2 = n * n;
-  const mpz_class gamma = n + 1;
-  const mpz_class proof_z = MpIntToMpz(proof.z);
-  const mpz_class proof_z2 = MpIntToMpz(proof.z2);
-  const mpz_class proof_t = MpIntToMpz(proof.t);
-  const mpz_class proof_v = MpIntToMpz(proof.v);
-  const mpz_class proof_w = MpIntToMpz(proof.w);
-  const mpz_class proof_s = MpIntToMpz(proof.s);
-  const mpz_class proof_s1 = MpIntToMpz(proof.s1);
-  const mpz_class proof_s2 = MpIntToMpz(proof.s2);
-  const mpz_class proof_t1 = MpIntToMpz(proof.t1);
-  const mpz_class proof_t2 = MpIntToMpz(proof.t2);
+  const BigInt n2 = n * n;
+  const BigInt gamma = n + BigInt(1);
+  const BigInt n_tilde = MpzToMpInt(verifier_aux.n_tilde);
+  const BigInt h1 = MpzToMpInt(verifier_aux.h1);
+  const BigInt h2 = MpzToMpInt(verifier_aux.h2);
 
   if (!IsInRange(c1, n2) || !IsInRange(c2, n2) ||
-      !IsInRange(proof_v, n2) || !IsInRange(proof_z, verifier_aux.n_tilde) ||
-      !IsInRange(proof_z2, verifier_aux.n_tilde) ||
-      !IsInRange(proof_t, verifier_aux.n_tilde) ||
-      !IsInRange(proof_w, verifier_aux.n_tilde) ||
-      !IsZnStarElement(proof_s, n)) {
+      !IsInRange(proof.v, n2) || !IsInRange(proof.z, n_tilde) ||
+      !IsInRange(proof.z2, n_tilde) ||
+      !IsInRange(proof.t, n_tilde) ||
+      !IsInRange(proof.w, n_tilde) ||
+      !IsZnStarElement(proof.s, n)) {
     return false;
   }
-  if (proof_s1 < 0 || proof_s1 > QPow3() || proof_t1 < 0 || proof_t1 > QPow7() ||
-      proof_s2 < 0 || proof_t2 < 0) {
+  if (proof.s1 < 0 || proof.s1 > QPow3() || proof.t1 < 0 || proof.t1 > QPow7() ||
+      proof.s2 < 0 || proof.t2 < 0) {
     return false;
   }
 
   const Scalar e_scalar = BuildA3MtAChallenge(ctx, n, gamma, verifier_aux, c1, c2, proof);
-  const mpz_class& e = e_scalar.value();
+  const BigInt e = e_scalar.mp_value();
 
-  const mpz_class lhs_nt_1 =
-      MulMod(PowMod(verifier_aux.h1, proof_s1, verifier_aux.n_tilde),
-             PowMod(verifier_aux.h2, proof_s2, verifier_aux.n_tilde),
-             verifier_aux.n_tilde);
-  const mpz_class rhs_nt_1 =
-      MulMod(PowMod(proof_z, e, verifier_aux.n_tilde), proof_z2, verifier_aux.n_tilde);
+  const BigInt lhs_nt_1 = MulMod(PowMod(h1, proof.s1, n_tilde), PowMod(h2, proof.s2, n_tilde), n_tilde);
+  const BigInt rhs_nt_1 = MulMod(PowMod(proof.z, e, n_tilde), proof.z2, n_tilde);
   if (lhs_nt_1 != rhs_nt_1) {
     return false;
   }
 
-  const mpz_class lhs_nt_2 =
-      MulMod(PowMod(verifier_aux.h1, proof_t1, verifier_aux.n_tilde),
-             PowMod(verifier_aux.h2, proof_t2, verifier_aux.n_tilde),
-             verifier_aux.n_tilde);
-  const mpz_class rhs_nt_2 =
-      MulMod(PowMod(proof_t, e, verifier_aux.n_tilde), proof_w, verifier_aux.n_tilde);
+  const BigInt lhs_nt_2 = MulMod(PowMod(h1, proof.t1, n_tilde), PowMod(h2, proof.t2, n_tilde), n_tilde);
+  const BigInt rhs_nt_2 = MulMod(PowMod(proof.t, e, n_tilde), proof.w, n_tilde);
   if (lhs_nt_2 != rhs_nt_2) {
     return false;
   }
 
-  mpz_class lhs_paillier = MulMod(PowMod(c1, proof_s1, n2), PowMod(proof_s, n, n2), n2);
-  lhs_paillier = MulMod(lhs_paillier, PowMod(gamma, proof_t1, n2), n2);
-  const mpz_class rhs_paillier = MulMod(PowMod(c2, e, n2), proof_v, n2);
+  BigInt lhs_paillier = MulMod(PowMod(c1, proof.s1, n2), PowMod(proof.s, n, n2), n2);
+  lhs_paillier = MulMod(lhs_paillier, PowMod(gamma, proof.t1, n2), n2);
+  const BigInt rhs_paillier = MulMod(PowMod(c2, e, n2), proof.v, n2);
   return lhs_paillier == rhs_paillier;
 }
 
@@ -1027,14 +920,6 @@ A3MtAProof ReadA3MtAProof(std::span<const uint8_t> input, size_t* offset) {
 
 Bytes RandomMtaInstanceId() {
   return Csprng::RandomBytes(kMtaInstanceIdLen);
-}
-
-mpz_class ModN2Normalize(const mpz_class& value, const mpz_class& n2) {
-  mpz_class out = value % n2;
-  if (out < 0) {
-    out += n2;
-  }
-  return out;
 }
 
 Scalar RandomNonZeroScalar() {
@@ -1246,7 +1131,7 @@ SignSession::SignSession(SignSessionConfig cfg)
     if (paillier_it == all_paillier_public_.end()) {
       TECDSA_THROW_ARGUMENT("all_paillier_public is missing participant key");
     }
-    if (paillier_it->second.n <= MinPaillierModulusQ8()) {
+    if (MpzToMpInt(paillier_it->second.n) <= MinPaillierModulusQ8()) {
       TECDSA_THROW_ARGUMENT("Paillier modulus must satisfy N > q^8");
     }
 
@@ -1906,9 +1791,8 @@ bool SignSession::HandlePhase2InitEnvelope(const Envelope& envelope) {
     if (instance_id.size() != kMtaInstanceIdLen) {
       TECDSA_THROW_ARGUMENT("phase2 mta instance id has invalid length");
     }
-    const BigInt c1_big =
+    const BigInt c1 =
         ReadMpIntField(envelope.payload, &offset, kMaxMpzEncodedLen, "phase2 mta ciphertext c1");
-    const mpz_class c1 = MpIntToMpz(c1_big);
     const A1RangeProof a1_proof = ReadA1RangeProof(envelope.payload, &offset);
     if (offset != envelope.payload.size()) {
       TECDSA_THROW_ARGUMENT("sign phase2 init payload has trailing bytes");
@@ -1918,8 +1802,8 @@ bool SignSession::HandlePhase2InitEnvelope(const Envelope& envelope) {
     if (sender_pk_it == all_paillier_public_.end()) {
       TECDSA_THROW_ARGUMENT("missing Paillier public key for initiator");
     }
-    const mpz_class& n = sender_pk_it->second.n;
-    const mpz_class n2 = n * n;
+    const BigInt n = MpzToMpInt(sender_pk_it->second.n);
+    const BigInt n2 = n * n;
     if (c1 < 0 || c1 >= n2) {
       TECDSA_THROW_ARGUMENT("phase2 c1 is out of range");
     }
@@ -1949,23 +1833,15 @@ bool SignSession::HandlePhase2InitEnvelope(const Envelope& envelope) {
 
     const Scalar witness =
         (mta_type == MtaType::kTimesGamma) ? local_gamma_i_ : local_w_i_;
-    const mpz_class y = RandomBelow(QPow5());
-    const mpz_class r_b = SampleZnStar(n);
-    const mpz_class gamma = n + 1;
+    const BigInt y = RandomBelow(QPow5());
+    const BigInt r_b = SampleZnStar(n);
+    const BigInt gamma = n + BigInt(1);
+    const BigInt c1_pow_x = PowMod(c1, witness.mp_value(), n2);
+    const BigInt gamma_pow_y = PowMod(gamma, y, n2);
+    const BigInt r_pow_n = PowMod(r_b, n, n2);
+    const BigInt c2 = MulMod(MulMod(c1_pow_x, gamma_pow_y, n2), r_pow_n, n2);
 
-    mpz_class c1_pow_x;
-    mpz_powm(c1_pow_x.get_mpz_t(), c1.get_mpz_t(), witness.value().get_mpz_t(), n2.get_mpz_t());
-
-    mpz_class gamma_pow_y;
-    mpz_powm(gamma_pow_y.get_mpz_t(), gamma.get_mpz_t(), y.get_mpz_t(), n2.get_mpz_t());
-
-    mpz_class r_pow_n;
-    mpz_powm(r_pow_n.get_mpz_t(), r_b.get_mpz_t(), n.get_mpz_t(), n2.get_mpz_t());
-
-    mpz_class c2 = ModN2Normalize(c1_pow_x * gamma_pow_y, n2);
-    c2 = ModN2Normalize(c2 * r_pow_n, n2);
-
-    const Scalar responder_share(NormalizeModQ(-y));
+    const Scalar responder_share(-y);
     if (mta_type == MtaType::kTimesGamma) {
       phase2_mta_responder_sum_ = phase2_mta_responder_sum_ + responder_share;
     } else {
@@ -1987,7 +1863,7 @@ bool SignSession::HandlePhase2InitEnvelope(const Envelope& envelope) {
     Bytes payload;
     AppendU32Be(raw_type, &payload);
     AppendSizedField(instance_id, &payload);
-    AppendMpIntField(MpzToMpInt(c2), &payload);
+    AppendMpIntField(c2, &payload);
     if (mta_type == MtaType::kTimesGamma) {
       const A3MtAProof a3_proof =
           ProveA3MtA(response_ctx,
@@ -1995,7 +1871,7 @@ bool SignSession::HandlePhase2InitEnvelope(const Envelope& envelope) {
                      initiator_aux_it->second,
                      c1,
                      c2,
-                     witness.value(),
+                     witness.mp_value(),
                      y,
                      r_b);
       AppendA3MtAProof(a3_proof, &payload);
@@ -2011,7 +1887,7 @@ bool SignSession::HandlePhase2InitEnvelope(const Envelope& envelope) {
                        c1,
                        c2,
                        statement_x_it->second,
-                       witness.value(),
+                       witness.mp_value(),
                        y,
                        r_b);
       AppendA2MtAwcProof(a2_proof, &payload);
@@ -2055,9 +1931,8 @@ bool SignSession::HandlePhase2ResponseEnvelope(const Envelope& envelope) {
     if (instance_id.size() != kMtaInstanceIdLen) {
       TECDSA_THROW_ARGUMENT("phase2 response instance id has invalid length");
     }
-    const BigInt c2_big =
+    const BigInt c2 =
         ReadMpIntField(envelope.payload, &offset, kMaxMpzEncodedLen, "phase2 mta ciphertext c2");
-    const mpz_class c2 = MpIntToMpz(c2_big);
     std::optional<A3MtAProof> a3_proof;
     std::optional<A2MtAwcProof> a2_proof;
     if (mta_type == MtaType::kTimesGamma) {
@@ -2089,8 +1964,8 @@ bool SignSession::HandlePhase2ResponseEnvelope(const Envelope& envelope) {
     if (self_pk_it == all_paillier_public_.end()) {
       TECDSA_THROW_ARGUMENT("missing self Paillier public key");
     }
-    const mpz_class& n = self_pk_it->second.n;
-    const mpz_class n2 = n * n;
+    const BigInt n = MpzToMpInt(self_pk_it->second.n);
+    const BigInt n2 = n * n;
     if (c2 < 0 || c2 >= n2) {
       TECDSA_THROW_ARGUMENT("phase2 c2 is out of range");
     }
@@ -2104,12 +1979,11 @@ bool SignSession::HandlePhase2ResponseEnvelope(const Envelope& envelope) {
         .responder_id = envelope.from,
         .mta_instance_id = instance_id,
     };
-    const mpz_class instance_c1 = MpIntToMpz(instance.c1);
     if (mta_type == MtaType::kTimesGamma) {
       if (!a3_proof.has_value()) {
         TECDSA_THROW_ARGUMENT("missing A3 proof in MtA response");
       }
-      if (!VerifyA3MtA(response_ctx, n, self_aux_it->second, instance_c1, c2, *a3_proof)) {
+      if (!VerifyA3MtA(response_ctx, n, self_aux_it->second, instance.c1, c2, *a3_proof)) {
         TECDSA_THROW_ARGUMENT("phase2 A3 proof verification failed");
       }
     } else {
@@ -2123,7 +1997,7 @@ bool SignSession::HandlePhase2ResponseEnvelope(const Envelope& envelope) {
       if (!VerifyA2MtAwc(response_ctx,
                          n,
                          self_aux_it->second,
-                         instance_c1,
+                         instance.c1,
                          c2,
                          statement_x_it->second,
                          *a2_proof)) {
@@ -2131,8 +2005,8 @@ bool SignSession::HandlePhase2ResponseEnvelope(const Envelope& envelope) {
       }
     }
 
-    const mpz_class decrypted = local_paillier_->Decrypt(c2);
-    const Scalar initiator_share(NormalizeModQ(decrypted));
+    const BigInt decrypted = local_paillier_->DecryptBigInt(c2);
+    const Scalar initiator_share(decrypted);
     if (mta_type == MtaType::kTimesGamma) {
       phase2_mta_initiator_sum_ = phase2_mta_initiator_sum_ + initiator_share;
     } else {
@@ -2477,8 +2351,8 @@ void SignSession::InitializePhase2InstancesIfNeeded() {
   if (self_pk_it == all_paillier_public_.end()) {
     TECDSA_THROW_LOGIC("missing local Paillier or peer auxiliary parameters for phase2 init");
   }
-  const mpz_class local_n = self_pk_it->second.n;
-  const mpz_class local_k_value = local_k_i_.value();
+  const BigInt local_n = MpzToMpInt(self_pk_it->second.n);
+  const BigInt local_k_value = local_k_i_.mp_value();
   const Bytes session_id_bytes = session_id();
   const PartyIndex initiator_id = self_id();
 
@@ -2486,8 +2360,8 @@ void SignSession::InitializePhase2InstancesIfNeeded() {
     PartyIndex peer = 0;
     MtaType type = MtaType::kTimesGamma;
     Bytes instance_id;
-    mpz_class c1;
-    mpz_class c1_randomness;
+    BigInt c1;
+    BigInt c1_randomness;
     AuxRsaParams peer_aux;
   };
 
@@ -2516,7 +2390,8 @@ void SignSession::InitializePhase2InstancesIfNeeded() {
       }
       reserved_instance_keys.insert(instance_key);
 
-      const PaillierCiphertextWithRandom encrypted = local_paillier_->EncryptWithRandom(local_k_value);
+      const PaillierCiphertextWithRandomBigInt encrypted =
+          local_paillier_->EncryptWithRandomBigInt(local_k_value);
       pending.push_back(PendingInit{
           .peer = peer,
           .type = type,
@@ -2545,7 +2420,7 @@ void SignSession::InitializePhase2InstancesIfNeeded() {
       Bytes payload;
       AppendU32Be(static_cast<uint32_t>(init.type), &payload);
       AppendSizedField(init.instance_id, &payload);
-      AppendMpIntField(MpzToMpInt(init.c1), &payload);
+      AppendMpIntField(init.c1, &payload);
       AppendA1RangeProof(a1_proof, &payload);
       return payload;
     }));
@@ -2566,8 +2441,8 @@ void SignSession::InitializePhase2InstancesIfNeeded() {
             .responder = init.peer,
             .type = init.type,
             .instance_id = init.instance_id,
-            .c1 = MpzToMpInt(init.c1),
-            .c1_randomness = MpzToMpInt(init.c1_randomness),
+            .c1 = init.c1,
+            .c1_randomness = init.c1_randomness,
             .response_received = false,
         });
 
