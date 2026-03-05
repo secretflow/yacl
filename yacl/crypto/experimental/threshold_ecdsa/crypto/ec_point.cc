@@ -31,10 +31,7 @@ EcGroup& GetCurve() {
 }
 
 MPInt ScalarToMpInt(const Scalar& scalar) {
-  const std::array<uint8_t, 32> scalar_bytes = scalar.ToCanonicalBytes();
-  MPInt mp;
-  mp.FromMagBytes(scalar_bytes, yacl::Endian::big);
-  return mp;
+  return scalar.mp_value();
 }
 
 EcPoint DeserializeCompressed(const std::array<uint8_t, 33>& compressed) {
@@ -90,7 +87,7 @@ ECPoint ECPoint::FromCompressed(std::span<const uint8_t> compressed_bytes) {
 }
 
 ECPoint ECPoint::GeneratorMultiply(const Scalar& scalar) {
-  if (scalar.value() == 0) {
+  if (scalar.mp_value() == 0) {
     TECDSA_THROW_ARGUMENT("Generator multiplication failed: scalar must be in [1, q-1]");
   }
   const EcPoint point = GetCurve().MulBase(ScalarToMpInt(scalar));
@@ -117,7 +114,7 @@ ECPoint ECPoint::Add(const ECPoint& other) const {
 }
 
 ECPoint ECPoint::Mul(const Scalar& scalar) const {
-  if (scalar.value() == 0) {
+  if (scalar.mp_value() == 0) {
     TECDSA_THROW_ARGUMENT("Point scalar multiplication failed");
   }
   const EcPoint point = DeserializeCompressed(compressed_);

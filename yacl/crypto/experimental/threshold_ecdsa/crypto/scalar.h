@@ -6,11 +6,16 @@
 
 #include <gmpxx.h>
 
+#include "yacl/math/mpint/mp_int.h"
+
 namespace tecdsa {
 
 class Scalar {
  public:
+  using BigInt = yacl::math::MPInt;
+
   Scalar();
+  explicit Scalar(const BigInt& value);
   explicit Scalar(const mpz_class& value);
 
   static Scalar FromUint64(uint64_t value);
@@ -19,6 +24,7 @@ class Scalar {
 
   std::array<uint8_t, 32> ToCanonicalBytes() const;
 
+  const BigInt& mp_value() const;
   const mpz_class& value() const;
 
   Scalar operator+(const Scalar& other) const;
@@ -29,10 +35,12 @@ class Scalar {
   bool operator==(const Scalar& other) const;
   bool operator!=(const Scalar& other) const;
 
+  static const BigInt& ModulusQMpInt();
   static const mpz_class& ModulusQ();
 
  private:
-  mpz_class value_;
+  BigInt value_;
+  mpz_class value_mpz_;
 };
 
 }  // namespace tecdsa

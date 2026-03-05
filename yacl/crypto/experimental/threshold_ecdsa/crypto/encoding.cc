@@ -1,7 +1,10 @@
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/encoding.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/common/errors.h"
 
+#include <string>
 #include <stdexcept>
+
+#include "yacl/crypto/experimental/threshold_ecdsa/crypto/bigint_utils.h"
 
 namespace tecdsa {
 namespace {
@@ -24,32 +27,23 @@ uint32_t ReadU32Be(std::span<const uint8_t> input, size_t offset) {
          static_cast<uint32_t>(input[offset + 3]);
 }
 
-mpz_class ImportBigEndian(std::span<const uint8_t> bytes) {
-  mpz_class out;
-  mpz_import(out.get_mpz_t(), bytes.size(), 1, sizeof(uint8_t), 1, 0, bytes.data());
-  return out;
+BigInt MpzToMpInt(const mpz_class& value) {
+  return BigInt(value.get_str(10), 10);
 }
 
-Bytes ExportBigEndian(const mpz_class& value) {
-  if (value < 0) {
-    TECDSA_THROW_ARGUMENT("mpz value must be non-negative");
+mpz_class MpIntToMpz(const BigInt& value) {
+  mpz_class out;
+  const std::string decimal = value.ToString();
+  if (mpz_set_str(out.get_mpz_t(), decimal.c_str(), 10) != 0) {
+    TECDSA_THROW("failed to convert MPInt to mpz_class");
   }
-
-  if (value == 0) {
-    return Bytes{0x00};
-  }
-
-  size_t count = 0;
-  Bytes out((mpz_sizeinbase(value.get_mpz_t(), 2) + 7) / 8);
-  mpz_export(out.data(), &count, 1, sizeof(uint8_t), 1, 0, value.get_mpz_t());
-  out.resize(count);
   return out;
 }
 
 }  // namespace
 
-Bytes EncodeMpz(const mpz_class& value) {
-  const Bytes payload = ExportBigEndian(value);
+Bytes EncodeMpInt(const BigInt& value) {
+  const Bytes payload = bigint::ToBigEndian(value);
 
   if (payload.size() > UINT32_MAX) {
     TECDSA_THROW_ARGUMENT("mpz byte length exceeds uint32");
@@ -62,7 +56,7 @@ Bytes EncodeMpz(const mpz_class& value) {
   return out;
 }
 
-mpz_class DecodeMpz(std::span<const uint8_t> encoded, size_t max_len) {
+BigInt DecodeMpInt(std::span<const uint8_t> encoded, size_t max_len) {
   if (encoded.size() < 4) {
     TECDSA_THROW_ARGUMENT("Encoded mpz is too short");
   }
@@ -78,7 +72,15 @@ mpz_class DecodeMpz(std::span<const uint8_t> encoded, size_t max_len) {
     TECDSA_THROW_ARGUMENT("Encoded mpz has inconsistent payload length");
   }
 
-  return ImportBigEndian(encoded.subspan(4, payload_len));
+  return bigint::FromBigEndian(encoded.subspan(4, payload_len));
+}
+
+Bytes EncodeMpz(const mpz_class& value) {
+  return EncodeMpInt(MpzToMpInt(value));
+}
+
+mpz_class DecodeMpz(std::span<const uint8_t> encoded, size_t max_len) {
+  return MpIntToMpz(DecodeMpInt(encoded, max_len));
 }
 
 Bytes EncodePoint(const ECPoint& point) {

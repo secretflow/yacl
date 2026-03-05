@@ -25,7 +25,7 @@ bool VerifyEcdsaSignatureMath(const ECPoint& public_key,
                               const Scalar& s) {
   // Align with GG2019's final signature check: standard ECDSA verification on
   // secp256k1.
-  if (msg32.size() != 32 || r.value() == 0 || s.value() == 0) {
+  if (msg32.size() != 32 || r.mp_value() == 0 || s.mp_value() == 0) {
     return false;
   }
 
@@ -37,10 +37,10 @@ bool VerifyEcdsaSignatureMath(const ECPoint& public_key,
 
     std::optional<ECPoint> left;
     std::optional<ECPoint> right;
-    if (u1.value() != 0) {
+    if (u1.mp_value() != 0) {
       left = ECPoint::GeneratorMultiply(u1);
     }
-    if (u2.value() != 0) {
+    if (u2.mp_value() != 0) {
       right = public_key.Mul(u2);
     }
 

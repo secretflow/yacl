@@ -4,38 +4,50 @@
 #include <algorithm>
 #include <stdexcept>
 
+#include "yacl/crypto/experimental/threshold_ecdsa/crypto/bigint_utils.h"
+
 namespace tecdsa {
 namespace {
 
+const Scalar::BigInt kSecp256k1OrderMpInt(
+    "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141");
 const mpz_class kSecp256k1Order(
     "0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141");
 
-mpz_class NormalizeToQ(const mpz_class& input) {
-  mpz_class normalized = input % kSecp256k1Order;
-  if (normalized < 0) {
-    normalized += kSecp256k1Order;
-  }
-  return normalized;
+Scalar::BigInt MpzToMpInt(const mpz_class& value) {
+  return Scalar::BigInt(value.get_str(10), 10);
 }
 
-mpz_class ImportBigEndian(std::span<const uint8_t> bytes) {
+mpz_class MpIntToMpz(const Scalar::BigInt& value) {
+  mpz_class out;
+  const std::string decimal = value.ToString();
+  if (mpz_set_str(out.get_mpz_t(), decimal.c_str(), 10) != 0) {
+    TECDSA_THROW("failed to convert MPInt to mpz_class");
+  }
+  return out;
+}
+
+Scalar::BigInt NormalizeToQ(const Scalar::BigInt& input) {
+  return bigint::NormalizeMod(input, kSecp256k1OrderMpInt);
+}
+
+Scalar::BigInt ImportBigEndian(std::span<const uint8_t> bytes) {
   if (bytes.empty()) {
     TECDSA_THROW_ARGUMENT("Big-endian input must not be empty");
   }
-
-  mpz_class out;
-  mpz_import(out.get_mpz_t(), bytes.size(), 1, sizeof(uint8_t), 1, 0, bytes.data());
-  return out;
+  return bigint::FromBigEndian(bytes);
 }
 
 }  // namespace
 
-Scalar::Scalar() : value_(0) {}
+Scalar::Scalar() : Scalar(BigInt(0)) {}
 
-Scalar::Scalar(const mpz_class& value) : value_(NormalizeToQ(value)) {}
+Scalar::Scalar(const BigInt& value) : value_(NormalizeToQ(value)), value_mpz_(MpIntToMpz(value_)) {}
+
+Scalar::Scalar(const mpz_class& value) : Scalar(MpzToMpInt(value)) {}
 
 Scalar Scalar::FromUint64(uint64_t value) {
-  return Scalar(mpz_class(value));
+  return Scalar(BigInt(value));
 }
 
 Scalar Scalar::FromBigEndianModQ(std::span<const uint8_t> bytes) {
@@ -47,8 +59,8 @@ Scalar Scalar::FromCanonicalBytes(std::span<const uint8_t> bytes) {
     TECDSA_THROW_ARGUMENT("Canonical scalar must be exactly 32 bytes");
   }
 
-  mpz_class imported = ImportBigEndian(bytes);
-  if (imported >= kSecp256k1Order) {
+  BigInt imported = ImportBigEndian(bytes);
+  if (imported >= kSecp256k1OrderMpInt) {
     TECDSA_THROW_ARGUMENT("Canonical scalar is out of range");
   }
   return Scalar(imported);
@@ -56,25 +68,17 @@ Scalar Scalar::FromCanonicalBytes(std::span<const uint8_t> bytes) {
 
 std::array<uint8_t, 32> Scalar::ToCanonicalBytes() const {
   std::array<uint8_t, 32> out{};
-
-  if (value_ == 0) {
-    return out;
-  }
-
-  size_t count = 0;
-  mpz_export(out.data(), &count, 1, sizeof(uint8_t), 1, 0, value_.get_mpz_t());
-  if (count > out.size()) {
-    TECDSA_THROW("Scalar is larger than 32 bytes");
-  }
-
-  const size_t offset = out.size() - count;
-  std::rotate(out.begin(), out.begin() + count, out.end());
-  std::fill(out.begin(), out.begin() + offset, 0);
+  const Bytes fixed = bigint::ToFixedWidth(value_, out.size());
+  std::copy(fixed.begin(), fixed.end(), out.begin());
   return out;
 }
 
-const mpz_class& Scalar::value() const {
+const Scalar::BigInt& Scalar::mp_value() const {
   return value_;
+}
+
+const mpz_class& Scalar::value() const {
+  return value_mpz_;
 }
 
 Scalar Scalar::operator+(const Scalar& other) const {
@@ -94,11 +98,11 @@ Scalar Scalar::InverseModQ() const {
     TECDSA_THROW_ARGUMENT("zero has no inverse modulo q");
   }
 
-  mpz_class inv;
-  if (mpz_invert(inv.get_mpz_t(), value_.get_mpz_t(), kSecp256k1Order.get_mpz_t()) == 0) {
+  const auto inv = bigint::TryInvertMod(value_, kSecp256k1OrderMpInt);
+  if (!inv.has_value()) {
     TECDSA_THROW_ARGUMENT("failed to invert scalar modulo q");
   }
-  return Scalar(inv);
+  return Scalar(*inv);
 }
 
 bool Scalar::operator==(const Scalar& other) const {
@@ -107,6 +111,10 @@ bool Scalar::operator==(const Scalar& other) const {
 
 bool Scalar::operator!=(const Scalar& other) const {
   return !(*this == other);
+}
+
+const Scalar::BigInt& Scalar::ModulusQMpInt() {
+  return kSecp256k1OrderMpInt;
 }
 
 const mpz_class& Scalar::ModulusQ() {
