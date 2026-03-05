@@ -20,7 +20,7 @@ It is not a production-ready wallet/signing service.
 ### Implemented Components
 
 - Elliptic-curve scalar/point operations (`yacl::crypto::EcGroup` with openssl backend).
-- Native Paillier encryption implementation (`yacl-native`).
+- Native Paillier encryption implementation (MPInt-based, no GMP/GMPXX dependency).
 - Hashing, commitments, transcript/challenge utilities, wire encoding.
 - Session model with lifecycle management (`running/completed/aborted/timed-out`).
 - In-memory transport and session routing.
@@ -44,6 +44,9 @@ tests/
   protocol_infrastructure_test.cc
   keygen_flow_test.cc
   sign_flow_test.cc
+  sign_flow_test_cases.cc
+  sign_flow_test_support.cc
+  sign_flow_test_shared.h
 ```
 
 ## Reproducibility
@@ -66,7 +69,7 @@ cmake --build build -j
 
 ```bash
 bazelisk build //yacl/crypto/experimental/threshold_ecdsa:tecdsa_core
-bazelisk build //yacl/crypto/experimental/threshold_ecdsa:all
+bazelisk build //yacl/crypto/experimental/threshold_ecdsa/...
 ```
 
 If your environment resolves `rules_foreign_cc` to `built_make` and fails on
@@ -79,19 +82,34 @@ bazelisk build //yacl/crypto/experimental/threshold_ecdsa:tecdsa_core \
 
 ### Test Suite
 
-Run all tests:
+Run all CMake tests:
 
 ```bash
 ctest --test-dir build --output-on-failure
 ```
 
-Run individual executables:
+Run individual CMake executables:
 
 ```bash
 ./build/crypto_primitives_tests
 ./build/protocol_infrastructure_tests
 ./build/keygen_flow_tests
 ./build/sign_flow_tests
+```
+
+Run Bazel test binaries:
+
+```bash
+bazelisk run //yacl/crypto/experimental/threshold_ecdsa:crypto_primitives_tests
+bazelisk run //yacl/crypto/experimental/threshold_ecdsa:protocol_infrastructure_tests
+bazelisk run //yacl/crypto/experimental/threshold_ecdsa:keygen_flow_tests
+bazelisk run //yacl/crypto/experimental/threshold_ecdsa:sign_flow_tests
+```
+
+Migration sanity check (should be zero hits in code files):
+
+```bash
+rg -n "#include <gmpxx.h>|\bmpz_class\b|\bmpz_" yacl/crypto/experimental/threshold_ecdsa --glob '!**/0*.txt' --glob '!**/*.md'
 ```
 
 ### Test Coverage Summary

@@ -33,6 +33,7 @@ TECDSA_CORE_HDRS = glob([
 
 TECDSA_CORE_DEPS = [
     "//yacl/crypto/ecc/openssl:openssl",
+    # Big integer backend used across scalar/paillier/proof/session code paths.
     "//yacl/math/mpint",
 ]
 
