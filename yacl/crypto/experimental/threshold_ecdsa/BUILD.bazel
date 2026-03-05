@@ -33,12 +33,11 @@ TECDSA_CORE_HDRS = glob([
 
 TECDSA_CORE_DEPS = [
     "//yacl/crypto/ecc/openssl:openssl",
+    "//yacl/math/mpint",
 ]
 
 TECDSA_CORE_LINKOPTS = [
     "-lcrypto",
-    "-lgmpxx",
-    "-lgmp",
 ]
 
 yacl_cc_library(

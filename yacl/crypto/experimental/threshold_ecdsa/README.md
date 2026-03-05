@@ -52,7 +52,7 @@ tests/
 
 - CMake >= 3.22
 - C++20 compiler (`clang++`/`g++`)
-- GMP / gmpxx
+- libtommath (backend dependency of `yacl/math/mpint` / `MPInt`)
 - OpenSSL `libcrypto`
 
 ### Build

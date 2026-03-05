@@ -33,7 +33,6 @@ target_include_directories(tecdsa_core PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
-target_link_libraries(tecdsa_core PUBLIC gmpxx gmp)
 if(OpenSSL_FOUND)
   target_link_libraries(tecdsa_core PUBLIC OpenSSL::Crypto)
 else()
