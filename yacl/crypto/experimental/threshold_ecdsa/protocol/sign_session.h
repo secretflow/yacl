@@ -139,8 +139,8 @@ class SignSession : public Session {
     PartyIndex responder = 0;
     MtaType type = MtaType::kTimesGamma;
     Bytes instance_id;
-    mpz_class c1;
-    mpz_class c1_randomness;
+    BigInt c1;
+    BigInt c1_randomness;
     bool response_received = false;
   };
 

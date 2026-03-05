@@ -46,6 +46,19 @@ constexpr char kCurveName[] = "secp256k1";
 
 using AuxRsaParams = SignSessionConfig::AuxRsaParams;
 
+BigInt MpzToMpInt(const mpz_class& value) {
+  return BigInt(value.get_str(10), 10);
+}
+
+mpz_class MpIntToMpz(const BigInt& value) {
+  mpz_class out;
+  const std::string decimal = value.ToString();
+  if (mpz_set_str(out.get_mpz_t(), decimal.c_str(), 10) != 0) {
+    TECDSA_THROW("failed to convert MPInt to mpz_class");
+  }
+  return out;
+}
+
 struct MtaProofContext {
   Bytes session_id;
   PartyIndex initiator_id = 0;
@@ -54,39 +67,39 @@ struct MtaProofContext {
 };
 
 struct A1RangeProof {
-  mpz_class z;
-  mpz_class u;
-  mpz_class w;
-  mpz_class s;
-  mpz_class s1;
-  mpz_class s2;
+  BigInt z;
+  BigInt u;
+  BigInt w;
+  BigInt s;
+  BigInt s1;
+  BigInt s2;
 };
 
 struct A2MtAwcProof {
   ECPoint u;
-  mpz_class z = 0;
-  mpz_class z2 = 0;
-  mpz_class t = 0;
-  mpz_class v = 0;
-  mpz_class w = 0;
-  mpz_class s = 0;
-  mpz_class s1 = 0;
-  mpz_class s2 = 0;
-  mpz_class t1 = 0;
-  mpz_class t2 = 0;
+  BigInt z = BigInt(0);
+  BigInt z2 = BigInt(0);
+  BigInt t = BigInt(0);
+  BigInt v = BigInt(0);
+  BigInt w = BigInt(0);
+  BigInt s = BigInt(0);
+  BigInt s1 = BigInt(0);
+  BigInt s2 = BigInt(0);
+  BigInt t1 = BigInt(0);
+  BigInt t2 = BigInt(0);
 };
 
 struct A3MtAProof {
-  mpz_class z = 0;
-  mpz_class z2 = 0;
-  mpz_class t = 0;
-  mpz_class v = 0;
-  mpz_class w = 0;
-  mpz_class s = 0;
-  mpz_class s1 = 0;
-  mpz_class s2 = 0;
-  mpz_class t1 = 0;
-  mpz_class t2 = 0;
+  BigInt z = BigInt(0);
+  BigInt z2 = BigInt(0);
+  BigInt t = BigInt(0);
+  BigInt v = BigInt(0);
+  BigInt w = BigInt(0);
+  BigInt s = BigInt(0);
+  BigInt s1 = BigInt(0);
+  BigInt s2 = BigInt(0);
+  BigInt t1 = BigInt(0);
+  BigInt t2 = BigInt(0);
 };
 
 void ValidateParticipantsOrThrow(const std::vector<PartyIndex>& participants, PartyIndex self_id) {
@@ -203,17 +216,17 @@ Scalar ReadScalar(std::span<const uint8_t> input, size_t* offset) {
   return Scalar::FromCanonicalBytes(view);
 }
 
-void AppendMpzField(const mpz_class& value, Bytes* out) {
-  const Bytes encoded = EncodeMpz(value);
+void AppendMpIntField(const BigInt& value, Bytes* out) {
+  const Bytes encoded = EncodeMpInt(value);
   AppendSizedField(encoded, out);
 }
 
-mpz_class ReadMpzField(std::span<const uint8_t> input,
-                       size_t* offset,
-                       size_t max_len,
-                       const char* field_name) {
+BigInt ReadMpIntField(std::span<const uint8_t> input,
+                      size_t* offset,
+                      size_t max_len,
+                      const char* field_name) {
   const Bytes encoded = ReadSizedField(input, offset, max_len, field_name);
-  return DecodeMpz(encoded, max_len);
+  return DecodeMpInt(encoded, max_len);
 }
 
 std::string BytesToKey(const Bytes& bytes) {
@@ -433,9 +446,9 @@ Scalar BuildA1RangeChallenge(const MtaProofContext& ctx,
                              const mpz_class& gamma,
                              const AuxRsaParams& aux,
                              const mpz_class& c,
-                             const mpz_class& z,
-                             const mpz_class& u,
-                             const mpz_class& w) {
+                             const BigInt& z,
+                             const BigInt& u,
+                             const BigInt& w) {
   Transcript transcript;
   AppendCommonMtaTranscriptFields(&transcript, kA1RangeProofId, ctx);
   const Bytes n_bytes = EncodeMpz(n);
@@ -444,9 +457,9 @@ Scalar BuildA1RangeChallenge(const MtaProofContext& ctx,
   const Bytes h1_bytes = EncodeMpz(aux.h1);
   const Bytes h2_bytes = EncodeMpz(aux.h2);
   const Bytes c_bytes = EncodeMpz(c);
-  const Bytes z_bytes = EncodeMpz(z);
-  const Bytes u_bytes = EncodeMpz(u);
-  const Bytes w_bytes = EncodeMpz(w);
+  const Bytes z_bytes = EncodeMpInt(z);
+  const Bytes u_bytes = EncodeMpInt(u);
+  const Bytes w_bytes = EncodeMpInt(w);
   transcript.append_fields({
       TranscriptFieldRef{.label = "N", .data = n_bytes},
       TranscriptFieldRef{.label = "Gamma", .data = gamma_bytes},
@@ -480,11 +493,11 @@ Scalar BuildA2MtAwcChallenge(const MtaProofContext& ctx,
   const Bytes c2_bytes = EncodeMpz(c2);
   const Bytes x_bytes = EncodePoint(statement_x);
   const Bytes u_bytes = EncodePoint(proof.u);
-  const Bytes z_bytes = EncodeMpz(proof.z);
-  const Bytes z2_bytes = EncodeMpz(proof.z2);
-  const Bytes t_bytes = EncodeMpz(proof.t);
-  const Bytes v_bytes = EncodeMpz(proof.v);
-  const Bytes w_bytes = EncodeMpz(proof.w);
+  const Bytes z_bytes = EncodeMpInt(proof.z);
+  const Bytes z2_bytes = EncodeMpInt(proof.z2);
+  const Bytes t_bytes = EncodeMpInt(proof.t);
+  const Bytes v_bytes = EncodeMpInt(proof.v);
+  const Bytes w_bytes = EncodeMpInt(proof.w);
   transcript.append_fields({
       TranscriptFieldRef{.label = "N", .data = n_bytes},
       TranscriptFieldRef{.label = "Gamma", .data = gamma_bytes},
@@ -520,11 +533,11 @@ Scalar BuildA3MtAChallenge(const MtaProofContext& ctx,
   const Bytes h2_bytes = EncodeMpz(aux.h2);
   const Bytes c1_bytes = EncodeMpz(c1);
   const Bytes c2_bytes = EncodeMpz(c2);
-  const Bytes z_bytes = EncodeMpz(proof.z);
-  const Bytes z2_bytes = EncodeMpz(proof.z2);
-  const Bytes t_bytes = EncodeMpz(proof.t);
-  const Bytes v_bytes = EncodeMpz(proof.v);
-  const Bytes w_bytes = EncodeMpz(proof.w);
+  const Bytes z_bytes = EncodeMpInt(proof.z);
+  const Bytes z2_bytes = EncodeMpInt(proof.z2);
+  const Bytes t_bytes = EncodeMpInt(proof.t);
+  const Bytes v_bytes = EncodeMpInt(proof.v);
+  const Bytes w_bytes = EncodeMpInt(proof.w);
   transcript.append_fields({
       TranscriptFieldRef{.label = "N", .data = n_bytes},
       TranscriptFieldRef{.label = "Gamma", .data = gamma_bytes},
@@ -572,7 +585,10 @@ A1RangeProof ProveA1Range(const MtaProofContext& ctx,
                PowMod(verifier_aux.h2, gamma_rand, verifier_aux.n_tilde),
                verifier_aux.n_tilde);
 
-    const Scalar e_scalar = BuildA1RangeChallenge(ctx, n, gamma, verifier_aux, c, z, u, w);
+    const BigInt z_big = MpzToMpInt(z);
+    const BigInt u_big = MpzToMpInt(u);
+    const BigInt w_big = MpzToMpInt(w);
+    const Scalar e_scalar = BuildA1RangeChallenge(ctx, n, gamma, verifier_aux, c, z_big, u_big, w_big);
     const mpz_class& e = e_scalar.value();
     const mpz_class s = MulMod(PowMod(witness_r, e, n), beta, n);
     const mpz_class s1 = (e * witness_m) + alpha;
@@ -582,12 +598,12 @@ A1RangeProof ProveA1Range(const MtaProofContext& ctx,
     }
 
     return A1RangeProof{
-        .z = z,
-        .u = u,
-        .w = w,
-        .s = s,
-        .s1 = s1,
-        .s2 = s2,
+        .z = std::move(z_big),
+        .u = std::move(u_big),
+        .w = std::move(w_big),
+        .s = MpzToMpInt(s),
+        .s1 = MpzToMpInt(s1),
+        .s2 = MpzToMpInt(s2),
     };
   }
 }
@@ -599,17 +615,23 @@ bool VerifyA1Range(const MtaProofContext& ctx,
                    const A1RangeProof& proof) {
   const mpz_class n2 = n * n;
   const mpz_class gamma = n + 1;
+  const mpz_class proof_z = MpIntToMpz(proof.z);
+  const mpz_class proof_u = MpIntToMpz(proof.u);
+  const mpz_class proof_w = MpIntToMpz(proof.w);
+  const mpz_class proof_s = MpIntToMpz(proof.s);
+  const mpz_class proof_s1 = MpIntToMpz(proof.s1);
+  const mpz_class proof_s2 = MpIntToMpz(proof.s2);
 
-  if (!IsInRange(c, n2) || !IsInRange(proof.u, n2) ||
-      !IsInRange(proof.z, verifier_aux.n_tilde) ||
-      !IsInRange(proof.w, verifier_aux.n_tilde) ||
-      !IsZnStarElement(proof.s, n)) {
+  if (!IsInRange(c, n2) || !IsInRange(proof_u, n2) ||
+      !IsInRange(proof_z, verifier_aux.n_tilde) ||
+      !IsInRange(proof_w, verifier_aux.n_tilde) ||
+      !IsZnStarElement(proof_s, n)) {
     return false;
   }
-  if (proof.s1 < 0 || proof.s1 > QPow3()) {
+  if (proof_s1 < 0 || proof_s1 > QPow3()) {
     return false;
   }
-  if (proof.s2 < 0) {
+  if (proof_s2 < 0) {
     return false;
   }
 
@@ -622,18 +644,18 @@ bool VerifyA1Range(const MtaProofContext& ctx,
     return false;
   }
 
-  mpz_class rhs_u = MulMod(PowMod(gamma, proof.s1, n2), PowMod(proof.s, n, n2), n2);
+  mpz_class rhs_u = MulMod(PowMod(gamma, proof_s1, n2), PowMod(proof_s, n, n2), n2);
   rhs_u = MulMod(rhs_u, *c_pow_e_inv, n2);
-  if (NormalizeMod(proof.u, n2) != rhs_u) {
+  if (NormalizeMod(proof_u, n2) != rhs_u) {
     return false;
   }
 
   const mpz_class lhs_n_tilde =
-      MulMod(PowMod(verifier_aux.h1, proof.s1, verifier_aux.n_tilde),
-             PowMod(verifier_aux.h2, proof.s2, verifier_aux.n_tilde),
+      MulMod(PowMod(verifier_aux.h1, proof_s1, verifier_aux.n_tilde),
+             PowMod(verifier_aux.h2, proof_s2, verifier_aux.n_tilde),
              verifier_aux.n_tilde);
   const mpz_class rhs_n_tilde =
-      MulMod(proof.w, PowMod(proof.z, e, verifier_aux.n_tilde), verifier_aux.n_tilde);
+      MulMod(proof_w, PowMod(proof_z, e, verifier_aux.n_tilde), verifier_aux.n_tilde);
   return lhs_n_tilde == rhs_n_tilde;
 }
 
@@ -688,24 +710,29 @@ A2MtAwcProof ProveA2MtAwc(const MtaProofContext& ctx,
 
     A2MtAwcProof proof{
         .u = u,
-        .z = z,
-        .z2 = z2,
-        .t = t,
-        .v = v,
-        .w = w,
+        .z = MpzToMpInt(z),
+        .z2 = MpzToMpInt(z2),
+        .t = MpzToMpInt(t),
+        .v = MpzToMpInt(v),
+        .w = MpzToMpInt(w),
     };
     const Scalar e_scalar =
         BuildA2MtAwcChallenge(ctx, n, gamma, verifier_aux, c1, c2, statement_x, proof);
     const mpz_class& e = e_scalar.value();
 
-    proof.s = MulMod(PowMod(witness_r, e, n), beta, n);
-    proof.s1 = (e * witness_x) + alpha;
-    proof.s2 = (e * rho) + rho2;
-    proof.t1 = (e * witness_y) + gamma_rand;
-    proof.t2 = (e * sigma) + tau;
-    if (proof.s1 > QPow3() || proof.t1 > QPow7()) {
+    const mpz_class s = MulMod(PowMod(witness_r, e, n), beta, n);
+    const mpz_class s1 = (e * witness_x) + alpha;
+    const mpz_class s2 = (e * rho) + rho2;
+    const mpz_class t1 = (e * witness_y) + gamma_rand;
+    const mpz_class t2 = (e * sigma) + tau;
+    if (s1 > QPow3() || t1 > QPow7()) {
       continue;
     }
+    proof.s = MpzToMpInt(s);
+    proof.s1 = MpzToMpInt(s1);
+    proof.s2 = MpzToMpInt(s2);
+    proof.t1 = MpzToMpInt(t1);
+    proof.t2 = MpzToMpInt(t2);
     return proof;
   }
 }
@@ -719,17 +746,27 @@ bool VerifyA2MtAwc(const MtaProofContext& ctx,
                    const A2MtAwcProof& proof) {
   const mpz_class n2 = n * n;
   const mpz_class gamma = n + 1;
+  const mpz_class proof_z = MpIntToMpz(proof.z);
+  const mpz_class proof_z2 = MpIntToMpz(proof.z2);
+  const mpz_class proof_t = MpIntToMpz(proof.t);
+  const mpz_class proof_v = MpIntToMpz(proof.v);
+  const mpz_class proof_w = MpIntToMpz(proof.w);
+  const mpz_class proof_s = MpIntToMpz(proof.s);
+  const mpz_class proof_s1 = MpIntToMpz(proof.s1);
+  const mpz_class proof_s2 = MpIntToMpz(proof.s2);
+  const mpz_class proof_t1 = MpIntToMpz(proof.t1);
+  const mpz_class proof_t2 = MpIntToMpz(proof.t2);
 
   if (!IsInRange(c1, n2) || !IsInRange(c2, n2) ||
-      !IsInRange(proof.v, n2) || !IsInRange(proof.z, verifier_aux.n_tilde) ||
-      !IsInRange(proof.z2, verifier_aux.n_tilde) ||
-      !IsInRange(proof.t, verifier_aux.n_tilde) ||
-      !IsInRange(proof.w, verifier_aux.n_tilde) ||
-      !IsZnStarElement(proof.s, n)) {
+      !IsInRange(proof_v, n2) || !IsInRange(proof_z, verifier_aux.n_tilde) ||
+      !IsInRange(proof_z2, verifier_aux.n_tilde) ||
+      !IsInRange(proof_t, verifier_aux.n_tilde) ||
+      !IsInRange(proof_w, verifier_aux.n_tilde) ||
+      !IsZnStarElement(proof_s, n)) {
     return false;
   }
-  if (proof.s1 < 0 || proof.s1 > QPow3() || proof.t1 < 0 || proof.t1 > QPow7() ||
-      proof.s2 < 0 || proof.t2 < 0) {
+  if (proof_s1 < 0 || proof_s1 > QPow3() || proof_t1 < 0 || proof_t1 > QPow7() ||
+      proof_s2 < 0 || proof_t2 < 0) {
     return false;
   }
 
@@ -755,28 +792,28 @@ bool VerifyA2MtAwc(const MtaProofContext& ctx,
 
   const mpz_class& e = e_scalar.value();
   const mpz_class lhs_nt_1 =
-      MulMod(PowMod(verifier_aux.h1, proof.s1, verifier_aux.n_tilde),
-             PowMod(verifier_aux.h2, proof.s2, verifier_aux.n_tilde),
+      MulMod(PowMod(verifier_aux.h1, proof_s1, verifier_aux.n_tilde),
+             PowMod(verifier_aux.h2, proof_s2, verifier_aux.n_tilde),
              verifier_aux.n_tilde);
   const mpz_class rhs_nt_1 =
-      MulMod(PowMod(proof.z, e, verifier_aux.n_tilde), proof.z2, verifier_aux.n_tilde);
+      MulMod(PowMod(proof_z, e, verifier_aux.n_tilde), proof_z2, verifier_aux.n_tilde);
   if (lhs_nt_1 != rhs_nt_1) {
     return false;
   }
 
   const mpz_class lhs_nt_2 =
-      MulMod(PowMod(verifier_aux.h1, proof.t1, verifier_aux.n_tilde),
-             PowMod(verifier_aux.h2, proof.t2, verifier_aux.n_tilde),
+      MulMod(PowMod(verifier_aux.h1, proof_t1, verifier_aux.n_tilde),
+             PowMod(verifier_aux.h2, proof_t2, verifier_aux.n_tilde),
              verifier_aux.n_tilde);
   const mpz_class rhs_nt_2 =
-      MulMod(PowMod(proof.t, e, verifier_aux.n_tilde), proof.w, verifier_aux.n_tilde);
+      MulMod(PowMod(proof_t, e, verifier_aux.n_tilde), proof_w, verifier_aux.n_tilde);
   if (lhs_nt_2 != rhs_nt_2) {
     return false;
   }
 
-  mpz_class lhs_paillier = MulMod(PowMod(c1, proof.s1, n2), PowMod(proof.s, n, n2), n2);
-  lhs_paillier = MulMod(lhs_paillier, PowMod(gamma, proof.t1, n2), n2);
-  const mpz_class rhs_paillier = MulMod(PowMod(c2, e, n2), proof.v, n2);
+  mpz_class lhs_paillier = MulMod(PowMod(c1, proof_s1, n2), PowMod(proof_s, n, n2), n2);
+  lhs_paillier = MulMod(lhs_paillier, PowMod(gamma, proof_t1, n2), n2);
+  const mpz_class rhs_paillier = MulMod(PowMod(c2, e, n2), proof_v, n2);
   return lhs_paillier == rhs_paillier;
 }
 
@@ -822,23 +859,28 @@ A3MtAProof ProveA3MtA(const MtaProofContext& ctx,
                verifier_aux.n_tilde);
 
     A3MtAProof proof{
-        .z = z,
-        .z2 = z2,
-        .t = t,
-        .v = v,
-        .w = w,
+        .z = MpzToMpInt(z),
+        .z2 = MpzToMpInt(z2),
+        .t = MpzToMpInt(t),
+        .v = MpzToMpInt(v),
+        .w = MpzToMpInt(w),
     };
     const Scalar e_scalar = BuildA3MtAChallenge(ctx, n, gamma, verifier_aux, c1, c2, proof);
     const mpz_class& e = e_scalar.value();
 
-    proof.s = MulMod(PowMod(witness_r, e, n), beta, n);
-    proof.s1 = (e * witness_x) + alpha;
-    proof.s2 = (e * rho) + rho2;
-    proof.t1 = (e * witness_y) + gamma_rand;
-    proof.t2 = (e * sigma) + tau;
-    if (proof.s1 > QPow3() || proof.t1 > QPow7()) {
+    const mpz_class s = MulMod(PowMod(witness_r, e, n), beta, n);
+    const mpz_class s1 = (e * witness_x) + alpha;
+    const mpz_class s2 = (e * rho) + rho2;
+    const mpz_class t1 = (e * witness_y) + gamma_rand;
+    const mpz_class t2 = (e * sigma) + tau;
+    if (s1 > QPow3() || t1 > QPow7()) {
       continue;
     }
+    proof.s = MpzToMpInt(s);
+    proof.s1 = MpzToMpInt(s1);
+    proof.s2 = MpzToMpInt(s2);
+    proof.t1 = MpzToMpInt(t1);
+    proof.t2 = MpzToMpInt(t2);
     return proof;
   }
 }
@@ -851,17 +893,27 @@ bool VerifyA3MtA(const MtaProofContext& ctx,
                  const A3MtAProof& proof) {
   const mpz_class n2 = n * n;
   const mpz_class gamma = n + 1;
+  const mpz_class proof_z = MpIntToMpz(proof.z);
+  const mpz_class proof_z2 = MpIntToMpz(proof.z2);
+  const mpz_class proof_t = MpIntToMpz(proof.t);
+  const mpz_class proof_v = MpIntToMpz(proof.v);
+  const mpz_class proof_w = MpIntToMpz(proof.w);
+  const mpz_class proof_s = MpIntToMpz(proof.s);
+  const mpz_class proof_s1 = MpIntToMpz(proof.s1);
+  const mpz_class proof_s2 = MpIntToMpz(proof.s2);
+  const mpz_class proof_t1 = MpIntToMpz(proof.t1);
+  const mpz_class proof_t2 = MpIntToMpz(proof.t2);
 
   if (!IsInRange(c1, n2) || !IsInRange(c2, n2) ||
-      !IsInRange(proof.v, n2) || !IsInRange(proof.z, verifier_aux.n_tilde) ||
-      !IsInRange(proof.z2, verifier_aux.n_tilde) ||
-      !IsInRange(proof.t, verifier_aux.n_tilde) ||
-      !IsInRange(proof.w, verifier_aux.n_tilde) ||
-      !IsZnStarElement(proof.s, n)) {
+      !IsInRange(proof_v, n2) || !IsInRange(proof_z, verifier_aux.n_tilde) ||
+      !IsInRange(proof_z2, verifier_aux.n_tilde) ||
+      !IsInRange(proof_t, verifier_aux.n_tilde) ||
+      !IsInRange(proof_w, verifier_aux.n_tilde) ||
+      !IsZnStarElement(proof_s, n)) {
     return false;
   }
-  if (proof.s1 < 0 || proof.s1 > QPow3() || proof.t1 < 0 || proof.t1 > QPow7() ||
-      proof.s2 < 0 || proof.t2 < 0) {
+  if (proof_s1 < 0 || proof_s1 > QPow3() || proof_t1 < 0 || proof_t1 > QPow7() ||
+      proof_s2 < 0 || proof_t2 < 0) {
     return false;
   }
 
@@ -869,107 +921,107 @@ bool VerifyA3MtA(const MtaProofContext& ctx,
   const mpz_class& e = e_scalar.value();
 
   const mpz_class lhs_nt_1 =
-      MulMod(PowMod(verifier_aux.h1, proof.s1, verifier_aux.n_tilde),
-             PowMod(verifier_aux.h2, proof.s2, verifier_aux.n_tilde),
+      MulMod(PowMod(verifier_aux.h1, proof_s1, verifier_aux.n_tilde),
+             PowMod(verifier_aux.h2, proof_s2, verifier_aux.n_tilde),
              verifier_aux.n_tilde);
   const mpz_class rhs_nt_1 =
-      MulMod(PowMod(proof.z, e, verifier_aux.n_tilde), proof.z2, verifier_aux.n_tilde);
+      MulMod(PowMod(proof_z, e, verifier_aux.n_tilde), proof_z2, verifier_aux.n_tilde);
   if (lhs_nt_1 != rhs_nt_1) {
     return false;
   }
 
   const mpz_class lhs_nt_2 =
-      MulMod(PowMod(verifier_aux.h1, proof.t1, verifier_aux.n_tilde),
-             PowMod(verifier_aux.h2, proof.t2, verifier_aux.n_tilde),
+      MulMod(PowMod(verifier_aux.h1, proof_t1, verifier_aux.n_tilde),
+             PowMod(verifier_aux.h2, proof_t2, verifier_aux.n_tilde),
              verifier_aux.n_tilde);
   const mpz_class rhs_nt_2 =
-      MulMod(PowMod(proof.t, e, verifier_aux.n_tilde), proof.w, verifier_aux.n_tilde);
+      MulMod(PowMod(proof_t, e, verifier_aux.n_tilde), proof_w, verifier_aux.n_tilde);
   if (lhs_nt_2 != rhs_nt_2) {
     return false;
   }
 
-  mpz_class lhs_paillier = MulMod(PowMod(c1, proof.s1, n2), PowMod(proof.s, n, n2), n2);
-  lhs_paillier = MulMod(lhs_paillier, PowMod(gamma, proof.t1, n2), n2);
-  const mpz_class rhs_paillier = MulMod(PowMod(c2, e, n2), proof.v, n2);
+  mpz_class lhs_paillier = MulMod(PowMod(c1, proof_s1, n2), PowMod(proof_s, n, n2), n2);
+  lhs_paillier = MulMod(lhs_paillier, PowMod(gamma, proof_t1, n2), n2);
+  const mpz_class rhs_paillier = MulMod(PowMod(c2, e, n2), proof_v, n2);
   return lhs_paillier == rhs_paillier;
 }
 
 void AppendA1RangeProof(const A1RangeProof& proof, Bytes* out) {
-  AppendMpzField(proof.z, out);
-  AppendMpzField(proof.u, out);
-  AppendMpzField(proof.w, out);
-  AppendMpzField(proof.s, out);
-  AppendMpzField(proof.s1, out);
-  AppendMpzField(proof.s2, out);
+  AppendMpIntField(proof.z, out);
+  AppendMpIntField(proof.u, out);
+  AppendMpIntField(proof.w, out);
+  AppendMpIntField(proof.s, out);
+  AppendMpIntField(proof.s1, out);
+  AppendMpIntField(proof.s2, out);
 }
 
 A1RangeProof ReadA1RangeProof(std::span<const uint8_t> input, size_t* offset) {
   A1RangeProof proof;
-  proof.z = ReadMpzField(input, offset, kMaxMpzEncodedLen, "A1.z");
-  proof.u = ReadMpzField(input, offset, kMaxMpzEncodedLen, "A1.u");
-  proof.w = ReadMpzField(input, offset, kMaxMpzEncodedLen, "A1.w");
-  proof.s = ReadMpzField(input, offset, kMaxMpzEncodedLen, "A1.s");
-  proof.s1 = ReadMpzField(input, offset, kMaxMpzEncodedLen, "A1.s1");
-  proof.s2 = ReadMpzField(input, offset, kMaxMpzEncodedLen, "A1.s2");
+  proof.z = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A1.z");
+  proof.u = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A1.u");
+  proof.w = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A1.w");
+  proof.s = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A1.s");
+  proof.s1 = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A1.s1");
+  proof.s2 = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A1.s2");
   return proof;
 }
 
 void AppendA2MtAwcProof(const A2MtAwcProof& proof, Bytes* out) {
   AppendPoint(proof.u, out);
-  AppendMpzField(proof.z, out);
-  AppendMpzField(proof.z2, out);
-  AppendMpzField(proof.t, out);
-  AppendMpzField(proof.v, out);
-  AppendMpzField(proof.w, out);
-  AppendMpzField(proof.s, out);
-  AppendMpzField(proof.s1, out);
-  AppendMpzField(proof.s2, out);
-  AppendMpzField(proof.t1, out);
-  AppendMpzField(proof.t2, out);
+  AppendMpIntField(proof.z, out);
+  AppendMpIntField(proof.z2, out);
+  AppendMpIntField(proof.t, out);
+  AppendMpIntField(proof.v, out);
+  AppendMpIntField(proof.w, out);
+  AppendMpIntField(proof.s, out);
+  AppendMpIntField(proof.s1, out);
+  AppendMpIntField(proof.s2, out);
+  AppendMpIntField(proof.t1, out);
+  AppendMpIntField(proof.t2, out);
 }
 
 A2MtAwcProof ReadA2MtAwcProof(std::span<const uint8_t> input, size_t* offset) {
   A2MtAwcProof proof{
       .u = ReadPoint(input, offset),
   };
-  proof.z = ReadMpzField(input, offset, kMaxMpzEncodedLen, "A2.z");
-  proof.z2 = ReadMpzField(input, offset, kMaxMpzEncodedLen, "A2.z2");
-  proof.t = ReadMpzField(input, offset, kMaxMpzEncodedLen, "A2.t");
-  proof.v = ReadMpzField(input, offset, kMaxMpzEncodedLen, "A2.v");
-  proof.w = ReadMpzField(input, offset, kMaxMpzEncodedLen, "A2.w");
-  proof.s = ReadMpzField(input, offset, kMaxMpzEncodedLen, "A2.s");
-  proof.s1 = ReadMpzField(input, offset, kMaxMpzEncodedLen, "A2.s1");
-  proof.s2 = ReadMpzField(input, offset, kMaxMpzEncodedLen, "A2.s2");
-  proof.t1 = ReadMpzField(input, offset, kMaxMpzEncodedLen, "A2.t1");
-  proof.t2 = ReadMpzField(input, offset, kMaxMpzEncodedLen, "A2.t2");
+  proof.z = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A2.z");
+  proof.z2 = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A2.z2");
+  proof.t = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A2.t");
+  proof.v = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A2.v");
+  proof.w = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A2.w");
+  proof.s = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A2.s");
+  proof.s1 = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A2.s1");
+  proof.s2 = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A2.s2");
+  proof.t1 = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A2.t1");
+  proof.t2 = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A2.t2");
   return proof;
 }
 
 void AppendA3MtAProof(const A3MtAProof& proof, Bytes* out) {
-  AppendMpzField(proof.z, out);
-  AppendMpzField(proof.z2, out);
-  AppendMpzField(proof.t, out);
-  AppendMpzField(proof.v, out);
-  AppendMpzField(proof.w, out);
-  AppendMpzField(proof.s, out);
-  AppendMpzField(proof.s1, out);
-  AppendMpzField(proof.s2, out);
-  AppendMpzField(proof.t1, out);
-  AppendMpzField(proof.t2, out);
+  AppendMpIntField(proof.z, out);
+  AppendMpIntField(proof.z2, out);
+  AppendMpIntField(proof.t, out);
+  AppendMpIntField(proof.v, out);
+  AppendMpIntField(proof.w, out);
+  AppendMpIntField(proof.s, out);
+  AppendMpIntField(proof.s1, out);
+  AppendMpIntField(proof.s2, out);
+  AppendMpIntField(proof.t1, out);
+  AppendMpIntField(proof.t2, out);
 }
 
 A3MtAProof ReadA3MtAProof(std::span<const uint8_t> input, size_t* offset) {
   A3MtAProof proof;
-  proof.z = ReadMpzField(input, offset, kMaxMpzEncodedLen, "A3.z");
-  proof.z2 = ReadMpzField(input, offset, kMaxMpzEncodedLen, "A3.z2");
-  proof.t = ReadMpzField(input, offset, kMaxMpzEncodedLen, "A3.t");
-  proof.v = ReadMpzField(input, offset, kMaxMpzEncodedLen, "A3.v");
-  proof.w = ReadMpzField(input, offset, kMaxMpzEncodedLen, "A3.w");
-  proof.s = ReadMpzField(input, offset, kMaxMpzEncodedLen, "A3.s");
-  proof.s1 = ReadMpzField(input, offset, kMaxMpzEncodedLen, "A3.s1");
-  proof.s2 = ReadMpzField(input, offset, kMaxMpzEncodedLen, "A3.s2");
-  proof.t1 = ReadMpzField(input, offset, kMaxMpzEncodedLen, "A3.t1");
-  proof.t2 = ReadMpzField(input, offset, kMaxMpzEncodedLen, "A3.t2");
+  proof.z = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A3.z");
+  proof.z2 = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A3.z2");
+  proof.t = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A3.t");
+  proof.v = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A3.v");
+  proof.w = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A3.w");
+  proof.s = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A3.s");
+  proof.s1 = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A3.s1");
+  proof.s2 = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A3.s2");
+  proof.t1 = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A3.t1");
+  proof.t2 = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A3.t2");
   return proof;
 }
 
@@ -1744,8 +1796,8 @@ void SignSession::ClearSensitiveIntermediates() {
 
   for (auto& [instance_key, instance] : phase2_initiator_instances_) {
     (void)instance_key;
-    instance.c1 = 0;
-    instance.c1_randomness = 0;
+    instance.c1 = BigInt(0);
+    instance.c1_randomness = BigInt(0);
     SecureZeroize(&instance.instance_id);
   }
   phase2_initiator_instances_.clear();
@@ -1854,8 +1906,9 @@ bool SignSession::HandlePhase2InitEnvelope(const Envelope& envelope) {
     if (instance_id.size() != kMtaInstanceIdLen) {
       TECDSA_THROW_ARGUMENT("phase2 mta instance id has invalid length");
     }
-    const mpz_class c1 =
-        ReadMpzField(envelope.payload, &offset, kMaxMpzEncodedLen, "phase2 mta ciphertext c1");
+    const BigInt c1_big =
+        ReadMpIntField(envelope.payload, &offset, kMaxMpzEncodedLen, "phase2 mta ciphertext c1");
+    const mpz_class c1 = MpIntToMpz(c1_big);
     const A1RangeProof a1_proof = ReadA1RangeProof(envelope.payload, &offset);
     if (offset != envelope.payload.size()) {
       TECDSA_THROW_ARGUMENT("sign phase2 init payload has trailing bytes");
@@ -1934,7 +1987,7 @@ bool SignSession::HandlePhase2InitEnvelope(const Envelope& envelope) {
     Bytes payload;
     AppendU32Be(raw_type, &payload);
     AppendSizedField(instance_id, &payload);
-    AppendMpzField(c2, &payload);
+    AppendMpIntField(MpzToMpInt(c2), &payload);
     if (mta_type == MtaType::kTimesGamma) {
       const A3MtAProof a3_proof =
           ProveA3MtA(response_ctx,
@@ -2002,8 +2055,9 @@ bool SignSession::HandlePhase2ResponseEnvelope(const Envelope& envelope) {
     if (instance_id.size() != kMtaInstanceIdLen) {
       TECDSA_THROW_ARGUMENT("phase2 response instance id has invalid length");
     }
-    const mpz_class c2 =
-        ReadMpzField(envelope.payload, &offset, kMaxMpzEncodedLen, "phase2 mta ciphertext c2");
+    const BigInt c2_big =
+        ReadMpIntField(envelope.payload, &offset, kMaxMpzEncodedLen, "phase2 mta ciphertext c2");
+    const mpz_class c2 = MpIntToMpz(c2_big);
     std::optional<A3MtAProof> a3_proof;
     std::optional<A2MtAwcProof> a2_proof;
     if (mta_type == MtaType::kTimesGamma) {
@@ -2050,11 +2104,12 @@ bool SignSession::HandlePhase2ResponseEnvelope(const Envelope& envelope) {
         .responder_id = envelope.from,
         .mta_instance_id = instance_id,
     };
+    const mpz_class instance_c1 = MpIntToMpz(instance.c1);
     if (mta_type == MtaType::kTimesGamma) {
       if (!a3_proof.has_value()) {
         TECDSA_THROW_ARGUMENT("missing A3 proof in MtA response");
       }
-      if (!VerifyA3MtA(response_ctx, n, self_aux_it->second, instance.c1, c2, *a3_proof)) {
+      if (!VerifyA3MtA(response_ctx, n, self_aux_it->second, instance_c1, c2, *a3_proof)) {
         TECDSA_THROW_ARGUMENT("phase2 A3 proof verification failed");
       }
     } else {
@@ -2068,7 +2123,7 @@ bool SignSession::HandlePhase2ResponseEnvelope(const Envelope& envelope) {
       if (!VerifyA2MtAwc(response_ctx,
                          n,
                          self_aux_it->second,
-                         instance.c1,
+                         instance_c1,
                          c2,
                          statement_x_it->second,
                          *a2_proof)) {
@@ -2490,7 +2545,7 @@ void SignSession::InitializePhase2InstancesIfNeeded() {
       Bytes payload;
       AppendU32Be(static_cast<uint32_t>(init.type), &payload);
       AppendSizedField(init.instance_id, &payload);
-      AppendMpzField(init.c1, &payload);
+      AppendMpIntField(MpzToMpInt(init.c1), &payload);
       AppendA1RangeProof(a1_proof, &payload);
       return payload;
     }));
@@ -2511,8 +2566,8 @@ void SignSession::InitializePhase2InstancesIfNeeded() {
             .responder = init.peer,
             .type = init.type,
             .instance_id = init.instance_id,
-            .c1 = init.c1,
-            .c1_randomness = init.c1_randomness,
+            .c1 = MpzToMpInt(init.c1),
+            .c1_randomness = MpzToMpInt(init.c1_randomness),
             .response_received = false,
         });
 
