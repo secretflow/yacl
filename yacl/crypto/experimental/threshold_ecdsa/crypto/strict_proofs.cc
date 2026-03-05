@@ -61,26 +61,26 @@ mpz_class MpIntToMpz(const BigInt& value) {
 
 struct SquareFreeStrictPayload {
   Bytes nonce;
-  mpz_class y;
-  mpz_class t1;
-  mpz_class t2;
-  mpz_class z1;
-  mpz_class z2;
+  BigInt y;
+  BigInt t1;
+  BigInt t2;
+  BigInt z1;
+  BigInt z2;
 };
 
 struct SquareFreeGmr98Payload {
   Bytes nonce;
   uint32_t rounds = 0;
-  std::vector<mpz_class> roots;
+  std::vector<BigInt> roots;
 };
 
 struct AuxParamStrictPayload {
   Bytes nonce;
-  mpz_class c1;
-  mpz_class c2;
-  mpz_class t1;
-  mpz_class t2;
-  mpz_class z;
+  BigInt c1;
+  BigInt c2;
+  BigInt t1;
+  BigInt t2;
+  BigInt z;
 };
 
 void AppendU32Be(uint32_t value, Bytes* out) {
@@ -129,14 +129,14 @@ Bytes ReadSizedField(std::span<const uint8_t> input,
   return out;
 }
 
-void AppendMpzField(const mpz_class& value, Bytes* out) {
-  const Bytes encoded = EncodeMpz(value);
+void AppendMpIntField(const BigInt& value, Bytes* out) {
+  const Bytes encoded = EncodeMpInt(value);
   AppendSizedField(encoded, out);
 }
 
-mpz_class ReadMpzField(std::span<const uint8_t> input, size_t* offset, const char* field_name) {
+BigInt ReadMpIntField(std::span<const uint8_t> input, size_t* offset, const char* field_name) {
   const Bytes encoded = ReadSizedField(input, offset, kMaxStrictFieldLen, field_name);
-  return DecodeMpz(encoded, kMaxStrictFieldLen);
+  return DecodeMpInt(encoded, kMaxStrictFieldLen);
 }
 
 uint32_t EncodeStrictProofScheme(StrictProofScheme scheme) {
@@ -321,19 +321,11 @@ BigInt RandomBelow(const BigInt& upper_exclusive) {
   return bigint::RandomBelow(upper_exclusive);
 }
 
-mpz_class RandomBelow(const mpz_class& upper_exclusive) {
-  return MpIntToMpz(RandomBelow(MpzToMpInt(upper_exclusive)));
-}
-
 BigInt RandomZnStar(const BigInt& modulus_n) {
   if (modulus_n <= 2) {
     TECDSA_THROW_ARGUMENT("modulus must be > 2");
   }
   return bigint::RandomZnStar(modulus_n);
-}
-
-mpz_class RandomZnStar(const mpz_class& modulus_n) {
-  return MpIntToMpz(RandomZnStar(MpzToMpInt(modulus_n)));
 }
 
 bool IsInRange(const BigInt& value, const BigInt& modulus) {
@@ -348,24 +340,12 @@ bool IsZnStarResidue(const BigInt& value, const BigInt& modulus) {
   return gcd == 1;
 }
 
-bool IsZnStarResidue(const mpz_class& value, const mpz_class& modulus) {
-  return IsZnStarResidue(MpzToMpInt(value), MpzToMpInt(modulus));
-}
-
 BigInt NormalizeMod(const BigInt& value, const BigInt& modulus) {
   return bigint::NormalizeMod(value, modulus);
 }
 
-mpz_class NormalizeMod(const mpz_class& value, const mpz_class& modulus) {
-  return MpIntToMpz(NormalizeMod(MpzToMpInt(value), MpzToMpInt(modulus)));
-}
-
 BigInt MulMod(const BigInt& lhs, const BigInt& rhs, const BigInt& modulus) {
   return NormalizeMod(lhs * rhs, modulus);
-}
-
-mpz_class MulMod(const mpz_class& lhs, const mpz_class& rhs, const mpz_class& modulus) {
-  return MpIntToMpz(MulMod(MpzToMpInt(lhs), MpzToMpInt(rhs), MpzToMpInt(modulus)));
 }
 
 BigInt PowMod(const BigInt& base, const BigInt& exp, const BigInt& modulus) {
@@ -375,20 +355,8 @@ BigInt PowMod(const BigInt& base, const BigInt& exp, const BigInt& modulus) {
   return bigint::PowMod(base, exp, modulus);
 }
 
-mpz_class PowMod(const mpz_class& base, const mpz_class& exp, const mpz_class& modulus) {
-  return MpIntToMpz(PowMod(MpzToMpInt(base), MpzToMpInt(exp), MpzToMpInt(modulus)));
-}
-
 std::optional<BigInt> InvertMod(const BigInt& value, const BigInt& modulus) {
   return bigint::TryInvertMod(value, modulus);
-}
-
-std::optional<mpz_class> InvertMod(const mpz_class& value, const mpz_class& modulus) {
-  const auto out = InvertMod(MpzToMpInt(value), MpzToMpInt(modulus));
-  if (!out.has_value()) {
-    return std::nullopt;
-  }
-  return MpIntToMpz(*out);
 }
 
 bool IsPerfectSquare(const BigInt& value) {
@@ -440,19 +408,19 @@ Bytes BuildWeakDigestFromFields(const char* proof_id,
   return Sha256(transcript.bytes());
 }
 
-Scalar BuildSquareFreeStrictChallenge(const mpz_class& modulus_n,
+Scalar BuildSquareFreeStrictChallenge(const BigInt& modulus_n,
                                       const StrictProofVerifierContext& context,
                                       std::span<const uint8_t> nonce,
-                                      const mpz_class& y,
-                                      const mpz_class& t1,
-                                      const mpz_class& t2) {
+                                      const BigInt& y,
+                                      const BigInt& t1,
+                                      const BigInt& t2) {
   Transcript transcript;
   transcript.append_proof_id(kSquareFreeProofIdStrict);
   AppendVerifierContext(&transcript, context);
-  const Bytes n_bytes = EncodeMpz(modulus_n);
-  const Bytes y_bytes = EncodeMpz(y);
-  const Bytes t1_bytes = EncodeMpz(t1);
-  const Bytes t2_bytes = EncodeMpz(t2);
+  const Bytes n_bytes = EncodeMpInt(modulus_n);
+  const Bytes y_bytes = EncodeMpInt(y);
+  const Bytes t1_bytes = EncodeMpInt(t1);
+  const Bytes t2_bytes = EncodeMpInt(t2);
   transcript.append_fields({
       TranscriptFieldRef{.label = "N", .data = n_bytes},
       TranscriptFieldRef{.label = "nonce", .data = nonce},
@@ -463,23 +431,37 @@ Scalar BuildSquareFreeStrictChallenge(const mpz_class& modulus_n,
   return transcript.challenge_scalar_mod_q();
 }
 
-Scalar BuildAuxParamStrictChallenge(const AuxRsaParams& params,
+struct AuxRsaParamsBigInt {
+  BigInt n_tilde;
+  BigInt h1;
+  BigInt h2;
+};
+
+AuxRsaParamsBigInt ToBigIntParams(const AuxRsaParams& params) {
+  return AuxRsaParamsBigInt{
+      .n_tilde = MpzToMpInt(params.n_tilde),
+      .h1 = MpzToMpInt(params.h1),
+      .h2 = MpzToMpInt(params.h2),
+  };
+}
+
+Scalar BuildAuxParamStrictChallenge(const AuxRsaParamsBigInt& params,
                                     const StrictProofVerifierContext& context,
                                     std::span<const uint8_t> nonce,
-                                    const mpz_class& c1,
-                                    const mpz_class& c2,
-                                    const mpz_class& t1,
-                                    const mpz_class& t2) {
+                                    const BigInt& c1,
+                                    const BigInt& c2,
+                                    const BigInt& t1,
+                                    const BigInt& t2) {
   Transcript transcript;
   transcript.append_proof_id(kAuxParamProofIdStrict);
   AppendVerifierContext(&transcript, context);
-  const Bytes n_tilde_bytes = EncodeMpz(params.n_tilde);
-  const Bytes h1_bytes = EncodeMpz(params.h1);
-  const Bytes h2_bytes = EncodeMpz(params.h2);
-  const Bytes c1_bytes = EncodeMpz(c1);
-  const Bytes c2_bytes = EncodeMpz(c2);
-  const Bytes t1_bytes = EncodeMpz(t1);
-  const Bytes t2_bytes = EncodeMpz(t2);
+  const Bytes n_tilde_bytes = EncodeMpInt(params.n_tilde);
+  const Bytes h1_bytes = EncodeMpInt(params.h1);
+  const Bytes h2_bytes = EncodeMpInt(params.h2);
+  const Bytes c1_bytes = EncodeMpInt(c1);
+  const Bytes c2_bytes = EncodeMpInt(c2);
+  const Bytes t1_bytes = EncodeMpInt(t1);
+  const Bytes t2_bytes = EncodeMpInt(t2);
   transcript.append_fields({
       TranscriptFieldRef{.label = "Ntilde", .data = n_tilde_bytes},
       TranscriptFieldRef{.label = "h1", .data = h1_bytes},
@@ -513,7 +495,7 @@ Bytes ExpandHashStream(std::span<const uint8_t> seed, size_t out_len) {
   return out;
 }
 
-mpz_class DeriveSquareFreeGmr98Challenge(const mpz_class& modulus_n,
+BigInt DeriveSquareFreeGmr98Challenge(const BigInt& modulus_n,
                                          const StrictProofVerifierContext& context,
                                          std::span<const uint8_t> nonce,
                                          uint32_t round_idx) {
@@ -521,9 +503,8 @@ mpz_class DeriveSquareFreeGmr98Challenge(const mpz_class& modulus_n,
     TECDSA_THROW_ARGUMENT("square-free GMR98 challenge requires modulus N > 3");
   }
 
-  const Bytes n_bytes = EncodeMpz(modulus_n);
-  const size_t byte_len =
-      std::max<size_t>(1, (mpz_sizeinbase(modulus_n.get_mpz_t(), 2) + 7) / 8);
+  const Bytes n_bytes = EncodeMpInt(modulus_n);
+  const size_t byte_len = std::max<size_t>(1, (modulus_n.BitCount() + 7) / 8);
 
   for (uint32_t attempt = 0; attempt < kMaxSquareFreeGmr98ChallengeAttempts; ++attempt) {
     Transcript transcript;
@@ -538,15 +519,8 @@ mpz_class DeriveSquareFreeGmr98Challenge(const mpz_class& modulus_n,
 
     const Bytes seed = Sha256(transcript.bytes());
     const Bytes expanded = ExpandHashStream(seed, byte_len);
-    mpz_class candidate;
-    mpz_import(candidate.get_mpz_t(),
-               expanded.size(),
-               1,
-               sizeof(uint8_t),
-               1,
-               0,
-               expanded.data());
-    candidate %= modulus_n;
+    BigInt candidate = bigint::FromBigEndian(expanded);
+    candidate = NormalizeMod(candidate, modulus_n);
     if (IsZnStarResidue(candidate, modulus_n)) {
       return candidate;
     }
@@ -558,11 +532,11 @@ mpz_class DeriveSquareFreeGmr98Challenge(const mpz_class& modulus_n,
 Bytes EncodeSquareFreeStrictPayload(const SquareFreeStrictPayload& payload) {
   Bytes out;
   AppendSizedField(payload.nonce, &out);
-  AppendMpzField(payload.y, &out);
-  AppendMpzField(payload.t1, &out);
-  AppendMpzField(payload.t2, &out);
-  AppendMpzField(payload.z1, &out);
-  AppendMpzField(payload.z2, &out);
+  AppendMpIntField(payload.y, &out);
+  AppendMpIntField(payload.t1, &out);
+  AppendMpIntField(payload.t2, &out);
+  AppendMpIntField(payload.z1, &out);
+  AppendMpIntField(payload.z2, &out);
   return out;
 }
 
@@ -570,11 +544,11 @@ SquareFreeStrictPayload DecodeSquareFreeStrictPayload(std::span<const uint8_t> b
   size_t offset = 0;
   SquareFreeStrictPayload payload;
   payload.nonce = ReadSizedField(blob, &offset, kMaxStrictNonceLen, "square-free nonce");
-  payload.y = ReadMpzField(blob, &offset, "square-free y");
-  payload.t1 = ReadMpzField(blob, &offset, "square-free t1");
-  payload.t2 = ReadMpzField(blob, &offset, "square-free t2");
-  payload.z1 = ReadMpzField(blob, &offset, "square-free z1");
-  payload.z2 = ReadMpzField(blob, &offset, "square-free z2");
+  payload.y = ReadMpIntField(blob, &offset, "square-free y");
+  payload.t1 = ReadMpIntField(blob, &offset, "square-free t1");
+  payload.t2 = ReadMpIntField(blob, &offset, "square-free t2");
+  payload.z1 = ReadMpIntField(blob, &offset, "square-free z1");
+  payload.z2 = ReadMpIntField(blob, &offset, "square-free z2");
   if (offset != blob.size()) {
     TECDSA_THROW_ARGUMENT("square-free proof payload has trailing bytes");
   }
@@ -592,8 +566,8 @@ Bytes EncodeSquareFreeGmr98Payload(const SquareFreeGmr98Payload& payload) {
   Bytes out;
   AppendSizedField(payload.nonce, &out);
   AppendU32Be(payload.rounds, &out);
-  for (const mpz_class& root : payload.roots) {
-    AppendMpzField(root, &out);
+  for (const BigInt& root : payload.roots) {
+    AppendMpIntField(root, &out);
   }
   return out;
 }
@@ -608,7 +582,7 @@ SquareFreeGmr98Payload DecodeSquareFreeGmr98Payload(std::span<const uint8_t> blo
   }
   payload.roots.reserve(payload.rounds);
   for (uint32_t i = 0; i < payload.rounds; ++i) {
-    payload.roots.push_back(ReadMpzField(blob, &offset, "square-free GMR98 root"));
+    payload.roots.push_back(ReadMpIntField(blob, &offset, "square-free GMR98 root"));
   }
   if (offset != blob.size()) {
     TECDSA_THROW_ARGUMENT("square-free GMR98 payload has trailing bytes");
@@ -619,11 +593,11 @@ SquareFreeGmr98Payload DecodeSquareFreeGmr98Payload(std::span<const uint8_t> blo
 Bytes EncodeAuxParamStrictPayload(const AuxParamStrictPayload& payload) {
   Bytes out;
   AppendSizedField(payload.nonce, &out);
-  AppendMpzField(payload.c1, &out);
-  AppendMpzField(payload.c2, &out);
-  AppendMpzField(payload.t1, &out);
-  AppendMpzField(payload.t2, &out);
-  AppendMpzField(payload.z, &out);
+  AppendMpIntField(payload.c1, &out);
+  AppendMpIntField(payload.c2, &out);
+  AppendMpIntField(payload.t1, &out);
+  AppendMpIntField(payload.t2, &out);
+  AppendMpIntField(payload.z, &out);
   return out;
 }
 
@@ -631,34 +605,37 @@ AuxParamStrictPayload DecodeAuxParamStrictPayload(std::span<const uint8_t> blob)
   size_t offset = 0;
   AuxParamStrictPayload payload;
   payload.nonce = ReadSizedField(blob, &offset, kMaxStrictNonceLen, "aux-param nonce");
-  payload.c1 = ReadMpzField(blob, &offset, "aux-param c1");
-  payload.c2 = ReadMpzField(blob, &offset, "aux-param c2");
-  payload.t1 = ReadMpzField(blob, &offset, "aux-param t1");
-  payload.t2 = ReadMpzField(blob, &offset, "aux-param t2");
-  payload.z = ReadMpzField(blob, &offset, "aux-param z");
+  payload.c1 = ReadMpIntField(blob, &offset, "aux-param c1");
+  payload.c2 = ReadMpIntField(blob, &offset, "aux-param c2");
+  payload.t1 = ReadMpIntField(blob, &offset, "aux-param t1");
+  payload.t2 = ReadMpIntField(blob, &offset, "aux-param t2");
+  payload.z = ReadMpIntField(blob, &offset, "aux-param z");
   if (offset != blob.size()) {
     TECDSA_THROW_ARGUMENT("aux-param proof payload has trailing bytes");
   }
   return payload;
 }
 
-mpz_class PickCoprimeDeterministic(const mpz_class& modulus, const mpz_class& seed) {
-  mpz_class value = seed % modulus;
+BigInt PickCoprimeDeterministic(const BigInt& modulus, const BigInt& seed) {
+  BigInt value = NormalizeMod(seed, modulus);
   if (value < 2) {
-    value = 2;
+    value = BigInt(2);
   }
 
   while (true) {
     if (value >= modulus) {
-      value = 2;
+      value = BigInt(2);
     }
-    mpz_class gcd;
-    mpz_gcd(gcd.get_mpz_t(), value.get_mpz_t(), modulus.get_mpz_t());
+    const BigInt gcd = BigInt::Gcd(value, modulus);
     if (gcd == 1) {
       return value;
     }
-    ++value;
+    value += BigInt(1);
   }
+}
+
+mpz_class PickCoprimeDeterministic(const mpz_class& modulus, const mpz_class& seed) {
+  return MpIntToMpz(PickCoprimeDeterministic(MpzToMpInt(modulus), MpzToMpInt(seed)));
 }
 
 }  // namespace
@@ -870,40 +847,42 @@ AuxRsaParams DeriveAuxRsaParamsFromModulus(const mpz_class& modulus_n, PartyInde
 
 SquareFreeProof BuildSquareFreeProofWeak(const mpz_class& modulus_n,
                                          const StrictProofVerifierContext& context) {
+  const BigInt modulus_n_big = MpzToMpInt(modulus_n);
   SquareFreeProof proof;
   proof.metadata = MakeWeakMetadata(kSquareFreeSchemeIdWeak);
   proof.blob = BuildWeakDigestFromFields(
       kSquareFreeProofIdWeak,
       context,
       std::array<std::pair<const char*, Bytes>, 1>{{
-          {"N", EncodeMpz(modulus_n)},
+          {"N", EncodeMpInt(modulus_n_big)},
       }});
   return proof;
 }
 
 SquareFreeProof BuildSquareFreeProofStrict(const mpz_class& modulus_n,
                                            const StrictProofVerifierContext& context) {
-  if (modulus_n <= 2) {
+  const BigInt modulus_n_big = MpzToMpInt(modulus_n);
+  if (modulus_n_big <= 2) {
     TECDSA_THROW_ARGUMENT("square-free proof requires modulus N > 2");
   }
-  if (!IsLikelySquareFreeModulus(modulus_n)) {
+  if (!IsLikelySquareFreeModulus(modulus_n_big)) {
     TECDSA_THROW_ARGUMENT("square-free strict proof requires likely square-free modulus");
   }
 
-  const mpz_class n2 = modulus_n * modulus_n;
-  const mpz_class witness = RandomZnStar(modulus_n);
-  const mpz_class r1 = RandomZnStar(modulus_n);
-  const mpz_class r2 = RandomZnStar(modulus_n);
+  const BigInt n2 = modulus_n_big * modulus_n_big;
+  const BigInt witness = RandomZnStar(modulus_n_big);
+  const BigInt r1 = RandomZnStar(modulus_n_big);
+  const BigInt r2 = RandomZnStar(modulus_n_big);
 
-  const mpz_class y = PowMod(witness, modulus_n, n2);
-  const mpz_class t1 = PowMod(r1, modulus_n, n2);
-  const mpz_class t2 = PowMod(r2, modulus_n, n2);
+  const BigInt y = PowMod(witness, modulus_n_big, n2);
+  const BigInt t1 = PowMod(r1, modulus_n_big, n2);
+  const BigInt t2 = PowMod(r2, modulus_n_big, n2);
   const Bytes nonce = Csprng::RandomBytes(kStrictNonceLen);
-  const mpz_class e =
-      BuildSquareFreeStrictChallenge(modulus_n, context, nonce, y, t1, t2).value();
+  const BigInt e =
+      BuildSquareFreeStrictChallenge(modulus_n_big, context, nonce, y, t1, t2).mp_value();
 
-  const mpz_class z1 = MulMod(r1, PowMod(witness, e, modulus_n), modulus_n);
-  const mpz_class z2 = MulMod(r2, PowMod(witness, e + 1, modulus_n), modulus_n);
+  const BigInt z1 = MulMod(r1, PowMod(witness, e, modulus_n_big), modulus_n_big);
+  const BigInt z2 = MulMod(r2, PowMod(witness, e + 1, modulus_n_big), modulus_n_big);
 
   SquareFreeProof proof;
   proof.metadata = MakeStrictMetadata(kSquareFreeSchemeIdStrict, context);
@@ -947,7 +926,8 @@ bool VerifySquareFreeProofWeak(const mpz_class& modulus_n,
 bool VerifySquareFreeProofStrict(const mpz_class& modulus_n,
                                  const SquareFreeProof& proof,
                                  const StrictProofVerifierContext& context) {
-  if (!IsLikelySquareFreeModulus(modulus_n)) {
+  const BigInt modulus_n_big = MpzToMpInt(modulus_n);
+  if (!IsLikelySquareFreeModulus(modulus_n_big)) {
     return false;
   }
   if (proof.blob.empty()) {
@@ -979,7 +959,7 @@ bool VerifySquareFreeProofStrict(const mpz_class& modulus_n,
     return false;
   }
 
-  const mpz_class n2 = modulus_n * modulus_n;
+  const BigInt n2 = modulus_n_big * modulus_n_big;
   SquareFreeStrictPayload payload;
   try {
     payload = DecodeSquareFreeStrictPayload(proof.blob);
@@ -992,49 +972,51 @@ bool VerifySquareFreeProofStrict(const mpz_class& modulus_n,
   if (!IsZnStarResidue(payload.y, n2) ||
       !IsZnStarResidue(payload.t1, n2) ||
       !IsZnStarResidue(payload.t2, n2) ||
-      !IsZnStarResidue(payload.z1, modulus_n) ||
-      !IsZnStarResidue(payload.z2, modulus_n)) {
+      !IsZnStarResidue(payload.z1, modulus_n_big) ||
+      !IsZnStarResidue(payload.z2, modulus_n_big)) {
     return false;
   }
 
-  const mpz_class e =
-      BuildSquareFreeStrictChallenge(modulus_n,
+  const BigInt e =
+      BuildSquareFreeStrictChallenge(modulus_n_big,
                                      context,
                                      payload.nonce,
                                      payload.y,
                                      payload.t1,
                                      payload.t2)
-          .value();
+          .mp_value();
 
-  const mpz_class lhs1 = PowMod(payload.z1, modulus_n, n2);
-  const mpz_class rhs1 = MulMod(payload.t1, PowMod(payload.y, e, n2), n2);
+  const BigInt lhs1 = PowMod(payload.z1, modulus_n_big, n2);
+  const BigInt rhs1 = MulMod(payload.t1, PowMod(payload.y, e, n2), n2);
   if (lhs1 != rhs1) {
     return false;
   }
 
-  const mpz_class lhs2 = PowMod(payload.z2, modulus_n, n2);
-  const mpz_class rhs2 = MulMod(payload.t2, PowMod(payload.y, e + 1, n2), n2);
+  const BigInt lhs2 = PowMod(payload.z2, modulus_n_big, n2);
+  const BigInt rhs2 = MulMod(payload.t2, PowMod(payload.y, e + 1, n2), n2);
   return lhs2 == rhs2;
 }
 
 SquareFreeProof BuildSquareFreeProofGmr98(const mpz_class& modulus_n,
                                           const mpz_class& lambda_n,
                                           const StrictProofVerifierContext& context) {
-  if (modulus_n <= 3) {
+  const BigInt modulus_n_big = MpzToMpInt(modulus_n);
+  const BigInt lambda_n_big = MpzToMpInt(lambda_n);
+  if (modulus_n_big <= 3) {
     TECDSA_THROW_ARGUMENT("square-free GMR98 proof requires modulus N > 3");
   }
-  if (lambda_n <= 1) {
+  if (lambda_n_big <= 1) {
     TECDSA_THROW_ARGUMENT("square-free GMR98 proof requires lambda(N) > 1");
   }
-  if (!IsLikelySquareFreeModulus(modulus_n)) {
+  if (!IsLikelySquareFreeModulus(modulus_n_big)) {
     TECDSA_THROW_ARGUMENT("square-free GMR98 proof requires likely square-free modulus");
   }
 
-  const auto d_opt = InvertMod(NormalizeMod(modulus_n, lambda_n), lambda_n);
+  const auto d_opt = InvertMod(NormalizeMod(modulus_n_big, lambda_n_big), lambda_n_big);
   if (!d_opt.has_value()) {
     TECDSA_THROW_ARGUMENT("square-free GMR98 proof requires gcd(N, lambda(N)) = 1");
   }
-  const mpz_class d = *d_opt;
+  const BigInt d = *d_opt;
   const Bytes nonce = Csprng::RandomBytes(kStrictNonceLen);
 
   SquareFreeGmr98Payload payload;
@@ -1043,12 +1025,12 @@ SquareFreeProof BuildSquareFreeProofGmr98(const mpz_class& modulus_n,
   payload.roots.reserve(payload.rounds);
 
   for (uint32_t round = 0; round < payload.rounds; ++round) {
-    const mpz_class challenge = DeriveSquareFreeGmr98Challenge(modulus_n, context, nonce, round);
-    const mpz_class root = PowMod(challenge, d, modulus_n);
-    if (!IsZnStarResidue(root, modulus_n)) {
+    const BigInt challenge = DeriveSquareFreeGmr98Challenge(modulus_n_big, context, nonce, round);
+    const BigInt root = PowMod(challenge, d, modulus_n_big);
+    if (!IsZnStarResidue(root, modulus_n_big)) {
       TECDSA_THROW("square-free GMR98 proof generated invalid root");
     }
-    const mpz_class check = PowMod(root, modulus_n, modulus_n);
+    const BigInt check = PowMod(root, modulus_n_big, modulus_n_big);
     if (check != challenge) {
       TECDSA_THROW("square-free GMR98 proof generated inconsistent root equation");
     }
@@ -1074,7 +1056,8 @@ bool VerifySquareFreeProofGmr98(const mpz_class& modulus_n,
     return VerifySquareFreeProofStrict(modulus_n, proof, context);
   }
 
-  if (!IsLikelySquareFreeModulus(modulus_n)) {
+  const BigInt modulus_n_big = MpzToMpInt(modulus_n);
+  if (!IsLikelySquareFreeModulus(modulus_n_big)) {
     return false;
   }
   if (proof.blob.empty()) {
@@ -1119,13 +1102,13 @@ bool VerifySquareFreeProofGmr98(const mpz_class& modulus_n,
   }
 
   for (uint32_t round = 0; round < payload.rounds; ++round) {
-    const mpz_class& root = payload.roots[round];
-    if (!IsZnStarResidue(root, modulus_n)) {
+    const BigInt& root = payload.roots[round];
+    if (!IsZnStarResidue(root, modulus_n_big)) {
       return false;
     }
-    const mpz_class challenge =
-        DeriveSquareFreeGmr98Challenge(modulus_n, context, payload.nonce, round);
-    const mpz_class lhs = PowMod(root, modulus_n, modulus_n);
+    const BigInt challenge =
+        DeriveSquareFreeGmr98Challenge(modulus_n_big, context, payload.nonce, round);
+    const BigInt lhs = PowMod(root, modulus_n_big, modulus_n_big);
     if (lhs != challenge) {
       return false;
     }
@@ -1153,15 +1136,16 @@ AuxRsaParamProof BuildAuxRsaParamProofWeak(const AuxRsaParams& params,
     TECDSA_THROW_ARGUMENT("cannot build aux param proof from invalid parameters");
   }
 
+  const AuxRsaParamsBigInt params_big = ToBigIntParams(params);
   AuxRsaParamProof proof;
   proof.metadata = MakeWeakMetadata(kAuxParamSchemeIdWeak);
   proof.blob = BuildWeakDigestFromFields(
       kAuxParamProofIdWeak,
       context,
       std::array<std::pair<const char*, Bytes>, 3>{{
-          {"Ntilde", EncodeMpz(params.n_tilde)},
-          {"h1", EncodeMpz(params.h1)},
-          {"h2", EncodeMpz(params.h2)},
+          {"Ntilde", EncodeMpInt(params_big.n_tilde)},
+          {"h1", EncodeMpInt(params_big.h1)},
+          {"h2", EncodeMpInt(params_big.h2)},
       }});
   return proof;
 }
@@ -1171,28 +1155,29 @@ AuxRsaParamProof BuildAuxRsaParamProofStrict(const AuxRsaParams& params,
   if (!ValidateAuxRsaParams(params)) {
     TECDSA_THROW_ARGUMENT("cannot build aux param proof from invalid parameters");
   }
-  if (!IsLikelySquareFreeModulus(params.n_tilde)) {
+  const AuxRsaParamsBigInt params_big = ToBigIntParams(params);
+  if (!IsLikelySquareFreeModulus(params_big.n_tilde)) {
     TECDSA_THROW_ARGUMENT("aux strict proof requires likely square-free Ntilde");
   }
 
-  mpz_class alpha;
+  BigInt alpha;
   do {
-    alpha = RandomBelow(Scalar::ModulusQ());
+    alpha = RandomBelow(Scalar::ModulusQMpInt());
   } while (alpha == 0);
-  mpz_class r;
+  BigInt r;
   do {
-    r = RandomBelow(Scalar::ModulusQ());
+    r = RandomBelow(Scalar::ModulusQMpInt());
   } while (r == 0);
 
-  const mpz_class c1 = PowMod(params.h1, alpha, params.n_tilde);
-  const mpz_class c2 = PowMod(params.h2, alpha, params.n_tilde);
-  const mpz_class t1 = PowMod(params.h1, r, params.n_tilde);
-  const mpz_class t2 = PowMod(params.h2, r, params.n_tilde);
+  const BigInt c1 = PowMod(params_big.h1, alpha, params_big.n_tilde);
+  const BigInt c2 = PowMod(params_big.h2, alpha, params_big.n_tilde);
+  const BigInt t1 = PowMod(params_big.h1, r, params_big.n_tilde);
+  const BigInt t2 = PowMod(params_big.h2, r, params_big.n_tilde);
   const Bytes nonce = Csprng::RandomBytes(kStrictNonceLen);
-  const mpz_class e = BuildAuxParamStrictChallenge(
-                          params, context, nonce, c1, c2, t1, t2)
-                          .value();
-  const mpz_class z = r + (e * alpha);
+  const BigInt e = BuildAuxParamStrictChallenge(
+                       params_big, context, nonce, c1, c2, t1, t2)
+                       .mp_value();
+  const BigInt z = r + (e * alpha);
 
   AuxRsaParamProof proof;
   proof.metadata = MakeStrictMetadata(kAuxParamSchemeIdStrict, context);
@@ -1239,7 +1224,8 @@ bool VerifyAuxRsaParamProofStrict(const AuxRsaParams& params,
   if (!ValidateAuxRsaParams(params)) {
     return false;
   }
-  if (!IsLikelySquareFreeModulus(params.n_tilde)) {
+  const AuxRsaParamsBigInt params_big = ToBigIntParams(params);
+  if (!IsLikelySquareFreeModulus(params_big.n_tilde)) {
     return false;
   }
   if (proof.blob.empty()) {
@@ -1283,25 +1269,33 @@ bool VerifyAuxRsaParamProofStrict(const AuxRsaParams& params,
   if (payload.z < 0) {
     return false;
   }
-  if (!IsZnStarElement(payload.c1, params.n_tilde) ||
-      !IsZnStarElement(payload.c2, params.n_tilde) ||
-      !IsZnStarElement(payload.t1, params.n_tilde) ||
-      !IsZnStarElement(payload.t2, params.n_tilde)) {
+  if (!IsZnStarElement(payload.c1, params_big.n_tilde) ||
+      !IsZnStarElement(payload.c2, params_big.n_tilde) ||
+      !IsZnStarElement(payload.t1, params_big.n_tilde) ||
+      !IsZnStarElement(payload.t2, params_big.n_tilde)) {
     return false;
   }
 
-  const mpz_class e = BuildAuxParamStrictChallenge(
-                          params, context, payload.nonce, payload.c1, payload.c2, payload.t1, payload.t2)
-                          .value();
+  const BigInt e = BuildAuxParamStrictChallenge(
+                       params_big,
+                       context,
+                       payload.nonce,
+                       payload.c1,
+                       payload.c2,
+                       payload.t1,
+                       payload.t2)
+                       .mp_value();
 
-  const mpz_class lhs1 = PowMod(params.h1, payload.z, params.n_tilde);
-  const mpz_class rhs1 = MulMod(payload.t1, PowMod(payload.c1, e, params.n_tilde), params.n_tilde);
+  const BigInt lhs1 = PowMod(params_big.h1, payload.z, params_big.n_tilde);
+  const BigInt rhs1 =
+      MulMod(payload.t1, PowMod(payload.c1, e, params_big.n_tilde), params_big.n_tilde);
   if (lhs1 != rhs1) {
     return false;
   }
 
-  const mpz_class lhs2 = PowMod(params.h2, payload.z, params.n_tilde);
-  const mpz_class rhs2 = MulMod(payload.t2, PowMod(payload.c2, e, params.n_tilde), params.n_tilde);
+  const BigInt lhs2 = PowMod(params_big.h2, payload.z, params_big.n_tilde);
+  const BigInt rhs2 =
+      MulMod(payload.t2, PowMod(payload.c2, e, params_big.n_tilde), params_big.n_tilde);
   return lhs2 == rhs2;
 }
 
