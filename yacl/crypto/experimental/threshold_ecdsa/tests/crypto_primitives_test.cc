@@ -1,13 +1,11 @@
-#include <array>
 #include <functional>
 #include <iostream>
 #include <span>
 #include <stdexcept>
 #include <vector>
 
-#include <gmpxx.h>
-
 #include "yacl/crypto/experimental/threshold_ecdsa/common/bytes.h"
+#include "yacl/crypto/experimental/threshold_ecdsa/crypto/bigint_utils.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/commitment.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/ecdsa_verify.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/ec_point.h"
@@ -22,13 +20,14 @@
 namespace {
 
 using tecdsa::Bytes;
+using tecdsa::BigInt;
 using tecdsa::DecodeEnvelope;
-using tecdsa::DecodeMpz;
+using tecdsa::DecodeMpInt;
 using tecdsa::ECPoint;
 using tecdsa::CommitMessage;
 using tecdsa::ComputeCommitment;
 using tecdsa::EncodeEnvelope;
-using tecdsa::EncodeMpz;
+using tecdsa::EncodeMpInt;
 using tecdsa::Envelope;
 using tecdsa::PaillierProvider;
 using tecdsa::Scalar;
@@ -52,22 +51,6 @@ void ExpectThrow(const std::function<void()>& fn, const std::string& message) {
   throw std::runtime_error("Expected exception: " + message);
 }
 
-std::array<uint8_t, 32> MpzTo32(const mpz_class& x) {
-  std::array<uint8_t, 32> out{};
-  size_t count = 0;
-  mpz_export(out.data(), &count, 1, sizeof(uint8_t), 1, 0, x.get_mpz_t());
-  if (count > out.size()) {
-    throw std::runtime_error("Value too large for 32-byte encoding");
-  }
-
-  std::array<uint8_t, 32> aligned{};
-  const size_t offset = aligned.size() - count;
-  for (size_t i = 0; i < count; ++i) {
-    aligned[offset + i] = out[i];
-  }
-  return aligned;
-}
-
 Scalar XCoordinateModQ(const ECPoint& point) {
   const Bytes compressed = point.ToCompressedBytes();
   if (compressed.size() != 33) {
@@ -76,39 +59,41 @@ Scalar XCoordinateModQ(const ECPoint& point) {
   return Scalar::FromBigEndianModQ(std::span<const uint8_t>(compressed.data() + 1, 32));
 }
 
-void TestMpzRoundTrip() {
-  mpz_class huge = 1;
-  huge <<= 1023;
-
-  const std::vector<mpz_class> values = {
-      mpz_class(0), mpz_class(1), mpz_class(255), mpz_class(256),
-      mpz_class("123456789012345678901234567890"), huge};
-
-  for (const auto& value : values) {
-    const Bytes encoded = EncodeMpz(value);
-    const mpz_class decoded = DecodeMpz(encoded);
-    Expect(decoded == value, "mpz round-trip must preserve value");
+void TestMpIntRoundTrip() {
+  BigInt huge(1);
+  for (size_t i = 0; i < 1023; ++i) {
+    huge *= 2;
   }
 
-  Bytes bad = EncodeMpz(mpz_class(42));
+  const std::vector<BigInt> values = {
+      BigInt(0), BigInt(1), BigInt(255), BigInt(256),
+      BigInt("123456789012345678901234567890", 10), huge};
+
+  for (const auto& value : values) {
+    const Bytes encoded = EncodeMpInt(value);
+    const BigInt decoded = DecodeMpInt(encoded);
+    Expect(decoded == value, "mpint round-trip must preserve value");
+  }
+
+  Bytes bad = EncodeMpInt(BigInt(42));
   bad.pop_back();
-  ExpectThrow([&]() { (void)DecodeMpz(bad); }, "DecodeMpz rejects malformed length");
+  ExpectThrow([&]() { (void)DecodeMpInt(bad); }, "DecodeMpInt rejects malformed length");
 }
 
 void TestScalarEncodingAndReduction() {
-  Scalar five(mpz_class(5));
+  Scalar five(BigInt(5));
   const auto five_bytes = five.ToCanonicalBytes();
   Expect(five_bytes[31] == 5, "Scalar canonical encoding should match value");
 
-  Scalar reduced(Scalar::ModulusQ() + 7);
-  Expect(reduced == Scalar(mpz_class(7)), "Scalar constructor must reduce mod q");
+  Scalar reduced(Scalar::ModulusQMpInt() + BigInt(7));
+  Expect(reduced == Scalar(BigInt(7)), "Scalar constructor must reduce mod q");
 
-  const auto q_bytes = MpzTo32(Scalar::ModulusQ());
+  const Bytes q_bytes = tecdsa::bigint::ToFixedWidth(Scalar::ModulusQMpInt(), 32);
   ExpectThrow([&]() { (void)Scalar::FromCanonicalBytes(q_bytes); },
               "Canonical scalar decoding rejects >= q");
 
   Scalar zero = Scalar::FromBigEndianModQ(q_bytes);
-  Expect(zero == Scalar(mpz_class(0)), "Non-canonical decoder should reduce mod q");
+  Expect(zero == Scalar(BigInt(0)), "Non-canonical decoder should reduce mod q");
 }
 
 void TestPointEncoding() {
@@ -230,7 +215,7 @@ void TestCsprng() {
   Expect(random16.size() == 16, "Csprng::RandomBytes should return requested length");
 
   const Scalar s = tecdsa::Csprng::RandomScalar();
-  Expect(s.value() < Scalar::ModulusQ(), "Csprng::RandomScalar should return value in Z_q");
+  Expect(s.mp_value() < Scalar::ModulusQMpInt(), "Csprng::RandomScalar should return value in Z_q");
 }
 
 void TestEnvelopeRoundTrip() {
@@ -289,36 +274,36 @@ void TestPaillierNative() {
   PaillierProvider paillier(/*modulus_bits=*/512);
   Expect(paillier.VerifyKeyPair(), "Native Paillier key pair should verify");
 
-  const mpz_class a = 50;
-  const mpz_class b = 76;
+  const BigInt a(50);
+  const BigInt b(76);
 
-  const mpz_class c_a = paillier.Encrypt(a);
-  const mpz_class c_b = paillier.Encrypt(b);
+  const BigInt c_a = paillier.EncryptBigInt(a);
+  const BigInt c_b = paillier.EncryptBigInt(b);
 
-  const mpz_class c_sum = paillier.AddCiphertexts(c_a, c_b);
-  const mpz_class plain_sum = paillier.Decrypt(c_sum);
+  const BigInt c_sum = paillier.AddCiphertextsBigInt(c_a, c_b);
+  const BigInt plain_sum = paillier.DecryptBigInt(c_sum);
   Expect(plain_sum == a + b, "Paillier encrypted addition should decrypt to a+b");
 
-  const mpz_class c_mul = paillier.MulPlaintext(c_a, b);
-  const mpz_class plain_mul = paillier.Decrypt(c_mul);
+  const BigInt c_mul = paillier.MulPlaintextBigInt(c_a, b);
+  const BigInt plain_mul = paillier.DecryptBigInt(c_mul);
   Expect(plain_mul == a * b, "Paillier encrypted/plain multiplication should decrypt to a*b");
 
-  const auto enc_with_r = paillier.EncryptWithRandom(a);
-  const mpz_class c_same = paillier.EncryptWithProvidedRandom(a, enc_with_r.randomness);
+  const auto enc_with_r = paillier.EncryptWithRandomBigInt(a);
+  const BigInt c_same = paillier.EncryptWithProvidedRandomBigInt(a, enc_with_r.randomness);
   Expect(enc_with_r.ciphertext == c_same,
          "EncryptWithRandom should be reproducible with the same randomness");
 
-  ExpectThrow([&]() { (void)paillier.EncryptWithProvidedRandom(a, mpz_class(0)); },
+  ExpectThrow([&]() { (void)paillier.EncryptWithProvidedRandomBigInt(a, BigInt(0)); },
               "EncryptWithProvidedRandom rejects zero randomness");
-  ExpectThrow([&]() { (void)paillier.EncryptWithProvidedRandom(a, paillier.modulus_n()); },
+  ExpectThrow([&]() { (void)paillier.EncryptWithProvidedRandomBigInt(a, paillier.modulus_n_bigint()); },
               "EncryptWithProvidedRandom rejects randomness not in Z*_N");
 
-  const mpz_class c_neg_one = paillier.Encrypt(mpz_class(-1));
-  Expect(paillier.Decrypt(c_neg_one) == paillier.modulus_n() - 1,
+  const BigInt c_neg_one = paillier.EncryptBigInt(BigInt(0) - BigInt(1));
+  Expect(paillier.DecryptBigInt(c_neg_one) == paillier.modulus_n_bigint() - BigInt(1),
          "Paillier encryption should normalize negative plaintext to mod N");
 
-  const mpz_class c_wrap = paillier.Encrypt(paillier.modulus_n() + 7);
-  Expect(paillier.Decrypt(c_wrap) == 7,
+  const BigInt c_wrap = paillier.EncryptBigInt(paillier.modulus_n_bigint() + BigInt(7));
+  Expect(paillier.DecryptBigInt(c_wrap) == BigInt(7),
          "Paillier encryption should normalize plaintext larger than N");
 }
 
@@ -326,7 +311,7 @@ void TestPaillierNative() {
 
 int main() {
   try {
-    TestMpzRoundTrip();
+    TestMpIntRoundTrip();
     TestScalarEncodingAndReduction();
     TestPointEncoding();
     TestPointArithmetic();

@@ -563,7 +563,7 @@ void TestStage4SignConstructorRejectsSmallPaillierModulus() {
 
   const size_t cfg_idx = FindPartyIndexOrThrow(signers, 1);
   SignSessionConfig bad_cfg = std::move(configs[cfg_idx]);
-  bad_cfg.all_paillier_public.at(2).n = mpz_class(17);
+  bad_cfg.all_paillier_public.at(2).n = 17;
 
   ExpectThrow([&]() { (void)SignSession(std::move(bad_cfg)); },
               "SignSession must reject participant Paillier modulus N <= q^8");

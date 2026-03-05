@@ -15,6 +15,7 @@
 namespace {
 
 using tecdsa::Bytes;
+using tecdsa::BigInt;
 using tecdsa::Envelope;
 using tecdsa::KeygenPhase;
 using tecdsa::KeygenResult;
@@ -299,8 +300,10 @@ void AssertKeygenOutputsConsistent(const std::vector<std::unique_ptr<KeygenSessi
   Expect(baseline.local_paillier != nullptr,
          "Baseline keygen result must expose local Paillier provider");
 
-  mpz_class min_paillier_n;
-  mpz_pow_ui(min_paillier_n.get_mpz_t(), Scalar::ModulusQ().get_mpz_t(), 8);
+  BigInt min_paillier_n(1);
+  for (size_t i = 0; i < 8; ++i) {
+    min_paillier_n *= Scalar::ModulusQMpInt();
+  }
 
   for (size_t idx = 0; idx < sessions.size(); ++idx) {
     const PartyIndex self_id = static_cast<PartyIndex>(idx + 1);
@@ -337,7 +340,8 @@ void AssertKeygenOutputsConsistent(const std::vector<std::unique_ptr<KeygenSessi
              "Session result is missing Paillier public key for party " + std::to_string(party_id));
       Expect(it->second.n == expected_pub.n,
              "Session result has mismatched Paillier modulus for party " + std::to_string(party_id));
-      Expect(it->second.n > min_paillier_n,
+      const BigInt party_n(it->second.n.get_str(10), 10);
+      Expect(party_n > min_paillier_n,
              "Session result has Paillier modulus that does not satisfy N > q^8");
     }
 
@@ -379,7 +383,8 @@ void AssertKeygenOutputsConsistent(const std::vector<std::unique_ptr<KeygenSessi
     const auto self_paillier_it = current.all_paillier_public.find(self_id);
     Expect(self_paillier_it != current.all_paillier_public.end(),
            "Session result must contain its own Paillier public key entry");
-    Expect(self_paillier_it->second.n == current.local_paillier->modulus_n(),
+    const BigInt self_paillier_n(self_paillier_it->second.n.get_str(10), 10);
+    Expect(self_paillier_n == current.local_paillier->modulus_n_bigint(),
            "Session local Paillier private key must match broadcast public key");
   }
 }
@@ -449,7 +454,7 @@ void TestTamperedPhase1PaillierModulusAbortsReceiver() {
     Bytes malformed_payload;
     malformed_payload.insert(malformed_payload.end(), envelope.payload.begin(), envelope.payload.begin() + 32);
 
-    const Bytes tiny_n = tecdsa::EncodeMpz(mpz_class(17));
+    const Bytes tiny_n = tecdsa::EncodeMpInt(BigInt(17));
     auto append_u32 = [](uint32_t value, Bytes* out) {
       out->push_back(static_cast<uint8_t>((value >> 24) & 0xFF));
       out->push_back(static_cast<uint8_t>((value >> 16) & 0xFF));
