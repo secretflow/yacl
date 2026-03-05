@@ -4,15 +4,27 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
-#include <stdexcept>
+#include <string>
 
-#include "yacl/crypto/experimental/threshold_ecdsa/crypto/random.h"
+#include "yacl/crypto/experimental/threshold_ecdsa/crypto/bigint_utils.h"
 
 namespace tecdsa {
 namespace {
 
-constexpr int kPrimalityChecks = 40;
 constexpr size_t kMaxKeygenAttempts = 128;
+
+BigInt MpzToMpInt(const mpz_class& value) {
+  return BigInt(value.get_str(10), 10);
+}
+
+mpz_class MpIntToMpz(const BigInt& value) {
+  mpz_class out;
+  const std::string decimal = value.ToString();
+  if (mpz_set_str(out.get_mpz_t(), decimal.c_str(), 10) != 0) {
+    TECDSA_THROW("failed to convert MPInt to mpz_class");
+  }
+  return out;
+}
 
 }  // namespace
 
@@ -26,21 +38,21 @@ PaillierProvider::PaillierProvider(unsigned long modulus_bits) {
   }
 }
 
-mpz_class PaillierProvider::Encrypt(const mpz_class& plaintext) const {
-  return EncryptWithProvidedRandom(plaintext, SampleZnStar());
+BigInt PaillierProvider::EncryptBigInt(const BigInt& plaintext) const {
+  return EncryptWithProvidedRandomBigInt(plaintext, SampleZnStar());
 }
 
-PaillierCiphertextWithRandom PaillierProvider::EncryptWithRandom(
-    const mpz_class& plaintext) const {
-  PaillierCiphertextWithRandom out;
+PaillierCiphertextWithRandomBigInt PaillierProvider::EncryptWithRandomBigInt(
+    const BigInt& plaintext) const {
+  PaillierCiphertextWithRandomBigInt out;
   out.randomness = SampleZnStar();
-  out.ciphertext = EncryptWithProvidedRandom(plaintext, out.randomness);
+  out.ciphertext = EncryptWithProvidedRandomBigInt(plaintext, out.randomness);
   return out;
 }
 
-mpz_class PaillierProvider::EncryptWithProvidedRandom(
-    const mpz_class& plaintext,
-    const mpz_class& randomness) const {
+BigInt PaillierProvider::EncryptWithProvidedRandomBigInt(
+    const BigInt& plaintext,
+    const BigInt& randomness) const {
   if (!initialized_) {
     TECDSA_THROW_LOGIC("Paillier key pair is not initialized");
   }
@@ -48,58 +60,92 @@ mpz_class PaillierProvider::EncryptWithProvidedRandom(
     TECDSA_THROW_ARGUMENT("Paillier randomness must be in Z*_N");
   }
 
-  const mpz_class plain = NormalizeMod(plaintext, n_);
-  const mpz_class g_pow_m = NormalizeMod((plain * n_) + 1, n2_);
-
-  mpz_class r_pow_n;
-  mpz_powm(r_pow_n.get_mpz_t(), randomness.get_mpz_t(), n_.get_mpz_t(), n2_.get_mpz_t());
+  const BigInt plain = NormalizeMod(plaintext, n_);
+  const BigInt g_pow_m = NormalizeMod((plain * n_) + BigInt(1), n2_);
+  const BigInt r_pow_n = randomness.PowMod(n_, n2_);
   return NormalizeMod(g_pow_m * r_pow_n, n2_);
 }
 
-mpz_class PaillierProvider::Decrypt(const mpz_class& ciphertext) const {
+BigInt PaillierProvider::DecryptBigInt(const BigInt& ciphertext) const {
   if (!initialized_) {
     TECDSA_THROW_LOGIC("Paillier key pair is not initialized");
   }
 
-  const mpz_class cipher = NormalizeMod(ciphertext, n2_);
-  mpz_class u;
-  mpz_powm(u.get_mpz_t(), cipher.get_mpz_t(), lambda_.get_mpz_t(), n2_.get_mpz_t());
-
-  const mpz_class l_of_u = LFunction(u);
+  const BigInt cipher = NormalizeMod(ciphertext, n2_);
+  const BigInt u = cipher.PowMod(lambda_, n2_);
+  const BigInt l_of_u = LFunction(u);
   return NormalizeMod(l_of_u * mu_, n_);
+}
+
+BigInt PaillierProvider::AddCiphertextsBigInt(const BigInt& lhs_cipher,
+                                              const BigInt& rhs_cipher) const {
+  if (!initialized_) {
+    TECDSA_THROW_LOGIC("Paillier key pair is not initialized");
+  }
+  const BigInt lhs = NormalizeMod(lhs_cipher, n2_);
+  const BigInt rhs = NormalizeMod(rhs_cipher, n2_);
+  return NormalizeMod(lhs * rhs, n2_);
+}
+
+BigInt PaillierProvider::AddPlaintextBigInt(const BigInt& cipher,
+                                            const BigInt& plain) const {
+  if (!initialized_) {
+    TECDSA_THROW_LOGIC("Paillier key pair is not initialized");
+  }
+  const BigInt c = NormalizeMod(cipher, n2_);
+  const BigInt p = NormalizeMod(plain, n_);
+  const BigInt g_pow_p = NormalizeMod((p * n_) + BigInt(1), n2_);
+  return NormalizeMod(c * g_pow_p, n2_);
+}
+
+BigInt PaillierProvider::MulPlaintextBigInt(const BigInt& cipher,
+                                            const BigInt& plain) const {
+  if (!initialized_) {
+    TECDSA_THROW_LOGIC("Paillier key pair is not initialized");
+  }
+  const BigInt c = NormalizeMod(cipher, n2_);
+  const BigInt p = NormalizeMod(plain, n_);
+  return c.PowMod(p, n2_);
+}
+
+mpz_class PaillierProvider::Encrypt(const mpz_class& plaintext) const {
+  return MpIntToMpz(EncryptBigInt(MpzToMpInt(plaintext)));
+}
+
+PaillierCiphertextWithRandom PaillierProvider::EncryptWithRandom(
+    const mpz_class& plaintext) const {
+  const PaillierCiphertextWithRandomBigInt out =
+      EncryptWithRandomBigInt(MpzToMpInt(plaintext));
+  return PaillierCiphertextWithRandom{
+      .ciphertext = MpIntToMpz(out.ciphertext),
+      .randomness = MpIntToMpz(out.randomness),
+  };
+}
+
+mpz_class PaillierProvider::EncryptWithProvidedRandom(
+    const mpz_class& plaintext,
+    const mpz_class& randomness) const {
+  return MpIntToMpz(
+      EncryptWithProvidedRandomBigInt(MpzToMpInt(plaintext), MpzToMpInt(randomness)));
+}
+
+mpz_class PaillierProvider::Decrypt(const mpz_class& ciphertext) const {
+  return MpIntToMpz(DecryptBigInt(MpzToMpInt(ciphertext)));
 }
 
 mpz_class PaillierProvider::AddCiphertexts(const mpz_class& lhs_cipher,
                                            const mpz_class& rhs_cipher) const {
-  if (!initialized_) {
-    TECDSA_THROW_LOGIC("Paillier key pair is not initialized");
-  }
-  const mpz_class lhs = NormalizeMod(lhs_cipher, n2_);
-  const mpz_class rhs = NormalizeMod(rhs_cipher, n2_);
-  return NormalizeMod(lhs * rhs, n2_);
+  return MpIntToMpz(AddCiphertextsBigInt(MpzToMpInt(lhs_cipher), MpzToMpInt(rhs_cipher)));
 }
 
 mpz_class PaillierProvider::AddPlaintext(const mpz_class& cipher,
                                          const mpz_class& plain) const {
-  if (!initialized_) {
-    TECDSA_THROW_LOGIC("Paillier key pair is not initialized");
-  }
-  const mpz_class c = NormalizeMod(cipher, n2_);
-  const mpz_class p = NormalizeMod(plain, n_);
-  const mpz_class g_pow_p = NormalizeMod((p * n_) + 1, n2_);
-  return NormalizeMod(c * g_pow_p, n2_);
+  return MpIntToMpz(AddPlaintextBigInt(MpzToMpInt(cipher), MpzToMpInt(plain)));
 }
 
 mpz_class PaillierProvider::MulPlaintext(const mpz_class& cipher,
                                          const mpz_class& plain) const {
-  if (!initialized_) {
-    TECDSA_THROW_LOGIC("Paillier key pair is not initialized");
-  }
-  const mpz_class c = NormalizeMod(cipher, n2_);
-  const mpz_class p = NormalizeMod(plain, n_);
-  mpz_class out;
-  mpz_powm(out.get_mpz_t(), c.get_mpz_t(), p.get_mpz_t(), n2_.get_mpz_t());
-  return out;
+  return MpIntToMpz(MulPlaintextBigInt(MpzToMpInt(cipher), MpzToMpInt(plain)));
 }
 
 bool PaillierProvider::VerifyKeyPair() const {
@@ -115,43 +161,40 @@ bool PaillierProvider::VerifyKeyPair() const {
   if (n2_ != n_ * n_) {
     return false;
   }
-  if (g_ != n_ + 1) {
+  if (g_ != n_ + BigInt(1)) {
     return false;
   }
   if (lambda_ <= 1) {
     return false;
   }
 
-  mpz_class p_minus_1 = p_ - 1;
-  mpz_class q_minus_1 = q_ - 1;
-  mpz_class lambda_check;
-  mpz_lcm(lambda_check.get_mpz_t(), p_minus_1.get_mpz_t(), q_minus_1.get_mpz_t());
+  const BigInt p_minus_1 = p_ - BigInt(1);
+  const BigInt q_minus_1 = q_ - BigInt(1);
+  const BigInt lambda_check = BigInt::Lcm(p_minus_1, q_minus_1);
   if (lambda_check != lambda_) {
     return false;
   }
 
-  mpz_class gcd;
-  mpz_gcd(gcd.get_mpz_t(), lambda_.get_mpz_t(), n_.get_mpz_t());
+  const BigInt gcd = BigInt::Gcd(lambda_, n_);
   if (gcd != 1) {
     return false;
   }
 
-  mpz_class mu_check;
-  if (mpz_invert(mu_check.get_mpz_t(), lambda_.get_mpz_t(), n_.get_mpz_t()) == 0 ||
-      mu_check != mu_) {
+  const auto mu_check = bigint::TryInvertMod(lambda_, n_);
+  if (!mu_check.has_value() || *mu_check != mu_) {
     return false;
   }
 
-  const mpz_class n_minus_1 = n_ - 1;
-  const std::array<mpz_class, 4> plain_cases = {
-      mpz_class(0),
-      mpz_class(1),
-      mpz_class(2),
+  const BigInt n_minus_1 = n_ - BigInt(1);
+  const std::array<BigInt, 4> plain_cases = {
+      BigInt(0),
+      BigInt(1),
+      BigInt(2),
       n_minus_1,
   };
   for (const auto& plain : plain_cases) {
-    const mpz_class cipher = EncryptWithProvidedRandom(plain, mpz_class(1));
-    const mpz_class decrypted = Decrypt(cipher);
+    const BigInt cipher = EncryptWithProvidedRandomBigInt(plain, BigInt(1));
+    const BigInt decrypted = DecryptBigInt(cipher);
     if (decrypted != NormalizeMod(plain, n_)) {
       return false;
     }
@@ -160,38 +203,51 @@ bool PaillierProvider::VerifyKeyPair() const {
   return true;
 }
 
-mpz_class PaillierProvider::modulus_n() const {
+BigInt PaillierProvider::modulus_n_bigint() const {
   if (!initialized_) {
     TECDSA_THROW_LOGIC("Paillier key pair is not initialized");
   }
   return n_;
 }
 
-mpz_class PaillierProvider::modulus_n2() const {
+BigInt PaillierProvider::modulus_n2_bigint() const {
   if (!initialized_) {
     TECDSA_THROW_LOGIC("Paillier key pair is not initialized");
   }
   return n2_;
 }
 
-mpz_class PaillierProvider::generator() const {
+BigInt PaillierProvider::generator_bigint() const {
   if (!initialized_) {
     TECDSA_THROW_LOGIC("Paillier key pair is not initialized");
   }
   return g_;
 }
 
-mpz_class PaillierProvider::private_lambda() const {
+BigInt PaillierProvider::private_lambda_bigint() const {
   if (!initialized_) {
     TECDSA_THROW_LOGIC("Paillier key pair is not initialized");
   }
   return lambda_;
 }
 
+mpz_class PaillierProvider::modulus_n() const {
+  return MpIntToMpz(modulus_n_bigint());
+}
+
+mpz_class PaillierProvider::modulus_n2() const {
+  return MpIntToMpz(modulus_n2_bigint());
+}
+
+mpz_class PaillierProvider::generator() const {
+  return MpIntToMpz(generator_bigint());
+}
+
+mpz_class PaillierProvider::private_lambda() const {
+  return MpIntToMpz(private_lambda_bigint());
+}
+
 void PaillierProvider::GenerateKeyPair(unsigned long modulus_bits) {
-  // Use one extra bit per prime so that the resulting N is comfortably above
-  // 2^modulus_bits. This improves success rate for the protocol's N > q^8 gate
-  // when modulus_bits is configured to 2048.
   const size_t p_bits =
       std::max<size_t>(2, (static_cast<size_t>(modulus_bits) + 1) / 2 + 1);
   const size_t q_bits = p_bits;
@@ -209,18 +265,20 @@ void PaillierProvider::GenerateKeyPair(unsigned long modulus_bits) {
 
     n_ = p_ * q_;
     n2_ = n_ * n_;
-    g_ = n_ + 1;
+    g_ = n_ + BigInt(1);
 
-    mpz_class p_minus_1 = p_ - 1;
-    mpz_class q_minus_1 = q_ - 1;
-    mpz_lcm(lambda_.get_mpz_t(), p_minus_1.get_mpz_t(), q_minus_1.get_mpz_t());
+    const BigInt p_minus_1 = p_ - BigInt(1);
+    const BigInt q_minus_1 = q_ - BigInt(1);
+    lambda_ = BigInt::Lcm(p_minus_1, q_minus_1);
     if (lambda_ <= 1) {
       continue;
     }
 
-    if (mpz_invert(mu_.get_mpz_t(), lambda_.get_mpz_t(), n_.get_mpz_t()) == 0) {
+    const auto mu_opt = bigint::TryInvertMod(lambda_, n_);
+    if (!mu_opt.has_value()) {
       continue;
     }
+    mu_ = *mu_opt;
 
     initialized_ = true;
     return;
@@ -229,88 +287,43 @@ void PaillierProvider::GenerateKeyPair(unsigned long modulus_bits) {
   TECDSA_THROW("failed to generate valid native Paillier key pair");
 }
 
-mpz_class PaillierProvider::NormalizeMod(const mpz_class& value, const mpz_class& modulus) {
-  if (modulus <= 0) {
-    TECDSA_THROW_ARGUMENT("modulus must be positive");
-  }
-  mpz_class out = value % modulus;
-  if (out < 0) {
-    out += modulus;
-  }
-  return out;
+BigInt PaillierProvider::NormalizeMod(const BigInt& value, const BigInt& modulus) {
+  return bigint::NormalizeMod(value, modulus);
 }
 
-bool PaillierProvider::IsProbablePrime(const mpz_class& candidate) {
+bool PaillierProvider::IsProbablePrime(const BigInt& candidate) {
   if (candidate <= 1) {
     return false;
   }
-  return mpz_probab_prime_p(candidate.get_mpz_t(), kPrimalityChecks) > 0;
+  return candidate.IsPrime();
 }
 
-mpz_class PaillierProvider::RandomBelow(const mpz_class& upper_exclusive) {
-  if (upper_exclusive <= 0) {
-    TECDSA_THROW_ARGUMENT("upper bound for random sampling must be positive");
-  }
-
-  const size_t bit_len = mpz_sizeinbase(upper_exclusive.get_mpz_t(), 2);
-  const size_t byte_len = std::max<size_t>(1, (bit_len + 7) / 8);
-  const size_t extra_bits = byte_len * 8 - bit_len;
-
-  while (true) {
-    Bytes random = Csprng::RandomBytes(byte_len);
-    if (extra_bits > 0) {
-      random[0] &= static_cast<uint8_t>(0xFFu >> extra_bits);
-    }
-
-    mpz_class candidate;
-    mpz_import(
-        candidate.get_mpz_t(), random.size(), 1, sizeof(uint8_t), 1, 0, random.data());
-    if (candidate < upper_exclusive) {
-      return candidate;
-    }
-  }
+BigInt PaillierProvider::RandomBelow(const BigInt& upper_exclusive) {
+  return bigint::RandomBelow(upper_exclusive);
 }
 
-mpz_class PaillierProvider::RandomOddWithBitSize(size_t bits) {
+BigInt PaillierProvider::RandomOddWithBitSize(size_t bits) {
   if (bits < 2) {
     TECDSA_THROW_ARGUMENT("prime bit size must be >= 2");
   }
 
-  const size_t byte_len = (bits + 7) / 8;
-  const size_t extra_bits = byte_len * 8 - bits;
-  while (true) {
-    Bytes random = Csprng::RandomBytes(byte_len);
-    if (extra_bits > 0) {
-      random[0] &= static_cast<uint8_t>(0xFFu >> extra_bits);
-    }
-    random[0] |= static_cast<uint8_t>(1u << (7 - extra_bits));
-    random.back() |= 0x01;
-
-    mpz_class candidate;
-    mpz_import(
-        candidate.get_mpz_t(), random.size(), 1, sizeof(uint8_t), 1, 0, random.data());
-    if (mpz_sizeinbase(candidate.get_mpz_t(), 2) == bits) {
-      return candidate;
-    }
+  BigInt candidate;
+  BigInt::RandomMonicExactBits(bits, &candidate);
+  candidate.SetBit(0, 1);
+  if (candidate.BitCount() != bits) {
+    TECDSA_THROW("failed to sample odd integer with exact bit size");
   }
-}
-
-mpz_class PaillierProvider::SampleZnStar() const {
-  if (!initialized_) {
-    TECDSA_THROW_LOGIC("Paillier key pair is not initialized");
-  }
-
-  mpz_class candidate;
-  mpz_class gcd;
-  do {
-    candidate = RandomBelow(n_);
-    mpz_gcd(gcd.get_mpz_t(), candidate.get_mpz_t(), n_.get_mpz_t());
-  } while (candidate == 0 || gcd != 1);
-
   return candidate;
 }
 
-bool PaillierProvider::IsInZnStar(const mpz_class& value) const {
+BigInt PaillierProvider::SampleZnStar() const {
+  if (!initialized_) {
+    TECDSA_THROW_LOGIC("Paillier key pair is not initialized");
+  }
+  return bigint::RandomZnStar(n_);
+}
+
+bool PaillierProvider::IsInZnStar(const BigInt& value) const {
   if (!initialized_) {
     return false;
   }
@@ -318,15 +331,14 @@ bool PaillierProvider::IsInZnStar(const mpz_class& value) const {
     return false;
   }
 
-  mpz_class gcd;
-  mpz_gcd(gcd.get_mpz_t(), value.get_mpz_t(), n_.get_mpz_t());
+  const BigInt gcd = BigInt::Gcd(value, n_);
   return gcd == 1;
 }
 
-mpz_class PaillierProvider::LFunction(const mpz_class& value) const {
-  const mpz_class normalized = NormalizeMod(value, n2_);
-  mpz_class numer = normalized - 1;
-  if (numer % n_ != 0) {
+BigInt PaillierProvider::LFunction(const BigInt& value) const {
+  const BigInt normalized = NormalizeMod(value, n2_);
+  const BigInt numer = normalized - BigInt(1);
+  if (numer.Mod(n_) != 0) {
     TECDSA_THROW_ARGUMENT("invalid Paillier L(x) input");
   }
   return numer / n_;

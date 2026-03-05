@@ -3,7 +3,16 @@
 #include <cstddef>
 #include <gmpxx.h>
 
+#include "yacl/math/mpint/mp_int.h"
+
 namespace tecdsa {
+
+using BigInt = yacl::math::MPInt;
+
+struct PaillierCiphertextWithRandomBigInt {
+  BigInt ciphertext;
+  BigInt randomness;
+};
 
 struct PaillierCiphertextWithRandom {
   mpz_class ciphertext;
@@ -24,6 +33,21 @@ class PaillierProvider {
 
   PaillierProvider(PaillierProvider&& other) noexcept = default;
   PaillierProvider& operator=(PaillierProvider&& other) noexcept = default;
+
+  BigInt EncryptBigInt(const BigInt& plaintext) const;
+  PaillierCiphertextWithRandomBigInt EncryptWithRandomBigInt(const BigInt& plaintext) const;
+  BigInt EncryptWithProvidedRandomBigInt(const BigInt& plaintext,
+                                         const BigInt& randomness) const;
+  BigInt DecryptBigInt(const BigInt& ciphertext) const;
+  BigInt AddCiphertextsBigInt(const BigInt& lhs_cipher,
+                              const BigInt& rhs_cipher) const;
+  BigInt AddPlaintextBigInt(const BigInt& cipher, const BigInt& plain) const;
+  BigInt MulPlaintextBigInt(const BigInt& cipher, const BigInt& plain) const;
+
+  BigInt modulus_n_bigint() const;
+  BigInt modulus_n2_bigint() const;
+  BigInt generator_bigint() const;
+  BigInt private_lambda_bigint() const;
 
   mpz_class Encrypt(const mpz_class& plaintext) const;
   PaillierCiphertextWithRandom EncryptWithRandom(const mpz_class& plaintext) const;
@@ -46,22 +70,22 @@ class PaillierProvider {
 
  private:
   void GenerateKeyPair(unsigned long modulus_bits);
-  static mpz_class NormalizeMod(const mpz_class& value, const mpz_class& modulus);
-  static bool IsProbablePrime(const mpz_class& candidate);
-  static mpz_class RandomBelow(const mpz_class& upper_exclusive);
-  static mpz_class RandomOddWithBitSize(size_t bits);
+  static BigInt NormalizeMod(const BigInt& value, const BigInt& modulus);
+  static bool IsProbablePrime(const BigInt& candidate);
+  static BigInt RandomBelow(const BigInt& upper_exclusive);
+  static BigInt RandomOddWithBitSize(size_t bits);
 
-  mpz_class SampleZnStar() const;
-  bool IsInZnStar(const mpz_class& value) const;
-  mpz_class LFunction(const mpz_class& value) const;
+  BigInt SampleZnStar() const;
+  bool IsInZnStar(const BigInt& value) const;
+  BigInt LFunction(const BigInt& value) const;
 
-  mpz_class p_;
-  mpz_class q_;
-  mpz_class n_;
-  mpz_class n2_;
-  mpz_class g_;
-  mpz_class lambda_;
-  mpz_class mu_;
+  BigInt p_;
+  BigInt q_;
+  BigInt n_;
+  BigInt n2_;
+  BigInt g_;
+  BigInt lambda_;
+  BigInt mu_;
   bool initialized_ = false;
 };
 
