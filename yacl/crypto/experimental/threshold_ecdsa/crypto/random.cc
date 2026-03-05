@@ -1,6 +1,7 @@
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/random.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/common/errors.h"
 
+#include <limits>
 #include <stdexcept>
 
 #include <openssl/rand.h>
@@ -13,7 +14,11 @@ Bytes Csprng::RandomBytes(size_t size) {
     return out;
   }
 
-  if (RAND_bytes(out.data(), static_cast<int>(out.size())) != 1) {
+  if (size > static_cast<size_t>(std::numeric_limits<int>::max())) {
+    TECDSA_THROW("RAND_bytes size exceeds INT_MAX");
+  }
+
+  if (RAND_bytes(out.data(), static_cast<int>(size)) != 1) {
     TECDSA_THROW("RAND_bytes failed");
   }
   return out;
