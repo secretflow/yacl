@@ -46,19 +46,6 @@ constexpr size_t kMaxSquareFreeGmr98Rounds = 128;
 constexpr size_t kMaxSquareFreeGmr98ChallengeAttempts = 64;
 constexpr size_t kMaxAuxParamGenerationAttempts = 128;
 
-BigInt MpzToMpInt(const mpz_class& value) {
-  return BigInt(value.get_str(10), 10);
-}
-
-mpz_class MpIntToMpz(const BigInt& value) {
-  mpz_class out;
-  const std::string decimal = value.ToString();
-  if (mpz_set_str(out.get_mpz_t(), decimal.c_str(), 10) != 0) {
-    TECDSA_THROW("failed to convert MPInt to mpz_class");
-  }
-  return out;
-}
-
 struct SquareFreeStrictPayload {
   Bytes nonce;
   BigInt y;
@@ -439,9 +426,9 @@ struct AuxRsaParamsBigInt {
 
 AuxRsaParamsBigInt ToBigIntParams(const AuxRsaParams& params) {
   return AuxRsaParamsBigInt{
-      .n_tilde = MpzToMpInt(params.n_tilde),
-      .h1 = MpzToMpInt(params.h1),
-      .h2 = MpzToMpInt(params.h2),
+      .n_tilde = params.n_tilde,
+      .h1 = params.h1,
+      .h2 = params.h2,
   };
 }
 
@@ -634,10 +621,6 @@ BigInt PickCoprimeDeterministic(const BigInt& modulus, const BigInt& seed) {
   }
 }
 
-mpz_class PickCoprimeDeterministic(const mpz_class& modulus, const mpz_class& seed) {
-  return MpIntToMpz(PickCoprimeDeterministic(MpzToMpInt(modulus), MpzToMpInt(seed)));
-}
-
 }  // namespace
 
 bool IsZnStarElement(const BigInt& value, const BigInt& modulus) {
@@ -646,10 +629,6 @@ bool IsZnStarElement(const BigInt& value, const BigInt& modulus) {
   }
   const BigInt gcd = BigInt::Gcd(value, modulus);
   return gcd == 1;
-}
-
-bool IsZnStarElement(const mpz_class& value, const mpz_class& modulus) {
-  return IsZnStarElement(MpzToMpInt(value), MpzToMpInt(modulus));
 }
 
 bool ValidateAuxRsaParams(const AuxRsaParams& params) {
@@ -764,10 +743,6 @@ bool IsLikelySquareFreeModulus(const BigInt& modulus_n) {
   return true;
 }
 
-bool IsLikelySquareFreeModulus(const mpz_class& modulus_n) {
-  return IsLikelySquareFreeModulus(MpzToMpInt(modulus_n));
-}
-
 AuxRsaParams GenerateAuxRsaParams(uint32_t modulus_bits, PartyIndex party_id) {
   if (modulus_bits < 32) {
     TECDSA_THROW_ARGUMENT("aux RSA modulus bits must be >= 32");
@@ -792,20 +767,13 @@ AuxRsaParams GenerateAuxRsaParams(uint32_t modulus_bits, PartyIndex party_id) {
       continue;
     }
 
-    mpz_class modulus_n;
-    mpz_import(modulus_n.get_mpz_t(),
-               modulus_bytes.size(),
-               1,
-               sizeof(uint8_t),
-               1,
-               0,
-               modulus_bytes.data());
+    const BigInt modulus_n = bigint::FromBigEndian(modulus_bytes);
     if (modulus_n <= 2 || !IsLikelySquareFreeModulus(modulus_n)) {
       continue;
     }
 
-    const mpz_class h1 = PickCoprimeDeterministic(modulus_n, mpz_class(2 + 2 * party_id));
-    mpz_class h2 = PickCoprimeDeterministic(modulus_n, mpz_class(3 + 2 * party_id));
+    const BigInt h1 = PickCoprimeDeterministic(modulus_n, BigInt(2 + 2 * party_id));
+    BigInt h2 = PickCoprimeDeterministic(modulus_n, BigInt(3 + 2 * party_id));
     if (h1 == h2) {
       h2 = PickCoprimeDeterministic(modulus_n, h1 + 1);
     }
@@ -823,13 +791,13 @@ AuxRsaParams GenerateAuxRsaParams(uint32_t modulus_bits, PartyIndex party_id) {
   TECDSA_THROW("failed to generate likely square-free auxiliary RSA params");
 }
 
-AuxRsaParams DeriveAuxRsaParamsFromModulus(const mpz_class& modulus_n, PartyIndex party_id) {
+AuxRsaParams DeriveAuxRsaParamsFromModulus(const BigInt& modulus_n, PartyIndex party_id) {
   if (modulus_n <= 2) {
     TECDSA_THROW_ARGUMENT("aux RSA modulus must be > 2");
   }
 
-  const mpz_class h1 = PickCoprimeDeterministic(modulus_n, mpz_class(2 + 2 * party_id));
-  mpz_class h2 = PickCoprimeDeterministic(modulus_n, mpz_class(3 + 2 * party_id));
+  const BigInt h1 = PickCoprimeDeterministic(modulus_n, BigInt(2 + 2 * party_id));
+  BigInt h2 = PickCoprimeDeterministic(modulus_n, BigInt(3 + 2 * party_id));
   if (h1 == h2) {
     h2 = PickCoprimeDeterministic(modulus_n, h1 + 1);
   }
@@ -845,44 +813,42 @@ AuxRsaParams DeriveAuxRsaParamsFromModulus(const mpz_class& modulus_n, PartyInde
   return params;
 }
 
-SquareFreeProof BuildSquareFreeProofWeak(const mpz_class& modulus_n,
+SquareFreeProof BuildSquareFreeProofWeak(const BigInt& modulus_n,
                                          const StrictProofVerifierContext& context) {
-  const BigInt modulus_n_big = MpzToMpInt(modulus_n);
   SquareFreeProof proof;
   proof.metadata = MakeWeakMetadata(kSquareFreeSchemeIdWeak);
   proof.blob = BuildWeakDigestFromFields(
       kSquareFreeProofIdWeak,
       context,
       std::array<std::pair<const char*, Bytes>, 1>{{
-          {"N", EncodeMpInt(modulus_n_big)},
+          {"N", EncodeMpInt(modulus_n)},
       }});
   return proof;
 }
 
-SquareFreeProof BuildSquareFreeProofStrict(const mpz_class& modulus_n,
+SquareFreeProof BuildSquareFreeProofStrict(const BigInt& modulus_n,
                                            const StrictProofVerifierContext& context) {
-  const BigInt modulus_n_big = MpzToMpInt(modulus_n);
-  if (modulus_n_big <= 2) {
+  if (modulus_n <= 2) {
     TECDSA_THROW_ARGUMENT("square-free proof requires modulus N > 2");
   }
-  if (!IsLikelySquareFreeModulus(modulus_n_big)) {
+  if (!IsLikelySquareFreeModulus(modulus_n)) {
     TECDSA_THROW_ARGUMENT("square-free strict proof requires likely square-free modulus");
   }
 
-  const BigInt n2 = modulus_n_big * modulus_n_big;
-  const BigInt witness = RandomZnStar(modulus_n_big);
-  const BigInt r1 = RandomZnStar(modulus_n_big);
-  const BigInt r2 = RandomZnStar(modulus_n_big);
+  const BigInt n2 = modulus_n * modulus_n;
+  const BigInt witness = RandomZnStar(modulus_n);
+  const BigInt r1 = RandomZnStar(modulus_n);
+  const BigInt r2 = RandomZnStar(modulus_n);
 
-  const BigInt y = PowMod(witness, modulus_n_big, n2);
-  const BigInt t1 = PowMod(r1, modulus_n_big, n2);
-  const BigInt t2 = PowMod(r2, modulus_n_big, n2);
+  const BigInt y = PowMod(witness, modulus_n, n2);
+  const BigInt t1 = PowMod(r1, modulus_n, n2);
+  const BigInt t2 = PowMod(r2, modulus_n, n2);
   const Bytes nonce = Csprng::RandomBytes(kStrictNonceLen);
   const BigInt e =
-      BuildSquareFreeStrictChallenge(modulus_n_big, context, nonce, y, t1, t2).mp_value();
+      BuildSquareFreeStrictChallenge(modulus_n, context, nonce, y, t1, t2).mp_value();
 
-  const BigInt z1 = MulMod(r1, PowMod(witness, e, modulus_n_big), modulus_n_big);
-  const BigInt z2 = MulMod(r2, PowMod(witness, e + 1, modulus_n_big), modulus_n_big);
+  const BigInt z1 = MulMod(r1, PowMod(witness, e, modulus_n), modulus_n);
+  const BigInt z2 = MulMod(r2, PowMod(witness, e + 1, modulus_n), modulus_n);
 
   SquareFreeProof proof;
   proof.metadata = MakeStrictMetadata(kSquareFreeSchemeIdStrict, context);
@@ -898,7 +864,7 @@ SquareFreeProof BuildSquareFreeProofStrict(const mpz_class& modulus_n,
   return proof;
 }
 
-bool VerifySquareFreeProofWeak(const mpz_class& modulus_n,
+bool VerifySquareFreeProofWeak(const BigInt& modulus_n,
                                const SquareFreeProof& proof,
                                const StrictProofVerifierContext& context) {
   if (proof.blob.empty()) {
@@ -923,11 +889,10 @@ bool VerifySquareFreeProofWeak(const mpz_class& modulus_n,
   return proof.blob == expected.blob;
 }
 
-bool VerifySquareFreeProofStrict(const mpz_class& modulus_n,
+bool VerifySquareFreeProofStrict(const BigInt& modulus_n,
                                  const SquareFreeProof& proof,
                                  const StrictProofVerifierContext& context) {
-  const BigInt modulus_n_big = MpzToMpInt(modulus_n);
-  if (!IsLikelySquareFreeModulus(modulus_n_big)) {
+  if (!IsLikelySquareFreeModulus(modulus_n)) {
     return false;
   }
   if (proof.blob.empty()) {
@@ -959,7 +924,7 @@ bool VerifySquareFreeProofStrict(const mpz_class& modulus_n,
     return false;
   }
 
-  const BigInt n2 = modulus_n_big * modulus_n_big;
+  const BigInt n2 = modulus_n * modulus_n;
   SquareFreeStrictPayload payload;
   try {
     payload = DecodeSquareFreeStrictPayload(proof.blob);
@@ -972,13 +937,13 @@ bool VerifySquareFreeProofStrict(const mpz_class& modulus_n,
   if (!IsZnStarResidue(payload.y, n2) ||
       !IsZnStarResidue(payload.t1, n2) ||
       !IsZnStarResidue(payload.t2, n2) ||
-      !IsZnStarResidue(payload.z1, modulus_n_big) ||
-      !IsZnStarResidue(payload.z2, modulus_n_big)) {
+      !IsZnStarResidue(payload.z1, modulus_n) ||
+      !IsZnStarResidue(payload.z2, modulus_n)) {
     return false;
   }
 
   const BigInt e =
-      BuildSquareFreeStrictChallenge(modulus_n_big,
+      BuildSquareFreeStrictChallenge(modulus_n,
                                      context,
                                      payload.nonce,
                                      payload.y,
@@ -986,33 +951,31 @@ bool VerifySquareFreeProofStrict(const mpz_class& modulus_n,
                                      payload.t2)
           .mp_value();
 
-  const BigInt lhs1 = PowMod(payload.z1, modulus_n_big, n2);
+  const BigInt lhs1 = PowMod(payload.z1, modulus_n, n2);
   const BigInt rhs1 = MulMod(payload.t1, PowMod(payload.y, e, n2), n2);
   if (lhs1 != rhs1) {
     return false;
   }
 
-  const BigInt lhs2 = PowMod(payload.z2, modulus_n_big, n2);
+  const BigInt lhs2 = PowMod(payload.z2, modulus_n, n2);
   const BigInt rhs2 = MulMod(payload.t2, PowMod(payload.y, e + 1, n2), n2);
   return lhs2 == rhs2;
 }
 
-SquareFreeProof BuildSquareFreeProofGmr98(const mpz_class& modulus_n,
-                                          const mpz_class& lambda_n,
+SquareFreeProof BuildSquareFreeProofGmr98(const BigInt& modulus_n,
+                                          const BigInt& lambda_n,
                                           const StrictProofVerifierContext& context) {
-  const BigInt modulus_n_big = MpzToMpInt(modulus_n);
-  const BigInt lambda_n_big = MpzToMpInt(lambda_n);
-  if (modulus_n_big <= 3) {
+  if (modulus_n <= 3) {
     TECDSA_THROW_ARGUMENT("square-free GMR98 proof requires modulus N > 3");
   }
-  if (lambda_n_big <= 1) {
+  if (lambda_n <= 1) {
     TECDSA_THROW_ARGUMENT("square-free GMR98 proof requires lambda(N) > 1");
   }
-  if (!IsLikelySquareFreeModulus(modulus_n_big)) {
+  if (!IsLikelySquareFreeModulus(modulus_n)) {
     TECDSA_THROW_ARGUMENT("square-free GMR98 proof requires likely square-free modulus");
   }
 
-  const auto d_opt = InvertMod(NormalizeMod(modulus_n_big, lambda_n_big), lambda_n_big);
+  const auto d_opt = InvertMod(NormalizeMod(modulus_n, lambda_n), lambda_n);
   if (!d_opt.has_value()) {
     TECDSA_THROW_ARGUMENT("square-free GMR98 proof requires gcd(N, lambda(N)) = 1");
   }
@@ -1025,12 +988,12 @@ SquareFreeProof BuildSquareFreeProofGmr98(const mpz_class& modulus_n,
   payload.roots.reserve(payload.rounds);
 
   for (uint32_t round = 0; round < payload.rounds; ++round) {
-    const BigInt challenge = DeriveSquareFreeGmr98Challenge(modulus_n_big, context, nonce, round);
-    const BigInt root = PowMod(challenge, d, modulus_n_big);
-    if (!IsZnStarResidue(root, modulus_n_big)) {
+    const BigInt challenge = DeriveSquareFreeGmr98Challenge(modulus_n, context, nonce, round);
+    const BigInt root = PowMod(challenge, d, modulus_n);
+    if (!IsZnStarResidue(root, modulus_n)) {
       TECDSA_THROW("square-free GMR98 proof generated invalid root");
     }
-    const BigInt check = PowMod(root, modulus_n_big, modulus_n_big);
+    const BigInt check = PowMod(root, modulus_n, modulus_n);
     if (check != challenge) {
       TECDSA_THROW("square-free GMR98 proof generated inconsistent root equation");
     }
@@ -1043,21 +1006,20 @@ SquareFreeProof BuildSquareFreeProofGmr98(const mpz_class& modulus_n,
   return proof;
 }
 
-SquareFreeProof BuildSquareFreeProofGmr98(const mpz_class& modulus_n,
+SquareFreeProof BuildSquareFreeProofGmr98(const BigInt& modulus_n,
                                           const StrictProofVerifierContext& context) {
   // Witness-less fallback retained for compatibility with callers that only have public N.
   return BuildSquareFreeProofStrict(modulus_n, context);
 }
 
-bool VerifySquareFreeProofGmr98(const mpz_class& modulus_n,
+bool VerifySquareFreeProofGmr98(const BigInt& modulus_n,
                                 const SquareFreeProof& proof,
                                 const StrictProofVerifierContext& context) {
   if (proof.metadata.scheme == StrictProofScheme::kStrictAlgebraicV1) {
     return VerifySquareFreeProofStrict(modulus_n, proof, context);
   }
 
-  const BigInt modulus_n_big = MpzToMpInt(modulus_n);
-  if (!IsLikelySquareFreeModulus(modulus_n_big)) {
+  if (!IsLikelySquareFreeModulus(modulus_n)) {
     return false;
   }
   if (proof.blob.empty()) {
@@ -1103,12 +1065,12 @@ bool VerifySquareFreeProofGmr98(const mpz_class& modulus_n,
 
   for (uint32_t round = 0; round < payload.rounds; ++round) {
     const BigInt& root = payload.roots[round];
-    if (!IsZnStarResidue(root, modulus_n_big)) {
+    if (!IsZnStarResidue(root, modulus_n)) {
       return false;
     }
     const BigInt challenge =
-        DeriveSquareFreeGmr98Challenge(modulus_n_big, context, payload.nonce, round);
-    const BigInt lhs = PowMod(root, modulus_n_big, modulus_n_big);
+        DeriveSquareFreeGmr98Challenge(modulus_n, context, payload.nonce, round);
+    const BigInt lhs = PowMod(root, modulus_n, modulus_n);
     if (lhs != challenge) {
       return false;
     }
@@ -1116,12 +1078,12 @@ bool VerifySquareFreeProofGmr98(const mpz_class& modulus_n,
   return true;
 }
 
-SquareFreeProof BuildSquareFreeProof(const mpz_class& modulus_n,
+SquareFreeProof BuildSquareFreeProof(const BigInt& modulus_n,
                                      const StrictProofVerifierContext& context) {
   return BuildSquareFreeProofGmr98(modulus_n, context);
 }
 
-bool VerifySquareFreeProof(const mpz_class& modulus_n,
+bool VerifySquareFreeProof(const BigInt& modulus_n,
                            const SquareFreeProof& proof,
                            const StrictProofVerifierContext& context) {
   if (IsStrictProofScheme(proof.metadata.scheme)) {

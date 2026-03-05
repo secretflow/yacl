@@ -4,7 +4,6 @@
 #include <algorithm>
 #include <array>
 #include <cstddef>
-#include <string>
 
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/bigint_utils.h"
 
@@ -12,19 +11,6 @@ namespace tecdsa {
 namespace {
 
 constexpr size_t kMaxKeygenAttempts = 128;
-
-BigInt MpzToMpInt(const mpz_class& value) {
-  return BigInt(value.get_str(10), 10);
-}
-
-mpz_class MpIntToMpz(const BigInt& value) {
-  mpz_class out;
-  const std::string decimal = value.ToString();
-  if (mpz_set_str(out.get_mpz_t(), decimal.c_str(), 10) != 0) {
-    TECDSA_THROW("failed to convert MPInt to mpz_class");
-  }
-  return out;
-}
 
 }  // namespace
 
@@ -106,46 +92,6 @@ BigInt PaillierProvider::MulPlaintextBigInt(const BigInt& cipher,
   const BigInt c = NormalizeMod(cipher, n2_);
   const BigInt p = NormalizeMod(plain, n_);
   return c.PowMod(p, n2_);
-}
-
-mpz_class PaillierProvider::Encrypt(const mpz_class& plaintext) const {
-  return MpIntToMpz(EncryptBigInt(MpzToMpInt(plaintext)));
-}
-
-PaillierCiphertextWithRandom PaillierProvider::EncryptWithRandom(
-    const mpz_class& plaintext) const {
-  const PaillierCiphertextWithRandomBigInt out =
-      EncryptWithRandomBigInt(MpzToMpInt(plaintext));
-  return PaillierCiphertextWithRandom{
-      .ciphertext = MpIntToMpz(out.ciphertext),
-      .randomness = MpIntToMpz(out.randomness),
-  };
-}
-
-mpz_class PaillierProvider::EncryptWithProvidedRandom(
-    const mpz_class& plaintext,
-    const mpz_class& randomness) const {
-  return MpIntToMpz(
-      EncryptWithProvidedRandomBigInt(MpzToMpInt(plaintext), MpzToMpInt(randomness)));
-}
-
-mpz_class PaillierProvider::Decrypt(const mpz_class& ciphertext) const {
-  return MpIntToMpz(DecryptBigInt(MpzToMpInt(ciphertext)));
-}
-
-mpz_class PaillierProvider::AddCiphertexts(const mpz_class& lhs_cipher,
-                                           const mpz_class& rhs_cipher) const {
-  return MpIntToMpz(AddCiphertextsBigInt(MpzToMpInt(lhs_cipher), MpzToMpInt(rhs_cipher)));
-}
-
-mpz_class PaillierProvider::AddPlaintext(const mpz_class& cipher,
-                                         const mpz_class& plain) const {
-  return MpIntToMpz(AddPlaintextBigInt(MpzToMpInt(cipher), MpzToMpInt(plain)));
-}
-
-mpz_class PaillierProvider::MulPlaintext(const mpz_class& cipher,
-                                         const mpz_class& plain) const {
-  return MpIntToMpz(MulPlaintextBigInt(MpzToMpInt(cipher), MpzToMpInt(plain)));
 }
 
 bool PaillierProvider::VerifyKeyPair() const {
@@ -231,20 +177,20 @@ BigInt PaillierProvider::private_lambda_bigint() const {
   return lambda_;
 }
 
-mpz_class PaillierProvider::modulus_n() const {
-  return MpIntToMpz(modulus_n_bigint());
+BigInt PaillierProvider::modulus_n() const {
+  return modulus_n_bigint();
 }
 
-mpz_class PaillierProvider::modulus_n2() const {
-  return MpIntToMpz(modulus_n2_bigint());
+BigInt PaillierProvider::modulus_n2() const {
+  return modulus_n2_bigint();
 }
 
-mpz_class PaillierProvider::generator() const {
-  return MpIntToMpz(generator_bigint());
+BigInt PaillierProvider::generator() const {
+  return generator_bigint();
 }
 
-mpz_class PaillierProvider::private_lambda() const {
-  return MpIntToMpz(private_lambda_bigint());
+BigInt PaillierProvider::private_lambda() const {
+  return private_lambda_bigint();
 }
 
 void PaillierProvider::GenerateKeyPair(unsigned long modulus_bits) {

@@ -34,7 +34,7 @@ constexpr size_t kPointCompressedLen = 33;
 constexpr size_t kScalarLen = 32;
 constexpr size_t kMaxOpenRandomnessLen = 1024;
 constexpr size_t kMtaInstanceIdLen = 16;
-constexpr size_t kMaxMpzEncodedLen = 8192;
+constexpr size_t kMaxMpIntEncodedLen = 8192;
 constexpr char kPhase1CommitDomain[] = "GG2019/sign/phase1";
 constexpr char kPhase5ACommitDomain[] = "GG2019/sign/phase5A";
 constexpr char kPhase5CCommitDomain[] = "GG2019/sign/phase5C";
@@ -46,10 +46,6 @@ constexpr char kA3MtAProofId[] = "GG2019/A3MtA/v1";
 constexpr char kCurveName[] = "secp256k1";
 
 using AuxRsaParams = SignSessionConfig::AuxRsaParams;
-
-BigInt MpzToMpInt(const mpz_class& value) {
-  return BigInt(value.get_str(10), 10);
-}
 
 struct MtaProofContext {
   Bytes session_id;
@@ -410,9 +406,9 @@ Scalar BuildA1RangeChallenge(const MtaProofContext& ctx,
   AppendCommonMtaTranscriptFields(&transcript, kA1RangeProofId, ctx);
   const Bytes n_bytes = EncodeMpInt(n);
   const Bytes gamma_bytes = EncodeMpInt(gamma);
-  const Bytes n_tilde_bytes = EncodeMpInt(MpzToMpInt(aux.n_tilde));
-  const Bytes h1_bytes = EncodeMpInt(MpzToMpInt(aux.h1));
-  const Bytes h2_bytes = EncodeMpInt(MpzToMpInt(aux.h2));
+  const Bytes n_tilde_bytes = EncodeMpInt(aux.n_tilde);
+  const Bytes h1_bytes = EncodeMpInt(aux.h1);
+  const Bytes h2_bytes = EncodeMpInt(aux.h2);
   const Bytes c_bytes = EncodeMpInt(c);
   const Bytes z_bytes = EncodeMpInt(z);
   const Bytes u_bytes = EncodeMpInt(u);
@@ -443,9 +439,9 @@ Scalar BuildA2MtAwcChallenge(const MtaProofContext& ctx,
   AppendCommonMtaTranscriptFields(&transcript, kA2MtAwcProofId, ctx);
   const Bytes n_bytes = EncodeMpInt(n);
   const Bytes gamma_bytes = EncodeMpInt(gamma);
-  const Bytes n_tilde_bytes = EncodeMpInt(MpzToMpInt(aux.n_tilde));
-  const Bytes h1_bytes = EncodeMpInt(MpzToMpInt(aux.h1));
-  const Bytes h2_bytes = EncodeMpInt(MpzToMpInt(aux.h2));
+  const Bytes n_tilde_bytes = EncodeMpInt(aux.n_tilde);
+  const Bytes h1_bytes = EncodeMpInt(aux.h1);
+  const Bytes h2_bytes = EncodeMpInt(aux.h2);
   const Bytes c1_bytes = EncodeMpInt(c1);
   const Bytes c2_bytes = EncodeMpInt(c2);
   const Bytes x_bytes = EncodePoint(statement_x);
@@ -485,9 +481,9 @@ Scalar BuildA3MtAChallenge(const MtaProofContext& ctx,
   AppendCommonMtaTranscriptFields(&transcript, kA3MtAProofId, ctx);
   const Bytes n_bytes = EncodeMpInt(n);
   const Bytes gamma_bytes = EncodeMpInt(gamma);
-  const Bytes n_tilde_bytes = EncodeMpInt(MpzToMpInt(aux.n_tilde));
-  const Bytes h1_bytes = EncodeMpInt(MpzToMpInt(aux.h1));
-  const Bytes h2_bytes = EncodeMpInt(MpzToMpInt(aux.h2));
+  const Bytes n_tilde_bytes = EncodeMpInt(aux.n_tilde);
+  const Bytes h1_bytes = EncodeMpInt(aux.h1);
+  const Bytes h2_bytes = EncodeMpInt(aux.h2);
   const Bytes c1_bytes = EncodeMpInt(c1);
   const Bytes c2_bytes = EncodeMpInt(c2);
   const Bytes z_bytes = EncodeMpInt(proof.z);
@@ -520,9 +516,9 @@ A1RangeProof ProveA1Range(const MtaProofContext& ctx,
                           const BigInt& witness_r) {
   const BigInt n2 = n * n;
   const BigInt gamma = n + BigInt(1);
-  const BigInt n_tilde = MpzToMpInt(verifier_aux.n_tilde);
-  const BigInt h1 = MpzToMpInt(verifier_aux.h1);
-  const BigInt h2 = MpzToMpInt(verifier_aux.h2);
+  const BigInt n_tilde = verifier_aux.n_tilde;
+  const BigInt h1 = verifier_aux.h1;
+  const BigInt h2 = verifier_aux.h2;
   const BigInt q_mul_n_tilde = Scalar::ModulusQMpInt() * n_tilde;
   const BigInt q3_mul_n_tilde = QPow3() * n_tilde;
 
@@ -563,9 +559,9 @@ bool VerifyA1Range(const MtaProofContext& ctx,
                    const A1RangeProof& proof) {
   const BigInt n2 = n * n;
   const BigInt gamma = n + BigInt(1);
-  const BigInt n_tilde = MpzToMpInt(verifier_aux.n_tilde);
-  const BigInt h1 = MpzToMpInt(verifier_aux.h1);
-  const BigInt h2 = MpzToMpInt(verifier_aux.h2);
+  const BigInt n_tilde = verifier_aux.n_tilde;
+  const BigInt h1 = verifier_aux.h1;
+  const BigInt h2 = verifier_aux.h2;
 
   if (!IsInRange(c, n2) || !IsInRange(proof.u, n2) ||
       !IsInRange(proof.z, n_tilde) ||
@@ -611,9 +607,9 @@ A2MtAwcProof ProveA2MtAwc(const MtaProofContext& ctx,
                           const BigInt& witness_r) {
   const BigInt n2 = n * n;
   const BigInt gamma = n + BigInt(1);
-  const BigInt n_tilde = MpzToMpInt(verifier_aux.n_tilde);
-  const BigInt h1 = MpzToMpInt(verifier_aux.h1);
-  const BigInt h2 = MpzToMpInt(verifier_aux.h2);
+  const BigInt n_tilde = verifier_aux.n_tilde;
+  const BigInt h1 = verifier_aux.h1;
+  const BigInt h2 = verifier_aux.h2;
   const BigInt q_mul_n_tilde = Scalar::ModulusQMpInt() * n_tilde;
   const BigInt q3_mul_n_tilde = QPow3() * n_tilde;
 
@@ -678,9 +674,9 @@ bool VerifyA2MtAwc(const MtaProofContext& ctx,
                    const A2MtAwcProof& proof) {
   const BigInt n2 = n * n;
   const BigInt gamma = n + BigInt(1);
-  const BigInt n_tilde = MpzToMpInt(verifier_aux.n_tilde);
-  const BigInt h1 = MpzToMpInt(verifier_aux.h1);
-  const BigInt h2 = MpzToMpInt(verifier_aux.h2);
+  const BigInt n_tilde = verifier_aux.n_tilde;
+  const BigInt h1 = verifier_aux.h1;
+  const BigInt h2 = verifier_aux.h2;
 
   if (!IsInRange(c1, n2) || !IsInRange(c2, n2) ||
       !IsInRange(proof.v, n2) || !IsInRange(proof.z, n_tilde) ||
@@ -744,9 +740,9 @@ A3MtAProof ProveA3MtA(const MtaProofContext& ctx,
                       const BigInt& witness_r) {
   const BigInt n2 = n * n;
   const BigInt gamma = n + BigInt(1);
-  const BigInt n_tilde = MpzToMpInt(verifier_aux.n_tilde);
-  const BigInt h1 = MpzToMpInt(verifier_aux.h1);
-  const BigInt h2 = MpzToMpInt(verifier_aux.h2);
+  const BigInt n_tilde = verifier_aux.n_tilde;
+  const BigInt h1 = verifier_aux.h1;
+  const BigInt h2 = verifier_aux.h2;
   const BigInt q_mul_n_tilde = Scalar::ModulusQMpInt() * n_tilde;
   const BigInt q3_mul_n_tilde = QPow3() * n_tilde;
 
@@ -801,9 +797,9 @@ bool VerifyA3MtA(const MtaProofContext& ctx,
                  const A3MtAProof& proof) {
   const BigInt n2 = n * n;
   const BigInt gamma = n + BigInt(1);
-  const BigInt n_tilde = MpzToMpInt(verifier_aux.n_tilde);
-  const BigInt h1 = MpzToMpInt(verifier_aux.h1);
-  const BigInt h2 = MpzToMpInt(verifier_aux.h2);
+  const BigInt n_tilde = verifier_aux.n_tilde;
+  const BigInt h1 = verifier_aux.h1;
+  const BigInt h2 = verifier_aux.h2;
 
   if (!IsInRange(c1, n2) || !IsInRange(c2, n2) ||
       !IsInRange(proof.v, n2) || !IsInRange(proof.z, n_tilde) ||
@@ -850,12 +846,12 @@ void AppendA1RangeProof(const A1RangeProof& proof, Bytes* out) {
 
 A1RangeProof ReadA1RangeProof(std::span<const uint8_t> input, size_t* offset) {
   A1RangeProof proof;
-  proof.z = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A1.z");
-  proof.u = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A1.u");
-  proof.w = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A1.w");
-  proof.s = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A1.s");
-  proof.s1 = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A1.s1");
-  proof.s2 = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A1.s2");
+  proof.z = ReadMpIntField(input, offset, kMaxMpIntEncodedLen, "A1.z");
+  proof.u = ReadMpIntField(input, offset, kMaxMpIntEncodedLen, "A1.u");
+  proof.w = ReadMpIntField(input, offset, kMaxMpIntEncodedLen, "A1.w");
+  proof.s = ReadMpIntField(input, offset, kMaxMpIntEncodedLen, "A1.s");
+  proof.s1 = ReadMpIntField(input, offset, kMaxMpIntEncodedLen, "A1.s1");
+  proof.s2 = ReadMpIntField(input, offset, kMaxMpIntEncodedLen, "A1.s2");
   return proof;
 }
 
@@ -877,16 +873,16 @@ A2MtAwcProof ReadA2MtAwcProof(std::span<const uint8_t> input, size_t* offset) {
   A2MtAwcProof proof{
       .u = ReadPoint(input, offset),
   };
-  proof.z = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A2.z");
-  proof.z2 = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A2.z2");
-  proof.t = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A2.t");
-  proof.v = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A2.v");
-  proof.w = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A2.w");
-  proof.s = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A2.s");
-  proof.s1 = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A2.s1");
-  proof.s2 = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A2.s2");
-  proof.t1 = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A2.t1");
-  proof.t2 = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A2.t2");
+  proof.z = ReadMpIntField(input, offset, kMaxMpIntEncodedLen, "A2.z");
+  proof.z2 = ReadMpIntField(input, offset, kMaxMpIntEncodedLen, "A2.z2");
+  proof.t = ReadMpIntField(input, offset, kMaxMpIntEncodedLen, "A2.t");
+  proof.v = ReadMpIntField(input, offset, kMaxMpIntEncodedLen, "A2.v");
+  proof.w = ReadMpIntField(input, offset, kMaxMpIntEncodedLen, "A2.w");
+  proof.s = ReadMpIntField(input, offset, kMaxMpIntEncodedLen, "A2.s");
+  proof.s1 = ReadMpIntField(input, offset, kMaxMpIntEncodedLen, "A2.s1");
+  proof.s2 = ReadMpIntField(input, offset, kMaxMpIntEncodedLen, "A2.s2");
+  proof.t1 = ReadMpIntField(input, offset, kMaxMpIntEncodedLen, "A2.t1");
+  proof.t2 = ReadMpIntField(input, offset, kMaxMpIntEncodedLen, "A2.t2");
   return proof;
 }
 
@@ -905,16 +901,16 @@ void AppendA3MtAProof(const A3MtAProof& proof, Bytes* out) {
 
 A3MtAProof ReadA3MtAProof(std::span<const uint8_t> input, size_t* offset) {
   A3MtAProof proof;
-  proof.z = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A3.z");
-  proof.z2 = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A3.z2");
-  proof.t = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A3.t");
-  proof.v = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A3.v");
-  proof.w = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A3.w");
-  proof.s = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A3.s");
-  proof.s1 = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A3.s1");
-  proof.s2 = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A3.s2");
-  proof.t1 = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A3.t1");
-  proof.t2 = ReadMpIntField(input, offset, kMaxMpzEncodedLen, "A3.t2");
+  proof.z = ReadMpIntField(input, offset, kMaxMpIntEncodedLen, "A3.z");
+  proof.z2 = ReadMpIntField(input, offset, kMaxMpIntEncodedLen, "A3.z2");
+  proof.t = ReadMpIntField(input, offset, kMaxMpIntEncodedLen, "A3.t");
+  proof.v = ReadMpIntField(input, offset, kMaxMpIntEncodedLen, "A3.v");
+  proof.w = ReadMpIntField(input, offset, kMaxMpIntEncodedLen, "A3.w");
+  proof.s = ReadMpIntField(input, offset, kMaxMpIntEncodedLen, "A3.s");
+  proof.s1 = ReadMpIntField(input, offset, kMaxMpIntEncodedLen, "A3.s1");
+  proof.s2 = ReadMpIntField(input, offset, kMaxMpIntEncodedLen, "A3.s2");
+  proof.t1 = ReadMpIntField(input, offset, kMaxMpIntEncodedLen, "A3.t1");
+  proof.t2 = ReadMpIntField(input, offset, kMaxMpIntEncodedLen, "A3.t2");
   return proof;
 }
 
@@ -931,12 +927,8 @@ Scalar RandomNonZeroScalar() {
   }
 }
 
-mpz_class NormalizeModQ(const mpz_class& value) {
-  mpz_class out = value % Scalar::ModulusQ();
-  if (out < 0) {
-    out += Scalar::ModulusQ();
-  }
-  return out;
+BigInt NormalizeModQ(const BigInt& value) {
+  return bigint::NormalizeMod(value, Scalar::ModulusQMpInt());
 }
 
 std::optional<Scalar> InvertScalar(const Scalar& scalar) {
@@ -951,7 +943,7 @@ std::optional<Scalar> InvertScalar(const Scalar& scalar) {
 }
 
 bool IsHighScalar(const Scalar& scalar) {
-  static const mpz_class kHalfOrder = Scalar::ModulusQ() >> 1;
+  static const BigInt kHalfOrder = Scalar::ModulusQMpInt() >> 1;
   return scalar.value() > kHalfOrder;
 }
 
@@ -961,24 +953,22 @@ std::unordered_map<PartyIndex, Scalar> ComputeLagrangeAtZero(
   out.reserve(participants.size());
 
   for (PartyIndex i : participants) {
-    mpz_class numerator = 1;
-    mpz_class denominator = 1;
+    BigInt numerator(1);
+    BigInt denominator(1);
 
     for (PartyIndex j : participants) {
       if (j == i) {
         continue;
       }
 
-      const mpz_class neg_j = NormalizeModQ(-mpz_class(j));
-      numerator *= neg_j;
-      numerator %= Scalar::ModulusQ();
+      const BigInt neg_j = NormalizeModQ(BigInt(0) - BigInt(j));
+      numerator = NormalizeModQ(numerator * neg_j);
 
-      const mpz_class diff = NormalizeModQ(mpz_class(i) - mpz_class(j));
+      const BigInt diff = NormalizeModQ(BigInt(i) - BigInt(j));
       if (diff == 0) {
         TECDSA_THROW_ARGUMENT("duplicate participant id in lagrange coefficient set");
       }
-      denominator *= diff;
-      denominator %= Scalar::ModulusQ();
+      denominator = NormalizeModQ(denominator * diff);
     }
 
     Scalar lambda = Scalar(numerator) * Scalar(denominator).InverseModQ();
@@ -1131,7 +1121,7 @@ SignSession::SignSession(SignSessionConfig cfg)
     if (paillier_it == all_paillier_public_.end()) {
       TECDSA_THROW_ARGUMENT("all_paillier_public is missing participant key");
     }
-    if (MpzToMpInt(paillier_it->second.n) <= MinPaillierModulusQ8()) {
+    if (paillier_it->second.n <= MinPaillierModulusQ8()) {
       TECDSA_THROW_ARGUMENT("Paillier modulus must satisfy N > q^8");
     }
 
@@ -1792,7 +1782,7 @@ bool SignSession::HandlePhase2InitEnvelope(const Envelope& envelope) {
       TECDSA_THROW_ARGUMENT("phase2 mta instance id has invalid length");
     }
     const BigInt c1 =
-        ReadMpIntField(envelope.payload, &offset, kMaxMpzEncodedLen, "phase2 mta ciphertext c1");
+        ReadMpIntField(envelope.payload, &offset, kMaxMpIntEncodedLen, "phase2 mta ciphertext c1");
     const A1RangeProof a1_proof = ReadA1RangeProof(envelope.payload, &offset);
     if (offset != envelope.payload.size()) {
       TECDSA_THROW_ARGUMENT("sign phase2 init payload has trailing bytes");
@@ -1802,7 +1792,7 @@ bool SignSession::HandlePhase2InitEnvelope(const Envelope& envelope) {
     if (sender_pk_it == all_paillier_public_.end()) {
       TECDSA_THROW_ARGUMENT("missing Paillier public key for initiator");
     }
-    const BigInt n = MpzToMpInt(sender_pk_it->second.n);
+    const BigInt n = sender_pk_it->second.n;
     const BigInt n2 = n * n;
     if (c1 < 0 || c1 >= n2) {
       TECDSA_THROW_ARGUMENT("phase2 c1 is out of range");
@@ -1932,7 +1922,7 @@ bool SignSession::HandlePhase2ResponseEnvelope(const Envelope& envelope) {
       TECDSA_THROW_ARGUMENT("phase2 response instance id has invalid length");
     }
     const BigInt c2 =
-        ReadMpIntField(envelope.payload, &offset, kMaxMpzEncodedLen, "phase2 mta ciphertext c2");
+        ReadMpIntField(envelope.payload, &offset, kMaxMpIntEncodedLen, "phase2 mta ciphertext c2");
     std::optional<A3MtAProof> a3_proof;
     std::optional<A2MtAwcProof> a2_proof;
     if (mta_type == MtaType::kTimesGamma) {
@@ -1964,7 +1954,7 @@ bool SignSession::HandlePhase2ResponseEnvelope(const Envelope& envelope) {
     if (self_pk_it == all_paillier_public_.end()) {
       TECDSA_THROW_ARGUMENT("missing self Paillier public key");
     }
-    const BigInt n = MpzToMpInt(self_pk_it->second.n);
+    const BigInt n = self_pk_it->second.n;
     const BigInt n2 = n * n;
     if (c2 < 0 || c2 >= n2) {
       TECDSA_THROW_ARGUMENT("phase2 c2 is out of range");
@@ -2351,7 +2341,7 @@ void SignSession::InitializePhase2InstancesIfNeeded() {
   if (self_pk_it == all_paillier_public_.end()) {
     TECDSA_THROW_LOGIC("missing local Paillier or peer auxiliary parameters for phase2 init");
   }
-  const BigInt local_n = MpzToMpInt(self_pk_it->second.n);
+  const BigInt local_n = self_pk_it->second.n;
   const BigInt local_k_value = local_k_i_.mp_value();
   const Bytes session_id_bytes = session_id();
   const PartyIndex initiator_id = self_id();

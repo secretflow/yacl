@@ -32,19 +32,6 @@ constexpr size_t kMaxPaillierKeygenAttempts = 32;
 constexpr char kPhase1CommitDomain[] = "GG2019/keygen/phase1";
 constexpr char kSchnorrProofId[] = "GG2019/Schnorr/v1";
 
-BigInt MpzToMpInt(const mpz_class& value) {
-  return BigInt(value.get_str(10), 10);
-}
-
-mpz_class MpIntToMpz(const BigInt& value) {
-  mpz_class out;
-  const std::string decimal = value.ToString();
-  if (mpz_set_str(out.get_mpz_t(), decimal.c_str(), 10) != 0) {
-    TECDSA_THROW("failed to convert MPInt to mpz_class");
-  }
-  return out;
-}
-
 void ValidateParticipantsOrThrow(const std::vector<PartyIndex>& participants, PartyIndex self_id) {
   if (participants.size() < 2) {
     TECDSA_THROW_ARGUMENT("KeygenSession requires at least 2 participants");
@@ -229,7 +216,7 @@ const BigInt& MinPaillierModulusQ8() {
 }
 
 void ValidatePaillierPublicKeyOrThrow(const PaillierPublicKey& pub) {
-  if (MpzToMpInt(pub.n) <= MinPaillierModulusQ8()) {
+  if (pub.n <= MinPaillierModulusQ8()) {
     TECDSA_THROW_ARGUMENT("Paillier modulus must satisfy N > q^8");
   }
 }
@@ -468,9 +455,9 @@ Envelope KeygenSession::BuildPhase1CommitEnvelope() {
   payload.reserve(kCommitmentLen + 4 + 4 * 512 + 4 + 64);
   payload.insert(payload.end(), local_commitment_.begin(), local_commitment_.end());
   AppendMpIntField(local_paillier_->modulus_n_bigint(), &payload);
-  AppendMpIntField(MpzToMpInt(local_aux_rsa_params_.n_tilde), &payload);
-  AppendMpIntField(MpzToMpInt(local_aux_rsa_params_.h1), &payload);
-  AppendMpIntField(MpzToMpInt(local_aux_rsa_params_.h2), &payload);
+  AppendMpIntField(local_aux_rsa_params_.n_tilde, &payload);
+  AppendMpIntField(local_aux_rsa_params_.h1, &payload);
+  AppendMpIntField(local_aux_rsa_params_.h2, &payload);
   const Bytes aux_param_proof_wire = EncodeAuxRsaParamProof(local_aux_param_proof_);
   AppendSizedField(aux_param_proof_wire, &payload);
 
@@ -714,7 +701,7 @@ void KeygenSession::EnsureLocalPaillierPrepared() {
     const BigInt candidate_n = candidate->modulus_n_bigint();
     if (candidate_n > MinPaillierModulusQ8()) {
       local_paillier_ = std::move(candidate);
-      local_paillier_public_ = PaillierPublicKey{.n = MpIntToMpz(candidate_n)};
+      local_paillier_public_ = PaillierPublicKey{.n = candidate_n};
       result_.local_paillier = local_paillier_;
       result_.all_paillier_public[self_id()] = local_paillier_public_;
       return;
@@ -791,7 +778,7 @@ bool KeygenSession::HandlePhase1CommitEnvelope(const Envelope& envelope) {
     const BigInt paillier_n = ReadMpIntField(
         envelope.payload, &offset, kMaxPaillierModulusFieldLen, "keygen phase1 Paillier modulus");
 
-    const PaillierPublicKey pub{.n = MpIntToMpz(paillier_n)};
+    const PaillierPublicKey pub{.n = paillier_n};
     ValidatePaillierPublicKeyOrThrow(pub);
 
     AuxRsaParams aux_params;
@@ -803,15 +790,12 @@ bool KeygenSession::HandlePhase1CommitEnvelope(const Envelope& envelope) {
       }
       aux_params = DeriveAuxRsaParamsFromModulus(pub.n, envelope.from);
     } else {
-      aux_params.n_tilde =
-          MpIntToMpz(ReadMpIntField(
-              envelope.payload, &offset, kMaxPaillierModulusFieldLen, "keygen phase1 aux Ntilde"));
-      aux_params.h1 =
-          MpIntToMpz(ReadMpIntField(
-              envelope.payload, &offset, kMaxPaillierModulusFieldLen, "keygen phase1 aux h1"));
-      aux_params.h2 =
-          MpIntToMpz(ReadMpIntField(
-              envelope.payload, &offset, kMaxPaillierModulusFieldLen, "keygen phase1 aux h2"));
+      aux_params.n_tilde = ReadMpIntField(
+          envelope.payload, &offset, kMaxPaillierModulusFieldLen, "keygen phase1 aux Ntilde");
+      aux_params.h1 = ReadMpIntField(
+          envelope.payload, &offset, kMaxPaillierModulusFieldLen, "keygen phase1 aux h1");
+      aux_params.h2 = ReadMpIntField(
+          envelope.payload, &offset, kMaxPaillierModulusFieldLen, "keygen phase1 aux h2");
       if (!ValidateAuxRsaParams(aux_params)) {
         TECDSA_THROW_ARGUMENT("invalid aux RSA parameters");
       }

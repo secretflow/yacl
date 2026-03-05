@@ -435,7 +435,7 @@ void TestSignSessionSkeletonAndTimeout() {
                                             Bytes{6, 6, 6},
                                             std::chrono::seconds(5),
                                             paillier_1);
-  small_n_cfg.all_paillier_public[2].n = 17;
+  small_n_cfg.all_paillier_public[2].n = tecdsa::BigInt(17);
   ExpectThrow([&]() { (void)SignSession(std::move(small_n_cfg)); },
               "sign session must reject participant Paillier modulus not satisfying N > q^8");
 }

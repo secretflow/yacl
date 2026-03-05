@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstddef>
-#include <gmpxx.h>
 
 #include "yacl/math/mpint/mp_int.h"
 
@@ -9,18 +8,15 @@ namespace tecdsa {
 
 using BigInt = yacl::math::MPInt;
 
-struct PaillierCiphertextWithRandomBigInt {
+struct PaillierCiphertextWithRandom {
   BigInt ciphertext;
   BigInt randomness;
 };
 
-struct PaillierCiphertextWithRandom {
-  mpz_class ciphertext;
-  mpz_class randomness;
-};
+using PaillierCiphertextWithRandomBigInt = PaillierCiphertextWithRandom;
 
 struct PaillierPublicKey {
-  mpz_class n;
+  BigInt n = BigInt(0);
 };
 
 class PaillierProvider {
@@ -49,24 +45,12 @@ class PaillierProvider {
   BigInt generator_bigint() const;
   BigInt private_lambda_bigint() const;
 
-  mpz_class Encrypt(const mpz_class& plaintext) const;
-  PaillierCiphertextWithRandom EncryptWithRandom(const mpz_class& plaintext) const;
-  mpz_class EncryptWithProvidedRandom(const mpz_class& plaintext,
-                                      const mpz_class& randomness) const;
-
-  mpz_class Decrypt(const mpz_class& ciphertext) const;
-
-  mpz_class AddCiphertexts(const mpz_class& lhs_cipher,
-                           const mpz_class& rhs_cipher) const;
-  mpz_class AddPlaintext(const mpz_class& cipher, const mpz_class& plain) const;
-  mpz_class MulPlaintext(const mpz_class& cipher, const mpz_class& plain) const;
-
   bool VerifyKeyPair() const;
 
-  mpz_class modulus_n() const;
-  mpz_class modulus_n2() const;
-  mpz_class generator() const;
-  mpz_class private_lambda() const;
+  BigInt modulus_n() const;
+  BigInt modulus_n2() const;
+  BigInt generator() const;
+  BigInt private_lambda() const;
 
  private:
   void GenerateKeyPair(unsigned long modulus_bits);

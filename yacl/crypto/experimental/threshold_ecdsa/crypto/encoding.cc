@@ -1,7 +1,6 @@
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/encoding.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/common/errors.h"
 
-#include <string>
 #include <stdexcept>
 
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/bigint_utils.h"
@@ -25,19 +24,6 @@ uint32_t ReadU32Be(std::span<const uint8_t> input, size_t offset) {
          (static_cast<uint32_t>(input[offset + 1]) << 16) |
          (static_cast<uint32_t>(input[offset + 2]) << 8) |
          static_cast<uint32_t>(input[offset + 3]);
-}
-
-BigInt MpzToMpInt(const mpz_class& value) {
-  return BigInt(value.get_str(10), 10);
-}
-
-mpz_class MpIntToMpz(const BigInt& value) {
-  mpz_class out;
-  const std::string decimal = value.ToString();
-  if (mpz_set_str(out.get_mpz_t(), decimal.c_str(), 10) != 0) {
-    TECDSA_THROW("failed to convert MPInt to mpz_class");
-  }
-  return out;
 }
 
 }  // namespace
@@ -73,14 +59,6 @@ BigInt DecodeMpInt(std::span<const uint8_t> encoded, size_t max_len) {
   }
 
   return bigint::FromBigEndian(encoded.subspan(4, payload_len));
-}
-
-Bytes EncodeMpz(const mpz_class& value) {
-  return EncodeMpInt(MpzToMpInt(value));
-}
-
-mpz_class DecodeMpz(std::span<const uint8_t> encoded, size_t max_len) {
-  return MpIntToMpz(DecodeMpInt(encoded, max_len));
 }
 
 Bytes EncodePoint(const ECPoint& point) {

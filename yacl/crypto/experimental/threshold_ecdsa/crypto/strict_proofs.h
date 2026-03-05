@@ -1,6 +1,5 @@
 #pragma once
 
-#include <gmpxx.h>
 #include <cstdint>
 #include <optional>
 #include <span>
@@ -49,9 +48,9 @@ struct StrictProofVerifierContext {
 };
 
 struct AuxRsaParams {
-  mpz_class n_tilde;
-  mpz_class h1;
-  mpz_class h2;
+  BigInt n_tilde = BigInt(0);
+  BigInt h1 = BigInt(0);
+  BigInt h2 = BigInt(0);
 };
 
 struct SquareFreeProof {
@@ -64,10 +63,8 @@ struct AuxRsaParamProof {
   Bytes blob;
 };
 
-bool IsZnStarElement(const mpz_class& value, const mpz_class& modulus);
 bool IsZnStarElement(const BigInt& value, const BigInt& modulus);
 bool ValidateAuxRsaParams(const AuxRsaParams& params);
-bool IsLikelySquareFreeModulus(const mpz_class& modulus_n);
 bool IsLikelySquareFreeModulus(const BigInt& modulus_n);
 bool IsStrictProofScheme(StrictProofScheme scheme);
 bool IsDevProofScheme(StrictProofScheme scheme);
@@ -82,35 +79,35 @@ SquareFreeProof DecodeSquareFreeProof(std::span<const uint8_t> encoded, size_t m
 Bytes EncodeAuxRsaParamProof(const AuxRsaParamProof& proof);
 AuxRsaParamProof DecodeAuxRsaParamProof(std::span<const uint8_t> encoded, size_t max_len = 4096);
 
-AuxRsaParams DeriveAuxRsaParamsFromModulus(const mpz_class& modulus_n, PartyIndex party_id);
+AuxRsaParams DeriveAuxRsaParamsFromModulus(const BigInt& modulus_n, PartyIndex party_id);
 AuxRsaParams GenerateAuxRsaParams(uint32_t modulus_bits, PartyIndex party_id);
 
 SquareFreeProof BuildSquareFreeProof(
-    const mpz_class& modulus_n,
+    const BigInt& modulus_n,
     const StrictProofVerifierContext& context = {});
 SquareFreeProof BuildSquareFreeProofGmr98(
-    const mpz_class& modulus_n,
+    const BigInt& modulus_n,
     const StrictProofVerifierContext& context = {});
 SquareFreeProof BuildSquareFreeProofGmr98(
-    const mpz_class& modulus_n,
-    const mpz_class& lambda_n,
+    const BigInt& modulus_n,
+    const BigInt& lambda_n,
     const StrictProofVerifierContext& context = {});
 SquareFreeProof BuildSquareFreeProofWeak(
-    const mpz_class& modulus_n,
+    const BigInt& modulus_n,
     const StrictProofVerifierContext& context = {});
 SquareFreeProof BuildSquareFreeProofStrict(
-    const mpz_class& modulus_n,
+    const BigInt& modulus_n,
     const StrictProofVerifierContext& context = {});
-bool VerifySquareFreeProof(const mpz_class& modulus_n,
+bool VerifySquareFreeProof(const BigInt& modulus_n,
                            const SquareFreeProof& proof,
                            const StrictProofVerifierContext& context = {});
-bool VerifySquareFreeProofGmr98(const mpz_class& modulus_n,
+bool VerifySquareFreeProofGmr98(const BigInt& modulus_n,
                                 const SquareFreeProof& proof,
                                 const StrictProofVerifierContext& context = {});
-bool VerifySquareFreeProofWeak(const mpz_class& modulus_n,
+bool VerifySquareFreeProofWeak(const BigInt& modulus_n,
                                const SquareFreeProof& proof,
                                const StrictProofVerifierContext& context = {});
-bool VerifySquareFreeProofStrict(const mpz_class& modulus_n,
+bool VerifySquareFreeProofStrict(const BigInt& modulus_n,
                                  const SquareFreeProof& proof,
                                  const StrictProofVerifierContext& context = {});
 

@@ -340,7 +340,7 @@ void AssertKeygenOutputsConsistent(const std::vector<std::unique_ptr<KeygenSessi
              "Session result is missing Paillier public key for party " + std::to_string(party_id));
       Expect(it->second.n == expected_pub.n,
              "Session result has mismatched Paillier modulus for party " + std::to_string(party_id));
-      const BigInt party_n(it->second.n.get_str(10), 10);
+      const BigInt party_n = it->second.n;
       Expect(party_n > min_paillier_n,
              "Session result has Paillier modulus that does not satisfy N > q^8");
     }
@@ -383,7 +383,7 @@ void AssertKeygenOutputsConsistent(const std::vector<std::unique_ptr<KeygenSessi
     const auto self_paillier_it = current.all_paillier_public.find(self_id);
     Expect(self_paillier_it != current.all_paillier_public.end(),
            "Session result must contain its own Paillier public key entry");
-    const BigInt self_paillier_n(self_paillier_it->second.n.get_str(10), 10);
+    const BigInt self_paillier_n = self_paillier_it->second.n;
     Expect(self_paillier_n == current.local_paillier->modulus_n_bigint(),
            "Session local Paillier private key must match broadcast public key");
   }
