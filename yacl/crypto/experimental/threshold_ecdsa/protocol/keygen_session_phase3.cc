@@ -1,4 +1,16 @@
-#include "yacl/crypto/experimental/threshold_ecdsa/protocol/keygen_session.h"
+// Copyright 2026 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <cstddef>
 #include <exception>
@@ -8,6 +20,7 @@
 
 #include "yacl/crypto/experimental/threshold_ecdsa/common/errors.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/encoding.h"
+#include "yacl/crypto/experimental/threshold_ecdsa/protocol/keygen_session.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/protocol/keygen_session_internal.h"
 
 namespace tecdsa {
@@ -15,10 +28,12 @@ namespace ki = keygen_internal;
 
 Envelope KeygenSession::BuildPhase3XiProofEnvelope() {
   if (IsTerminal()) {
-    TECDSA_THROW_LOGIC("cannot build phase3 envelope for terminal keygen session");
+    TECDSA_THROW_LOGIC(
+        "cannot build phase3 envelope for terminal keygen session");
   }
   if (phase_ != KeygenPhase::kPhase3) {
-    TECDSA_THROW_LOGIC("BuildPhase3XiProofEnvelope must be called in keygen phase3");
+    TECDSA_THROW_LOGIC(
+        "BuildPhase3XiProofEnvelope must be called in keygen phase3");
   }
   if (!phase2_aggregates_ready_) {
     TECDSA_THROW_LOGIC("phase2 aggregates are not ready");
@@ -42,9 +57,10 @@ Envelope KeygenSession::BuildPhase3XiProofEnvelope() {
   }
 
   Bytes serialized;
-  const Bytes square_free_proof_wire = EncodeSquareFreeProof(local_square_free_proof_);
-  serialized.reserve(ki::kPointCompressedLen + ki::kPointCompressedLen + ki::kScalarLen +
-                     4 + square_free_proof_wire.size());
+  const Bytes square_free_proof_wire =
+      EncodeSquareFreeProof(local_square_free_proof_);
+  serialized.reserve(ki::kPointCompressedLen + ki::kPointCompressedLen +
+                     ki::kScalarLen + 4 + square_free_proof_wire.size());
   ki::AppendPoint(local_phase3_payload_->X_i, &serialized);
   ki::AppendPoint(local_phase3_payload_->proof.a, &serialized);
   ki::AppendScalar(local_phase3_payload_->proof.z, &serialized);
@@ -92,10 +108,12 @@ bool KeygenSession::HandlePhase3XiProofEnvelope(const Envelope& envelope) {
     SquareFreeProof square_free_proof;
     bool has_square_free_proof = false;
     if (offset < envelope.payload.size()) {
-      const Bytes square_free_proof_wire = ki::ReadSizedField(
-          envelope.payload, &offset, ki::kMaxProofFieldLen, "keygen phase3 square-free proof");
+      const Bytes square_free_proof_wire =
+          ki::ReadSizedField(envelope.payload, &offset, ki::kMaxProofFieldLen,
+                             "keygen phase3 square-free proof");
       if (!square_free_proof_wire.empty()) {
-        square_free_proof = DecodeSquareFreeProof(square_free_proof_wire, ki::kMaxProofBlobLen);
+        square_free_proof =
+            DecodeSquareFreeProof(square_free_proof_wire, ki::kMaxProofBlobLen);
         has_square_free_proof = true;
       }
     }
@@ -109,28 +127,34 @@ bool KeygenSession::HandlePhase3XiProofEnvelope(const Envelope& envelope) {
       if (!has_square_free_proof) {
         TECDSA_THROW_ARGUMENT("missing square-free proof in strict mode");
       }
-      if (expected_square_free_proof_profile_.scheme == StrictProofScheme::kUnknown) {
+      if (expected_square_free_proof_profile_.scheme ==
+          StrictProofScheme::kUnknown) {
         expected_square_free_proof_profile_ = square_free_proof.metadata;
         result_.square_free_proof_profile = expected_square_free_proof_profile_;
       }
       if (!ki::StrictMetadataCompatible(expected_square_free_proof_profile_,
-                                       square_free_proof.metadata)) {
-        TECDSA_THROW_ARGUMENT("square-free proof metadata is not compatible with strict profile");
+                                        square_free_proof.metadata)) {
+        TECDSA_THROW_ARGUMENT(
+            "square-free proof metadata is not compatible with strict profile");
       }
-      if (!VerifySquareFreeProofGmr98(pk_it->second.n, square_free_proof, context)) {
-        TECDSA_THROW_ARGUMENT("square-free proof verification failed in strict mode");
+      if (!VerifySquareFreeProofGmr98(pk_it->second.n, square_free_proof,
+                                      context)) {
+        TECDSA_THROW_ARGUMENT(
+            "square-free proof verification failed in strict mode");
       }
     } else if (has_square_free_proof &&
-               !VerifySquareFreeProof(pk_it->second.n,
-                                      square_free_proof,
-                                      ki::BuildStrictProofContext(session_id(), envelope.from))) {
+               !VerifySquareFreeProof(
+                   pk_it->second.n, square_free_proof,
+                   ki::BuildStrictProofContext(session_id(), envelope.from))) {
       TECDSA_THROW_ARGUMENT("square-free proof verification failed");
     }
 
-    phase3_broadcasts_[envelope.from] = Phase3BroadcastData{.X_i = X_i, .proof = proof};
+    phase3_broadcasts_[envelope.from] =
+        Phase3BroadcastData{.X_i = X_i, .proof = proof};
     result_.all_X_i[envelope.from] = X_i;
     if (has_square_free_proof) {
-      result_.all_square_free_proofs[envelope.from] = std::move(square_free_proof);
+      result_.all_square_free_proofs[envelope.from] =
+          std::move(square_free_proof);
     }
   } catch (const std::exception& ex) {
     Abort(std::string("invalid keygen phase3 payload: ") + ex.what());
@@ -159,7 +183,8 @@ void KeygenSession::MaybeAdvanceAfterPhase3() {
     return;
   }
   if (strict_mode_) {
-    if (result_.square_free_proof_profile.scheme == StrictProofScheme::kUnknown) {
+    if (result_.square_free_proof_profile.scheme ==
+        StrictProofScheme::kUnknown) {
       return;
     }
     if (result_.all_square_free_proofs.size() != participants_.size()) {
@@ -173,12 +198,13 @@ void KeygenSession::MaybeAdvanceAfterPhase3() {
         return;
       }
       if (!ki::StrictMetadataCompatible(result_.square_free_proof_profile,
-                                       square_it->second.metadata)) {
+                                        square_it->second.metadata)) {
         return;
       }
       const StrictProofVerifierContext context =
           ki::BuildStrictProofContext(session_id(), party);
-      if (!VerifySquareFreeProofGmr98(pk_it->second.n, square_it->second, context)) {
+      if (!VerifySquareFreeProofGmr98(pk_it->second.n, square_it->second,
+                                      context)) {
         return;
       }
     }
@@ -197,7 +223,8 @@ SchnorrProof KeygenSession::BuildSchnorrProof(const ECPoint& statement,
   while (true) {
     const Scalar r = ki::RandomNonZeroScalar();
     const ECPoint a = ECPoint::GeneratorMultiply(r);
-    const Scalar e = ki::BuildSchnorrChallenge(session_id(), self_id(), statement, a);
+    const Scalar e =
+        ki::BuildSchnorrChallenge(session_id(), self_id(), statement, a);
     const Scalar z = r + (e * witness);
     if (z.value() == 0) {
       continue;
@@ -214,7 +241,8 @@ bool KeygenSession::VerifySchnorrProof(PartyIndex prover_id,
   }
 
   try {
-    const Scalar e = ki::BuildSchnorrChallenge(session_id(), prover_id, statement, proof.a);
+    const Scalar e =
+        ki::BuildSchnorrChallenge(session_id(), prover_id, statement, proof.a);
     const ECPoint lhs = ECPoint::GeneratorMultiply(proof.z);
 
     ECPoint rhs = proof.a;

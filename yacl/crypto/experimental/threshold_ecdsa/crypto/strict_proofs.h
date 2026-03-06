@@ -1,3 +1,17 @@
+// Copyright 2026 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 
 #include <cstdint>
@@ -68,36 +82,35 @@ bool ValidateAuxRsaParams(const AuxRsaParams& params);
 bool IsLikelySquareFreeModulus(const BigInt& modulus_n);
 bool IsStrictProofScheme(StrictProofScheme scheme);
 bool IsDevProofScheme(StrictProofScheme scheme);
-bool HasProofCapability(const ProofMetadata& metadata, uint32_t capability_mask);
+bool HasProofCapability(const ProofMetadata& metadata,
+                        uint32_t capability_mask);
 bool IsProofMetadataCompatible(const ProofMetadata& expected,
                                const ProofMetadata& candidate,
                                bool require_strict_scheme);
 
 Bytes EncodeSquareFreeProof(const SquareFreeProof& proof);
-SquareFreeProof DecodeSquareFreeProof(std::span<const uint8_t> encoded, size_t max_len = 4096);
+SquareFreeProof DecodeSquareFreeProof(std::span<const uint8_t> encoded,
+                                      size_t max_len = 4096);
 
 Bytes EncodeAuxRsaParamProof(const AuxRsaParamProof& proof);
-AuxRsaParamProof DecodeAuxRsaParamProof(std::span<const uint8_t> encoded, size_t max_len = 4096);
+AuxRsaParamProof DecodeAuxRsaParamProof(std::span<const uint8_t> encoded,
+                                        size_t max_len = 4096);
 
-AuxRsaParams DeriveAuxRsaParamsFromModulus(const BigInt& modulus_n, PartyIndex party_id);
+AuxRsaParams DeriveAuxRsaParamsFromModulus(const BigInt& modulus_n,
+                                           PartyIndex party_id);
 AuxRsaParams GenerateAuxRsaParams(uint32_t modulus_bits, PartyIndex party_id);
 
 SquareFreeProof BuildSquareFreeProof(
-    const BigInt& modulus_n,
-    const StrictProofVerifierContext& context = {});
+    const BigInt& modulus_n, const StrictProofVerifierContext& context = {});
 SquareFreeProof BuildSquareFreeProofGmr98(
-    const BigInt& modulus_n,
-    const StrictProofVerifierContext& context = {});
+    const BigInt& modulus_n, const StrictProofVerifierContext& context = {});
 SquareFreeProof BuildSquareFreeProofGmr98(
-    const BigInt& modulus_n,
-    const BigInt& lambda_n,
+    const BigInt& modulus_n, const BigInt& lambda_n,
     const StrictProofVerifierContext& context = {});
 SquareFreeProof BuildSquareFreeProofWeak(
-    const BigInt& modulus_n,
-    const StrictProofVerifierContext& context = {});
+    const BigInt& modulus_n, const StrictProofVerifierContext& context = {});
 SquareFreeProof BuildSquareFreeProofStrict(
-    const BigInt& modulus_n,
-    const StrictProofVerifierContext& context = {});
+    const BigInt& modulus_n, const StrictProofVerifierContext& context = {});
 bool VerifySquareFreeProof(const BigInt& modulus_n,
                            const SquareFreeProof& proof,
                            const StrictProofVerifierContext& context = {});
@@ -107,27 +120,24 @@ bool VerifySquareFreeProofGmr98(const BigInt& modulus_n,
 bool VerifySquareFreeProofWeak(const BigInt& modulus_n,
                                const SquareFreeProof& proof,
                                const StrictProofVerifierContext& context = {});
-bool VerifySquareFreeProofStrict(const BigInt& modulus_n,
-                                 const SquareFreeProof& proof,
-                                 const StrictProofVerifierContext& context = {});
+bool VerifySquareFreeProofStrict(
+    const BigInt& modulus_n, const SquareFreeProof& proof,
+    const StrictProofVerifierContext& context = {});
 
 AuxRsaParamProof BuildAuxRsaParamProof(
-    const AuxRsaParams& params,
-    const StrictProofVerifierContext& context = {});
+    const AuxRsaParams& params, const StrictProofVerifierContext& context = {});
 AuxRsaParamProof BuildAuxRsaParamProofWeak(
-    const AuxRsaParams& params,
-    const StrictProofVerifierContext& context = {});
+    const AuxRsaParams& params, const StrictProofVerifierContext& context = {});
 AuxRsaParamProof BuildAuxRsaParamProofStrict(
-    const AuxRsaParams& params,
-    const StrictProofVerifierContext& context = {});
+    const AuxRsaParams& params, const StrictProofVerifierContext& context = {});
 bool VerifyAuxRsaParamProof(const AuxRsaParams& params,
                             const AuxRsaParamProof& proof,
                             const StrictProofVerifierContext& context = {});
 bool VerifyAuxRsaParamProofWeak(const AuxRsaParams& params,
                                 const AuxRsaParamProof& proof,
                                 const StrictProofVerifierContext& context = {});
-bool VerifyAuxRsaParamProofStrict(const AuxRsaParams& params,
-                                  const AuxRsaParamProof& proof,
-                                  const StrictProofVerifierContext& context = {});
+bool VerifyAuxRsaParamProofStrict(
+    const AuxRsaParams& params, const AuxRsaParamProof& proof,
+    const StrictProofVerifierContext& context = {});
 
 }  // namespace tecdsa

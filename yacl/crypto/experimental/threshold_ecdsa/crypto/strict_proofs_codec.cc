@@ -1,4 +1,16 @@
-#include "yacl/crypto/experimental/threshold_ecdsa/crypto/strict_proofs_internal.h"
+// Copyright 2026 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <cstddef>
 #include <cstdint>
@@ -8,6 +20,7 @@
 
 #include "yacl/crypto/experimental/threshold_ecdsa/common/errors.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/encoding.h"
+#include "yacl/crypto/experimental/threshold_ecdsa/crypto/strict_proofs_internal.h"
 
 namespace tecdsa::strict_proofs_internal {
 namespace {
@@ -40,10 +53,8 @@ void AppendSizedField(std::span<const uint8_t> field, Bytes* out) {
   out->insert(out->end(), field.begin(), field.end());
 }
 
-Bytes ReadSizedField(std::span<const uint8_t> input,
-                     size_t* offset,
-                     size_t max_len,
-                     const char* field_name) {
+Bytes ReadSizedField(std::span<const uint8_t> input, size_t* offset,
+                     size_t max_len, const char* field_name) {
   const uint32_t len = ReadU32Be(input, offset);
   if (len > max_len) {
     TECDSA_THROW_ARGUMENT(std::string(field_name) + " exceeds maximum length");
@@ -63,8 +74,10 @@ void AppendMpIntField(const BigInt& value, Bytes* out) {
   AppendSizedField(encoded, out);
 }
 
-BigInt ReadMpIntField(std::span<const uint8_t> input, size_t* offset, const char* field_name) {
-  const Bytes encoded = ReadSizedField(input, offset, kMaxStrictFieldLen, field_name);
+BigInt ReadMpIntField(std::span<const uint8_t> input, size_t* offset,
+                      const char* field_name) {
+  const Bytes encoded =
+      ReadSizedField(input, offset, kMaxStrictFieldLen, field_name);
   return DecodeMpInt(encoded, kMaxStrictFieldLen);
 }
 
@@ -107,10 +120,9 @@ ProofMetadata MakeWeakMetadata(const char* scheme_id) {
 
 ProofMetadata MakeStrictMetadata(const char* scheme_id,
                                  const StrictProofVerifierContext& context) {
-  uint32_t capability_flags =
-      kProofCapabilityStrictReady |
-      kProofCapabilityAlgebraicChecks |
-      kProofCapabilityFreshRandomness;
+  uint32_t capability_flags = kProofCapabilityStrictReady |
+                              kProofCapabilityAlgebraicChecks |
+                              kProofCapabilityFreshRandomness;
   if (HasContextBinding(context)) {
     capability_flags |= kProofCapabilityContextBinding;
   }
@@ -123,12 +135,11 @@ ProofMetadata MakeStrictMetadata(const char* scheme_id,
   };
 }
 
-ProofMetadata MakeSquareFreeGmr98Metadata(const StrictProofVerifierContext& context) {
+ProofMetadata MakeSquareFreeGmr98Metadata(
+    const StrictProofVerifierContext& context) {
   uint32_t capability_flags =
-      kProofCapabilityStrictReady |
-      kProofCapabilityAlgebraicChecks |
-      kProofCapabilityFreshRandomness |
-      kProofCapabilityHeuristicChecks;
+      kProofCapabilityStrictReady | kProofCapabilityAlgebraicChecks |
+      kProofCapabilityFreshRandomness | kProofCapabilityHeuristicChecks;
   if (HasContextBinding(context)) {
     capability_flags |= kProofCapabilityContextBinding;
   }
@@ -141,9 +152,9 @@ ProofMetadata MakeSquareFreeGmr98Metadata(const StrictProofVerifierContext& cont
   };
 }
 
-Bytes EncodeProofWire(const ProofMetadata& metadata, std::span<const uint8_t> blob) {
-  if (metadata.scheme == StrictProofScheme::kUnknown &&
-      metadata.version == 0 &&
+Bytes EncodeProofWire(const ProofMetadata& metadata,
+                      std::span<const uint8_t> blob) {
+  if (metadata.scheme == StrictProofScheme::kUnknown && metadata.version == 0 &&
       metadata.capability_flags == kProofCapabilityNone &&
       metadata.scheme_id.empty()) {
     return Bytes(blob.begin(), blob.end());
@@ -152,7 +163,8 @@ Bytes EncodeProofWire(const ProofMetadata& metadata, std::span<const uint8_t> bl
   if (blob.size() > UINT32_MAX) {
     TECDSA_THROW_ARGUMENT("proof blob exceeds uint32 length");
   }
-  if (metadata.scheme_id.size() > UINT32_MAX || metadata.scheme_id.size() > kMaxSchemeIdLen) {
+  if (metadata.scheme_id.size() > UINT32_MAX ||
+      metadata.scheme_id.size() > kMaxSchemeIdLen) {
     TECDSA_THROW_ARGUMENT("proof scheme id exceeds maximum length");
   }
 
@@ -169,8 +181,8 @@ Bytes EncodeProofWire(const ProofMetadata& metadata, std::span<const uint8_t> bl
   return out;
 }
 
-std::pair<ProofMetadata, Bytes> DecodeProofWire(std::span<const uint8_t> encoded,
-                                                size_t max_len) {
+std::pair<ProofMetadata, Bytes> DecodeProofWire(
+    std::span<const uint8_t> encoded, size_t max_len) {
   if (encoded.empty()) {
     return {ProofMetadata{}, Bytes{}};
   }
@@ -196,7 +208,8 @@ std::pair<ProofMetadata, Bytes> DecodeProofWire(std::span<const uint8_t> encoded
       }
 
       metadata.scheme_id.assign(
-          reinterpret_cast<const char*>(encoded.data() + static_cast<std::ptrdiff_t>(offset)),
+          reinterpret_cast<const char*>(encoded.data() +
+                                        static_cast<std::ptrdiff_t>(offset)),
           scheme_id_len);
       offset += scheme_id_len;
 
@@ -246,10 +259,12 @@ Bytes EncodeSquareFreeStrictPayload(const SquareFreeStrictPayload& payload) {
   return out;
 }
 
-SquareFreeStrictPayload DecodeSquareFreeStrictPayload(std::span<const uint8_t> blob) {
+SquareFreeStrictPayload DecodeSquareFreeStrictPayload(
+    std::span<const uint8_t> blob) {
   size_t offset = 0;
   SquareFreeStrictPayload payload;
-  payload.nonce = ReadSizedField(blob, &offset, kMaxStrictNonceLen, "square-free nonce");
+  payload.nonce =
+      ReadSizedField(blob, &offset, kMaxStrictNonceLen, "square-free nonce");
   payload.y = ReadMpIntField(blob, &offset, "square-free y");
   payload.t1 = ReadMpIntField(blob, &offset, "square-free t1");
   payload.t2 = ReadMpIntField(blob, &offset, "square-free t2");
@@ -278,17 +293,20 @@ Bytes EncodeSquareFreeGmr98Payload(const SquareFreeGmr98Payload& payload) {
   return out;
 }
 
-SquareFreeGmr98Payload DecodeSquareFreeGmr98Payload(std::span<const uint8_t> blob) {
+SquareFreeGmr98Payload DecodeSquareFreeGmr98Payload(
+    std::span<const uint8_t> blob) {
   size_t offset = 0;
   SquareFreeGmr98Payload payload;
-  payload.nonce = ReadSizedField(blob, &offset, kMaxStrictNonceLen, "square-free GMR98 nonce");
+  payload.nonce = ReadSizedField(blob, &offset, kMaxStrictNonceLen,
+                                 "square-free GMR98 nonce");
   payload.rounds = ReadU32Be(blob, &offset);
   if (payload.rounds == 0 || payload.rounds > kMaxSquareFreeGmr98Rounds) {
     TECDSA_THROW_ARGUMENT("square-free GMR98 rounds out of range");
   }
   payload.roots.reserve(payload.rounds);
   for (uint32_t i = 0; i < payload.rounds; ++i) {
-    payload.roots.push_back(ReadMpIntField(blob, &offset, "square-free GMR98 root"));
+    payload.roots.push_back(
+        ReadMpIntField(blob, &offset, "square-free GMR98 root"));
   }
   if (offset != blob.size()) {
     TECDSA_THROW_ARGUMENT("square-free GMR98 payload has trailing bytes");
@@ -307,10 +325,12 @@ Bytes EncodeAuxParamStrictPayload(const AuxParamStrictPayload& payload) {
   return out;
 }
 
-AuxParamStrictPayload DecodeAuxParamStrictPayload(std::span<const uint8_t> blob) {
+AuxParamStrictPayload DecodeAuxParamStrictPayload(
+    std::span<const uint8_t> blob) {
   size_t offset = 0;
   AuxParamStrictPayload payload;
-  payload.nonce = ReadSizedField(blob, &offset, kMaxStrictNonceLen, "aux-param nonce");
+  payload.nonce =
+      ReadSizedField(blob, &offset, kMaxStrictNonceLen, "aux-param nonce");
   payload.c1 = ReadMpIntField(blob, &offset, "aux-param c1");
   payload.c2 = ReadMpIntField(blob, &offset, "aux-param c2");
   payload.t1 = ReadMpIntField(blob, &offset, "aux-param t1");

@@ -1,9 +1,23 @@
+// Copyright 2026 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/scalar.h"
-#include "yacl/crypto/experimental/threshold_ecdsa/common/errors.h"
 
 #include <algorithm>
 #include <stdexcept>
 
+#include "yacl/crypto/experimental/threshold_ecdsa/common/errors.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/bigint_utils.h"
 
 namespace tecdsa {
@@ -29,9 +43,7 @@ Scalar::Scalar() : Scalar(BigInt(0)) {}
 
 Scalar::Scalar(const BigInt& value) : value_(NormalizeToQ(value)) {}
 
-Scalar Scalar::FromUint64(uint64_t value) {
-  return Scalar(BigInt(value));
-}
+Scalar Scalar::FromUint64(uint64_t value) { return Scalar(BigInt(value)); }
 
 Scalar Scalar::FromBigEndianModQ(std::span<const uint8_t> bytes) {
   return Scalar(ImportBigEndian(bytes));
@@ -56,13 +68,9 @@ std::array<uint8_t, 32> Scalar::ToCanonicalBytes() const {
   return out;
 }
 
-const Scalar::BigInt& Scalar::mp_value() const {
-  return value_;
-}
+const Scalar::BigInt& Scalar::mp_value() const { return value_; }
 
-const Scalar::BigInt& Scalar::value() const {
-  return value_;
-}
+const Scalar::BigInt& Scalar::value() const { return value_; }
 
 Scalar Scalar::operator+(const Scalar& other) const {
   return Scalar(value_ + other.value_);
@@ -92,16 +100,10 @@ bool Scalar::operator==(const Scalar& other) const {
   return value_ == other.value_;
 }
 
-bool Scalar::operator!=(const Scalar& other) const {
-  return !(*this == other);
-}
+bool Scalar::operator!=(const Scalar& other) const { return !(*this == other); }
 
-const Scalar::BigInt& Scalar::ModulusQMpInt() {
-  return kSecp256k1OrderMpInt;
-}
+const Scalar::BigInt& Scalar::ModulusQMpInt() { return kSecp256k1OrderMpInt; }
 
-const Scalar::BigInt& Scalar::ModulusQ() {
-  return kSecp256k1OrderMpInt;
-}
+const Scalar::BigInt& Scalar::ModulusQ() { return kSecp256k1OrderMpInt; }
 
 }  // namespace tecdsa

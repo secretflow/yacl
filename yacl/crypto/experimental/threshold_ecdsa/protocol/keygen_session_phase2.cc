@@ -1,4 +1,16 @@
-#include "yacl/crypto/experimental/threshold_ecdsa/protocol/keygen_session.h"
+// Copyright 2026 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <cstddef>
 #include <exception>
@@ -11,6 +23,7 @@
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/bigint_utils.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/commitment.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/encoding.h"
+#include "yacl/crypto/experimental/threshold_ecdsa/protocol/keygen_session.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/protocol/keygen_session_internal.h"
 
 namespace tecdsa {
@@ -33,7 +46,8 @@ void KeygenSession::EnsureLocalPolynomialPrepared() {
     candidate_shares.reserve(participants_.size());
     bool has_zero_share = false;
     for (PartyIndex party : participants_) {
-      const Scalar share = ki::EvaluatePolynomialAt(candidate_coefficients, party);
+      const Scalar share =
+          ki::EvaluatePolynomialAt(candidate_coefficients, party);
       if (share.value() == 0) {
         has_zero_share = true;
         break;
@@ -58,31 +72,36 @@ void KeygenSession::EnsureLocalPolynomialPrepared() {
   }
 
   const Bytes y_i_bytes = EncodePoint(local_y_i_);
-  const CommitmentResult commit = CommitMessage(ki::kPhase1CommitDomain, y_i_bytes);
+  const CommitmentResult commit =
+      CommitMessage(ki::kPhase1CommitDomain, y_i_bytes);
   local_commitment_ = commit.commitment;
   local_open_randomness_ = commit.randomness;
 }
 
 std::vector<Envelope> KeygenSession::BuildPhase2OpenAndShareEnvelopes() {
   if (IsTerminal()) {
-    TECDSA_THROW_LOGIC("cannot build phase2 envelopes for terminal keygen session");
+    TECDSA_THROW_LOGIC(
+        "cannot build phase2 envelopes for terminal keygen session");
   }
   if (phase_ != KeygenPhase::kPhase2) {
-    TECDSA_THROW_LOGIC("BuildPhase2OpenAndShareEnvelopes must be called in keygen phase2");
+    TECDSA_THROW_LOGIC(
+        "BuildPhase2OpenAndShareEnvelopes must be called in keygen phase2");
   }
 
   EnsureLocalPolynomialPrepared();
   local_phase2_ready_ = true;
-  phase2_open_data_[self_id()] =
-      Phase2OpenData{local_y_i_, local_open_randomness_, local_vss_commitments_};
+  phase2_open_data_[self_id()] = Phase2OpenData{
+      local_y_i_, local_open_randomness_, local_vss_commitments_};
   phase2_verified_shares_[self_id()] = local_shares_.at(self_id());
 
   Bytes open_payload;
-  open_payload.reserve(ki::kPointCompressedLen + 4 + local_open_randomness_.size() +
-                       4 + ki::kPointCompressedLen * local_vss_commitments_.size());
+  open_payload.reserve(ki::kPointCompressedLen + 4 +
+                       local_open_randomness_.size() + 4 +
+                       ki::kPointCompressedLen * local_vss_commitments_.size());
   ki::AppendPoint(local_y_i_, &open_payload);
   ki::AppendSizedField(local_open_randomness_, &open_payload);
-  ki::AppendU32Be(static_cast<uint32_t>(local_vss_commitments_.size()), &open_payload);
+  ki::AppendU32Be(static_cast<uint32_t>(local_vss_commitments_.size()),
+                  &open_payload);
   for (const ECPoint& commitment : local_vss_commitments_) {
     ki::AppendPoint(commitment, &open_payload);
   }
@@ -129,11 +148,13 @@ bool KeygenSession::HandlePhase2OpenEnvelope(const Envelope& envelope) {
   try {
     size_t offset = 0;
     const ECPoint y_i = ki::ReadPoint(envelope.payload, &offset);
-    const Bytes randomness = ki::ReadSizedField(
-        envelope.payload, &offset, ki::kMaxOpenRandomnessLen, "keygen phase2 open randomness");
+    const Bytes randomness =
+        ki::ReadSizedField(envelope.payload, &offset, ki::kMaxOpenRandomnessLen,
+                           "keygen phase2 open randomness");
     const uint32_t commitment_count = ki::ReadU32Be(envelope.payload, &offset);
     if (commitment_count != threshold_ + 1) {
-      TECDSA_THROW_ARGUMENT("keygen phase2 commitments count does not match threshold");
+      TECDSA_THROW_ARGUMENT(
+          "keygen phase2 commitments count does not match threshold");
     }
 
     std::vector<ECPoint> commitments;
@@ -152,12 +173,13 @@ bool KeygenSession::HandlePhase2OpenEnvelope(const Envelope& envelope) {
     }
 
     const Bytes y_i_bytes = EncodePoint(y_i);
-    if (!VerifyCommitment(
-            ki::kPhase1CommitDomain, y_i_bytes, randomness, commitment_it->second)) {
+    if (!VerifyCommitment(ki::kPhase1CommitDomain, y_i_bytes, randomness,
+                          commitment_it->second)) {
       TECDSA_THROW_ARGUMENT("phase2 open does not match phase1 commitment");
     }
     if (commitments.empty() || commitments.front() != y_i) {
-      TECDSA_THROW_ARGUMENT("phase2 Feldman commitments do not match opened Y_i");
+      TECDSA_THROW_ARGUMENT(
+          "phase2 Feldman commitments do not match opened Y_i");
     }
 
     phase2_open_data_[envelope.from] = Phase2OpenData{
@@ -220,7 +242,8 @@ bool KeygenSession::HandlePhase2ShareEnvelope(const Envelope& envelope) {
   return true;
 }
 
-bool KeygenSession::VerifyDealerShareForSelf(PartyIndex dealer, const Scalar& share) const {
+bool KeygenSession::VerifyDealerShareForSelf(PartyIndex dealer,
+                                             const Scalar& share) const {
   if (share.value() == 0) {
     return false;
   }
@@ -309,7 +332,8 @@ void KeygenSession::ComputePhase2Aggregates() {
     try {
       y_sum = y_sum.Add(open_it->second.y_i);
     } catch (const std::exception& ex) {
-      Abort(std::string("failed to aggregate keygen public key points: ") + ex.what());
+      Abort(std::string("failed to aggregate keygen public key points: ") +
+            ex.what());
       return;
     }
   }

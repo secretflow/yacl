@@ -1,8 +1,22 @@
+// Copyright 2026 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/commitment.h"
-#include "yacl/crypto/experimental/threshold_ecdsa/common/errors.h"
 
 #include <stdexcept>
 
+#include "yacl/crypto/experimental/threshold_ecdsa/common/errors.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/hash.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/random.h"
 
@@ -30,10 +44,12 @@ Bytes BuildCommitPreimage(const std::string& domain,
                           std::span<const uint8_t> message,
                           std::span<const uint8_t> randomness) {
   Bytes preimage;
-  preimage.reserve(sizeof(kCommitPrefix) - 1 + domain.size() + message.size() + randomness.size() + 12);
+  preimage.reserve(sizeof(kCommitPrefix) - 1 + domain.size() + message.size() +
+                   randomness.size() + 12);
 
   const std::span<const uint8_t> prefix_bytes(
-      reinterpret_cast<const uint8_t*>(kCommitPrefix), sizeof(kCommitPrefix) - 1);
+      reinterpret_cast<const uint8_t*>(kCommitPrefix),
+      sizeof(kCommitPrefix) - 1);
   const std::span<const uint8_t> domain_bytes(
       reinterpret_cast<const uint8_t*>(domain.data()), domain.size());
 
@@ -67,7 +83,8 @@ bool VerifyCommitment(const std::string& domain,
                       std::span<const uint8_t> randomness,
                       std::span<const uint8_t> commitment) {
   const Bytes expected = ComputeCommitment(domain, message, randomness);
-  return std::equal(expected.begin(), expected.end(), commitment.begin(), commitment.end());
+  return std::equal(expected.begin(), expected.end(), commitment.begin(),
+                    commitment.end());
 }
 
 }  // namespace tecdsa

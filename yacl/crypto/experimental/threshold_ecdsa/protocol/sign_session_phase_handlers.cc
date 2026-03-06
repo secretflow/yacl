@@ -1,4 +1,16 @@
-#include "yacl/crypto/experimental/threshold_ecdsa/protocol/sign_session.h"
+// Copyright 2026 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <cstddef>
 #include <exception>
@@ -9,6 +21,7 @@
 
 #include "yacl/crypto/experimental/threshold_ecdsa/common/errors.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/commitment.h"
+#include "yacl/crypto/experimental/threshold_ecdsa/protocol/sign_session.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/protocol/sign_session_internal.h"
 
 namespace tecdsa {
@@ -50,13 +63,14 @@ bool SignSession::HandlePhase2InitEnvelope(const Envelope& envelope) {
     }
     const MtaType mta_type = static_cast<MtaType>(raw_type);
 
-    const Bytes instance_id =
-        ReadSizedField(envelope.payload, &offset, kMtaInstanceIdLen, "phase2 mta instance id");
+    const Bytes instance_id = ReadSizedField(
+        envelope.payload, &offset, kMtaInstanceIdLen, "phase2 mta instance id");
     if (instance_id.size() != kMtaInstanceIdLen) {
       TECDSA_THROW_ARGUMENT("phase2 mta instance id has invalid length");
     }
     const BigInt c1 =
-        ReadMpIntField(envelope.payload, &offset, kMaxMpIntEncodedLen, "phase2 mta ciphertext c1");
+        ReadMpIntField(envelope.payload, &offset, kMaxMpIntEncodedLen,
+                       "phase2 mta ciphertext c1");
     const A1RangeProof a1_proof = ReadA1RangeProof(envelope.payload, &offset);
     if (offset != envelope.payload.size()) {
       TECDSA_THROW_ARGUMENT("sign phase2 init payload has trailing bytes");
@@ -85,12 +99,15 @@ bool SignSession::HandlePhase2InitEnvelope(const Envelope& envelope) {
       TECDSA_THROW_ARGUMENT("phase2 A1 range proof verification failed");
     }
 
-    const std::string request_key = MakeResponderRequestKey(envelope.from, static_cast<uint8_t>(raw_type));
+    const std::string request_key =
+        MakeResponderRequestKey(envelope.from, static_cast<uint8_t>(raw_type));
     const std::string instance_key = BytesToKey(instance_id);
-    const auto seen_request_it = phase2_responder_requests_seen_.find(request_key);
+    const auto seen_request_it =
+        phase2_responder_requests_seen_.find(request_key);
     if (seen_request_it != phase2_responder_requests_seen_.end()) {
       if (seen_request_it->second != instance_key) {
-        TECDSA_THROW_ARGUMENT("phase2 request instance mismatch for sender/type");
+        TECDSA_THROW_ARGUMENT(
+            "phase2 request instance mismatch for sender/type");
       }
       return true;
     }
@@ -109,7 +126,8 @@ bool SignSession::HandlePhase2InitEnvelope(const Envelope& envelope) {
     if (mta_type == MtaType::kTimesGamma) {
       phase2_mta_responder_sum_ = phase2_mta_responder_sum_ + responder_share;
     } else {
-      phase2_mtawc_responder_sum_ = phase2_mtawc_responder_sum_ + responder_share;
+      phase2_mtawc_responder_sum_ =
+          phase2_mtawc_responder_sum_ + responder_share;
     }
     phase2_responder_requests_seen_.emplace(request_key, instance_key);
 
@@ -130,14 +148,8 @@ bool SignSession::HandlePhase2InitEnvelope(const Envelope& envelope) {
     AppendMpIntField(c2, &payload);
     if (mta_type == MtaType::kTimesGamma) {
       const A3MtAProof a3_proof =
-          ProveA3MtA(response_ctx,
-                     n,
-                     initiator_aux_it->second,
-                     c1,
-                     c2,
-                     witness.mp_value(),
-                     y,
-                     r_b);
+          ProveA3MtA(response_ctx, n, initiator_aux_it->second, c1, c2,
+                     witness.mp_value(), y, r_b);
       AppendA3MtAProof(a3_proof, &payload);
     } else {
       const auto statement_x_it = W_points_.find(self_id());
@@ -145,15 +157,8 @@ bool SignSession::HandlePhase2InitEnvelope(const Envelope& envelope) {
         TECDSA_THROW_ARGUMENT("missing responder W_j point for MtAwc proof");
       }
       const A2MtAwcProof a2_proof =
-          ProveA2MtAwc(response_ctx,
-                       n,
-                       initiator_aux_it->second,
-                       c1,
-                       c2,
-                       statement_x_it->second,
-                       witness.mp_value(),
-                       y,
-                       r_b);
+          ProveA2MtAwc(response_ctx, n, initiator_aux_it->second, c1, c2,
+                       statement_x_it->second, witness.mp_value(), y, r_b);
       AppendA2MtAwcProof(a2_proof, &payload);
     }
 
@@ -190,13 +195,14 @@ bool SignSession::HandlePhase2ResponseEnvelope(const Envelope& envelope) {
     }
     const MtaType mta_type = static_cast<MtaType>(raw_type);
 
-    const Bytes instance_id =
-        ReadSizedField(envelope.payload, &offset, kMtaInstanceIdLen, "phase2 mta instance id");
+    const Bytes instance_id = ReadSizedField(
+        envelope.payload, &offset, kMtaInstanceIdLen, "phase2 mta instance id");
     if (instance_id.size() != kMtaInstanceIdLen) {
       TECDSA_THROW_ARGUMENT("phase2 response instance id has invalid length");
     }
     const BigInt c2 =
-        ReadMpIntField(envelope.payload, &offset, kMaxMpIntEncodedLen, "phase2 mta ciphertext c2");
+        ReadMpIntField(envelope.payload, &offset, kMaxMpIntEncodedLen,
+                       "phase2 mta ciphertext c2");
     std::optional<A3MtAProof> a3_proof;
     std::optional<A2MtAwcProof> a2_proof;
     if (mta_type == MtaType::kTimesGamma) {
@@ -247,7 +253,8 @@ bool SignSession::HandlePhase2ResponseEnvelope(const Envelope& envelope) {
       if (!a3_proof.has_value()) {
         TECDSA_THROW_ARGUMENT("missing A3 proof in MtA response");
       }
-      if (!VerifyA3MtA(response_ctx, n, self_aux_it->second, instance.c1, c2, *a3_proof)) {
+      if (!VerifyA3MtA(response_ctx, n, self_aux_it->second, instance.c1, c2,
+                       *a3_proof)) {
         TECDSA_THROW_ARGUMENT("phase2 A3 proof verification failed");
       }
     } else {
@@ -258,13 +265,8 @@ bool SignSession::HandlePhase2ResponseEnvelope(const Envelope& envelope) {
       if (statement_x_it == W_points_.end()) {
         TECDSA_THROW_ARGUMENT("missing W_j point for MtAwc response proof");
       }
-      if (!VerifyA2MtAwc(response_ctx,
-                         n,
-                         self_aux_it->second,
-                         instance.c1,
-                         c2,
-                         statement_x_it->second,
-                         *a2_proof)) {
+      if (!VerifyA2MtAwc(response_ctx, n, self_aux_it->second, instance.c1, c2,
+                         statement_x_it->second, *a2_proof)) {
         TECDSA_THROW_ARGUMENT("phase2 A2 proof verification failed");
       }
     }
@@ -274,7 +276,8 @@ bool SignSession::HandlePhase2ResponseEnvelope(const Envelope& envelope) {
     if (mta_type == MtaType::kTimesGamma) {
       phase2_mta_initiator_sum_ = phase2_mta_initiator_sum_ + initiator_share;
     } else {
-      phase2_mtawc_initiator_sum_ = phase2_mtawc_initiator_sum_ + initiator_share;
+      phase2_mtawc_initiator_sum_ =
+          phase2_mtawc_initiator_sum_ + initiator_share;
     }
     instance.response_received = true;
   } catch (const std::exception& ex) {
@@ -332,7 +335,8 @@ bool SignSession::HandlePhase4OpenEnvelope(const Envelope& envelope) {
     size_t offset = 0;
     const ECPoint gamma_i = ReadPoint(envelope.payload, &offset);
     const Bytes randomness =
-        ReadSizedField(envelope.payload, &offset, kMaxOpenRandomnessLen, "sign phase4 open randomness");
+        ReadSizedField(envelope.payload, &offset, kMaxOpenRandomnessLen,
+                       "sign phase4 open randomness");
     const ECPoint proof_a = ReadPoint(envelope.payload, &offset);
     const Scalar proof_z = ReadScalar(envelope.payload, &offset);
     if (offset != envelope.payload.size()) {
@@ -345,7 +349,8 @@ bool SignSession::HandlePhase4OpenEnvelope(const Envelope& envelope) {
     }
 
     const Bytes gamma_bytes = gamma_i.ToCompressedBytes();
-    if (!VerifyCommitment(kPhase1CommitDomain, gamma_bytes, randomness, commitment_it->second)) {
+    if (!VerifyCommitment(kPhase1CommitDomain, gamma_bytes, randomness,
+                          commitment_it->second)) {
       TECDSA_THROW_ARGUMENT("phase4 open does not match phase1 commitment");
     }
 
@@ -406,7 +411,8 @@ bool SignSession::HandlePhase5BOpenEnvelope(const Envelope& envelope) {
     const ECPoint V_i = ReadPoint(envelope.payload, &offset);
     const ECPoint A_i = ReadPoint(envelope.payload, &offset);
     const Bytes randomness =
-        ReadSizedField(envelope.payload, &offset, kMaxOpenRandomnessLen, "sign phase5B open randomness");
+        ReadSizedField(envelope.payload, &offset, kMaxOpenRandomnessLen,
+                       "sign phase5B open randomness");
     const ECPoint schnorr_a = ReadPoint(envelope.payload, &offset);
     const Scalar schnorr_z = ReadScalar(envelope.payload, &offset);
     const ECPoint relation_alpha = ReadPoint(envelope.payload, &offset);
@@ -422,7 +428,8 @@ bool SignSession::HandlePhase5BOpenEnvelope(const Envelope& envelope) {
     }
 
     const Bytes commit_message = SerializePointPair(V_i, A_i);
-    if (!VerifyCommitment(kPhase5ACommitDomain, commit_message, randomness, commitment_it->second)) {
+    if (!VerifyCommitment(kPhase5ACommitDomain, commit_message, randomness,
+                          commitment_it->second)) {
       TECDSA_THROW_ARGUMENT("phase5B open does not match phase5A commitment");
     }
 
@@ -431,7 +438,8 @@ bool SignSession::HandlePhase5BOpenEnvelope(const Envelope& envelope) {
       TECDSA_THROW_ARGUMENT("phase5B A_i Schnorr proof verification failed");
     }
 
-    const VRelationProof v_relation_proof{.alpha = relation_alpha, .t = relation_t, .u = relation_u};
+    const VRelationProof v_relation_proof{
+        .alpha = relation_alpha, .t = relation_t, .u = relation_u};
     if (!VerifyVRelationProof(envelope.from, R_, V_i, v_relation_proof)) {
       TECDSA_THROW_ARGUMENT("phase5B V relation proof verification failed");
     }
@@ -490,7 +498,8 @@ bool SignSession::HandlePhase5DOpenEnvelope(const Envelope& envelope) {
     const ECPoint U_i = ReadPoint(envelope.payload, &offset);
     const ECPoint T_i = ReadPoint(envelope.payload, &offset);
     const Bytes randomness =
-        ReadSizedField(envelope.payload, &offset, kMaxOpenRandomnessLen, "sign phase5D open randomness");
+        ReadSizedField(envelope.payload, &offset, kMaxOpenRandomnessLen,
+                       "sign phase5D open randomness");
     if (offset != envelope.payload.size()) {
       TECDSA_THROW_ARGUMENT("sign phase5D payload has trailing bytes");
     }
@@ -501,11 +510,13 @@ bool SignSession::HandlePhase5DOpenEnvelope(const Envelope& envelope) {
     }
 
     const Bytes commit_message = SerializePointPair(U_i, T_i);
-    if (!VerifyCommitment(kPhase5CCommitDomain, commit_message, randomness, commitment_it->second)) {
+    if (!VerifyCommitment(kPhase5CCommitDomain, commit_message, randomness,
+                          commitment_it->second)) {
       TECDSA_THROW_ARGUMENT("phase5D open does not match phase5C commitment");
     }
 
-    phase5d_open_data_[envelope.from] = Phase5DOpenData{.U_i = U_i, .T_i = T_i, .randomness = randomness};
+    phase5d_open_data_[envelope.from] =
+        Phase5DOpenData{.U_i = U_i, .T_i = T_i, .randomness = randomness};
   } catch (const std::exception& ex) {
     Abort(std::string("invalid sign phase5D payload: ") + ex.what());
     return false;
@@ -544,6 +555,5 @@ bool SignSession::HandlePhase5ERevealEnvelope(const Envelope& envelope) {
   MaybeAdvanceAfterPhase5E();
   return true;
 }
-
 
 }  // namespace tecdsa

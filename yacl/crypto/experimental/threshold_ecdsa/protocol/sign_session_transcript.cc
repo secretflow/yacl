@@ -1,4 +1,16 @@
-#include "yacl/crypto/experimental/threshold_ecdsa/protocol/sign_session_internal.h"
+// Copyright 2026 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <algorithm>
 #include <array>
@@ -10,6 +22,7 @@
 #include "yacl/crypto/experimental/threshold_ecdsa/common/errors.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/encoding.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/transcript.h"
+#include "yacl/crypto/experimental/threshold_ecdsa/protocol/sign_session_internal.h"
 
 namespace tecdsa::sign_internal {
 const Bytes& CurveNameBytes() {
@@ -57,13 +70,9 @@ void AppendCommonMtaTranscriptFields(Transcript* transcript,
   });
 }
 
-Scalar BuildA1RangeChallenge(const MtaProofContext& ctx,
-                             const BigInt& n,
-                             const BigInt& gamma,
-                             const AuxRsaParams& aux,
-                             const BigInt& c,
-                             const BigInt& z,
-                             const BigInt& u,
+Scalar BuildA1RangeChallenge(const MtaProofContext& ctx, const BigInt& n,
+                             const BigInt& gamma, const AuxRsaParams& aux,
+                             const BigInt& c, const BigInt& z, const BigInt& u,
                              const BigInt& w) {
   Transcript transcript;
   AppendCommonMtaTranscriptFields(&transcript, kA1RangeProofId, ctx);
@@ -90,12 +99,9 @@ Scalar BuildA1RangeChallenge(const MtaProofContext& ctx,
   return transcript.challenge_scalar_mod_q();
 }
 
-Scalar BuildA2MtAwcChallenge(const MtaProofContext& ctx,
-                             const BigInt& n,
-                             const BigInt& gamma,
-                             const AuxRsaParams& aux,
-                             const BigInt& c1,
-                             const BigInt& c2,
+Scalar BuildA2MtAwcChallenge(const MtaProofContext& ctx, const BigInt& n,
+                             const BigInt& gamma, const AuxRsaParams& aux,
+                             const BigInt& c1, const BigInt& c2,
                              const ECPoint& statement_x,
                              const A2MtAwcProof& proof) {
   Transcript transcript;
@@ -133,12 +139,9 @@ Scalar BuildA2MtAwcChallenge(const MtaProofContext& ctx,
   return transcript.challenge_scalar_mod_q();
 }
 
-Scalar BuildA3MtAChallenge(const MtaProofContext& ctx,
-                           const BigInt& n,
-                           const BigInt& gamma,
-                           const AuxRsaParams& aux,
-                           const BigInt& c1,
-                           const BigInt& c2,
+Scalar BuildA3MtAChallenge(const MtaProofContext& ctx, const BigInt& n,
+                           const BigInt& gamma, const AuxRsaParams& aux,
+                           const BigInt& c1, const BigInt& c2,
                            const A3MtAProof& proof) {
   Transcript transcript;
   AppendCommonMtaTranscriptFields(&transcript, kA3MtAProofId, ctx);
@@ -170,10 +173,8 @@ Scalar BuildA3MtAChallenge(const MtaProofContext& ctx,
   });
   return transcript.challenge_scalar_mod_q();
 }
-Scalar BuildSchnorrChallenge(const Bytes& session_id,
-                             PartyIndex party_id,
-                             const ECPoint& statement,
-                             const ECPoint& a) {
+Scalar BuildSchnorrChallenge(const Bytes& session_id, PartyIndex party_id,
+                             const ECPoint& statement, const ECPoint& a) {
   Transcript transcript;
   const Bytes statement_bytes = EncodePoint(statement);
   const Bytes a_bytes = EncodePoint(a);
@@ -187,8 +188,7 @@ Scalar BuildSchnorrChallenge(const Bytes& session_id,
   return transcript.challenge_scalar_mod_q();
 }
 
-Scalar BuildVRelationChallenge(const Bytes& session_id,
-                               PartyIndex party_id,
+Scalar BuildVRelationChallenge(const Bytes& session_id, PartyIndex party_id,
                                const ECPoint& r_statement,
                                const ECPoint& v_statement,
                                const ECPoint& alpha) {

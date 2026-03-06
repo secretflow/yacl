@@ -1,4 +1,16 @@
-#include "yacl/crypto/experimental/threshold_ecdsa/protocol/sign_session_internal.h"
+// Copyright 2026 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <cstddef>
 #include <optional>
@@ -9,6 +21,7 @@
 #include "yacl/crypto/experimental/threshold_ecdsa/common/errors.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/bigint_utils.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/random.h"
+#include "yacl/crypto/experimental/threshold_ecdsa/protocol/sign_session_internal.h"
 
 namespace tecdsa::sign_internal {
 BigInt RandomBelow(const BigInt& upper_exclusive) {
@@ -87,8 +100,8 @@ const BigInt& MinPaillierModulusQ8() {
   return q_pow_8;
 }
 
-StrictProofVerifierContext BuildKeygenProofContext(const Bytes& keygen_session_id,
-                                                   PartyIndex prover_id) {
+StrictProofVerifierContext BuildKeygenProofContext(
+    const Bytes& keygen_session_id, PartyIndex prover_id) {
   StrictProofVerifierContext context;
   if (!keygen_session_id.empty()) {
     context.session_id = keygen_session_id;
@@ -97,8 +110,10 @@ StrictProofVerifierContext BuildKeygenProofContext(const Bytes& keygen_session_i
   return context;
 }
 
-bool StrictMetadataCompatible(const ProofMetadata& expected, const ProofMetadata& candidate) {
-  return IsProofMetadataCompatible(expected, candidate, /*require_strict_scheme=*/true);
+bool StrictMetadataCompatible(const ProofMetadata& expected,
+                              const ProofMetadata& candidate) {
+  return IsProofMetadataCompatible(expected, candidate,
+                                   /*require_strict_scheme=*/true);
 }
 
 BigInt NormalizeMod(const BigInt& value, const BigInt& modulus) {
@@ -176,7 +191,8 @@ std::unordered_map<PartyIndex, Scalar> ComputeLagrangeAtZero(
 
       const BigInt diff = NormalizeModQ(BigInt(i) - BigInt(j));
       if (diff == 0) {
-        TECDSA_THROW_ARGUMENT("duplicate participant id in lagrange coefficient set");
+        TECDSA_THROW_ARGUMENT(
+            "duplicate participant id in lagrange coefficient set");
       }
       denominator = NormalizeModQ(denominator * diff);
     }

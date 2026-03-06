@@ -66,8 +66,7 @@ Bytes ToFixedWidth(const MPInt& value, size_t width) {
   }
 
   const auto* mag_ptr = mag.data<uint8_t>();
-  std::copy(mag_ptr,
-            mag_ptr + mag_size,
+  std::copy(mag_ptr, mag_ptr + mag_size,
             out.begin() + static_cast<std::ptrdiff_t>(width - mag_size));
   return out;
 }

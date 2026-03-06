@@ -1,3 +1,17 @@
+// Copyright 2026 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include <functional>
 #include <iostream>
 #include <span>
@@ -7,8 +21,8 @@
 #include "yacl/crypto/experimental/threshold_ecdsa/common/bytes.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/bigint_utils.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/commitment.h"
-#include "yacl/crypto/experimental/threshold_ecdsa/crypto/ecdsa_verify.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/ec_point.h"
+#include "yacl/crypto/experimental/threshold_ecdsa/crypto/ecdsa_verify.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/encoding.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/hash.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/paillier.h"
@@ -19,22 +33,22 @@
 
 namespace {
 
-using tecdsa::Bytes;
 using tecdsa::BigInt;
+using tecdsa::Bytes;
+using tecdsa::CommitMessage;
+using tecdsa::ComputeCommitment;
 using tecdsa::DecodeEnvelope;
 using tecdsa::DecodeMpInt;
 using tecdsa::ECPoint;
-using tecdsa::CommitMessage;
-using tecdsa::ComputeCommitment;
 using tecdsa::EncodeEnvelope;
 using tecdsa::EncodeMpInt;
 using tecdsa::Envelope;
 using tecdsa::PaillierProvider;
 using tecdsa::Scalar;
 using tecdsa::Sha256;
+using tecdsa::Transcript;
 using tecdsa::VerifyCommitment;
 using tecdsa::VerifyEcdsaSignatureMath;
-using tecdsa::Transcript;
 
 void Expect(bool condition, const std::string& message) {
   if (!condition) {
@@ -56,7 +70,8 @@ Scalar XCoordinateModQ(const ECPoint& point) {
   if (compressed.size() != 33) {
     throw std::runtime_error("invalid compressed point length");
   }
-  return Scalar::FromBigEndianModQ(std::span<const uint8_t>(compressed.data() + 1, 32));
+  return Scalar::FromBigEndianModQ(
+      std::span<const uint8_t>(compressed.data() + 1, 32));
 }
 
 void TestMpIntRoundTrip() {
@@ -66,8 +81,12 @@ void TestMpIntRoundTrip() {
   }
 
   const std::vector<BigInt> values = {
-      BigInt(0), BigInt(1), BigInt(255), BigInt(256),
-      BigInt("123456789012345678901234567890", 10), huge};
+      BigInt(0),
+      BigInt(1),
+      BigInt(255),
+      BigInt(256),
+      BigInt("123456789012345678901234567890", 10),
+      huge};
 
   for (const auto& value : values) {
     const Bytes encoded = EncodeMpInt(value);
@@ -77,7 +96,8 @@ void TestMpIntRoundTrip() {
 
   Bytes bad = EncodeMpInt(BigInt(42));
   bad.pop_back();
-  ExpectThrow([&]() { (void)DecodeMpInt(bad); }, "DecodeMpInt rejects malformed length");
+  ExpectThrow([&]() { (void)DecodeMpInt(bad); },
+              "DecodeMpInt rejects malformed length");
 }
 
 void TestScalarEncodingAndReduction() {
@@ -88,12 +108,14 @@ void TestScalarEncodingAndReduction() {
   Scalar reduced(Scalar::ModulusQMpInt() + BigInt(7));
   Expect(reduced == Scalar(BigInt(7)), "Scalar constructor must reduce mod q");
 
-  const Bytes q_bytes = tecdsa::bigint::ToFixedWidth(Scalar::ModulusQMpInt(), 32);
+  const Bytes q_bytes =
+      tecdsa::bigint::ToFixedWidth(Scalar::ModulusQMpInt(), 32);
   ExpectThrow([&]() { (void)Scalar::FromCanonicalBytes(q_bytes); },
               "Canonical scalar decoding rejects >= q");
 
   Scalar zero = Scalar::FromBigEndianModQ(q_bytes);
-  Expect(zero == Scalar(BigInt(0)), "Non-canonical decoder should reduce mod q");
+  Expect(zero == Scalar(BigInt(0)),
+         "Non-canonical decoder should reduce mod q");
 }
 
 void TestPointEncoding() {
@@ -132,17 +154,19 @@ void TestPointArithmetic() {
 
   const ECPoint g3_mul_two = g3.Mul(two);
   const ECPoint g6 = ECPoint::GeneratorMultiply(six);
-  Expect(g3_mul_two == g6, "ECPoint::Mul should match generator multiplication");
+  Expect(g3_mul_two == g6,
+         "ECPoint::Mul should match generator multiplication");
 
-  ExpectThrow([&]() { (void)ECPoint::GeneratorMultiply(Scalar::FromUint64(0)); },
-              "GeneratorMultiply rejects zero scalar");
+  ExpectThrow(
+      [&]() { (void)ECPoint::GeneratorMultiply(Scalar::FromUint64(0)); },
+      "GeneratorMultiply rejects zero scalar");
 }
 
 void TestEcdsaVerifyRegression() {
   const Bytes msg32 = {
-      0x4d, 0x34, 0x2d, 0x73, 0x69, 0x67, 0x6e, 0x2d, 0x74, 0x65, 0x73, 0x74, 0x2d, 0x30,
-      0x30, 0x31, 0xaa, 0xbb, 0xcc, 0xdd, 0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70, 0x80,
-      0x90, 0xa0, 0xb0, 0xc0,
+      0x4d, 0x34, 0x2d, 0x73, 0x69, 0x67, 0x6e, 0x2d, 0x74, 0x65, 0x73,
+      0x74, 0x2d, 0x30, 0x30, 0x31, 0xaa, 0xbb, 0xcc, 0xdd, 0x10, 0x20,
+      0x30, 0x40, 0x50, 0x60, 0x70, 0x80, 0x90, 0xa0, 0xb0, 0xc0,
   };
 
   const Scalar private_key = Scalar::FromUint64(7);
@@ -170,7 +194,8 @@ void TestEcdsaVerifyRegression() {
   Expect(!VerifyEcdsaSignatureMath(public_key, msg32, r, wrong_s),
          "ECDSA verify should reject wrong s");
 
-  const ECPoint wrong_public_key = ECPoint::GeneratorMultiply(private_key + Scalar::FromUint64(1));
+  const ECPoint wrong_public_key =
+      ECPoint::GeneratorMultiply(private_key + Scalar::FromUint64(1));
   Expect(!VerifyEcdsaSignatureMath(wrong_public_key, msg32, r, s),
          "ECDSA verify should reject wrong public key");
 
@@ -183,16 +208,17 @@ void TestEcdsaVerifyRegression() {
 void TestHashAndCommitment() {
   const Bytes msg = {'a', 'b', 'c'};
   const Bytes digest = Sha256(msg);
-  const Bytes expected = {
-      0xba, 0x78, 0x16, 0xbf, 0x8f, 0x01, 0xcf, 0xea, 0x41, 0x41, 0x40, 0xde, 0x5d, 0xae,
-      0x22, 0x23, 0xb0, 0x03, 0x61, 0xa3, 0x96, 0x17, 0x7a, 0x9c, 0xb4, 0x10, 0xff, 0x61,
-      0xf2, 0x00, 0x15, 0xad};
+  const Bytes expected = {0xba, 0x78, 0x16, 0xbf, 0x8f, 0x01, 0xcf, 0xea,
+                          0x41, 0x41, 0x40, 0xde, 0x5d, 0xae, 0x22, 0x23,
+                          0xb0, 0x03, 0x61, 0xa3, 0x96, 0x17, 0x7a, 0x9c,
+                          0xb4, 0x10, 0xff, 0x61, 0xf2, 0x00, 0x15, 0xad};
   Expect(digest == expected, "SHA256 must match known test vector for 'abc'");
 
   const std::string domain = "keygen/phase1";
   const Bytes randomness = {1, 2, 3, 4, 5};
   const Bytes commitment = ComputeCommitment(domain, msg, randomness);
-  Expect(VerifyCommitment(domain, msg, randomness, commitment), "Commitment verifies for valid open");
+  Expect(VerifyCommitment(domain, msg, randomness, commitment),
+         "Commitment verifies for valid open");
 
   Bytes tampered_msg = msg;
   tampered_msg[0] ^= 0x01;
@@ -205,17 +231,21 @@ void TestHashAndCommitment() {
          "Commitment verify fails for tampered randomness");
 
   const auto generated = CommitMessage(domain, msg);
-  Expect(generated.randomness.size() == 32, "CommitMessage default randomness length is 32");
-  Expect(VerifyCommitment(domain, msg, generated.randomness, generated.commitment),
-         "CommitMessage output should verify");
+  Expect(generated.randomness.size() == 32,
+         "CommitMessage default randomness length is 32");
+  Expect(
+      VerifyCommitment(domain, msg, generated.randomness, generated.commitment),
+      "CommitMessage output should verify");
 }
 
 void TestCsprng() {
   const Bytes random16 = tecdsa::Csprng::RandomBytes(16);
-  Expect(random16.size() == 16, "Csprng::RandomBytes should return requested length");
+  Expect(random16.size() == 16,
+         "Csprng::RandomBytes should return requested length");
 
   const Scalar s = tecdsa::Csprng::RandomScalar();
-  Expect(s.mp_value() < Scalar::ModulusQMpInt(), "Csprng::RandomScalar should return value in Z_q");
+  Expect(s.mp_value() < Scalar::ModulusQMpInt(),
+         "Csprng::RandomScalar should return value in Z_q");
 }
 
 void TestEnvelopeRoundTrip() {
@@ -229,7 +259,8 @@ void TestEnvelopeRoundTrip() {
   const Bytes encoded = EncodeEnvelope(envelope);
   const Envelope decoded = DecodeEnvelope(encoded);
 
-  Expect(decoded.session_id == envelope.session_id, "Envelope session_id round-trip");
+  Expect(decoded.session_id == envelope.session_id,
+         "Envelope session_id round-trip");
   Expect(decoded.from == envelope.from, "Envelope from round-trip");
   Expect(decoded.to == envelope.to, "Envelope to round-trip");
   Expect(decoded.type == envelope.type, "Envelope type round-trip");
@@ -237,7 +268,8 @@ void TestEnvelopeRoundTrip() {
 
   Bytes truncated = encoded;
   truncated.pop_back();
-  ExpectThrow([&]() { (void)DecodeEnvelope(truncated); }, "Envelope rejects truncation");
+  ExpectThrow([&]() { (void)DecodeEnvelope(truncated); },
+              "Envelope rejects truncation");
 
   Envelope too_large_session = envelope;
   too_large_session.session_id.assign(40, 0x11);
@@ -282,27 +314,37 @@ void TestPaillierNative() {
 
   const BigInt c_sum = paillier.AddCiphertextsBigInt(c_a, c_b);
   const BigInt plain_sum = paillier.DecryptBigInt(c_sum);
-  Expect(plain_sum == a + b, "Paillier encrypted addition should decrypt to a+b");
+  Expect(plain_sum == a + b,
+         "Paillier encrypted addition should decrypt to a+b");
 
   const BigInt c_mul = paillier.MulPlaintextBigInt(c_a, b);
   const BigInt plain_mul = paillier.DecryptBigInt(c_mul);
-  Expect(plain_mul == a * b, "Paillier encrypted/plain multiplication should decrypt to a*b");
+  Expect(plain_mul == a * b,
+         "Paillier encrypted/plain multiplication should decrypt to a*b");
 
   const auto enc_with_r = paillier.EncryptWithRandomBigInt(a);
-  const BigInt c_same = paillier.EncryptWithProvidedRandomBigInt(a, enc_with_r.randomness);
+  const BigInt c_same =
+      paillier.EncryptWithProvidedRandomBigInt(a, enc_with_r.randomness);
   Expect(enc_with_r.ciphertext == c_same,
          "EncryptWithRandom should be reproducible with the same randomness");
 
-  ExpectThrow([&]() { (void)paillier.EncryptWithProvidedRandomBigInt(a, BigInt(0)); },
-              "EncryptWithProvidedRandom rejects zero randomness");
-  ExpectThrow([&]() { (void)paillier.EncryptWithProvidedRandomBigInt(a, paillier.modulus_n_bigint()); },
-              "EncryptWithProvidedRandom rejects randomness not in Z*_N");
+  ExpectThrow(
+      [&]() { (void)paillier.EncryptWithProvidedRandomBigInt(a, BigInt(0)); },
+      "EncryptWithProvidedRandom rejects zero randomness");
+  ExpectThrow(
+      [&]() {
+        (void)paillier.EncryptWithProvidedRandomBigInt(
+            a, paillier.modulus_n_bigint());
+      },
+      "EncryptWithProvidedRandom rejects randomness not in Z*_N");
 
   const BigInt c_neg_one = paillier.EncryptBigInt(BigInt(0) - BigInt(1));
-  Expect(paillier.DecryptBigInt(c_neg_one) == paillier.modulus_n_bigint() - BigInt(1),
+  Expect(paillier.DecryptBigInt(c_neg_one) ==
+             paillier.modulus_n_bigint() - BigInt(1),
          "Paillier encryption should normalize negative plaintext to mod N");
 
-  const BigInt c_wrap = paillier.EncryptBigInt(paillier.modulus_n_bigint() + BigInt(7));
+  const BigInt c_wrap =
+      paillier.EncryptBigInt(paillier.modulus_n_bigint() + BigInt(7));
   Expect(paillier.DecryptBigInt(c_wrap) == BigInt(7),
          "Paillier encryption should normalize plaintext larger than N");
 }

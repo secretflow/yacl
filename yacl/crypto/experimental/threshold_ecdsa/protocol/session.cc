@@ -1,15 +1,28 @@
+// Copyright 2026 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "yacl/crypto/experimental/threshold_ecdsa/protocol/session.h"
-#include "yacl/crypto/experimental/threshold_ecdsa/common/errors.h"
 
 #include <stdexcept>
 #include <utility>
 
+#include "yacl/crypto/experimental/threshold_ecdsa/common/errors.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/net/envelope.h"
 
 namespace tecdsa {
 
-Session::Session(Bytes session_id,
-                 PartyIndex self_id,
+Session::Session(Bytes session_id, PartyIndex self_id,
                  std::chrono::milliseconds timeout)
     : session_id_(std::move(session_id)),
       self_id_(self_id),
@@ -26,17 +39,11 @@ Session::Session(Bytes session_id,
   }
 }
 
-const Bytes& Session::session_id() const {
-  return session_id_;
-}
+const Bytes& Session::session_id() const { return session_id_; }
 
-PartyIndex Session::self_id() const {
-  return self_id_;
-}
+PartyIndex Session::self_id() const { return self_id_; }
 
-SessionStatus Session::status() const {
-  return status_;
-}
+SessionStatus Session::status() const { return status_; }
 
 bool Session::IsTerminal() const {
   return status_ == SessionStatus::kCompleted ||
@@ -44,9 +51,7 @@ bool Session::IsTerminal() const {
          status_ == SessionStatus::kTimedOut;
 }
 
-const std::string& Session::abort_reason() const {
-  return abort_reason_;
-}
+const std::string& Session::abort_reason() const { return abort_reason_; }
 
 bool Session::PollTimeout(std::chrono::steady_clock::time_point now) {
   if (IsTerminal()) {
@@ -61,8 +66,7 @@ bool Session::PollTimeout(std::chrono::steady_clock::time_point now) {
   return false;
 }
 
-bool Session::ValidateSessionBinding(const Bytes& msg_session_id,
-                                     PartyIndex to,
+bool Session::ValidateSessionBinding(const Bytes& msg_session_id, PartyIndex to,
                                      std::string* error) const {
   if (msg_session_id != session_id_) {
     if (error != nullptr) {

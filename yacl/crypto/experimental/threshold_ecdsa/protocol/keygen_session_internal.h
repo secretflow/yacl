@@ -1,3 +1,17 @@
+// Copyright 2026 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 
 #include <array>
@@ -28,17 +42,15 @@ inline constexpr char kSchnorrProofId[] = "GG2019/Schnorr/v1";
 void ValidateParticipantsOrThrow(const std::vector<PartyIndex>& participants,
                                  PartyIndex self_id);
 
-std::unordered_set<PartyIndex> BuildPeerSet(const std::vector<PartyIndex>& participants,
-                                            PartyIndex self_id);
+std::unordered_set<PartyIndex> BuildPeerSet(
+    const std::vector<PartyIndex>& participants, PartyIndex self_id);
 
 void AppendU32Be(uint32_t value, Bytes* out);
 uint32_t ReadU32Be(std::span<const uint8_t> input, size_t* offset);
 
 void AppendSizedField(std::span<const uint8_t> field, Bytes* out);
-Bytes ReadSizedField(std::span<const uint8_t> input,
-                     size_t* offset,
-                     size_t max_len,
-                     const char* field_name);
+Bytes ReadSizedField(std::span<const uint8_t> input, size_t* offset,
+                     size_t max_len, const char* field_name);
 
 void AppendPoint(const ECPoint& point, Bytes* out);
 ECPoint ReadPoint(std::span<const uint8_t> input, size_t* offset);
@@ -47,18 +59,15 @@ void AppendScalar(const Scalar& scalar, Bytes* out);
 Scalar ReadScalar(std::span<const uint8_t> input, size_t* offset);
 
 void AppendMpIntField(const BigInt& value, Bytes* out);
-BigInt ReadMpIntField(std::span<const uint8_t> input,
-                      size_t* offset,
-                      size_t max_len,
-                      const char* field_name);
+BigInt ReadMpIntField(std::span<const uint8_t> input, size_t* offset,
+                      size_t max_len, const char* field_name);
 
 Scalar RandomNonZeroScalar();
-Scalar EvaluatePolynomialAt(const std::vector<Scalar>& coefficients, PartyIndex party_id);
+Scalar EvaluatePolynomialAt(const std::vector<Scalar>& coefficients,
+                            PartyIndex party_id);
 
-Scalar BuildSchnorrChallenge(const Bytes& session_id,
-                             PartyIndex party_id,
-                             const ECPoint& statement,
-                             const ECPoint& a);
+Scalar BuildSchnorrChallenge(const Bytes& session_id, PartyIndex party_id,
+                             const ECPoint& statement, const ECPoint& a);
 
 const BigInt& MinPaillierModulusQ8();
 void ValidatePaillierPublicKeyOrThrow(const PaillierPublicKey& pub);

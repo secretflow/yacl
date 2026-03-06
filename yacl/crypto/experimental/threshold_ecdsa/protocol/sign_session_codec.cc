@@ -1,4 +1,16 @@
-#include "yacl/crypto/experimental/threshold_ecdsa/protocol/sign_session_internal.h"
+// Copyright 2026 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <array>
 #include <cstddef>
@@ -11,9 +23,11 @@
 #include "yacl/crypto/experimental/threshold_ecdsa/common/errors.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/encoding.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/random.h"
+#include "yacl/crypto/experimental/threshold_ecdsa/protocol/sign_session_internal.h"
 
 namespace tecdsa::sign_internal {
-void ValidateParticipantsOrThrow(const std::vector<PartyIndex>& participants, PartyIndex self_id) {
+void ValidateParticipantsOrThrow(const std::vector<PartyIndex>& participants,
+                                 PartyIndex self_id) {
   if (participants.size() < 2) {
     TECDSA_THROW_ARGUMENT("SignSession requires at least 2 participants");
   }
@@ -37,8 +51,8 @@ void ValidateParticipantsOrThrow(const std::vector<PartyIndex>& participants, Pa
   }
 }
 
-std::unordered_set<PartyIndex> BuildPeerSet(const std::vector<PartyIndex>& participants,
-                                            PartyIndex self_id) {
+std::unordered_set<PartyIndex> BuildPeerSet(
+    const std::vector<PartyIndex>& participants, PartyIndex self_id) {
   std::unordered_set<PartyIndex> peers;
   for (PartyIndex id : participants) {
     if (id != self_id) {
@@ -77,10 +91,8 @@ void AppendSizedField(std::span<const uint8_t> field, Bytes* out) {
   out->insert(out->end(), field.begin(), field.end());
 }
 
-Bytes ReadSizedField(std::span<const uint8_t> input,
-                     size_t* offset,
-                     size_t max_len,
-                     const char* field_name) {
+Bytes ReadSizedField(std::span<const uint8_t> input, size_t* offset,
+                     size_t max_len, const char* field_name) {
   const uint32_t len = ReadU32Be(input, offset);
   if (len > max_len) {
     TECDSA_THROW_ARGUMENT(std::string(field_name) + " exceeds maximum length");
@@ -108,7 +120,8 @@ ECPoint ReadPoint(std::span<const uint8_t> input, size_t* offset) {
     TECDSA_THROW_ARGUMENT("Not enough bytes for compressed secp256k1 point");
   }
 
-  const std::span<const uint8_t> view = input.subspan(*offset, kPointCompressedLen);
+  const std::span<const uint8_t> view =
+      input.subspan(*offset, kPointCompressedLen);
   *offset += kPointCompressedLen;
   return ECPoint::FromCompressed(view);
 }
@@ -132,10 +145,8 @@ void AppendMpIntField(const BigInt& value, Bytes* out) {
   AppendSizedField(encoded, out);
 }
 
-BigInt ReadMpIntField(std::span<const uint8_t> input,
-                      size_t* offset,
-                      size_t max_len,
-                      const char* field_name) {
+BigInt ReadMpIntField(std::span<const uint8_t> input, size_t* offset,
+                      size_t max_len, const char* field_name) {
   const Bytes encoded = ReadSizedField(input, offset, max_len, field_name);
   return DecodeMpInt(encoded, max_len);
 }
@@ -234,8 +245,6 @@ A3MtAProof ReadA3MtAProof(std::span<const uint8_t> input, size_t* offset) {
   return proof;
 }
 
-Bytes RandomMtaInstanceId() {
-  return Csprng::RandomBytes(kMtaInstanceIdLen);
-}
+Bytes RandomMtaInstanceId() { return Csprng::RandomBytes(kMtaInstanceIdLen); }
 
 }  // namespace tecdsa::sign_internal

@@ -1,4 +1,16 @@
-#include "yacl/crypto/experimental/threshold_ecdsa/protocol/sign_session.h"
+// Copyright 2026 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <cstddef>
 #include <optional>
@@ -10,6 +22,7 @@
 #include "yacl/crypto/experimental/threshold_ecdsa/common/errors.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/common/secure_zeroize.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/commitment.h"
+#include "yacl/crypto/experimental/threshold_ecdsa/protocol/sign_session.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/protocol/sign_session_internal.h"
 
 namespace tecdsa {
@@ -17,10 +30,12 @@ using namespace sign_internal;
 
 Envelope SignSession::BuildPhase1CommitEnvelope() {
   if (IsTerminal()) {
-    TECDSA_THROW_LOGIC("cannot build phase1 envelope for terminal sign session");
+    TECDSA_THROW_LOGIC(
+        "cannot build phase1 envelope for terminal sign session");
   }
   if (phase_ != SignPhase::kPhase1) {
-    TECDSA_THROW_LOGIC("BuildPhase1CommitEnvelope must be called in sign phase1");
+    TECDSA_THROW_LOGIC(
+        "BuildPhase1CommitEnvelope must be called in sign phase1");
   }
 
   PreparePhase1SecretsIfNeeded();
@@ -41,7 +56,8 @@ Envelope SignSession::BuildPhase1CommitEnvelope() {
 
 std::vector<Envelope> SignSession::BuildPhase2MtaEnvelopes() {
   if (IsTerminal()) {
-    TECDSA_THROW_LOGIC("cannot build phase2 envelopes for terminal sign session");
+    TECDSA_THROW_LOGIC(
+        "cannot build phase2 envelopes for terminal sign session");
   }
   if (phase_ != SignPhase::kPhase2) {
     TECDSA_THROW_LOGIC("BuildPhase2MtaEnvelopes must be called in sign phase2");
@@ -58,10 +74,12 @@ std::vector<Envelope> SignSession::BuildPhase2MtaEnvelopes() {
 
 Envelope SignSession::BuildPhase3DeltaEnvelope() {
   if (IsTerminal()) {
-    TECDSA_THROW_LOGIC("cannot build phase3 envelope for terminal sign session");
+    TECDSA_THROW_LOGIC(
+        "cannot build phase3 envelope for terminal sign session");
   }
   if (phase_ != SignPhase::kPhase3) {
-    TECDSA_THROW_LOGIC("BuildPhase3DeltaEnvelope must be called in sign phase3");
+    TECDSA_THROW_LOGIC(
+        "BuildPhase3DeltaEnvelope must be called in sign phase3");
   }
 
   local_phase3_ready_ = true;
@@ -80,14 +98,17 @@ Envelope SignSession::BuildPhase3DeltaEnvelope() {
 
 Envelope SignSession::BuildPhase4OpenGammaEnvelope() {
   if (IsTerminal()) {
-    TECDSA_THROW_LOGIC("cannot build phase4 envelope for terminal sign session");
+    TECDSA_THROW_LOGIC(
+        "cannot build phase4 envelope for terminal sign session");
   }
   if (phase_ != SignPhase::kPhase4) {
-    TECDSA_THROW_LOGIC("BuildPhase4OpenGammaEnvelope must be called in sign phase4");
+    TECDSA_THROW_LOGIC(
+        "BuildPhase4OpenGammaEnvelope must be called in sign phase4");
   }
 
   PreparePhase1SecretsIfNeeded();
-  const SchnorrProof gamma_proof = BuildSchnorrProof(local_Gamma_i_, local_gamma_i_);
+  const SchnorrProof gamma_proof =
+      BuildSchnorrProof(local_Gamma_i_, local_gamma_i_);
 
   local_phase4_ready_ = true;
   phase4_open_data_[self_id()] = Phase4OpenData{
@@ -97,7 +118,8 @@ Envelope SignSession::BuildPhase4OpenGammaEnvelope() {
   };
 
   Bytes payload;
-  payload.reserve(kPointCompressedLen + 4 + local_phase1_randomness_.size() + kPointCompressedLen + kScalarLen);
+  payload.reserve(kPointCompressedLen + 4 + local_phase1_randomness_.size() +
+                  kPointCompressedLen + kScalarLen);
   AppendPoint(local_Gamma_i_, &payload);
   AppendSizedField(local_phase1_randomness_, &payload);
   AppendPoint(gamma_proof.a, &payload);
@@ -116,10 +138,13 @@ Envelope SignSession::BuildPhase4OpenGammaEnvelope() {
 
 Envelope SignSession::BuildPhase5ACommitEnvelope() {
   if (IsTerminal()) {
-    TECDSA_THROW_LOGIC("cannot build phase5A envelope for terminal sign session");
+    TECDSA_THROW_LOGIC(
+        "cannot build phase5A envelope for terminal sign session");
   }
-  if (phase_ != SignPhase::kPhase5 || phase5_stage_ != SignPhase5Stage::kPhase5A) {
-    TECDSA_THROW_LOGIC("BuildPhase5ACommitEnvelope must be called in sign phase5A");
+  if (phase_ != SignPhase::kPhase5 ||
+      phase5_stage_ != SignPhase5Stage::kPhase5A) {
+    TECDSA_THROW_LOGIC(
+        "BuildPhase5ACommitEnvelope must be called in sign phase5A");
   }
 
   local_s_i_ = (message_scalar_ * local_k_i_) + (r_ * local_sigma_i_);
@@ -134,7 +159,8 @@ Envelope SignSession::BuildPhase5ACommitEnvelope() {
   local_A_i_ = ECPoint::GeneratorMultiply(local_rho_i_);
 
   const Bytes commit_message = SerializePointPair(local_V_i_, local_A_i_);
-  const CommitmentResult commitment = CommitMessage(kPhase5ACommitDomain, commit_message);
+  const CommitmentResult commitment =
+      CommitMessage(kPhase5ACommitDomain, commit_message);
 
   local_phase5a_randomness_ = commitment.randomness;
   local_phase5a_commitment_ = commitment.commitment;
@@ -155,13 +181,17 @@ Envelope SignSession::BuildPhase5ACommitEnvelope() {
 
 Envelope SignSession::BuildPhase5BOpenEnvelope() {
   if (IsTerminal()) {
-    TECDSA_THROW_LOGIC("cannot build phase5B envelope for terminal sign session");
+    TECDSA_THROW_LOGIC(
+        "cannot build phase5B envelope for terminal sign session");
   }
-  if (phase_ != SignPhase::kPhase5 || phase5_stage_ != SignPhase5Stage::kPhase5B) {
-    TECDSA_THROW_LOGIC("BuildPhase5BOpenEnvelope must be called in sign phase5B");
+  if (phase_ != SignPhase::kPhase5 ||
+      phase5_stage_ != SignPhase5Stage::kPhase5B) {
+    TECDSA_THROW_LOGIC(
+        "BuildPhase5BOpenEnvelope must be called in sign phase5B");
   }
 
-  const SchnorrProof a_schnorr_proof = BuildSchnorrProof(local_A_i_, local_rho_i_);
+  const SchnorrProof a_schnorr_proof =
+      BuildSchnorrProof(local_A_i_, local_rho_i_);
   const VRelationProof v_relation_proof =
       BuildVRelationProof(R_, local_V_i_, local_s_i_, local_l_i_);
 
@@ -175,7 +205,8 @@ Envelope SignSession::BuildPhase5BOpenEnvelope() {
   };
 
   Bytes payload;
-  payload.reserve(kPointCompressedLen * 4 + kScalarLen * 3 + 4 + local_phase5a_randomness_.size());
+  payload.reserve(kPointCompressedLen * 4 + kScalarLen * 3 + 4 +
+                  local_phase5a_randomness_.size());
   AppendPoint(local_V_i_, &payload);
   AppendPoint(local_A_i_, &payload);
   AppendSizedField(local_phase5a_randomness_, &payload);
@@ -198,17 +229,21 @@ Envelope SignSession::BuildPhase5BOpenEnvelope() {
 
 Envelope SignSession::BuildPhase5CCommitEnvelope() {
   if (IsTerminal()) {
-    TECDSA_THROW_LOGIC("cannot build phase5C envelope for terminal sign session");
+    TECDSA_THROW_LOGIC(
+        "cannot build phase5C envelope for terminal sign session");
   }
-  if (phase_ != SignPhase::kPhase5 || phase5_stage_ != SignPhase5Stage::kPhase5C) {
-    TECDSA_THROW_LOGIC("BuildPhase5CCommitEnvelope must be called in sign phase5C");
+  if (phase_ != SignPhase::kPhase5 ||
+      phase5_stage_ != SignPhase5Stage::kPhase5C) {
+    TECDSA_THROW_LOGIC(
+        "BuildPhase5CCommitEnvelope must be called in sign phase5C");
   }
 
   local_U_i_ = V_.Mul(local_rho_i_);
   local_T_i_ = A_.Mul(local_l_i_);
 
   const Bytes commit_message = SerializePointPair(local_U_i_, local_T_i_);
-  const CommitmentResult commitment = CommitMessage(kPhase5CCommitDomain, commit_message);
+  const CommitmentResult commitment =
+      CommitMessage(kPhase5CCommitDomain, commit_message);
   local_phase5c_randomness_ = commitment.randomness;
   local_phase5c_commitment_ = commitment.commitment;
 
@@ -228,18 +263,24 @@ Envelope SignSession::BuildPhase5CCommitEnvelope() {
 
 Envelope SignSession::BuildPhase5DOpenEnvelope() {
   if (IsTerminal()) {
-    TECDSA_THROW_LOGIC("cannot build phase5D envelope for terminal sign session");
+    TECDSA_THROW_LOGIC(
+        "cannot build phase5D envelope for terminal sign session");
   }
-  if (phase_ != SignPhase::kPhase5 || phase5_stage_ != SignPhase5Stage::kPhase5D) {
-    TECDSA_THROW_LOGIC("BuildPhase5DOpenEnvelope must be called in sign phase5D");
+  if (phase_ != SignPhase::kPhase5 ||
+      phase5_stage_ != SignPhase5Stage::kPhase5D) {
+    TECDSA_THROW_LOGIC(
+        "BuildPhase5DOpenEnvelope must be called in sign phase5D");
   }
 
   local_phase5d_ready_ = true;
   phase5d_open_data_[self_id()] =
-      Phase5DOpenData{.U_i = local_U_i_, .T_i = local_T_i_, .randomness = local_phase5c_randomness_};
+      Phase5DOpenData{.U_i = local_U_i_,
+                      .T_i = local_T_i_,
+                      .randomness = local_phase5c_randomness_};
 
   Bytes payload;
-  payload.reserve(kPointCompressedLen * 2 + 4 + local_phase5c_randomness_.size());
+  payload.reserve(kPointCompressedLen * 2 + 4 +
+                  local_phase5c_randomness_.size());
   AppendPoint(local_U_i_, &payload);
   AppendPoint(local_T_i_, &payload);
   AppendSizedField(local_phase5c_randomness_, &payload);
@@ -257,10 +298,13 @@ Envelope SignSession::BuildPhase5DOpenEnvelope() {
 
 Envelope SignSession::BuildPhase5ERevealEnvelope() {
   if (IsTerminal()) {
-    TECDSA_THROW_LOGIC("cannot build phase5E envelope for terminal sign session");
+    TECDSA_THROW_LOGIC(
+        "cannot build phase5E envelope for terminal sign session");
   }
-  if (phase_ != SignPhase::kPhase5 || phase5_stage_ != SignPhase5Stage::kPhase5E) {
-    TECDSA_THROW_LOGIC("BuildPhase5ERevealEnvelope must be called in sign phase5E");
+  if (phase_ != SignPhase::kPhase5 ||
+      phase5_stage_ != SignPhase5Stage::kPhase5E) {
+    TECDSA_THROW_LOGIC(
+        "BuildPhase5ERevealEnvelope must be called in sign phase5E");
   }
 
   local_phase5e_ready_ = true;
@@ -325,31 +369,36 @@ bool SignSession::HandleEnvelope(const Envelope& envelope) {
     case SignPhase::kPhase5:
       switch (phase5_stage_) {
         case SignPhase5Stage::kPhase5A:
-          if (envelope.type != MessageTypeForPhase5Stage(SignPhase5Stage::kPhase5A)) {
+          if (envelope.type !=
+              MessageTypeForPhase5Stage(SignPhase5Stage::kPhase5A)) {
             Abort("unexpected envelope type for sign phase5A");
             return false;
           }
           return HandlePhase5ACommitEnvelope(envelope);
         case SignPhase5Stage::kPhase5B:
-          if (envelope.type != MessageTypeForPhase5Stage(SignPhase5Stage::kPhase5B)) {
+          if (envelope.type !=
+              MessageTypeForPhase5Stage(SignPhase5Stage::kPhase5B)) {
             Abort("unexpected envelope type for sign phase5B");
             return false;
           }
           return HandlePhase5BOpenEnvelope(envelope);
         case SignPhase5Stage::kPhase5C:
-          if (envelope.type != MessageTypeForPhase5Stage(SignPhase5Stage::kPhase5C)) {
+          if (envelope.type !=
+              MessageTypeForPhase5Stage(SignPhase5Stage::kPhase5C)) {
             Abort("unexpected envelope type for sign phase5C");
             return false;
           }
           return HandlePhase5CCommitEnvelope(envelope);
         case SignPhase5Stage::kPhase5D:
-          if (envelope.type != MessageTypeForPhase5Stage(SignPhase5Stage::kPhase5D)) {
+          if (envelope.type !=
+              MessageTypeForPhase5Stage(SignPhase5Stage::kPhase5D)) {
             Abort("unexpected envelope type for sign phase5D");
             return false;
           }
           return HandlePhase5DOpenEnvelope(envelope);
         case SignPhase5Stage::kPhase5E:
-          if (envelope.type != MessageTypeForPhase5Stage(SignPhase5Stage::kPhase5E)) {
+          if (envelope.type !=
+              MessageTypeForPhase5Stage(SignPhase5Stage::kPhase5E)) {
             Abort("unexpected envelope type for sign phase5E");
             return false;
           }
@@ -373,14 +422,16 @@ Envelope SignSession::MakePhaseBroadcastEnvelope(const Bytes& payload) const {
   out.session_id = session_id();
   out.from = self_id();
   out.to = kBroadcastPartyId;
-  out.type =
-      (phase_ == SignPhase::kPhase5) ? MessageTypeForPhase5Stage(phase5_stage_) : MessageTypeForPhase(phase_);
+  out.type = (phase_ == SignPhase::kPhase5)
+                 ? MessageTypeForPhase5Stage(phase5_stage_)
+                 : MessageTypeForPhase(phase_);
   out.payload = payload;
   return out;
 }
 
 bool SignSession::HasResult() const {
-  return status() == SessionStatus::kCompleted && phase_ == SignPhase::kCompleted && has_result_;
+  return status() == SessionStatus::kCompleted &&
+         phase_ == SignPhase::kCompleted && has_result_;
 }
 
 const SignResult& SignSession::result() const {
@@ -525,6 +576,5 @@ uint32_t SignSession::MessageTypeForPhase5Stage(SignPhase5Stage stage) {
   }
   TECDSA_THROW_ARGUMENT("invalid sign phase5 stage");
 }
-
 
 }  // namespace tecdsa

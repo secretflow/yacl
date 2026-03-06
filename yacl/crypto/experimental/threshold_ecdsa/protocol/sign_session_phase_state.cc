@@ -1,4 +1,16 @@
-#include "yacl/crypto/experimental/threshold_ecdsa/protocol/sign_session.h"
+// Copyright 2026 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <cstddef>
 #include <exception>
@@ -13,6 +25,7 @@
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/commitment.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/ecdsa_verify.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/random.h"
+#include "yacl/crypto/experimental/threshold_ecdsa/protocol/sign_session.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/protocol/sign_session_internal.h"
 
 namespace tecdsa {
@@ -34,8 +47,10 @@ void SignSession::PrepareResharedSigningShares() {
   for (PartyIndex party : participants_) {
     const auto lambda_it = lagrange_coefficients_.find(party);
     const auto x_pub_it = all_X_i_.find(party);
-    if (lambda_it == lagrange_coefficients_.end() || x_pub_it == all_X_i_.end()) {
-      TECDSA_THROW_ARGUMENT("missing lagrange coefficient or X_i for participant");
+    if (lambda_it == lagrange_coefficients_.end() ||
+        x_pub_it == all_X_i_.end()) {
+      TECDSA_THROW_ARGUMENT(
+          "missing lagrange coefficient or X_i for participant");
     }
 
     try {
@@ -52,7 +67,8 @@ void SignSession::PrepareResharedSigningShares() {
       TECDSA_THROW_ARGUMENT("W_i aggregation does not reconstruct y");
     }
   } catch (const std::exception& ex) {
-    TECDSA_THROW_ARGUMENT(std::string("failed to validate W_i aggregation: ") + ex.what());
+    TECDSA_THROW_ARGUMENT(std::string("failed to validate W_i aggregation: ") +
+                          ex.what());
   }
 }
 
@@ -69,7 +85,8 @@ void SignSession::PreparePhase1SecretsIfNeeded() {
 
   local_Gamma_i_ = ECPoint::GeneratorMultiply(local_gamma_i_);
   const Bytes gamma_bytes = local_Gamma_i_.ToCompressedBytes();
-  const CommitmentResult commitment = CommitMessage(kPhase1CommitDomain, gamma_bytes);
+  const CommitmentResult commitment =
+      CommitMessage(kPhase1CommitDomain, gamma_bytes);
   local_phase1_randomness_ = commitment.randomness;
   local_phase1_commitment_ = commitment.commitment;
 }
@@ -79,14 +96,16 @@ void SignSession::InitializePhase2InstancesIfNeeded() {
     return;
   }
   if (phase_ != SignPhase::kPhase2) {
-    TECDSA_THROW_LOGIC("phase2 instances can only be initialized in sign phase2");
+    TECDSA_THROW_LOGIC(
+        "phase2 instances can only be initialized in sign phase2");
   }
 
   PreparePhase1SecretsIfNeeded();
 
   const auto self_pk_it = all_paillier_public_.find(self_id());
   if (self_pk_it == all_paillier_public_.end()) {
-    TECDSA_THROW_LOGIC("missing local Paillier or peer auxiliary parameters for phase2 init");
+    TECDSA_THROW_LOGIC(
+        "missing local Paillier or peer auxiliary parameters for phase2 init");
   }
   const BigInt local_n = self_pk_it->second.n;
   const BigInt local_k_value = local_k_i_.mp_value();
@@ -114,7 +133,9 @@ void SignSession::InitializePhase2InstancesIfNeeded() {
 
     const auto peer_aux_it = all_aux_rsa_params_.find(peer);
     if (peer_aux_it == all_aux_rsa_params_.end()) {
-      TECDSA_THROW_LOGIC("missing local Paillier or peer auxiliary parameters for phase2 init");
+      TECDSA_THROW_LOGIC(
+          "missing local Paillier or peer auxiliary parameters for phase2 "
+          "init");
     }
 
     for (MtaType type : {MtaType::kTimesGamma, MtaType::kTimesW}) {
@@ -144,23 +165,25 @@ void SignSession::InitializePhase2InstancesIfNeeded() {
   std::vector<std::future<Bytes>> payload_futures;
   payload_futures.reserve(pending.size());
   for (const PendingInit& init : pending) {
-    payload_futures.push_back(pool.Submit([init, local_n, local_k_value, session_id_bytes, initiator_id]() {
-      const MtaProofContext proof_ctx{
-          .session_id = session_id_bytes,
-          .initiator_id = initiator_id,
-          .responder_id = init.peer,
-          .mta_instance_id = init.instance_id,
-      };
-      const A1RangeProof a1_proof = ProveA1Range(
-          proof_ctx, local_n, init.peer_aux, init.c1, local_k_value, init.c1_randomness);
+    payload_futures.push_back(pool.Submit(
+        [init, local_n, local_k_value, session_id_bytes, initiator_id]() {
+          const MtaProofContext proof_ctx{
+              .session_id = session_id_bytes,
+              .initiator_id = initiator_id,
+              .responder_id = init.peer,
+              .mta_instance_id = init.instance_id,
+          };
+          const A1RangeProof a1_proof =
+              ProveA1Range(proof_ctx, local_n, init.peer_aux, init.c1,
+                           local_k_value, init.c1_randomness);
 
-      Bytes payload;
-      AppendU32Be(static_cast<uint32_t>(init.type), &payload);
-      AppendSizedField(init.instance_id, &payload);
-      AppendMpIntField(init.c1, &payload);
-      AppendA1RangeProof(a1_proof, &payload);
-      return payload;
-    }));
+          Bytes payload;
+          AppendU32Be(static_cast<uint32_t>(init.type), &payload);
+          AppendSizedField(init.instance_id, &payload);
+          AppendMpIntField(init.c1, &payload);
+          AppendA1RangeProof(a1_proof, &payload);
+          return payload;
+        }));
   }
 
   std::vector<Bytes> payloads;
@@ -172,16 +195,15 @@ void SignSession::InitializePhase2InstancesIfNeeded() {
   for (size_t i = 0; i < pending.size(); ++i) {
     const PendingInit& init = pending[i];
     const std::string instance_key = BytesToKey(init.instance_id);
-    phase2_initiator_instances_.emplace(
-        instance_key,
-        Phase2InitiatorInstance{
-            .responder = init.peer,
-            .type = init.type,
-            .instance_id = init.instance_id,
-            .c1 = init.c1,
-            .c1_randomness = init.c1_randomness,
-            .response_received = false,
-        });
+    phase2_initiator_instances_.emplace(instance_key,
+                                        Phase2InitiatorInstance{
+                                            .responder = init.peer,
+                                            .type = init.type,
+                                            .instance_id = init.instance_id,
+                                            .c1 = init.c1,
+                                            .c1_randomness = init.c1_randomness,
+                                            .response_received = false,
+                                        });
 
     Envelope out;
     out.session_id = session_id();
@@ -221,10 +243,10 @@ void SignSession::MaybeFinalizePhase2AndAdvance() {
     }
   }
 
-  local_delta_i_ =
-      (local_k_i_ * local_gamma_i_) + phase2_mta_initiator_sum_ + phase2_mta_responder_sum_;
-  local_sigma_i_ =
-      (local_k_i_ * local_w_i_) + phase2_mtawc_initiator_sum_ + phase2_mtawc_responder_sum_;
+  local_delta_i_ = (local_k_i_ * local_gamma_i_) + phase2_mta_initiator_sum_ +
+                   phase2_mta_responder_sum_;
+  local_sigma_i_ = (local_k_i_ * local_w_i_) + phase2_mtawc_initiator_sum_ +
+                   phase2_mtawc_responder_sum_;
 
   local_phase2_ready_ = true;
 }
@@ -453,7 +475,8 @@ void SignSession::MaybeAdvanceAfterPhase4() {
 }
 
 void SignSession::MaybeAdvanceAfterPhase5A() {
-  if (phase_ != SignPhase::kPhase5 || phase5_stage_ != SignPhase5Stage::kPhase5A) {
+  if (phase_ != SignPhase::kPhase5 ||
+      phase5_stage_ != SignPhase5Stage::kPhase5A) {
     return;
   }
   if (!local_phase5a_ready_) {
@@ -469,7 +492,8 @@ void SignSession::MaybeAdvanceAfterPhase5A() {
 }
 
 void SignSession::MaybeAdvanceAfterPhase5B() {
-  if (phase_ != SignPhase::kPhase5 || phase5_stage_ != SignPhase5Stage::kPhase5B) {
+  if (phase_ != SignPhase::kPhase5 ||
+      phase5_stage_ != SignPhase5Stage::kPhase5B) {
     return;
   }
   if (!local_phase5b_ready_) {
@@ -485,7 +509,8 @@ void SignSession::MaybeAdvanceAfterPhase5B() {
 }
 
 void SignSession::MaybeAdvanceAfterPhase5C() {
-  if (phase_ != SignPhase::kPhase5 || phase5_stage_ != SignPhase5Stage::kPhase5C) {
+  if (phase_ != SignPhase::kPhase5 ||
+      phase5_stage_ != SignPhase5Stage::kPhase5C) {
     return;
   }
   if (!local_phase5c_ready_) {
@@ -501,7 +526,8 @@ void SignSession::MaybeAdvanceAfterPhase5C() {
 }
 
 void SignSession::MaybeAdvanceAfterPhase5D() {
-  if (phase_ != SignPhase::kPhase5 || phase5_stage_ != SignPhase5Stage::kPhase5D) {
+  if (phase_ != SignPhase::kPhase5 ||
+      phase5_stage_ != SignPhase5Stage::kPhase5D) {
     return;
   }
   if (!local_phase5d_ready_) {
@@ -517,7 +543,8 @@ void SignSession::MaybeAdvanceAfterPhase5D() {
 }
 
 void SignSession::MaybeAdvanceAfterPhase5E() {
-  if (phase_ != SignPhase::kPhase5 || phase5_stage_ != SignPhase5Stage::kPhase5E) {
+  if (phase_ != SignPhase::kPhase5 ||
+      phase5_stage_ != SignPhase5Stage::kPhase5E) {
     return;
   }
   if (!local_phase5e_ready_) {
@@ -532,8 +559,8 @@ void SignSession::MaybeAdvanceAfterPhase5E() {
   FinalizeSignatureAndComplete();
 }
 
-SignSession::SchnorrProof SignSession::BuildSchnorrProof(const ECPoint& statement,
-                                                         const Scalar& witness) const {
+SignSession::SchnorrProof SignSession::BuildSchnorrProof(
+    const ECPoint& statement, const Scalar& witness) const {
   if (witness.value() == 0) {
     TECDSA_THROW_ARGUMENT("schnorr witness must be non-zero");
   }
@@ -541,7 +568,8 @@ SignSession::SchnorrProof SignSession::BuildSchnorrProof(const ECPoint& statemen
   while (true) {
     const Scalar r = RandomNonZeroScalar();
     const ECPoint a = ECPoint::GeneratorMultiply(r);
-    const Scalar e = BuildSchnorrChallenge(session_id(), self_id(), statement, a);
+    const Scalar e =
+        BuildSchnorrChallenge(session_id(), self_id(), statement, a);
     const Scalar z = r + (e * witness);
     if (z.value() == 0) {
       continue;
@@ -558,7 +586,8 @@ bool SignSession::VerifySchnorrProof(PartyIndex prover_id,
   }
 
   try {
-    const Scalar e = BuildSchnorrChallenge(session_id(), prover_id, statement, proof.a);
+    const Scalar e =
+        BuildSchnorrChallenge(session_id(), prover_id, statement, proof.a);
     const ECPoint lhs = ECPoint::GeneratorMultiply(proof.z);
 
     ECPoint rhs = proof.a;
@@ -571,10 +600,9 @@ bool SignSession::VerifySchnorrProof(PartyIndex prover_id,
   }
 }
 
-SignSession::VRelationProof SignSession::BuildVRelationProof(const ECPoint& r_statement,
-                                                             const ECPoint& v_statement,
-                                                             const Scalar& s_witness,
-                                                             const Scalar& l_witness) const {
+SignSession::VRelationProof SignSession::BuildVRelationProof(
+    const ECPoint& r_statement, const ECPoint& v_statement,
+    const Scalar& s_witness, const Scalar& l_witness) const {
   while (true) {
     const Scalar a = Csprng::RandomScalar();
     const Scalar b = Csprng::RandomScalar();
@@ -589,7 +617,8 @@ SignSession::VRelationProof SignSession::BuildVRelationProof(const ECPoint& r_st
       continue;
     }
 
-    const Scalar c = BuildVRelationChallenge(session_id(), self_id(), r_statement, v_statement, alpha);
+    const Scalar c = BuildVRelationChallenge(session_id(), self_id(),
+                                             r_statement, v_statement, alpha);
     const Scalar t = a + (c * s_witness);
     const Scalar u = b + (c * l_witness);
     if (t.value() == 0 && u.value() == 0) {
@@ -615,7 +644,8 @@ bool SignSession::VerifyVRelationProof(PartyIndex prover_id,
   try {
     const Scalar c = BuildVRelationChallenge(
         session_id(), prover_id, r_statement, v_statement, proof.alpha);
-    const ECPoint lhs = BuildRGeneratorLinearCombination(r_statement, proof.t, proof.u);
+    const ECPoint lhs =
+        BuildRGeneratorLinearCombination(r_statement, proof.t, proof.u);
 
     ECPoint rhs = proof.alpha;
     if (c.value() != 0) {

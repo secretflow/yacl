@@ -1,3 +1,17 @@
+// Copyright 2026 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 
 #include <cstddef>
@@ -78,26 +92,22 @@ struct A3MtAProof {
 void ValidateParticipantsOrThrow(const std::vector<PartyIndex>& participants,
                                  PartyIndex self_id);
 
-std::unordered_set<PartyIndex> BuildPeerSet(const std::vector<PartyIndex>& participants,
-                                            PartyIndex self_id);
+std::unordered_set<PartyIndex> BuildPeerSet(
+    const std::vector<PartyIndex>& participants, PartyIndex self_id);
 
 void AppendU32Be(uint32_t value, Bytes* out);
 uint32_t ReadU32Be(std::span<const uint8_t> input, size_t* offset);
 void AppendSizedField(std::span<const uint8_t> field, Bytes* out);
-Bytes ReadSizedField(std::span<const uint8_t> input,
-                     size_t* offset,
-                     size_t max_len,
-                     const char* field_name);
+Bytes ReadSizedField(std::span<const uint8_t> input, size_t* offset,
+                     size_t max_len, const char* field_name);
 
 void AppendPoint(const ECPoint& point, Bytes* out);
 ECPoint ReadPoint(std::span<const uint8_t> input, size_t* offset);
 void AppendScalar(const Scalar& scalar, Bytes* out);
 Scalar ReadScalar(std::span<const uint8_t> input, size_t* offset);
 void AppendMpIntField(const BigInt& value, Bytes* out);
-BigInt ReadMpIntField(std::span<const uint8_t> input,
-                      size_t* offset,
-                      size_t max_len,
-                      const char* field_name);
+BigInt ReadMpIntField(std::span<const uint8_t> input, size_t* offset,
+                      size_t max_len, const char* field_name);
 
 std::string BytesToKey(const Bytes& bytes);
 std::string MakeResponderRequestKey(PartyIndex initiator, uint8_t type_code);
@@ -112,8 +122,8 @@ const BigInt& QPow5();
 const BigInt& QPow7();
 const BigInt& MinPaillierModulusQ8();
 
-StrictProofVerifierContext BuildKeygenProofContext(const Bytes& keygen_session_id,
-                                                   PartyIndex prover_id);
+StrictProofVerifierContext BuildKeygenProofContext(
+    const Bytes& keygen_session_id, PartyIndex prover_id);
 bool StrictMetadataCompatible(const ProofMetadata& expected,
                               const ProofMetadata& candidate);
 
@@ -129,78 +139,49 @@ const Bytes& ModulusQBytes();
 
 ThreadPool& Phase2ThreadPool();
 
-Scalar BuildA1RangeChallenge(const MtaProofContext& ctx,
-                             const BigInt& n,
-                             const BigInt& gamma,
-                             const AuxRsaParams& aux,
-                             const BigInt& c,
-                             const BigInt& z,
-                             const BigInt& u,
+Scalar BuildA1RangeChallenge(const MtaProofContext& ctx, const BigInt& n,
+                             const BigInt& gamma, const AuxRsaParams& aux,
+                             const BigInt& c, const BigInt& z, const BigInt& u,
                              const BigInt& w);
 
-Scalar BuildA2MtAwcChallenge(const MtaProofContext& ctx,
-                             const BigInt& n,
-                             const BigInt& gamma,
-                             const AuxRsaParams& aux,
-                             const BigInt& c1,
-                             const BigInt& c2,
+Scalar BuildA2MtAwcChallenge(const MtaProofContext& ctx, const BigInt& n,
+                             const BigInt& gamma, const AuxRsaParams& aux,
+                             const BigInt& c1, const BigInt& c2,
                              const ECPoint& statement_x,
                              const A2MtAwcProof& proof);
 
-Scalar BuildA3MtAChallenge(const MtaProofContext& ctx,
-                           const BigInt& n,
-                           const BigInt& gamma,
-                           const AuxRsaParams& aux,
-                           const BigInt& c1,
-                           const BigInt& c2,
+Scalar BuildA3MtAChallenge(const MtaProofContext& ctx, const BigInt& n,
+                           const BigInt& gamma, const AuxRsaParams& aux,
+                           const BigInt& c1, const BigInt& c2,
                            const A3MtAProof& proof);
 
-A1RangeProof ProveA1Range(const MtaProofContext& ctx,
-                          const BigInt& n,
-                          const AuxRsaParams& verifier_aux,
-                          const BigInt& c,
-                          const BigInt& witness_m,
-                          const BigInt& witness_r);
+A1RangeProof ProveA1Range(const MtaProofContext& ctx, const BigInt& n,
+                          const AuxRsaParams& verifier_aux, const BigInt& c,
+                          const BigInt& witness_m, const BigInt& witness_r);
 
-bool VerifyA1Range(const MtaProofContext& ctx,
-                   const BigInt& n,
-                   const AuxRsaParams& verifier_aux,
-                   const BigInt& c,
+bool VerifyA1Range(const MtaProofContext& ctx, const BigInt& n,
+                   const AuxRsaParams& verifier_aux, const BigInt& c,
                    const A1RangeProof& proof);
 
-A2MtAwcProof ProveA2MtAwc(const MtaProofContext& ctx,
-                          const BigInt& n,
-                          const AuxRsaParams& verifier_aux,
-                          const BigInt& c1,
-                          const BigInt& c2,
-                          const ECPoint& statement_x,
-                          const BigInt& witness_x,
-                          const BigInt& witness_y,
+A2MtAwcProof ProveA2MtAwc(const MtaProofContext& ctx, const BigInt& n,
+                          const AuxRsaParams& verifier_aux, const BigInt& c1,
+                          const BigInt& c2, const ECPoint& statement_x,
+                          const BigInt& witness_x, const BigInt& witness_y,
                           const BigInt& witness_r);
 
-bool VerifyA2MtAwc(const MtaProofContext& ctx,
-                   const BigInt& n,
-                   const AuxRsaParams& verifier_aux,
-                   const BigInt& c1,
-                   const BigInt& c2,
-                   const ECPoint& statement_x,
+bool VerifyA2MtAwc(const MtaProofContext& ctx, const BigInt& n,
+                   const AuxRsaParams& verifier_aux, const BigInt& c1,
+                   const BigInt& c2, const ECPoint& statement_x,
                    const A2MtAwcProof& proof);
 
-A3MtAProof ProveA3MtA(const MtaProofContext& ctx,
-                      const BigInt& n,
-                      const AuxRsaParams& verifier_aux,
-                      const BigInt& c1,
-                      const BigInt& c2,
-                      const BigInt& witness_x,
-                      const BigInt& witness_y,
-                      const BigInt& witness_r);
+A3MtAProof ProveA3MtA(const MtaProofContext& ctx, const BigInt& n,
+                      const AuxRsaParams& verifier_aux, const BigInt& c1,
+                      const BigInt& c2, const BigInt& witness_x,
+                      const BigInt& witness_y, const BigInt& witness_r);
 
-bool VerifyA3MtA(const MtaProofContext& ctx,
-                 const BigInt& n,
-                 const AuxRsaParams& verifier_aux,
-                 const BigInt& c1,
-                 const BigInt& c2,
-                 const A3MtAProof& proof);
+bool VerifyA3MtA(const MtaProofContext& ctx, const BigInt& n,
+                 const AuxRsaParams& verifier_aux, const BigInt& c1,
+                 const BigInt& c2, const A3MtAProof& proof);
 
 void AppendA1RangeProof(const A1RangeProof& proof, Bytes* out);
 A1RangeProof ReadA1RangeProof(std::span<const uint8_t> input, size_t* offset);
@@ -224,13 +205,10 @@ ECPoint SumPointsOrThrow(const std::vector<ECPoint>& points);
 Bytes SerializePointPair(const ECPoint& first, const ECPoint& second);
 Scalar XCoordinateModQ(const ECPoint& point);
 
-Scalar BuildSchnorrChallenge(const Bytes& session_id,
-                             PartyIndex party_id,
-                             const ECPoint& statement,
-                             const ECPoint& a);
+Scalar BuildSchnorrChallenge(const Bytes& session_id, PartyIndex party_id,
+                             const ECPoint& statement, const ECPoint& a);
 
-Scalar BuildVRelationChallenge(const Bytes& session_id,
-                               PartyIndex party_id,
+Scalar BuildVRelationChallenge(const Bytes& session_id, PartyIndex party_id,
                                const ECPoint& r_statement,
                                const ECPoint& v_statement,
                                const ECPoint& alpha);

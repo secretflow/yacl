@@ -76,9 +76,9 @@ yacl_cc_binary(
 yacl_cc_binary(
     name = "sign_flow_tests",
     srcs = [
-        "tests/sign_flow_test_shared.h",
         "tests/sign_flow_test.cc",
         "tests/sign_flow_test_cases.cc",
+        "tests/sign_flow_test_shared.h",
         "tests/sign_flow_test_support.cc",
     ],
     copts = TECDSA_COPTS,

@@ -1,3 +1,17 @@
+// Copyright 2026 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "yacl/crypto/experimental/threshold_ecdsa/protocol/keygen_session.h"
 
 #include <string>
@@ -18,8 +32,10 @@ KeygenSession::KeygenSession(KeygenSessionConfig cfg)
       aux_rsa_modulus_bits_(cfg.aux_rsa_modulus_bits),
       strict_mode_(cfg.strict_mode),
       require_aux_param_proof_(cfg.require_aux_param_proof),
-      expected_square_free_proof_profile_(std::move(cfg.expected_square_free_proof_profile)),
-      expected_aux_param_proof_profile_(std::move(cfg.expected_aux_param_proof_profile)),
+      expected_square_free_proof_profile_(
+          std::move(cfg.expected_square_free_proof_profile)),
+      expected_aux_param_proof_profile_(
+          std::move(cfg.expected_aux_param_proof_profile)),
       peers_(ki::BuildPeerSet(participants_, cfg.self_id)) {
   ki::ValidateParticipantsOrThrow(participants_, cfg.self_id);
   if (threshold_ >= participants_.size()) {
@@ -32,14 +48,18 @@ KeygenSession::KeygenSession(KeygenSessionConfig cfg)
     TECDSA_THROW_ARGUMENT("aux_rsa_modulus_bits must be >= 2048");
   }
   if (strict_mode_) {
-    if (expected_square_free_proof_profile_.scheme != StrictProofScheme::kUnknown &&
+    if (expected_square_free_proof_profile_.scheme !=
+            StrictProofScheme::kUnknown &&
         !IsStrictProofScheme(expected_square_free_proof_profile_.scheme)) {
-      TECDSA_THROW_ARGUMENT("strict keygen expected square-free profile must use strict scheme");
+      TECDSA_THROW_ARGUMENT(
+          "strict keygen expected square-free profile must use strict scheme");
     }
     if (require_aux_param_proof_ &&
-        expected_aux_param_proof_profile_.scheme != StrictProofScheme::kUnknown &&
+        expected_aux_param_proof_profile_.scheme !=
+            StrictProofScheme::kUnknown &&
         !IsStrictProofScheme(expected_aux_param_proof_profile_.scheme)) {
-      TECDSA_THROW_ARGUMENT("strict keygen expected aux profile must use strict scheme");
+      TECDSA_THROW_ARGUMENT(
+          "strict keygen expected aux profile must use strict scheme");
     }
   }
   result_.keygen_session_id = session_id();
@@ -49,9 +69,7 @@ KeygenSession::KeygenSession(KeygenSessionConfig cfg)
   result_.require_aux_param_proof = require_aux_param_proof_;
 }
 
-KeygenPhase KeygenSession::phase() const {
-  return phase_;
-}
+KeygenPhase KeygenSession::phase() const { return phase_; }
 
 size_t KeygenSession::received_peer_count_in_phase() const {
   switch (phase_) {
@@ -60,7 +78,8 @@ size_t KeygenSession::received_peer_count_in_phase() const {
     case KeygenPhase::kPhase2: {
       size_t complete = 0;
       for (PartyIndex peer : peers_) {
-        if (seen_phase2_opens_.contains(peer) && seen_phase2_shares_.contains(peer)) {
+        if (seen_phase2_opens_.contains(peer) &&
+            seen_phase2_shares_.contains(peer)) {
           ++complete;
         }
       }
@@ -74,9 +93,7 @@ size_t KeygenSession::received_peer_count_in_phase() const {
   TECDSA_THROW_ARGUMENT("invalid keygen phase");
 }
 
-uint32_t KeygenSession::threshold() const {
-  return threshold_;
-}
+uint32_t KeygenSession::threshold() const { return threshold_; }
 
 bool KeygenSession::PollTimeout(std::chrono::steady_clock::time_point now) {
   const bool timed_out = Session::PollTimeout(now);
@@ -206,9 +223,9 @@ void KeygenSession::Complete() {
 }
 
 bool KeygenSession::HasResult() const {
-  if (status() != SessionStatus::kCompleted || phase_ != KeygenPhase::kCompleted ||
-      !phase2_aggregates_ready_ || !local_phase3_ready_ ||
-      result_.all_X_i.size() != participants_.size() ||
+  if (status() != SessionStatus::kCompleted ||
+      phase_ != KeygenPhase::kCompleted || !phase2_aggregates_ready_ ||
+      !local_phase3_ready_ || result_.all_X_i.size() != participants_.size() ||
       result_.all_paillier_public.size() != participants_.size() ||
       result_.all_aux_rsa_params.size() != participants_.size() ||
       result_.local_paillier == nullptr) {
@@ -244,15 +261,19 @@ bool KeygenSession::HasResult() const {
     const auto pk_it = result_.all_paillier_public.find(party);
     const auto aux_it = result_.all_aux_rsa_params.find(party);
     const auto square_it = result_.all_square_free_proofs.find(party);
-    if (pk_it == result_.all_paillier_public.end() || aux_it == result_.all_aux_rsa_params.end() ||
+    if (pk_it == result_.all_paillier_public.end() ||
+        aux_it == result_.all_aux_rsa_params.end() ||
         square_it == result_.all_square_free_proofs.end()) {
       return false;
     }
-    if (!ki::StrictMetadataCompatible(result_.square_free_proof_profile, square_it->second.metadata)) {
+    if (!ki::StrictMetadataCompatible(result_.square_free_proof_profile,
+                                      square_it->second.metadata)) {
       return false;
     }
-    const StrictProofVerifierContext context = ki::BuildStrictProofContext(session_id(), party);
-    if (!VerifySquareFreeProofGmr98(pk_it->second.n, square_it->second, context)) {
+    const StrictProofVerifierContext context =
+        ki::BuildStrictProofContext(session_id(), party);
+    if (!VerifySquareFreeProofGmr98(pk_it->second.n, square_it->second,
+                                    context)) {
       return false;
     }
     if (require_aux_param_proof_) {
@@ -260,10 +281,12 @@ bool KeygenSession::HasResult() const {
       if (aux_pf_it == result_.all_aux_param_proofs.end()) {
         return false;
       }
-      if (!ki::StrictMetadataCompatible(result_.aux_param_proof_profile, aux_pf_it->second.metadata)) {
+      if (!ki::StrictMetadataCompatible(result_.aux_param_proof_profile,
+                                        aux_pf_it->second.metadata)) {
         return false;
       }
-      if (!VerifyAuxRsaParamProofStrict(aux_it->second, aux_pf_it->second, context)) {
+      if (!VerifyAuxRsaParamProofStrict(aux_it->second, aux_pf_it->second,
+                                        context)) {
         return false;
       }
     }

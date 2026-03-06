@@ -1,12 +1,28 @@
+// Copyright 2026 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "yacl/crypto/experimental/threshold_ecdsa/net/in_memory_transport.h"
-#include "yacl/crypto/experimental/threshold_ecdsa/common/errors.h"
 
 #include <stdexcept>
 #include <vector>
 
+#include "yacl/crypto/experimental/threshold_ecdsa/common/errors.h"
+
 namespace tecdsa {
 
-std::shared_ptr<InMemoryTransport> InMemoryNetwork::CreateEndpoint(PartyIndex self_id) {
+std::shared_ptr<InMemoryTransport> InMemoryNetwork::CreateEndpoint(
+    PartyIndex self_id) {
   if (self_id == 0) {
     TECDSA_THROW_ARGUMENT("InMemory endpoint self_id must be non-zero");
   }
@@ -110,9 +126,7 @@ void InMemoryTransport::RegisterHandler(EnvelopeHandler handler) {
   handler_ = std::move(handler);
 }
 
-PartyIndex InMemoryTransport::self_id() const {
-  return self_id_;
-}
+PartyIndex InMemoryTransport::self_id() const { return self_id_; }
 
 void InMemoryTransport::Deliver(const Envelope& envelope) {
   EnvelopeHandler handler;

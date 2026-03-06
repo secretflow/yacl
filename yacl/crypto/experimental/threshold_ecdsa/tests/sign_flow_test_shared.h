@@ -1,3 +1,17 @@
+// Copyright 2026 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 
 #include <cstddef>
@@ -41,22 +55,23 @@ void Expect(bool condition, const std::string& message);
 void ExpectThrow(const std::function<void()>& fn, const std::string& message);
 
 std::vector<PartyIndex> BuildParticipants(uint32_t n);
-size_t FindPartyIndexOrThrow(const std::vector<PartyIndex>& parties, PartyIndex party_id);
+size_t FindPartyIndexOrThrow(const std::vector<PartyIndex>& parties,
+                             PartyIndex party_id);
 
-std::vector<std::unique_ptr<KeygenSession>> BuildKeygenSessions(uint32_t n,
-                                                                uint32_t t,
-                                                                const Bytes& session_id);
-bool DeliverKeygenEnvelope(const Envelope& envelope,
-                           std::vector<std::unique_ptr<KeygenSession>>* sessions);
-void DeliverKeygenEnvelopesOrThrow(const std::vector<Envelope>& envelopes,
-                                   std::vector<std::unique_ptr<KeygenSession>>* sessions);
-std::unordered_map<PartyIndex, KeygenResult> RunKeygenAndCollectResults(uint32_t n,
-                                                                         uint32_t t,
-                                                                         const Bytes& session_id);
+std::vector<std::unique_ptr<KeygenSession>> BuildKeygenSessions(
+    uint32_t n, uint32_t t, const Bytes& session_id);
+bool DeliverKeygenEnvelope(
+    const Envelope& envelope,
+    std::vector<std::unique_ptr<KeygenSession>>* sessions);
+void DeliverKeygenEnvelopesOrThrow(
+    const std::vector<Envelope>& envelopes,
+    std::vector<std::unique_ptr<KeygenSession>>* sessions);
+std::unordered_map<PartyIndex, KeygenResult> RunKeygenAndCollectResults(
+    uint32_t n, uint32_t t, const Bytes& session_id);
 
 SignFixture BuildSignFixture(const std::vector<PartyIndex>& signers);
-tecdsa::StrictProofVerifierContext BuildKeygenProofContext(const Bytes& keygen_session_id,
-                                                           PartyIndex prover_id);
+tecdsa::StrictProofVerifierContext BuildKeygenProofContext(
+    const Bytes& keygen_session_id, PartyIndex prover_id);
 
 std::vector<SignSessionConfig> BuildSignSessionConfigs(
     const SignFixture& fixture,
@@ -71,23 +86,33 @@ std::vector<std::unique_ptr<SignSession>> BuildSignSessions(
 bool DeliverSignEnvelope(const Envelope& envelope,
                          const std::vector<PartyIndex>& signers,
                          std::vector<std::unique_ptr<SignSession>>* sessions);
-void DeliverSignEnvelopesOrThrow(const std::vector<Envelope>& envelopes,
-                                 const std::vector<PartyIndex>& signers,
-                                 std::vector<std::unique_ptr<SignSession>>* sessions);
+void DeliverSignEnvelopesOrThrow(
+    const std::vector<Envelope>& envelopes,
+    const std::vector<PartyIndex>& signers,
+    std::vector<std::unique_ptr<SignSession>>* sessions);
 
-std::vector<Envelope> CollectPhase1Messages(std::vector<std::unique_ptr<SignSession>>* sessions);
-std::vector<Envelope> CollectPhase2Messages(std::vector<std::unique_ptr<SignSession>>* sessions);
-std::vector<Envelope> CollectPhase3Messages(std::vector<std::unique_ptr<SignSession>>* sessions);
-std::vector<Envelope> CollectPhase4Messages(std::vector<std::unique_ptr<SignSession>>* sessions);
-std::vector<Envelope> CollectPhase5AMessages(std::vector<std::unique_ptr<SignSession>>* sessions);
-std::vector<Envelope> CollectPhase5BMessages(std::vector<std::unique_ptr<SignSession>>* sessions);
-std::vector<Envelope> CollectPhase5CMessages(std::vector<std::unique_ptr<SignSession>>* sessions);
-std::vector<Envelope> CollectPhase5DMessages(std::vector<std::unique_ptr<SignSession>>* sessions);
-std::vector<Envelope> CollectPhase5EMessages(std::vector<std::unique_ptr<SignSession>>* sessions);
+std::vector<Envelope> CollectPhase1Messages(
+    std::vector<std::unique_ptr<SignSession>>* sessions);
+std::vector<Envelope> CollectPhase2Messages(
+    std::vector<std::unique_ptr<SignSession>>* sessions);
+std::vector<Envelope> CollectPhase3Messages(
+    std::vector<std::unique_ptr<SignSession>>* sessions);
+std::vector<Envelope> CollectPhase4Messages(
+    std::vector<std::unique_ptr<SignSession>>* sessions);
+std::vector<Envelope> CollectPhase5AMessages(
+    std::vector<std::unique_ptr<SignSession>>* sessions);
+std::vector<Envelope> CollectPhase5BMessages(
+    std::vector<std::unique_ptr<SignSession>>* sessions);
+std::vector<Envelope> CollectPhase5CMessages(
+    std::vector<std::unique_ptr<SignSession>>* sessions);
+std::vector<Envelope> CollectPhase5DMessages(
+    std::vector<std::unique_ptr<SignSession>>* sessions);
+std::vector<Envelope> CollectPhase5EMessages(
+    std::vector<std::unique_ptr<SignSession>>* sessions);
 
-void EnsureAllSessionsInPhase(const std::vector<std::unique_ptr<SignSession>>& sessions,
-                              SignPhase phase,
-                              SignPhase5Stage phase5_stage = SignPhase5Stage::kPhase5A);
+void EnsureAllSessionsInPhase(
+    const std::vector<std::unique_ptr<SignSession>>& sessions, SignPhase phase,
+    SignPhase5Stage phase5_stage = SignPhase5Stage::kPhase5A);
 
 void RunToPhase4(std::vector<std::unique_ptr<SignSession>>* sessions,
                  const std::vector<PartyIndex>& signers);
@@ -100,8 +125,10 @@ void RunToPhase5D(std::vector<std::unique_ptr<SignSession>>* sessions,
 
 uint32_t ReadU32Be(const Bytes& input, size_t offset);
 bool TamperPhase5BSchnorrProof(Envelope* envelope);
-bool ReplacePhase4GammaPoint(Envelope* envelope, std::span<const uint8_t> replacement_point);
-bool ReplacePhase5BVPoint(Envelope* envelope, std::span<const uint8_t> replacement_point);
+bool ReplacePhase4GammaPoint(Envelope* envelope,
+                             std::span<const uint8_t> replacement_point);
+bool ReplacePhase5BVPoint(Envelope* envelope,
+                          std::span<const uint8_t> replacement_point);
 
 void TestStage4SignConstructorRejectsSmallPaillierModulus();
 void TestStage6SignConstructorRejectsMissingKeygenProofArtifacts();

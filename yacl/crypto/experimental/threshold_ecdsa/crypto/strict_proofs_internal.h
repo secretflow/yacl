@@ -1,3 +1,17 @@
+// Copyright 2026 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 
 #include <array>
@@ -13,16 +27,23 @@
 
 namespace tecdsa::strict_proofs_internal {
 
-inline constexpr char kSquareFreeProofIdWeak[] = "GG2019/SquareFreeDevDigest/v2";
+inline constexpr char kSquareFreeProofIdWeak[] =
+    "GG2019/SquareFreeDevDigest/v2";
 inline constexpr char kAuxParamProofIdWeak[] = "GG2019/AuxParamDevDigest/v2";
-inline constexpr char kSquareFreeProofIdStrict[] = "GG2019/SquareFreeStrictAlgebraic/v1";
+inline constexpr char kSquareFreeProofIdStrict[] =
+    "GG2019/SquareFreeStrictAlgebraic/v1";
 inline constexpr char kSquareFreeProofIdGmr98[] = "GG2019/SquareFreeGMR98/v1";
-inline constexpr char kAuxParamProofIdStrict[] = "GG2019/AuxParamStrictAlgebraic/v1";
-inline constexpr char kSquareFreeSchemeIdWeak[] = "GG2019/DevDigestBinding/SquareFree/v2";
-inline constexpr char kAuxParamSchemeIdWeak[] = "GG2019/DevDigestBinding/AuxParam/v2";
-inline constexpr char kSquareFreeSchemeIdStrict[] = "GG2019/StrictAlgebraic/SquareFree/v1";
+inline constexpr char kAuxParamProofIdStrict[] =
+    "GG2019/AuxParamStrictAlgebraic/v1";
+inline constexpr char kSquareFreeSchemeIdWeak[] =
+    "GG2019/DevDigestBinding/SquareFree/v2";
+inline constexpr char kAuxParamSchemeIdWeak[] =
+    "GG2019/DevDigestBinding/AuxParam/v2";
+inline constexpr char kSquareFreeSchemeIdStrict[] =
+    "GG2019/StrictAlgebraic/SquareFree/v1";
 inline constexpr char kSquareFreeSchemeIdGmr98[] = "GG2019/GMR98/SquareFree/v1";
-inline constexpr char kAuxParamSchemeIdStrict[] = "GG2019/StrictAlgebraic/AuxParam/v1";
+inline constexpr char kAuxParamSchemeIdStrict[] =
+    "GG2019/StrictAlgebraic/AuxParam/v1";
 
 inline constexpr uint32_t kProofWireMagicV1 = 0x53505231;  // "SPR1"
 inline constexpr uint32_t kProofWireMagicV2 = 0x53505232;  // "SPR2"
@@ -73,11 +94,13 @@ bool HasContextBinding(const StrictProofVerifierContext& context);
 ProofMetadata MakeWeakMetadata(const char* scheme_id);
 ProofMetadata MakeStrictMetadata(const char* scheme_id,
                                  const StrictProofVerifierContext& context);
-ProofMetadata MakeSquareFreeGmr98Metadata(const StrictProofVerifierContext& context);
+ProofMetadata MakeSquareFreeGmr98Metadata(
+    const StrictProofVerifierContext& context);
 
-Bytes EncodeProofWire(const ProofMetadata& metadata, std::span<const uint8_t> blob);
-std::pair<ProofMetadata, Bytes> DecodeProofWire(std::span<const uint8_t> encoded,
-                                                size_t max_len);
+Bytes EncodeProofWire(const ProofMetadata& metadata,
+                      std::span<const uint8_t> blob);
+std::pair<ProofMetadata, Bytes> DecodeProofWire(
+    std::span<const uint8_t> encoded, size_t max_len);
 
 BigInt RandomBelow(const BigInt& upper_exclusive);
 BigInt RandomZnStar(const BigInt& modulus_n);
@@ -89,19 +112,16 @@ std::optional<BigInt> InvertMod(const BigInt& value, const BigInt& modulus);
 bool IsPerfectSquare(const BigInt& value);
 
 Bytes BuildWeakDigestFromFields(
-    const char* proof_id,
-    const StrictProofVerifierContext& context,
+    const char* proof_id, const StrictProofVerifierContext& context,
     const std::array<std::pair<const char*, Bytes>, 1>& fields);
 Bytes BuildWeakDigestFromFields(
-    const char* proof_id,
-    const StrictProofVerifierContext& context,
+    const char* proof_id, const StrictProofVerifierContext& context,
     const std::array<std::pair<const char*, Bytes>, 3>& fields);
 
 Scalar BuildSquareFreeStrictChallenge(const BigInt& modulus_n,
                                       const StrictProofVerifierContext& context,
                                       std::span<const uint8_t> nonce,
-                                      const BigInt& y,
-                                      const BigInt& t1,
+                                      const BigInt& y, const BigInt& t1,
                                       const BigInt& t2);
 
 AuxRsaParamsBigInt ToBigIntParams(const AuxRsaParams& params);
@@ -109,10 +129,8 @@ AuxRsaParamsBigInt ToBigIntParams(const AuxRsaParams& params);
 Scalar BuildAuxParamStrictChallenge(const AuxRsaParamsBigInt& params,
                                     const StrictProofVerifierContext& context,
                                     std::span<const uint8_t> nonce,
-                                    const BigInt& c1,
-                                    const BigInt& c2,
-                                    const BigInt& t1,
-                                    const BigInt& t2);
+                                    const BigInt& c1, const BigInt& c2,
+                                    const BigInt& t1, const BigInt& t2);
 
 BigInt DeriveSquareFreeGmr98Challenge(const BigInt& modulus_n,
                                       const StrictProofVerifierContext& context,
@@ -120,13 +138,16 @@ BigInt DeriveSquareFreeGmr98Challenge(const BigInt& modulus_n,
                                       uint32_t round_idx);
 
 Bytes EncodeSquareFreeStrictPayload(const SquareFreeStrictPayload& payload);
-SquareFreeStrictPayload DecodeSquareFreeStrictPayload(std::span<const uint8_t> blob);
+SquareFreeStrictPayload DecodeSquareFreeStrictPayload(
+    std::span<const uint8_t> blob);
 
 Bytes EncodeSquareFreeGmr98Payload(const SquareFreeGmr98Payload& payload);
-SquareFreeGmr98Payload DecodeSquareFreeGmr98Payload(std::span<const uint8_t> blob);
+SquareFreeGmr98Payload DecodeSquareFreeGmr98Payload(
+    std::span<const uint8_t> blob);
 
 Bytes EncodeAuxParamStrictPayload(const AuxParamStrictPayload& payload);
-AuxParamStrictPayload DecodeAuxParamStrictPayload(std::span<const uint8_t> blob);
+AuxParamStrictPayload DecodeAuxParamStrictPayload(
+    std::span<const uint8_t> blob);
 
 BigInt PickCoprimeDeterministic(const BigInt& modulus, const BigInt& seed);
 

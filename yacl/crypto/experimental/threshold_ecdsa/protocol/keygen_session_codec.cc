@@ -1,4 +1,16 @@
-#include "yacl/crypto/experimental/threshold_ecdsa/protocol/keygen_session_internal.h"
+// Copyright 2026 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 
 #include <algorithm>
 #include <array>
@@ -14,6 +26,7 @@
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/encoding.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/random.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/transcript.h"
+#include "yacl/crypto/experimental/threshold_ecdsa/protocol/keygen_session_internal.h"
 
 namespace tecdsa::keygen_internal {
 
@@ -42,8 +55,8 @@ void ValidateParticipantsOrThrow(const std::vector<PartyIndex>& participants,
   }
 }
 
-std::unordered_set<PartyIndex> BuildPeerSet(const std::vector<PartyIndex>& participants,
-                                            PartyIndex self_id) {
+std::unordered_set<PartyIndex> BuildPeerSet(
+    const std::vector<PartyIndex>& participants, PartyIndex self_id) {
   std::unordered_set<PartyIndex> peers;
   for (PartyIndex id : participants) {
     if (id != self_id) {
@@ -81,10 +94,8 @@ void AppendSizedField(std::span<const uint8_t> field, Bytes* out) {
   out->insert(out->end(), field.begin(), field.end());
 }
 
-Bytes ReadSizedField(std::span<const uint8_t> input,
-                     size_t* offset,
-                     size_t max_len,
-                     const char* field_name) {
+Bytes ReadSizedField(std::span<const uint8_t> input, size_t* offset,
+                     size_t max_len, const char* field_name) {
   const uint32_t len = ReadU32Be(input, offset);
   if (len > max_len) {
     TECDSA_THROW_ARGUMENT(std::string(field_name) + " exceeds maximum length");
@@ -137,10 +148,8 @@ void AppendMpIntField(const BigInt& value, Bytes* out) {
   AppendSizedField(encoded, out);
 }
 
-BigInt ReadMpIntField(std::span<const uint8_t> input,
-                      size_t* offset,
-                      size_t max_len,
-                      const char* field_name) {
+BigInt ReadMpIntField(std::span<const uint8_t> input, size_t* offset,
+                      size_t max_len, const char* field_name) {
   const Bytes encoded = ReadSizedField(input, offset, max_len, field_name);
   return DecodeMpInt(encoded, max_len);
 }
@@ -154,7 +163,8 @@ Scalar RandomNonZeroScalar() {
   }
 }
 
-Scalar EvaluatePolynomialAt(const std::vector<Scalar>& coefficients, PartyIndex party_id) {
+Scalar EvaluatePolynomialAt(const std::vector<Scalar>& coefficients,
+                            PartyIndex party_id) {
   if (coefficients.empty()) {
     TECDSA_THROW_ARGUMENT("Polynomial coefficients must not be empty");
   }
@@ -171,10 +181,8 @@ Scalar EvaluatePolynomialAt(const std::vector<Scalar>& coefficients, PartyIndex 
   return Scalar(acc);
 }
 
-Scalar BuildSchnorrChallenge(const Bytes& session_id,
-                             PartyIndex party_id,
-                             const ECPoint& statement,
-                             const ECPoint& a) {
+Scalar BuildSchnorrChallenge(const Bytes& session_id, PartyIndex party_id,
+                             const ECPoint& statement, const ECPoint& a) {
   Transcript transcript;
   const Bytes statement_bytes = EncodePoint(statement);
   const Bytes a_bytes = EncodePoint(a);
@@ -215,8 +223,10 @@ StrictProofVerifierContext BuildStrictProofContext(const Bytes& session_id,
   return context;
 }
 
-bool StrictMetadataCompatible(const ProofMetadata& expected, const ProofMetadata& candidate) {
-  return IsProofMetadataCompatible(expected, candidate, /*require_strict_scheme=*/true);
+bool StrictMetadataCompatible(const ProofMetadata& expected,
+                              const ProofMetadata& candidate) {
+  return IsProofMetadataCompatible(expected, candidate,
+                                   /*require_strict_scheme=*/true);
 }
 
 }  // namespace tecdsa::keygen_internal

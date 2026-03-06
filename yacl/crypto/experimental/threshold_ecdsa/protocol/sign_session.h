@@ -1,7 +1,21 @@
+// Copyright 2026 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #pragma once
 
-#include <optional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -197,16 +211,15 @@ class SignSession : public Session {
   void ClearSensitiveIntermediates();
   void Abort(const std::string& reason);
   void Complete();
-  SchnorrProof BuildSchnorrProof(const ECPoint& statement, const Scalar& witness) const;
-  bool VerifySchnorrProof(PartyIndex prover_id,
-                          const ECPoint& statement,
+  SchnorrProof BuildSchnorrProof(const ECPoint& statement,
+                                 const Scalar& witness) const;
+  bool VerifySchnorrProof(PartyIndex prover_id, const ECPoint& statement,
                           const SchnorrProof& proof) const;
   VRelationProof BuildVRelationProof(const ECPoint& r_statement,
                                      const ECPoint& v_statement,
                                      const Scalar& s_witness,
                                      const Scalar& l_witness) const;
-  bool VerifyVRelationProof(PartyIndex prover_id,
-                            const ECPoint& r_statement,
+  bool VerifyVRelationProof(PartyIndex prover_id, const ECPoint& r_statement,
                             const ECPoint& v_statement,
                             const VRelationProof& proof) const;
 
@@ -214,9 +227,12 @@ class SignSession : public Session {
   std::unordered_set<PartyIndex> peers_;
   std::unordered_map<PartyIndex, ECPoint> all_X_i_;
   std::unordered_map<PartyIndex, PaillierPublicKey> all_paillier_public_;
-  std::unordered_map<PartyIndex, SignSessionConfig::AuxRsaParams> all_aux_rsa_params_;
-  std::unordered_map<PartyIndex, SignSessionConfig::SquareFreeProof> all_square_free_proofs_;
-  std::unordered_map<PartyIndex, SignSessionConfig::AuxRsaParamProof> all_aux_param_proofs_;
+  std::unordered_map<PartyIndex, SignSessionConfig::AuxRsaParams>
+      all_aux_rsa_params_;
+  std::unordered_map<PartyIndex, SignSessionConfig::SquareFreeProof>
+      all_square_free_proofs_;
+  std::unordered_map<PartyIndex, SignSessionConfig::AuxRsaParamProof>
+      all_aux_param_proofs_;
   ProofMetadata expected_square_free_proof_profile_;
   ProofMetadata expected_aux_param_proof_profile_;
   std::shared_ptr<PaillierProvider> local_paillier_;
@@ -256,7 +272,8 @@ class SignSession : public Session {
   std::unordered_map<PartyIndex, Bytes> phase1_commitments_;
   std::vector<Envelope> phase2_outbox_;
   bool phase2_instances_initialized_ = false;
-  std::unordered_map<std::string, Phase2InitiatorInstance> phase2_initiator_instances_;
+  std::unordered_map<std::string, Phase2InitiatorInstance>
+      phase2_initiator_instances_;
   std::unordered_map<std::string, std::string> phase2_responder_requests_seen_;
   Scalar phase2_mta_initiator_sum_;
   Scalar phase2_mta_responder_sum_;

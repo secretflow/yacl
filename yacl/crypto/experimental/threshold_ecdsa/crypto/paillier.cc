@@ -1,10 +1,24 @@
+// Copyright 2026 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/paillier.h"
-#include "yacl/crypto/experimental/threshold_ecdsa/common/errors.h"
 
 #include <algorithm>
 #include <array>
 #include <cstddef>
 
+#include "yacl/crypto/experimental/threshold_ecdsa/common/errors.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/bigint_utils.h"
 
 namespace tecdsa {
@@ -37,8 +51,7 @@ PaillierCiphertextWithRandomBigInt PaillierProvider::EncryptWithRandomBigInt(
 }
 
 BigInt PaillierProvider::EncryptWithProvidedRandomBigInt(
-    const BigInt& plaintext,
-    const BigInt& randomness) const {
+    const BigInt& plaintext, const BigInt& randomness) const {
   if (!initialized_) {
     TECDSA_THROW_LOGIC("Paillier key pair is not initialized");
   }
@@ -177,17 +190,11 @@ BigInt PaillierProvider::private_lambda_bigint() const {
   return lambda_;
 }
 
-BigInt PaillierProvider::modulus_n() const {
-  return modulus_n_bigint();
-}
+BigInt PaillierProvider::modulus_n() const { return modulus_n_bigint(); }
 
-BigInt PaillierProvider::modulus_n2() const {
-  return modulus_n2_bigint();
-}
+BigInt PaillierProvider::modulus_n2() const { return modulus_n2_bigint(); }
 
-BigInt PaillierProvider::generator() const {
-  return generator_bigint();
-}
+BigInt PaillierProvider::generator() const { return generator_bigint(); }
 
 BigInt PaillierProvider::private_lambda() const {
   return private_lambda_bigint();
@@ -233,7 +240,8 @@ void PaillierProvider::GenerateKeyPair(unsigned long modulus_bits) {
   TECDSA_THROW("failed to generate valid native Paillier key pair");
 }
 
-BigInt PaillierProvider::NormalizeMod(const BigInt& value, const BigInt& modulus) {
+BigInt PaillierProvider::NormalizeMod(const BigInt& value,
+                                      const BigInt& modulus) {
   return bigint::NormalizeMod(value, modulus);
 }
 
