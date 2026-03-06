@@ -1370,7 +1370,7 @@ std::vector<Fp> MulCoeffsNTTTruncNarrow(const FpContext& f,
                                         std::size_t an,
                                         const std::vector<Fp>& b,
                                         std::size_t bn, std::size_t out_need,
-                                        const NarrowPrimeSelection& selection) {
+                                        const detail::NarrowPrimeSelection& selection) {
   std::vector<Fp> out(out_need, f.Zero());
   const u64 p = f.GetModulus();
 
@@ -1422,8 +1422,8 @@ std::vector<Fp> MulCoeffsNTTTrunc(const FpContext& f, const std::vector<Fp>& a,
   static constexpr std::size_t kWideCutover =
       4096;  // out_need >= 4096 才切到 64 位 NTT
   const bool wide_ntt = (p > (1ULL << 40)) && (out_need >= kWideCutover);
-  const NarrowPrimeSelection narrow_selection =
-      wide_ntt ? NarrowPrimeSelection{}
+  const detail::NarrowPrimeSelection narrow_selection =
+      wide_ntt ? detail::NarrowPrimeSelection{}
                : detail::select_narrow_prime_set(p, min_dim, convolution_need);
   const std::size_t prime_count = wide_ntt
                                       ? detail::select_prime_count64(p, min_dim)
