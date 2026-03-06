@@ -63,6 +63,15 @@ FpPolynomial NaiveMulPolynomial(const FpPolynomial& lhs,
   return FpPolynomial(ctx, std::move(out));
 }
 
+FpPolynomial MakeSparseEndpointPolynomial(const FpContext& ctx,
+                                          std::size_t size, u64 constant_coeff,
+                                          u64 leading_coeff) {
+  std::vector<Fp> coeffs(size, ctx.Zero());
+  coeffs[0] = ctx.FromUint64(constant_coeff);
+  coeffs[size - 1] = ctx.FromUint64(leading_coeff);
+  return FpPolynomial(ctx, std::move(coeffs));
+}
+
 void ExpectSamePolynomial(const FpPolynomial& actual,
                           const FpPolynomial& expected) {
   ASSERT_EQ(actual.Coeffs().size(), expected.Coeffs().size());
@@ -98,6 +107,24 @@ TEST(FpPolyTest, AddMulEval) {
   const Fp y_g = g.Eval(x);
   const Fp y_prod = prod.Eval(x);
   EXPECT_EQ(y_prod.v, ctx.Mul(y_f, y_g).v);
+}
+
+TEST(FpPolyTest, OwnsTemporaryContext) {
+  const FpPolynomial f(FpContext(97), {1, 2, 3});
+  const FpPolynomial g(FpContext(97), {5, 1});
+
+  EXPECT_EQ(f.GetModulus(), 97);
+  EXPECT_EQ(g.GetModulus(), 97);
+
+  const FpPolynomial prod = f * g;
+  ASSERT_EQ(prod.Coeffs().size(), 4);
+  EXPECT_EQ(prod.Coeffs()[0].v, 5);
+  EXPECT_EQ(prod.Coeffs()[1].v, 11);
+  EXPECT_EQ(prod.Coeffs()[2].v, 17);
+  EXPECT_EQ(prod.Coeffs()[3].v, 3);
+
+  const Fp x = f.GetContext().FromUint64(9);
+  EXPECT_EQ(prod.Eval(x).v, f.GetContext().Mul(f.Eval(x), g.Eval(x)).v);
 }
 
 TEST(FpPolyTest, DivRem) {
@@ -166,6 +193,45 @@ TEST(FpPolyTest, MulMatchesNaiveNearUint64LimitOnWideNttPath) {
   const FpPolynomial rhs(ctx, MakeDeterministicCoeffs(ctx, 2049, 6));
 
   ExpectSamePolynomial(lhs * rhs, NaiveMulPolynomial(lhs, rhs));
+}
+
+TEST(FpPolyTest, MulSupportsLargeInputWithTwoNarrowPrimes) {
+  constexpr u64 kModulus = 65537ULL;
+  constexpr std::size_t kLongSize = (1U << 23) - 63;
+  constexpr std::size_t kShortSize = 65;
+
+  FpContext ctx(kModulus);
+  const FpPolynomial f = MakeSparseEndpointPolynomial(ctx, kLongSize, 7, 11);
+  const FpPolynomial g = MakeSparseEndpointPolynomial(ctx, kShortSize, 3, 5);
+
+  const FpPolynomial prod = f * g;
+  const std::size_t high_f = kLongSize - 1;
+  const std::size_t high_g = kShortSize - 1;
+
+  ASSERT_EQ(prod.Coeffs().size(), kLongSize + kShortSize - 1);
+  EXPECT_EQ(prod.Coeff(0).v, 21);
+  EXPECT_EQ(prod.Coeff(1).v, 0);
+  EXPECT_EQ(prod.Coeff(high_g).v, 35);
+  EXPECT_EQ(prod.Coeff(high_g + 1).v, 0);
+  EXPECT_EQ(prod.Coeff(high_f).v, 33);
+  EXPECT_EQ(prod.Coeff(high_f + high_g).v, 55);
+}
+
+TEST(FpPolyTest, MulSupportsLargeInputWithFourNarrowPrimes) {
+  constexpr u64 kModulus = 1000000000039ULL;
+  constexpr std::size_t kPolySize = (1U << 20) + 1;
+
+  FpContext ctx(kModulus);
+  const FpPolynomial f = MakeSparseEndpointPolynomial(ctx, kPolySize, 1, 2);
+  const FpPolynomial g = MakeSparseEndpointPolynomial(ctx, kPolySize, 3, 4);
+
+  const FpPolynomial prod = f * g;
+  ASSERT_EQ(prod.Coeffs().size(), 2 * kPolySize - 1);
+  EXPECT_EQ(prod.Coeff(0).v, 3);
+  EXPECT_EQ(prod.Coeff(1).v, 0);
+  EXPECT_EQ(prod.Coeff(kPolySize - 1).v, 10);
+  EXPECT_EQ(prod.Coeff(kPolySize).v, 0);
+  EXPECT_EQ(prod.Coeff(2 * kPolySize - 2).v, 8);
 }
 
 }  // namespace

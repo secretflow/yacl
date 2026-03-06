@@ -22,7 +22,7 @@
 namespace yacl::crypto::experimental::poly {
 
 void FpPolynomial::RequireContext() const {
-  YACL_ENFORCE(ctx_ != nullptr, "FpPolynomial: null ctx");
+  YACL_ENFORCE(ctx_.has_value(), "FpPolynomial: null ctx");
 }
 
 void FpPolynomial::RequireCompat(const FpPolynomial& other) const {
@@ -34,16 +34,16 @@ void FpPolynomial::RequireCompat(const FpPolynomial& other) const {
   }
 }
 
-FpPolynomial::FpPolynomial(const FpContext& ctx) : ctx_(&ctx) {}
+FpPolynomial::FpPolynomial(const FpContext& ctx) : ctx_(ctx) {}
 
 FpPolynomial::FpPolynomial(const FpContext& ctx, std::vector<Fp> coeffs)
-    : ctx_(&ctx) {
+    : ctx_(ctx) {
   SetCoeffs(std::move(coeffs));
 }
 
 FpPolynomial::FpPolynomial(const FpContext& ctx,
                            std::initializer_list<u64> coeffs_u64)
-    : ctx_(&ctx) {
+    : ctx_(ctx) {
   c_.reserve(coeffs_u64.size());
   for (u64 a : coeffs_u64) {
     c_.push_back(ctx_->FromUint64(a));
@@ -238,7 +238,7 @@ FpPolynomial FpPolynomial::Neg() const {
 }
 
 bool FpPolynomial::Equal(const FpPolynomial& g) const noexcept {
-  if ((ctx_ == nullptr) || (g.ctx_ == nullptr)) {
+  if (!ctx_.has_value() || !g.ctx_.has_value()) {
     return false;
   }
   if (ctx_->GetModulus() != g.ctx_->GetModulus()) {

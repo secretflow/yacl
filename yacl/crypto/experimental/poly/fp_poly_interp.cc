@@ -20,7 +20,8 @@
 
 namespace yacl::crypto::experimental::poly {
 
-FpPolynomial::SubproductTree::SubproductTree(const FpContext& c) : ctx(&c) {}
+FpPolynomial::SubproductTree::SubproductTree(const FpContext& c)
+    : ctx(c) {}
 
 bool FpPolynomial::SubproductTree::Empty() const noexcept {
   return points.empty();
@@ -41,7 +42,7 @@ const FpPolynomial& FpPolynomial::SubproductTree::Root() const {
 }
 
 void FpPolynomial::SubproductTree::EnsureDerivativeVals(bool need_inv) const {
-  if (ctx == nullptr) {
+  if (!ctx.has_value()) {
     YACL_THROW_ARGUMENT_ERROR(
         "SubproductTree::EnsureDerivativeVals: ctx is null");
   }
@@ -129,7 +130,7 @@ FpPolynomial::SubproductTree FpPolynomial::SubproductTree::Build(
 std::vector<std::vector<FpPolynomial>> FpPolynomial::RemainderTree(
     const SubproductTree& tree) const {
   RequireContext();
-  if (tree.ctx == nullptr) {
+  if (!tree.ctx.has_value()) {
     YACL_THROW_ARGUMENT_ERROR("FpPolynomial::RemainderTree: tree.ctx is null");
   }
   if (ctx_->GetModulus() != tree.ctx->GetModulus()) {
@@ -205,7 +206,7 @@ std::vector<Fp> FpPolynomial::MultiPointEvalNaive(
 
 std::vector<Fp> FpPolynomial::MultiPointEval(const SubproductTree& tree) const {
   RequireContext();
-  if (tree.ctx == nullptr) {
+  if (!tree.ctx.has_value()) {
     YACL_THROW_ARGUMENT_ERROR(
         "FpPolynomial::MultiPointEval(tree): tree.ctx is null");
   }
@@ -321,7 +322,7 @@ FpPolynomial FpPolynomial::InterpolateLagrangeNaive(const FpContext& ctx,
 
 FpPolynomial FpPolynomial::InterpolateSubproductTree(
     const SubproductTree& tree, const std::vector<Fp>& ys) {
-  if (tree.ctx == nullptr) {
+  if (!tree.ctx.has_value()) {
     YACL_THROW_ARGUMENT_ERROR("InterpolateSubproductTree: tree.ctx is null");
   }
   const FpContext& F = *tree.ctx;

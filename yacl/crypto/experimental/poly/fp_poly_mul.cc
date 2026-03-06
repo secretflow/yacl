@@ -57,6 +57,11 @@ constexpr std::array<NTTPrime, 5> kNTT = {{
     {1004535809U, 3U, 21},  // 479*2^21+1
 }};
 
+struct NarrowPrimeSelection {
+  std::size_t prime_count = 0;
+  std::array<std::size_t, kNTT.size()> indices{};
+};
+
 // -------------------- [LAZY REDUCTION] keep values in [0, 2*mod)
 // --------------------
 u32 add_mod_lazy2(u32 a, u32 b, u32 mod2) {
@@ -757,26 +762,103 @@ u128 crt3_u128(u32 r0, u32 r1, u32 r2, u32 m0, u32 m1, u32 m2,
 // bound ~ min(n,m) * (p-1)^2; we use log2 to compare.
 std::size_t select_prime_count(u64 p, std::size_t min_dim) {
   if (min_dim == 0) {
-    return 3;  // unused path guard
+    return 1;  // unused path guard
   }
 
   const double log_bound = std::log2(static_cast<double>(min_dim)) +
                            2.0 * std::log2(static_cast<double>(p));
 
-  static const double log_prod3 = []() {
-    double s = 0.0;
-    for (int i = 0; i < 3; ++i) {
-      s += std::log2(static_cast<double>(kNTT[i].mod));
+  static const std::array<double, kNTT.size()> log_prefix = []() {
+    std::array<double, kNTT.size()> prefix{};
+    double acc = 0.0;
+    for (std::size_t i = 0; i < kNTT.size(); ++i) {
+      acc += std::log2(static_cast<double>(kNTT[i].mod));
+      prefix[i] = acc;
     }
-    return s;
+    return prefix;
   }();
 
   // two bits of slack to be conservative
-  if (log_bound + 2.0 <= log_prod3) {
-    return 3;
+  for (std::size_t prime_count = 1; prime_count <= kNTT.size(); ++prime_count) {
+    if (log_bound + 2.0 <= log_prefix[prime_count - 1]) {
+      return prime_count;
+    }
   }
   return kNTT.size();  // fall back to all primes (5 today)
 }
+
+struct NarrowCRTPlan {
+  static constexpr std::size_t K = kNTT.size();
+
+  std::size_t prime_count = 0;
+  u64 p = 0;
+  std::array<u32, K> moduli{};
+  std::array<u32, K> inv_prefix_prod_mod{};
+  std::array<std::array<u32, K>, K> prefix_prod_mod{};
+  std::array<u64, K> prefix_prod_mod_p{};
+
+  NarrowCRTPlan() = default;
+
+  NarrowCRTPlan(std::size_t count, u64 mod_p) : prime_count(count), p(mod_p) {
+    YACL_ENFORCE(prime_count >= 1 && prime_count <= K,
+                 "NarrowCRTPlan: unsupported prime count");
+
+    for (std::size_t i = 0; i < prime_count; ++i) {
+      moduli[i] = kNTT[i].mod;
+    }
+
+    u64 prod_mod_p = 1 % p;
+    for (std::size_t i = 0; i < prime_count; ++i) {
+      prefix_prod_mod_p[i] = prod_mod_p;
+      prod_mod_p =
+          static_cast<u64>(static_cast<u128>(prod_mod_p) *
+                           static_cast<u128>(moduli[i]) % static_cast<u128>(p));
+    }
+
+    for (std::size_t j = 0; j < prime_count; ++j) {
+      const u32 mod = moduli[j];
+      u32 prod = 1;
+      for (std::size_t i = 0; i <= j; ++i) {
+        prefix_prod_mod[j][i] = prod;
+        if (i == j) {
+          inv_prefix_prod_mod[j] = inv_mod(prod, mod);
+        } else {
+          prod = static_cast<u32>(static_cast<u64>(prod) *
+                                  static_cast<u64>(moduli[i]) % mod);
+        }
+      }
+    }
+  }
+
+  u64 combine_to_mod_p(const u32* residues) const {
+    std::array<u32, K> constants{};
+    u64 result = 0;
+
+    for (std::size_t i = 0; i < prime_count; ++i) {
+      const u32 mod = moduli[i];
+      u32 coeff = (residues[i] >= constants[i])
+                      ? (residues[i] - constants[i])
+                      : (residues[i] + mod - constants[i]);
+      coeff = static_cast<u32>(static_cast<u64>(coeff) *
+                               static_cast<u64>(inv_prefix_prod_mod[i]) % mod);
+
+      for (std::size_t j = i + 1; j < prime_count; ++j) {
+        constants[j] =
+            static_cast<u32>((static_cast<u64>(constants[j]) +
+                              static_cast<u64>(prefix_prod_mod[j][i]) *
+                                  static_cast<u64>(coeff)) %
+                             static_cast<u64>(moduli[j]));
+      }
+
+      const u64 term =
+          static_cast<u64>(static_cast<u128>(prefix_prod_mod_p[i]) *
+                           static_cast<u128>(coeff) % static_cast<u128>(p));
+      result = add_mod_canonical(result, term, p);
+    }
+
+    return result;
+  }
+};
 
 // -------------------- [CRT5] specialized CRT combiner for exactly 5 NTT primes
 // --------------------
@@ -1272,19 +1354,7 @@ std::vector<Fp> MulCoeffsNTTTruncNarrow(const FpContext& f,
     }
   }
 
-  if (prime_count <= 3) {
-    detail::CRT3Plan crt_plan(p);
-    std::array<detail::u32, 3> r{};
-    for (std::size_t i = 0; i < out_need; ++i) {
-      for (std::size_t idxp = 0; idxp < 3; ++idxp) {
-        r[idxp] = residues[idxp][i];
-      }
-      out[i] = Fp{crt_plan.combine_to_mod_p(r.data())};
-    }
-    return out;
-  }
-
-  detail::CRT5Plan crt_plan(p);
+  detail::NarrowCRTPlan crt_plan(prime_count, p);
   std::array<detail::u32, 5> r{};
   for (std::size_t i = 0; i < out_need; ++i) {
     for (std::size_t idxp = 0; idxp < prime_count; ++idxp) {

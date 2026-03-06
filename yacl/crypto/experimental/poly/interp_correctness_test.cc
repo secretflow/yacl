@@ -57,5 +57,33 @@ TEST(InterpCorrectnessTest, LagrangeNaiveVsSubproductTree) {
   }
 }
 
+TEST(InterpCorrectnessTest, SubproductTreeOwnsTemporaryContext) {
+  const auto tree = []() {
+    FpContext ctx(97);
+    const std::vector<Fp> xs = {
+        ctx.FromUint64(1),
+        ctx.FromUint64(2),
+        ctx.FromUint64(4),
+        ctx.FromUint64(8),
+    };
+    return FpPolynomial::SubproductTree::Build(ctx, xs);
+  }();
+
+  ASSERT_EQ(tree.Root().GetModulus(), 97);
+  ASSERT_EQ(tree.points.size(), 4);
+
+  const auto& dg_vals = tree.DerivativeVals();
+  const auto& inv_dg_vals = tree.InvDerivativeVals();
+  ASSERT_EQ(dg_vals.size(), tree.points.size());
+  ASSERT_EQ(inv_dg_vals.size(), tree.points.size());
+
+  const FpPolynomial f(FpContext(97), {5, 7, 11});
+  const auto ys = f.MultiPointEval(tree);
+  ASSERT_EQ(ys.size(), tree.points.size());
+  for (std::size_t idx = 0; idx < ys.size(); ++idx) {
+    EXPECT_EQ(ys[idx].v, f.Eval(tree.points[idx]).v);
+  }
+}
+
 }  // namespace
 }  // namespace yacl::crypto::experimental::poly

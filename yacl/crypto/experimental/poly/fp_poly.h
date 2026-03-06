@@ -16,6 +16,7 @@
 
 #include <cstddef>
 #include <initializer_list>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -171,13 +172,13 @@ class FpPolynomial {
   void RequireContext() const;
   void RequireCompat(const FpPolynomial& other) const;
 
-  const FpContext* ctx_ = nullptr;
+  std::optional<FpContext> ctx_;
   std::vector<Fp> c_;  // coefficients
 };
 
 // 子乘积树：levels[0] = (x - x_i)，levels.back()[0] = Π(x - x_i)
 struct FpPolynomial::SubproductTree {
-  const FpContext* ctx = nullptr;
+  std::optional<FpContext> ctx;
   std::vector<Fp> points;
   std::vector<std::vector<FpPolynomial>> levels;
 
