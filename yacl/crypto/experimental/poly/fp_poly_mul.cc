@@ -758,40 +758,84 @@ std::size_t select_prime_count64(u64 p, std::size_t min_dim) {
 u128 crt3_u128(u32 r0, u32 r1, u32 r2, u32 m0, u32 m1, u32 m2,
                u32 inv_m0_mod_m1, u32 inv_m01_mod_m2, u128 m01);
 
-// Decide how many NTT primes are needed to cover coefficient bound.
-// bound ~ min(n,m) * (p-1)^2; we use log2 to compare.
-std::size_t select_prime_count(u64 p, std::size_t min_dim) {
-  if (min_dim == 0) {
-    return 1;  // unused path guard
+int required_ntt_log(std::size_t convolution_need) {
+  YACL_ENFORCE(convolution_need != 0,
+               "required_ntt_log: convolution length must be positive");
+  std::size_t ntt_n = 1;
+  int log_n = 0;
+  while (ntt_n < convolution_need) {
+    ntt_n <<= 1;
+    ++log_n;
   }
+  return log_n;
+}
+
+// Pick the smallest prime subset that both covers the coefficient bound and
+// supports the required NTT length.
+NarrowPrimeSelection select_narrow_prime_set(u64 p, std::size_t min_dim,
+                                             std::size_t convolution_need) {
+  YACL_ENFORCE(min_dim != 0,
+               "select_narrow_prime_set: min_dim must be positive");
 
   const double log_bound = std::log2(static_cast<double>(min_dim)) +
                            2.0 * std::log2(static_cast<double>(p));
+  const int needed_log_n = required_ntt_log(convolution_need);
 
-  static const std::array<double, kNTT.size()> log_prefix = []() {
-    std::array<double, kNTT.size()> prefix{};
-    double acc = 0.0;
-    for (std::size_t i = 0; i < kNTT.size(); ++i) {
-      acc += std::log2(static_cast<double>(kNTT[i].mod));
-      prefix[i] = acc;
+  NarrowPrimeSelection best;
+  std::size_t best_count = kNTT.size() + 1;
+  double best_log_prod = -1.0;
+
+  for (std::size_t mask = 1; mask < (static_cast<std::size_t>(1) << kNTT.size());
+       ++mask) {
+    std::size_t count = 0;
+    double log_prod = 0.0;
+    bool supports_length = true;
+
+    for (std::size_t idx = 0; idx < kNTT.size(); ++idx) {
+      if ((mask & (static_cast<std::size_t>(1) << idx)) == 0) {
+        continue;
+      }
+      if (needed_log_n > kNTT[idx].max_base) {
+        supports_length = false;
+        break;
+      }
+      ++count;
+      log_prod += std::log2(static_cast<double>(kNTT[idx].mod));
     }
-    return prefix;
-  }();
 
-  // two bits of slack to be conservative
-  for (std::size_t prime_count = 1; prime_count <= kNTT.size(); ++prime_count) {
-    if (log_bound + 2.0 <= log_prefix[prime_count - 1]) {
-      return prime_count;
+    if (!supports_length || log_prod < log_bound + 2.0) {
+      continue;
+    }
+    if (count > best_count ||
+        (count == best_count && log_prod <= best_log_prod)) {
+      continue;
+    }
+
+    best.prime_count = count;
+    best_count = count;
+    best_log_prod = log_prod;
+
+    std::size_t slot = 0;
+    for (std::size_t idx = 0; idx < kNTT.size(); ++idx) {
+      if ((mask & (static_cast<std::size_t>(1) << idx)) == 0) {
+        continue;
+      }
+      best.indices[slot++] = idx;
     }
   }
-  return kNTT.size();  // fall back to all primes (5 today)
+
+  YACL_ENFORCE(best.prime_count != 0,
+               "select_narrow_prime_set: no narrow NTT prime subset covers "
+               "coefficient bound at the required NTT length");
+  return best;
 }
 
 struct NarrowCRTPlan {
   static constexpr std::size_t K = kNTT.size();
 
-  std::size_t prime_count = 0;
   u64 p = 0;
+  std::size_t prime_count = 0;
+  std::array<std::size_t, K> prime_indices{};
   std::array<u32, K> moduli{};
   std::array<u32, K> inv_prefix_prod_mod{};
   std::array<std::array<u32, K>, K> prefix_prod_mod{};
@@ -799,12 +843,14 @@ struct NarrowCRTPlan {
 
   NarrowCRTPlan() = default;
 
-  NarrowCRTPlan(std::size_t count, u64 mod_p) : prime_count(count), p(mod_p) {
+  NarrowCRTPlan(const NarrowPrimeSelection& selection, u64 mod_p)
+      : p(mod_p), prime_count(selection.prime_count) {
     YACL_ENFORCE(prime_count >= 1 && prime_count <= K,
                  "NarrowCRTPlan: unsupported prime count");
 
     for (std::size_t i = 0; i < prime_count; ++i) {
-      moduli[i] = kNTT[i].mod;
+      prime_indices[i] = selection.indices[i];
+      moduli[i] = kNTT[prime_indices[i]].mod;
     }
 
     u64 prod_mod_p = 1 % p;
