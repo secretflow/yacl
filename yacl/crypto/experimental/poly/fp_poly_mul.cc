@@ -1370,18 +1370,19 @@ std::vector<Fp> MulCoeffsNTTTruncNarrow(const FpContext& f,
                                         std::size_t an,
                                         const std::vector<Fp>& b,
                                         std::size_t bn, std::size_t out_need,
-                                        std::size_t prime_count) {
+                                        const NarrowPrimeSelection& selection) {
   std::vector<Fp> out(out_need, f.Zero());
   const u64 p = f.GetModulus();
 
-  std::vector<std::vector<detail::u32>> residues(prime_count);
-  for (std::size_t idxp = 0; idxp < prime_count; ++idxp) {
-    const auto prm = detail::kNTT[idxp];
+  std::vector<std::vector<detail::u32>> residues(selection.prime_count);
+  for (std::size_t slot = 0; slot < selection.prime_count; ++slot) {
+    const std::size_t prime_idx = selection.indices[slot];
+    const auto prm = detail::kNTT[prime_idx];
 
     std::vector<detail::u32> A32(an);
     std::vector<detail::u32> B32(bn);
     // [BARRETT INPUT REDUCE] avoid % in input conversion
-    auto& CC = detail::ensure_ntt_cache(idxp, 1U);
+    auto& CC = detail::ensure_ntt_cache(prime_idx, 1U);
     const detail::u32 mod = prm.mod;
     const detail::u64 im = CC.barrett_im;
 
@@ -1394,17 +1395,17 @@ std::vector<Fp> MulCoeffsNTTTruncNarrow(const FpContext& f,
           detail::barrett_reduce_u64(static_cast<detail::u64>(b[j].v), mod, im);
     }
 
-    detail::convolution_mod_ntt_into(residues[idxp], A32, B32, idxp);
-    if (residues[idxp].size() > out_need) {
-      residues[idxp].resize(out_need);
+    detail::convolution_mod_ntt_into(residues[slot], A32, B32, prime_idx);
+    if (residues[slot].size() > out_need) {
+      residues[slot].resize(out_need);
     }
   }
 
-  detail::NarrowCRTPlan crt_plan(prime_count, p);
+  detail::NarrowCRTPlan crt_plan(selection, p);
   std::array<detail::u32, 5> r{};
   for (std::size_t i = 0; i < out_need; ++i) {
-    for (std::size_t idxp = 0; idxp < prime_count; ++idxp) {
-      r[idxp] = residues[idxp][i];
+    for (std::size_t slot = 0; slot < selection.prime_count; ++slot) {
+      r[slot] = residues[slot][i];
     }
     out[i] = Fp{crt_plan.combine_to_mod_p(r.data())};
   }
@@ -1415,25 +1416,40 @@ std::vector<Fp> MulCoeffsNTTTrunc(const FpContext& f, const std::vector<Fp>& a,
                                   std::size_t an, const std::vector<Fp>& b,
                                   std::size_t bn, std::size_t out_need) {
   const std::size_t min_dim = std::min(an, bn);
+  const std::size_t convolution_need = an + bn - 1;
   const u64 p = f.GetModulus();
 
   static constexpr std::size_t kWideCutover =
       4096;  // out_need >= 4096 才切到 64 位 NTT
   const bool wide_ntt = (p > (1ULL << 40)) && (out_need >= kWideCutover);
+  const NarrowPrimeSelection narrow_selection =
+      wide_ntt ? NarrowPrimeSelection{}
+               : detail::select_narrow_prime_set(p, min_dim, convolution_need);
   const std::size_t prime_count = wide_ntt
                                       ? detail::select_prime_count64(p, min_dim)
-                                      : detail::select_prime_count(p, min_dim);
+                                      : narrow_selection.prime_count;
 
 #ifndef NDEBUG
   // Debug guard: ensure CRT product covers coefficient bound.
-  assert_crt_product_covers_bound(wide_ntt, prime_count, min_dim, p);
+  if (wide_ntt) {
+    assert_crt_product_covers_bound(true, prime_count, min_dim, p);
+  } else {
+    const double log2_bound = std::log2(static_cast<double>(min_dim)) +
+                              2.0 * std::log2(static_cast<double>(p));
+    double log2_M = 0.0;
+    for (std::size_t slot = 0; slot < narrow_selection.prime_count; ++slot) {
+      log2_M += std::log2(
+          static_cast<double>(detail::kNTT[narrow_selection.indices[slot]].mod));
+    }
+    assert(log2_M > log2_bound + 2.0);
+  }
 #endif
 
   if (wide_ntt) {
     return MulCoeffsNTTTruncWide(f, a, an, b, bn, out_need, prime_count);
   }
 
-  return MulCoeffsNTTTruncNarrow(f, a, an, b, bn, out_need, prime_count);
+  return MulCoeffsNTTTruncNarrow(f, a, an, b, bn, out_need, narrow_selection);
 }
 
 std::vector<Fp> MulCoeffsTrunc(const FpContext& f, const std::vector<Fp>& a,
