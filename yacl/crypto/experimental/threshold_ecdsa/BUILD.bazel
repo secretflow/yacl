@@ -37,10 +37,6 @@ TECDSA_CORE_DEPS = [
     "//yacl/math/mpint",
 ]
 
-TECDSA_CORE_LINKOPTS = [
-    "-lcrypto",
-]
-
 yacl_cc_library(
     name = "tecdsa_core",
     srcs = TECDSA_CORE_SRCS,
@@ -49,7 +45,6 @@ yacl_cc_library(
     deps = TECDSA_CORE_DEPS + [
         "//yacl/base:exception",
     ],
-    linkopts = TECDSA_CORE_LINKOPTS,
 )
 
 alias(
