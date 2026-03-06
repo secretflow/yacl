@@ -19,6 +19,8 @@
 #include <string>
 #include <vector>
 
+#include "absl/numeric/bits.h"
+
 #include "yacl/base/exception.h"
 #include "yacl/base/int128.h"
 

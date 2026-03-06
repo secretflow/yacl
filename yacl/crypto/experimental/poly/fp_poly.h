@@ -46,7 +46,7 @@ class FpPolynomial {
   u64 GetModulus() const;
 
   const std::vector<Fp>& Coeffs() const noexcept;
-  std::vector<Fp>& Coeffs() noexcept;  // 谨慎使用：改完建议 Trim()
+  void SetCoeffs(std::vector<Fp> coeffs);
 
   bool IsZero() const noexcept;
 

@@ -33,6 +33,7 @@ yacl_cc_library(
         "//conditions:default": [],
     }),
     deps = [
+        "@abseil-cpp//absl/numeric:bits",
         "//yacl/base:exception",
         "//yacl/base:int128",
     ] + select({

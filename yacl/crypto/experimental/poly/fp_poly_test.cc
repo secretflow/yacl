@@ -14,12 +14,63 @@
 
 #include "yacl/crypto/experimental/poly/fp_poly.h"
 
-#include <utility>
+#include <cstddef>
+#include <vector>
 
 #include "gtest/gtest.h"
 
 namespace yacl::crypto::experimental::poly {
 namespace {
+
+std::vector<Fp> MakeDeterministicCoeffs(const FpContext& ctx, std::size_t size,
+                                        u64 seed) {
+  std::vector<Fp> coeffs;
+  coeffs.reserve(size);
+
+  u64 state = seed;
+  for (std::size_t idx = 0; idx < size; ++idx) {
+    state = state * 6364136223846793005ULL + 1442695040888963407ULL;
+    const u64 mixed =
+        state ^ (state >> 29) ^ (0x9E3779B97F4A7C15ULL * (idx + 1));
+    coeffs.push_back(ctx.FromUint64(mixed));
+  }
+
+  if (!coeffs.empty() && coeffs.back().v == 0) {
+    coeffs.back() = ctx.One();
+  }
+  return coeffs;
+}
+
+FpPolynomial NaiveMulPolynomial(const FpPolynomial& lhs,
+                                const FpPolynomial& rhs) {
+  const FpContext& ctx = lhs.GetContext();
+  const auto& lhs_coeffs = lhs.Coeffs();
+  const auto& rhs_coeffs = rhs.Coeffs();
+
+  if (lhs_coeffs.empty() || rhs_coeffs.empty()) {
+    return FpPolynomial(ctx);
+  }
+
+  std::vector<Fp> out(lhs_coeffs.size() + rhs_coeffs.size() - 1, ctx.Zero());
+  for (std::size_t lhs_idx = 0; lhs_idx < lhs_coeffs.size(); ++lhs_idx) {
+    for (std::size_t rhs_idx = 0; rhs_idx < rhs_coeffs.size(); ++rhs_idx) {
+      out[lhs_idx + rhs_idx] =
+          ctx.Add(out[lhs_idx + rhs_idx],
+                  ctx.Mul(lhs_coeffs[lhs_idx], rhs_coeffs[rhs_idx]));
+    }
+  }
+
+  return FpPolynomial(ctx, std::move(out));
+}
+
+void ExpectSamePolynomial(const FpPolynomial& actual,
+                          const FpPolynomial& expected) {
+  ASSERT_EQ(actual.Coeffs().size(), expected.Coeffs().size());
+  for (std::size_t idx = 0; idx < expected.Coeffs().size(); ++idx) {
+    EXPECT_EQ(actual.Coeffs()[idx].v, expected.Coeffs()[idx].v)
+        << "coefficient mismatch at index " << idx;
+  }
+}
 
 TEST(FpPolyTest, AddMulEval) {
   FpContext ctx(97);
@@ -64,6 +115,57 @@ TEST(FpPolyTest, DivRem) {
 
   // deg(r) < deg(d) == 1, so r is constant (or zero)
   EXPECT_LE(r.Degree(), 0);
+}
+
+TEST(FpPolyTest, SetCoeffsTrimsTrailingZeros) {
+  FpContext ctx(97);
+  FpPolynomial poly(ctx, {1, 2, 3});
+
+  poly.SetCoeffs(std::vector<Fp>{ctx.FromUint64(5), ctx.Zero(), ctx.Zero()});
+
+  ASSERT_EQ(poly.Coeffs().size(), 1);
+  EXPECT_EQ(poly.Coeffs()[0].v, 5);
+  EXPECT_EQ(poly.Degree(), 0);
+}
+
+TEST(FpPolyTest, MulHandlesZeroAndConstantPolynomials) {
+  FpContext ctx(97);
+
+  const FpPolynomial zero(ctx);
+  const FpPolynomial constant(ctx, {42});
+  const FpPolynomial sparse(ctx, {3, 0, 5});
+
+  ExpectSamePolynomial(zero * sparse, FpPolynomial(ctx));
+  ExpectSamePolynomial(constant * sparse, NaiveMulPolynomial(constant, sparse));
+}
+
+TEST(FpPolyTest, MulMatchesNaiveOnNarrowNttPath) {
+  FpContext ctx(998244353ULL);
+
+  const FpPolynomial lhs(ctx, MakeDeterministicCoeffs(ctx, 129, 1));
+  const FpPolynomial rhs(ctx, MakeDeterministicCoeffs(ctx, 140, 2));
+
+  ExpectSamePolynomial(lhs * rhs, NaiveMulPolynomial(lhs, rhs));
+}
+
+TEST(FpPolyTest, MulMatchesNaiveNearUint64LimitOnFivePrimePath) {
+  constexpr u64 kLargePrime = 18446744073709551557ULL;
+  FpContext ctx(kLargePrime);
+
+  const FpPolynomial lhs(ctx, MakeDeterministicCoeffs(ctx, 129, 3));
+  const FpPolynomial rhs(ctx, MakeDeterministicCoeffs(ctx, 140, 4));
+
+  ExpectSamePolynomial(lhs * rhs, NaiveMulPolynomial(lhs, rhs));
+}
+
+TEST(FpPolyTest, MulMatchesNaiveNearUint64LimitOnWideNttPath) {
+  constexpr u64 kLargePrime = 18446744073709551557ULL;
+  FpContext ctx(kLargePrime);
+
+  const FpPolynomial lhs(ctx, MakeDeterministicCoeffs(ctx, 2048, 5));
+  const FpPolynomial rhs(ctx, MakeDeterministicCoeffs(ctx, 2049, 6));
+
+  ExpectSamePolynomial(lhs * rhs, NaiveMulPolynomial(lhs, rhs));
 }
 
 }  // namespace

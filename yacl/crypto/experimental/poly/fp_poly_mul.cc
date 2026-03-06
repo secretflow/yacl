@@ -20,6 +20,8 @@
 #include <utility>
 #include <vector>
 
+#include "absl/numeric/bits.h"
+
 #include "yacl/crypto/experimental/poly/fp_poly.h"
 
 #ifdef BIGNUM_WITH_GMP
@@ -34,6 +36,11 @@ namespace detail {
 using u32 = std::uint32_t;  // NOLINT(readability-identifier-naming)
 using u64 = std::uint64_t;  // NOLINT(readability-identifier-naming)
 using u128 = ::uint128_t;   // NOLINT(readability-identifier-naming)
+
+inline u64 add_mod_canonical(u64 a, u64 b, u64 mod) {
+  const u64 threshold = mod - b;
+  return (a >= threshold) ? (a - threshold) : (a + b);
+}
 
 struct NTTPrime {
   u32 mod;
@@ -718,14 +725,8 @@ struct CRT3Plan64 {
         static_cast<u64>(static_cast<u128>(m0m1_mod_p) % static_cast<u128>(p) *
                          static_cast<u128>(t2) % static_cast<u128>(p));
 
-    u64 res = term0 + term1;
-    if (res >= p) {
-      res -= p;
-    }
-    res += term2;
-    if (res >= p) {
-      res -= p;
-    }
+    u64 res = add_mod_canonical(term0, term1, p);
+    res = add_mod_canonical(res, term2, p);
     return res;
   }
 };
@@ -914,11 +915,7 @@ struct CRT5Plan {
         static_cast<u64>(static_cast<u128>(M012_mod_p) *
                          static_cast<u128>(t_mod_p) % static_cast<u128>(p));
 
-    u64 res = a_mod_p + add;
-    if (res >= p) {
-      res -= p;
-    }
-    return res;
+    return add_mod_canonical(a_mod_p, add, p);
   }
 };
 
@@ -1051,8 +1048,7 @@ void unpack_poly_bits(std::vector<Fp>& out, const mp_limb_t* limbs,
         const u64 limb = (u64)limbs[limb_idx];
         const unsigned bit = t * limb_bits;
         const u64 term = (u64)((u128)(limb % mod) * (u128)S.pow2[bit] % mod);
-        acc_mod += term;
-        if (acc_mod >= mod) acc_mod -= mod;
+        acc_mod = add_mod_canonical(acc_mod, term, mod);
       }
       out[i] = F.FromUint64(acc_mod);
     }
@@ -1084,8 +1080,7 @@ void unpack_poly_bits(std::vector<Fp>& out, const mp_limb_t* limbs,
 
       const u64 term =
           (u64)((u128)(chunk % mod) * (u128)S.pow2[collected] % mod);
-      acc_mod += term;
-      if (acc_mod >= mod) acc_mod -= mod;
+      acc_mod = add_mod_canonical(acc_mod, term, mod);
 
       collected += take;
       ++idx;
@@ -1205,10 +1200,10 @@ void assert_crt_product_covers_bound(bool wide_ntt, std::size_t prime_count,
 #endif
 
 std::vector<Fp> MulCoeffsNTTTruncWide(const FpContext& f,
-                                     const std::vector<Fp>& a, std::size_t an,
-                                     const std::vector<Fp>& b, std::size_t bn,
-                                     std::size_t out_need,
-                                     std::size_t prime_count) {
+                                      const std::vector<Fp>& a, std::size_t an,
+                                      const std::vector<Fp>& b, std::size_t bn,
+                                      std::size_t out_need,
+                                      std::size_t prime_count) {
   std::vector<Fp> out(out_need, f.Zero());
   const u64 p = f.GetModulus();
 
@@ -1243,11 +1238,11 @@ std::vector<Fp> MulCoeffsNTTTruncWide(const FpContext& f,
 }
 
 std::vector<Fp> MulCoeffsNTTTruncNarrow(const FpContext& f,
-                                       const std::vector<Fp>& a,
-                                       std::size_t an,
-                                       const std::vector<Fp>& b,
-                                       std::size_t bn, std::size_t out_need,
-                                       std::size_t prime_count) {
+                                        const std::vector<Fp>& a,
+                                        std::size_t an,
+                                        const std::vector<Fp>& b,
+                                        std::size_t bn, std::size_t out_need,
+                                        std::size_t prime_count) {
   std::vector<Fp> out(out_need, f.Zero());
   const u64 p = f.GetModulus();
 
@@ -1345,7 +1340,7 @@ std::vector<Fp> MulCoeffsTrunc(const FpContext& f, const std::vector<Fp>& a,
 #ifdef BIGNUM_WITH_GMP
   if (allow_gmp && out_need == full_need && an == a.size() && bn == b.size()) {
     if (::yacl::math::gmp::GMPLoader::Instance().IsLoaded()) {
-      return detail::mul_kronecker_coeffs(F, a, b);
+      return detail::mul_kronecker_coeffs(f, a, b);
     }
   }
 #else

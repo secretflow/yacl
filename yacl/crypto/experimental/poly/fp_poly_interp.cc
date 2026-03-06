@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/experimental/poly/fp_poly.h"
-
 #include <algorithm>
 #include <utility>
 #include <vector>
+
+#include "yacl/crypto/experimental/poly/fp_poly.h"
 
 namespace yacl::crypto::experimental::poly {
 
@@ -103,12 +103,7 @@ FpPolynomial::SubproductTree FpPolynomial::SubproductTree::Build(
   level0.reserve(T.points.size());
   for (const auto& xi : T.points) {
     // (x - xi) = (-xi) + 1*x
-    FpPolynomial leaf(ctx);
-    leaf.Coeffs().reserve(2);
-    leaf.Coeffs().push_back(ctx.Neg(xi));
-    leaf.Coeffs().push_back(ctx.One());
-    leaf.Trim();
-    level0.push_back(std::move(leaf));
+    level0.emplace_back(ctx, std::vector<Fp>{ctx.Neg(xi), ctx.One()});
   }
   T.levels.push_back(std::move(level0));
 
@@ -269,11 +264,7 @@ FpPolynomial FpPolynomial::InterpolateLagrangeNaive(const FpContext& ctx,
   // G(x) = Π (x - x_j)  [degree n]
   FpPolynomial G(ctx, {ctx.One()});
   for (std::size_t j = 0; j < n; ++j) {
-    FpPolynomial lin(ctx);
-    lin.Coeffs().reserve(2);
-    lin.Coeffs().push_back(ctx.Neg(X[j]));
-    lin.Coeffs().push_back(ctx.One());
-    lin.Trim();
+    const FpPolynomial lin(ctx, std::vector<Fp>{ctx.Neg(X[j]), ctx.One()});
     G = G.Mul(lin);
   }
 
@@ -370,12 +361,11 @@ FpPolynomial FpPolynomial::InterpolateSubproductTree(
     std::vector<FpPolynomial> L0;
     L0.reserve(n);
     for (std::size_t i = 0; i < n; ++i) {
-      FpPolynomial leaf(F);
+      std::vector<Fp> coeffs;
       if (a[i].v != 0) {
-        leaf.Coeffs().push_back(a[i]);  // 常数项
+        coeffs.push_back(a[i]);
       }
-      leaf.Trim();
-      L0.push_back(std::move(leaf));
+      L0.emplace_back(F, std::move(coeffs));
     }
     Flevels.push_back(std::move(L0));
   }

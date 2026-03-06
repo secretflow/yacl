@@ -37,12 +37,8 @@ void FpPolynomial::RequireCompat(const FpPolynomial& other) const {
 FpPolynomial::FpPolynomial(const FpContext& ctx) : ctx_(&ctx) {}
 
 FpPolynomial::FpPolynomial(const FpContext& ctx, std::vector<Fp> coeffs)
-    : ctx_(&ctx), c_(std::move(coeffs)) {
-  // 确保每个系数都在 [0,p)（即使调用者传了非规范值也能工作）
-  for (auto& x : c_) {
-    x.v %= ctx_->GetModulus();
-  }
-  Trim();
+    : ctx_(&ctx) {
+  SetCoeffs(std::move(coeffs));
 }
 
 FpPolynomial::FpPolynomial(const FpContext& ctx,
@@ -64,7 +60,14 @@ u64 FpPolynomial::GetModulus() const { return GetContext().GetModulus(); }
 
 const std::vector<Fp>& FpPolynomial::Coeffs() const noexcept { return c_; }
 
-std::vector<Fp>& FpPolynomial::Coeffs() noexcept { return c_; }
+void FpPolynomial::SetCoeffs(std::vector<Fp> coeffs) {
+  RequireContext();
+  c_ = std::move(coeffs);
+  for (auto& x : c_) {
+    x.v %= ctx_->GetModulus();
+  }
+  Trim();
+}
 
 bool FpPolynomial::IsZero() const noexcept { return c_.empty(); }
 
