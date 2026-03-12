@@ -1,0 +1,86 @@
+# Copyright 2026 Ant Group Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("//bazel:yacl.bzl", "yacl_cc_binary", "yacl_cc_library")
+
+package(default_visibility = ["//visibility:public"])
+
+TECDSA_COPTS = ["-std=gnu++20"]
+
+TECDSA_CORE_SRCS = glob([
+    "crypto/*.cc",
+    "net/*.cc",
+    "protocol/*.cc",
+])
+
+TECDSA_CORE_HDRS = glob([
+    "common/*.h",
+    "crypto/*.h",
+    "net/*.h",
+    "protocol/*.h",
+])
+
+TECDSA_CORE_DEPS = [
+    "//yacl/crypto/ecc/openssl:openssl",
+    # Big integer backend used across scalar/paillier/proof/session code paths.
+    "//yacl/math/mpint",
+]
+
+yacl_cc_library(
+    name = "tecdsa_core",
+    srcs = TECDSA_CORE_SRCS,
+    hdrs = TECDSA_CORE_HDRS,
+    copts = TECDSA_COPTS,
+    deps = TECDSA_CORE_DEPS + [
+        "//yacl/base:exception",
+    ],
+)
+
+alias(
+    name = "tecdsa_m0",
+    actual = ":tecdsa_core",
+)
+
+yacl_cc_binary(
+    name = "crypto_primitives_tests",
+    srcs = ["tests/crypto_primitives_test.cc"],
+    copts = TECDSA_COPTS,
+    deps = [":tecdsa_core"],
+)
+
+yacl_cc_binary(
+    name = "protocol_infrastructure_tests",
+    srcs = ["tests/protocol_infrastructure_test.cc"],
+    copts = TECDSA_COPTS,
+    deps = [":tecdsa_core"],
+)
+
+yacl_cc_binary(
+    name = "keygen_flow_tests",
+    srcs = ["tests/keygen_flow_test.cc"],
+    copts = TECDSA_COPTS,
+    deps = [":tecdsa_core"],
+)
+
+yacl_cc_binary(
+    name = "sign_flow_tests",
+    srcs = [
+        "tests/sign_flow_test.cc",
+        "tests/sign_flow_test_cases.cc",
+        "tests/sign_flow_test_shared.h",
+        "tests/sign_flow_test_support.cc",
+    ],
+    copts = TECDSA_COPTS,
+    deps = [":tecdsa_core"],
+)
