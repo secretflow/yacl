@@ -14,6 +14,7 @@
 
 #include "yacl/link/factory.h"
 
+#include <array>
 #include <future>
 #include <limits>
 #include <unordered_map>
@@ -38,6 +39,16 @@ enum class SslMode {
   RSA_SHA256,  // mode = 1
   SM2_SM3,     // mode = 2
 };
+
+inline std::array<std::string, 2> MakeHosts(int count) {
+  constexpr uint16_t kBasePort = 62000;
+  constexpr uint16_t kPortsPerWorld = 2;
+  const auto alice_port =
+      static_cast<uint16_t>(kBasePort + count * kPortsPerWorld);
+  const auto bob_port = static_cast<uint16_t>(alice_port + 1);
+  return {fmt::format("127.0.0.1:{}", alice_port),
+          fmt::format("127.0.0.1:{}", bob_port)};
+}
 
 inline std::pair<std::string, std::string> GenCertFiles(
     const std::string& prefix, const SslMode mode) {
@@ -87,15 +98,18 @@ inline std::pair<std::string, std::string> GenCertFiles(
 inline ContextDesc MakeDesc(int count, const SslMode mode) {
   ContextDesc desc;
   desc.id = fmt::format("world_{}", count);
-  desc.parties.push_back(ContextDesc::Party("alice", "127.0.0.1:63927"));
-  desc.parties.push_back(ContextDesc::Party("bob", "127.0.0.1:63921"));
+  const auto hosts = MakeHosts(count);
+  desc.parties.push_back(ContextDesc::Party("alice", hosts[0]));
+  desc.parties.push_back(ContextDesc::Party("bob", hosts[1]));
   if (mode != SslMode::NONE) {
     desc.enable_ssl = true;
     desc.server_ssl_opts.ciphers = "";  // auto detect
 
     // export rsa keys to files
-    auto [server_sk_path, server_cer_path] = GenCertFiles("server", mode);
-    auto [client_sk_path, client_cer_path] = GenCertFiles("client", mode);
+    auto [server_sk_path, server_cer_path] =
+        GenCertFiles(fmt::format("server_{}", count), mode);
+    auto [client_sk_path, client_cer_path] =
+        GenCertFiles(fmt::format("client_{}", count), mode);
 
     desc.server_ssl_opts.cert.certificate_path = server_cer_path;
     desc.server_ssl_opts.cert.private_key_path = server_sk_path;
@@ -139,6 +153,8 @@ class FactoryTest : public ::testing::Test {
     for (auto& f : waits) {
       f.get();
     }
+
+    contexts_.clear();
   }
 
   std::vector<std::shared_ptr<Context>> contexts_;
