@@ -15,13 +15,12 @@
 #include "yacl/link/transport/brpc_link.h"
 
 #include <chrono>
-#include <cstdlib>
-#include <ctime>
 #include <filesystem>
 #include <future>
 #include <memory>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include "fmt/format.h"
 #include "gmock/gmock.h"
@@ -39,24 +38,49 @@ extern "C" const char* __asan_default_options() { return "detect_leaks=0"; }
 
 namespace yacl::link::transport::test {
 
-static std::string RandStr(size_t length) {
-  auto randchar = []() -> char {
-    const char charset[] =
-        "0123456789"
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        "abcdefghijklmnopqrstuvwxyz";
-    const size_t max_index = (sizeof(charset) - 1);
-    return charset[rand() % max_index];
-  };
+namespace {
+
+constexpr size_t kDeterministicTestSize = 192;
+constexpr size_t kThrottleWindowUnreadDrainCount = 18;
+constexpr auto kSenderShouldFinishBeforeRead = std::chrono::seconds(1);
+constexpr auto kThrottledSenderBlockedProbe = std::chrono::milliseconds(100);
+
+std::string MakeTestString(size_t length, size_t salt = 0) {
+  static constexpr char kCharset[] =
+      "0123456789"
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+      "abcdefghijklmnopqrstuvwxyz";
+  static constexpr size_t kCharsetSize = sizeof(kCharset) - 1;
+
   std::string str(length, 0);
-  std::generate_n(str.begin(), length, randchar);
+  const size_t offset = (salt * 17) % kCharsetSize;
+  for (size_t i = 0; i < length; ++i) {
+    str[i] = kCharset[(offset + i) % kCharsetSize];
+  }
   return str;
 }
+
+struct PreparedMessages {
+  std::vector<std::string> keys;
+  std::vector<std::string> payloads;
+};
+
+PreparedMessages PrepareMessages(size_t count, size_t payload_size) {
+  PreparedMessages messages;
+  messages.keys.reserve(count);
+  messages.payloads.reserve(count);
+  for (size_t i = 0; i < count; ++i) {
+    messages.keys.push_back(fmt::format("Key_{}", i));
+    messages.payloads.push_back(MakeTestString(payload_size, i));
+  }
+  return messages;
+}
+
+}  // namespace
 
 class BrpcLinkTest : public ::testing::Test {
  protected:
   void SetUp() override {
-    std::srand(std::time(nullptr));
     const size_t send_rank = 0;
     const size_t recv_rank = 1;
     auto options = BrpcLink::GetDefaultOptions();
@@ -121,7 +145,7 @@ TEST_F(BrpcLinkTest, Timeout) {
 
 TEST_F(BrpcLinkTest, Normal_Len100) {
   const std::string key = "key";
-  const std::string sent = RandStr(100U);
+  const std::string sent = MakeTestString(100U);
   sender_->SendAsync(key, ByteContainerView{sent});
   auto received = receiver_->Recv(key);
 
@@ -143,7 +167,7 @@ TEST_P(BrpcLinkWithLimitTest, SendAsync) {
   sender_->GetLink()->SetMaxBytesPerChunk(size_limit_per_call);
 
   const std::string key = "key";
-  const std::string sent = RandStr(size_to_send);
+  const std::string sent = MakeTestString(size_to_send);
   sender_->SendAsync(key, ByteContainerView{sent});
   auto received = receiver_->Recv(key);
 
@@ -159,14 +183,10 @@ TEST_P(BrpcLinkWithLimitTest, Unread) {
 
   sender_->GetLink()->SetMaxBytesPerChunk(size_limit_per_call);
 
-  const size_t test_size = 128 + (std::rand() % 128);
+  const auto messages = PrepareMessages(kDeterministicTestSize, size_to_send);
 
-  std::vector<std::string> sended_data(test_size);
-
-  for (size_t i = 0; i < test_size; i++) {
-    const std::string key = fmt::format("Key_{}", i);
-    sended_data[i] = RandStr(size_to_send);
-    sender_->SendAsync(key, ByteContainerView{sended_data[i]});
+  for (size_t i = 0; i < messages.keys.size(); ++i) {
+    sender_->SendAsync(messages.keys[i], ByteContainerView{messages.payloads[i]});
   }
 }
 
@@ -179,35 +199,30 @@ TEST_P(BrpcLinkWithLimitTest, Async) {
 
   sender_->SetThrottleWindowSize(size_to_send);
   sender_->GetLink()->SetMaxBytesPerChunk(size_limit_per_call);
-  const size_t test_size = 128 + (std::rand() % 128);
-  std::vector<std::string> sended_data(test_size);
+  const auto messages = PrepareMessages(kDeterministicTestSize, size_to_send);
 
-  auto read = [&] {
-    for (size_t i = 0; i < test_size; i++) {
-      const std::string key = fmt::format("Key_{}", i);
-      if (i == 0) {
-        usleep(100 * 1000);
-      }
-      auto received = receiver_->Recv(key);
-      EXPECT_EQ(sended_data[i], std::string_view(received));
+  std::promise<void> allow_read;
+  auto read_gate = allow_read.get_future().share();
+  auto read = [&, read_gate] {
+    read_gate.wait();
+    for (size_t i = 0; i < messages.keys.size(); ++i) {
+      auto received = receiver_->Recv(messages.keys[i]);
+      EXPECT_EQ(messages.payloads[i], std::string_view(received));
     }
   };
-  auto f_r = std::async(read);
+  auto f_r = std::async(std::launch::async, read);
 
-  auto start = std::chrono::steady_clock::now();
-  for (size_t i = 0; i < test_size; i++) {
-    const std::string key = fmt::format("Key_{}", i);
-    sended_data[i] = RandStr(size_to_send);
-    sender_->SendAsync(key, ByteContainerView{sended_data[i]});
-  }
-  auto end = std::chrono::steady_clock::now();
+  auto f_s = std::async(std::launch::async, [&] {
+    for (size_t i = 0; i < messages.keys.size(); ++i) {
+      sender_->SendAsync(messages.keys[i], ByteContainerView{messages.payloads[i]});
+    }
+  });
 
-  double span =
-      std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-          .count();
+  EXPECT_EQ(f_s.wait_for(kSenderShouldFinishBeforeRead),
+            std::future_status::ready);
 
-  EXPECT_LT(span, 100 * 1000);
-
+  allow_read.set_value();
+  f_s.get();
   f_r.get();
 }
 
@@ -219,38 +234,37 @@ TEST_P(BrpcLinkWithLimitTest, AsyncWithThrottleLimit) {
   receiver_->SetChunkParallelSendSize(parallel_size);
   sender_->SetThrottleWindowSize(size_to_send);
   sender_->GetLink()->SetMaxBytesPerChunk(size_limit_per_call);
-  const size_t test_size = 128 + (std::rand() % 128);
-  std::vector<std::string> sended_data(test_size);
+  const auto messages = PrepareMessages(kDeterministicTestSize, size_to_send);
+  const bool expect_blocked_without_reader = size_to_send < messages.keys.size();
 
-  auto read = [&] {
-    for (size_t i = 0; i < test_size; i++) {
-      const std::string key = fmt::format("Key_{}", i);
-      if (i == 0) {
-        usleep(100 * 1000);
-      }
-      auto received = receiver_->Recv(key);
-      EXPECT_EQ(sended_data[i], std::string_view(received));
+  std::promise<void> allow_read;
+  auto read_gate = allow_read.get_future().share();
+  auto read = [&, read_gate] {
+    read_gate.wait();
+    for (size_t i = 0; i < messages.keys.size(); ++i) {
+      auto received = receiver_->Recv(messages.keys[i]);
+      EXPECT_EQ(messages.payloads[i], std::string_view(received));
     }
   };
-  auto f_r = std::async(read);
+  auto f_r = std::async(std::launch::async, read);
 
-  auto start = std::chrono::steady_clock::now();
-  for (size_t i = 0; i < test_size; i++) {
-    const std::string key = fmt::format("Key_{}", i);
-    sended_data[i] = RandStr(size_to_send);
-    sender_->SendAsyncThrottled(key, ByteContainerView{sended_data[i]});
-  }
-  auto end = std::chrono::steady_clock::now();
+  auto f_s = std::async(std::launch::async, [&] {
+    for (size_t i = 0; i < messages.keys.size(); ++i) {
+      sender_->SendAsyncThrottled(messages.keys[i],
+                                  ByteContainerView{messages.payloads[i]});
+    }
+  });
 
-  double span =
-      std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-          .count();
-  if (size_to_send < test_size) {
-    EXPECT_GT(span, 100 * 1000);
+  if (expect_blocked_without_reader) {
+    EXPECT_EQ(f_s.wait_for(kThrottledSenderBlockedProbe),
+              std::future_status::timeout);
   } else {
-    EXPECT_LT(span, 100 * 1000);
+    EXPECT_EQ(f_s.wait_for(kSenderShouldFinishBeforeRead),
+              std::future_status::ready);
   }
 
+  allow_read.set_value();
+  f_s.get();
   f_r.get();
 }
 
@@ -263,38 +277,38 @@ TEST_P(BrpcLinkWithLimitTest, ThrottleWindowUnread) {
 
   sender_->SetThrottleWindowSize(size_to_send);
   sender_->GetLink()->SetMaxBytesPerChunk(size_limit_per_call);
-  const size_t test_size = 128 + (std::rand() % 128);
-  std::vector<std::string> sended_data(test_size);
+  const auto messages = PrepareMessages(kDeterministicTestSize, size_to_send);
+  const bool expect_blocked_without_reader = size_to_send < messages.keys.size();
 
-  auto read = [&] {
-    for (size_t i = 0; i < 18; i++) {
-      const std::string key = fmt::format("Key_{}", i);
-      if (i == 0) {
-        usleep(100 * 1000);
-      }
-      auto received = receiver_->Recv(key);
-      EXPECT_EQ(sended_data[i], std::string_view(received));
+  std::promise<void> allow_read;
+  auto read_gate = allow_read.get_future().share();
+  auto read = [&, read_gate] {
+    read_gate.wait();
+    for (size_t i = 0; i < kThrottleWindowUnreadDrainCount; ++i) {
+      auto received = receiver_->Recv(messages.keys[i]);
+      EXPECT_EQ(messages.payloads[i], std::string_view(received));
     }
     receiver_->WaitLinkTaskFinish();
   };
-  auto f_r = std::async(read);
+  auto f_r = std::async(std::launch::async, read);
 
-  auto start = std::chrono::steady_clock::now();
-  for (size_t i = 0; i < test_size; i++) {
-    const std::string key = fmt::format("Key_{}", i);
-    sended_data[i] = RandStr(size_to_send);
-    sender_->SendAsyncThrottled(key, ByteContainerView{sended_data[i]});
-  }
-  auto end = std::chrono::steady_clock::now();
+  auto f_s = std::async(std::launch::async, [&] {
+    for (size_t i = 0; i < messages.keys.size(); ++i) {
+      sender_->SendAsyncThrottled(messages.keys[i],
+                                  ByteContainerView{messages.payloads[i]});
+    }
+  });
 
-  double span =
-      std::chrono::duration_cast<std::chrono::microseconds>(end - start)
-          .count();
-  if (size_to_send < test_size) {
-    EXPECT_GT(span, 100 * 1000);
+  if (expect_blocked_without_reader) {
+    EXPECT_EQ(f_s.wait_for(kThrottledSenderBlockedProbe),
+              std::future_status::timeout);
   } else {
-    EXPECT_LT(span, 100 * 1000);
+    EXPECT_EQ(f_s.wait_for(kSenderShouldFinishBeforeRead),
+              std::future_status::ready);
   }
+
+  allow_read.set_value();
+  f_s.get();
   sender_->WaitLinkTaskFinish();
   f_r.get();
   sender_.reset();
@@ -311,7 +325,7 @@ TEST_P(BrpcLinkWithLimitTest, Send) {
   sender_->GetLink()->SetMaxBytesPerChunk(size_limit_per_call);
 
   const std::string key = "key";
-  const std::string sent = RandStr(size_to_send);
+  const std::string sent = MakeTestString(size_to_send);
   sender_->Send(key, sent);
   auto received = receiver_->Recv(key);
 
@@ -393,7 +407,6 @@ class BrpcLinkSSLTest : public ::testing::Test {
 };
 
 TEST_F(BrpcLinkSSLTest, OneWaySSL) {
-  std::srand(std::time(nullptr));
   const size_t send_rank = 0;
   const size_t recv_rank = 1;
 
@@ -431,7 +444,7 @@ TEST_F(BrpcLinkSSLTest, OneWaySSL) {
   receiver_delegate->SetPeerHost(sender_host, &client_ssl_opts);
 
   const std::string key = "key";
-  const std::string sent = RandStr(100U);
+  const std::string sent = MakeTestString(100U);
   sender->SendAsync(key, ByteContainerView{sent});
   auto received = receiver->Recv(key);
 
@@ -441,7 +454,6 @@ TEST_F(BrpcLinkSSLTest, OneWaySSL) {
 }
 
 TEST_F(BrpcLinkSSLTest, TwoWaySSL) {
-  std::srand(std::time(nullptr));
   const size_t send_rank = 0;
   const size_t recv_rank = 1;
 
@@ -490,7 +502,7 @@ TEST_F(BrpcLinkSSLTest, TwoWaySSL) {
   receiver_delegate->SetPeerHost(sender_host, &r_client_ssl_opts);
 
   const std::string key = "key";
-  const std::string sent = RandStr(100U);
+  const std::string sent = MakeTestString(100U);
   sender->SendAsync(key, ByteContainerView{sent});
   auto received = receiver->Recv(key);
 
