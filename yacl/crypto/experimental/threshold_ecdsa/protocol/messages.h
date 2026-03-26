@@ -133,6 +133,7 @@ struct SignRound1Msg {
 };
 
 struct SignRound2Request {
+  PartyIndex from = 0;
   PartyIndex to = 0;
   MtaType type = MtaType::kTimesGamma;
   Bytes instance_id;
@@ -141,6 +142,7 @@ struct SignRound2Request {
 };
 
 struct SignRound2Response {
+  PartyIndex from = 0;
   PartyIndex to = 0;
   MtaType type = MtaType::kTimesGamma;
   Bytes instance_id;

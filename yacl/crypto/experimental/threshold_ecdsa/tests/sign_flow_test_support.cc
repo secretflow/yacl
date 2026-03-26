@@ -12,20 +12,48 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <algorithm>
-#include <chrono>
-#include <cstdint>
-#include <functional>
-#include <memory>
-#include <span>
 #include <stdexcept>
 #include <string>
-#include <unordered_map>
-#include <vector>
+#include <utility>
 
 #include "sign_flow_test_shared.h"
 
 namespace tecdsa::sign_flow_test {
+namespace {
+
+template <typename T>
+PeerMap<T> BuildPeerMapFor(const std::vector<PartyIndex>& signers,
+                           PartyIndex self_id, const PeerMap<T>& all_messages) {
+  PeerMap<T> peer_map;
+  for (PartyIndex peer : signers) {
+    if (peer == self_id) {
+      continue;
+    }
+    peer_map.emplace(peer, all_messages.at(peer));
+  }
+  return peer_map;
+}
+
+std::unordered_map<PartyIndex, std::vector<SignRound2Request>>
+GroupRound2RequestsByRecipient(const std::vector<SignRound2Request>& requests) {
+  std::unordered_map<PartyIndex, std::vector<SignRound2Request>> grouped;
+  for (const SignRound2Request& request : requests) {
+    grouped[request.to].push_back(request);
+  }
+  return grouped;
+}
+
+std::unordered_map<PartyIndex, std::vector<SignRound2Response>>
+GroupRound2ResponsesByRecipient(
+    const std::vector<SignRound2Response>& responses) {
+  std::unordered_map<PartyIndex, std::vector<SignRound2Response>> grouped;
+  for (const SignRound2Response& response : responses) {
+    grouped[response.to].push_back(response);
+  }
+  return grouped;
+}
+
+}  // namespace
 
 void Expect(bool condition, const std::string& message) {
   if (!condition) {
@@ -34,12 +62,15 @@ void Expect(bool condition, const std::string& message) {
 }
 
 void ExpectThrow(const std::function<void()>& fn, const std::string& message) {
+  bool threw = false;
   try {
     fn();
   } catch (const std::exception&) {
-    return;
+    threw = true;
   }
-  throw std::runtime_error("Expected exception: " + message);
+  if (!threw) {
+    throw std::runtime_error("Test failed: " + message);
+  }
 }
 
 std::vector<PartyIndex> BuildParticipants(uint32_t n) {
@@ -58,123 +89,68 @@ size_t FindPartyIndexOrThrow(const std::vector<PartyIndex>& parties,
       return i;
     }
   }
-  throw std::runtime_error("party id not found in parties vector");
+  throw std::runtime_error("party not found in test vector");
 }
 
-std::vector<std::unique_ptr<KeygenSession>> BuildKeygenSessions(
-    uint32_t n, uint32_t t, const Bytes& session_id) {
-  const std::vector<PartyIndex> participants = BuildParticipants(n);
+KeygenOutputs RunKeygenAndCollectResults(uint32_t n, uint32_t t,
+                                         const Bytes& session_id) {
+  using tecdsa::proto::KeygenConfig;
+  using tecdsa::proto::KeygenParty;
+  using tecdsa::proto::KeygenRound1Msg;
+  using tecdsa::proto::KeygenRound2Broadcast;
 
-  std::vector<std::unique_ptr<KeygenSession>> sessions;
-  sessions.reserve(n);
-  for (PartyIndex self_id : participants) {
-    KeygenSessionConfig cfg;
+  const std::vector<PartyIndex> participants = BuildParticipants(n);
+  std::unordered_map<PartyIndex, KeygenParty> parties;
+  for (PartyIndex party : participants) {
+    KeygenConfig cfg;
     cfg.session_id = session_id;
-    cfg.self_id = self_id;
+    cfg.self_id = party;
     cfg.participants = participants;
     cfg.threshold = t;
-    cfg.timeout = std::chrono::seconds(10);
-    cfg.strict_mode = true;
-    cfg.require_aux_param_proof = true;
-    sessions.push_back(std::make_unique<KeygenSession>(std::move(cfg)));
+    parties.emplace(party, KeygenParty(std::move(cfg)));
   }
-  return sessions;
-}
 
-bool DeliverKeygenEnvelope(
-    const Envelope& envelope,
-    std::vector<std::unique_ptr<KeygenSession>>* sessions) {
-  bool ok = true;
+  std::unordered_map<PartyIndex, KeygenRound1Msg> round1;
+  for (PartyIndex party : participants) {
+    round1.emplace(party, parties.at(party).MakeRound1());
+  }
 
-  if (envelope.to == tecdsa::kBroadcastPartyId) {
-    for (size_t idx = 0; idx < sessions->size(); ++idx) {
-      const PartyIndex receiver = static_cast<PartyIndex>(idx + 1);
-      if (receiver == envelope.from) {
-        continue;
-      }
-      if (!(*sessions)[idx]->HandleEnvelope(envelope)) {
-        ok = false;
+  std::unordered_map<PartyIndex, KeygenRound2Broadcast> round2_broadcasts;
+  std::unordered_map<PartyIndex, PeerMap<Scalar>> round2_shares;
+  for (PartyIndex party : participants) {
+    PeerMap<KeygenRound1Msg> peer_round1 =
+        BuildPeerMapFor(participants, party, round1);
+    const auto round2 = parties.at(party).MakeRound2(peer_round1);
+    round2_broadcasts.emplace(party, round2.broadcast);
+    round2_shares.emplace(party, round2.shares_for_peers);
+  }
+
+  std::unordered_map<PartyIndex, tecdsa::proto::KeygenRound3Msg> round3;
+  for (PartyIndex party : participants) {
+    PeerMap<KeygenRound2Broadcast> peer_round2 =
+        BuildPeerMapFor(participants, party, round2_broadcasts);
+    PeerMap<Scalar> shares_for_self;
+    for (PartyIndex peer : participants) {
+      if (peer != party) {
+        shares_for_self.emplace(peer, round2_shares.at(peer).at(party));
       }
     }
-    return ok;
+    round3.emplace(party,
+                   parties.at(party).MakeRound3(peer_round2, shares_for_self));
   }
 
-  if (envelope.to == 0 || envelope.to > sessions->size()) {
-    throw std::runtime_error("Envelope recipient is out of range");
+  KeygenOutputs outputs;
+  for (PartyIndex party : participants) {
+    const auto peer_round3 = BuildPeerMapFor(participants, party, round3);
+    outputs.emplace(party, parties.at(party).Finalize(peer_round3));
   }
-
-  if (!(*sessions)[envelope.to - 1]->HandleEnvelope(envelope)) {
-    ok = false;
-  }
-  return ok;
-}
-
-void DeliverKeygenEnvelopesOrThrow(
-    const std::vector<Envelope>& envelopes,
-    std::vector<std::unique_ptr<KeygenSession>>* sessions) {
-  for (const Envelope& envelope : envelopes) {
-    if (!DeliverKeygenEnvelope(envelope, sessions)) {
-      throw std::runtime_error("Unexpected keygen envelope delivery failure");
-    }
-  }
-}
-
-std::unordered_map<PartyIndex, KeygenResult> RunKeygenAndCollectResults(
-    uint32_t n, uint32_t t, const Bytes& session_id) {
-  auto sessions = BuildKeygenSessions(n, t, session_id);
-
-  std::vector<Envelope> phase1;
-  phase1.reserve(n);
-  for (auto& session : sessions) {
-    phase1.push_back(session->BuildPhase1CommitEnvelope());
-  }
-  DeliverKeygenEnvelopesOrThrow(phase1, &sessions);
-
-  std::vector<Envelope> phase2;
-  for (auto& session : sessions) {
-    const std::vector<Envelope> messages =
-        session->BuildPhase2OpenAndShareEnvelopes();
-    phase2.insert(phase2.end(), messages.begin(), messages.end());
-  }
-  DeliverKeygenEnvelopesOrThrow(phase2, &sessions);
-
-  std::vector<Envelope> phase3;
-  phase3.reserve(n);
-  for (auto& session : sessions) {
-    phase3.push_back(session->BuildPhase3XiProofEnvelope());
-  }
-  DeliverKeygenEnvelopesOrThrow(phase3, &sessions);
-
-  std::unordered_map<PartyIndex, KeygenResult> results;
-  for (size_t idx = 0; idx < sessions.size(); ++idx) {
-    const PartyIndex party_id = static_cast<PartyIndex>(idx + 1);
-    Expect(
-        sessions[idx]->status() == SessionStatus::kCompleted,
-        "Keygen session should complete for party " + std::to_string(party_id));
-    results.emplace(party_id, sessions[idx]->result());
-  }
-
-  return results;
+  return outputs;
 }
 
 SignFixture BuildSignFixture(const std::vector<PartyIndex>& signers) {
   SignFixture fixture;
   fixture.signers = signers;
-  fixture.msg32 = Bytes{
-      0x4d, 0x34, 0x2d, 0x73, 0x69, 0x67, 0x6e, 0x2d, 0x74, 0x65, 0x73,
-      0x74, 0x2d, 0x30, 0x30, 0x31, 0xaa, 0xbb, 0xcc, 0xdd, 0x10, 0x20,
-      0x30, 0x40, 0x50, 0x60, 0x70, 0x80, 0x90, 0xa0, 0xb0, 0xc0,
-  };
-  for (PartyIndex party : signers) {
-    const Scalar gamma_i = Scalar::FromUint64(20 + 2 * party);
-    fixture.fixed_gamma.emplace(party, gamma_i);
-  }
-
-  for (PartyIndex party : signers) {
-    const Scalar k_i = Scalar::FromUint64(10 + party);
-    fixture.fixed_k.emplace(party, k_i);
-  }
-
+  fixture.msg32.assign(32, static_cast<uint8_t>(0x5A));
   return fixture;
 }
 
@@ -186,399 +162,171 @@ tecdsa::StrictProofVerifierContext BuildKeygenProofContext(
   return context;
 }
 
-std::vector<SignSessionConfig> BuildSignSessionConfigs(
-    const SignFixture& fixture,
-    const std::unordered_map<PartyIndex, KeygenResult>& keygen_results,
-    const Bytes& sign_session_id) {
-  std::vector<SignSessionConfig> configs;
+std::vector<SignConfig> BuildSignConfigs(const SignFixture& fixture,
+                                         const KeygenOutputs& keygen_results,
+                                         const Bytes& sign_session_id,
+                                         const Bytes& keygen_session_id) {
+  std::vector<SignConfig> configs;
   configs.reserve(fixture.signers.size());
-
-  const auto baseline_it = keygen_results.find(fixture.signers.front());
-  if (baseline_it == keygen_results.end()) {
-    throw std::runtime_error("missing baseline keygen result");
-  }
-
-  std::unordered_map<PartyIndex, tecdsa::ECPoint> all_X_i_subset;
-  all_X_i_subset.reserve(fixture.signers.size());
-  for (PartyIndex party : fixture.signers) {
-    const auto x_it = baseline_it->second.all_X_i.find(party);
-    if (x_it == baseline_it->second.all_X_i.end()) {
-      throw std::runtime_error("baseline keygen result missing X_i for signer");
-    }
-    all_X_i_subset.emplace(party, x_it->second);
-  }
-
-  std::unordered_map<PartyIndex, std::shared_ptr<tecdsa::PaillierProvider>>
-      paillier_private;
-  std::unordered_map<PartyIndex, tecdsa::PaillierPublicKey> paillier_public;
-  std::unordered_map<PartyIndex, SignSessionConfig::AuxRsaParams> aux_params;
-  std::unordered_map<PartyIndex, SignSessionConfig::SquareFreeProof>
-      square_free_proofs;
-  std::unordered_map<PartyIndex, SignSessionConfig::AuxRsaParamProof>
-      aux_param_proofs;
-  paillier_private.reserve(fixture.signers.size());
-  paillier_public.reserve(fixture.signers.size());
-  aux_params.reserve(fixture.signers.size());
-  square_free_proofs.reserve(fixture.signers.size());
-  aux_param_proofs.reserve(fixture.signers.size());
-  for (PartyIndex party : fixture.signers) {
-    const auto party_result_it = keygen_results.find(party);
-    if (party_result_it == keygen_results.end()) {
-      throw std::runtime_error("missing keygen result for signer Paillier key");
-    }
-    if (party_result_it->second.local_paillier == nullptr) {
-      throw std::runtime_error(
-          "missing local Paillier private key in keygen result");
-    }
-    const auto paillier_pub_it =
-        party_result_it->second.all_paillier_public.find(party);
-    if (paillier_pub_it == party_result_it->second.all_paillier_public.end()) {
-      throw std::runtime_error(
-          "missing self Paillier public key in keygen result");
-    }
-
-    paillier_public.emplace(party, paillier_pub_it->second);
-    paillier_private.emplace(party, party_result_it->second.local_paillier);
-
-    const auto aux_it = baseline_it->second.all_aux_rsa_params.find(party);
-    if (aux_it == baseline_it->second.all_aux_rsa_params.end()) {
-      throw std::runtime_error("missing signer aux params in keygen baseline");
-    }
-    aux_params.emplace(party, aux_it->second);
-
-    const auto square_it =
-        baseline_it->second.all_square_free_proofs.find(party);
-    if (square_it == baseline_it->second.all_square_free_proofs.end()) {
-      throw std::runtime_error(
-          "missing signer square-free proof in keygen baseline");
-    }
-    square_free_proofs.emplace(party, square_it->second);
-
-    const auto aux_pf_it = baseline_it->second.all_aux_param_proofs.find(party);
-    if (aux_pf_it == baseline_it->second.all_aux_param_proofs.end()) {
-      throw std::runtime_error(
-          "missing signer aux param proof in keygen baseline");
-    }
-    aux_param_proofs.emplace(party, aux_pf_it->second);
-  }
-
-  for (PartyIndex self_id : fixture.signers) {
-    const auto keygen_it = keygen_results.find(self_id);
-    if (keygen_it == keygen_results.end()) {
+  for (PartyIndex signer : fixture.signers) {
+    const auto result_it = keygen_results.find(signer);
+    if (result_it == keygen_results.end()) {
       throw std::runtime_error("missing keygen result for signer");
     }
 
-    SignSessionConfig cfg;
+    SignConfig cfg;
     cfg.session_id = sign_session_id;
-    cfg.keygen_session_id = baseline_it->second.keygen_session_id;
-    cfg.self_id = self_id;
+    cfg.keygen_session_id = keygen_session_id;
+    cfg.self_id = signer;
     cfg.participants = fixture.signers;
-    cfg.timeout = std::chrono::seconds(10);
-    cfg.x_i = keygen_it->second.x_i;
-    cfg.y = baseline_it->second.y;
-    cfg.all_X_i = all_X_i_subset;
-    cfg.all_paillier_public = paillier_public;
-    cfg.all_aux_rsa_params = aux_params;
-    cfg.all_square_free_proofs = square_free_proofs;
-    cfg.all_aux_param_proofs = aux_param_proofs;
-    cfg.square_free_proof_profile =
-        baseline_it->second.square_free_proof_profile;
-    cfg.aux_param_proof_profile = baseline_it->second.aux_param_proof_profile;
-    cfg.local_paillier = paillier_private.at(self_id);
+    cfg.local_key_share = result_it->second.local_key_share;
+    cfg.public_keygen_data = result_it->second.public_keygen_data;
     cfg.msg32 = fixture.msg32;
-    cfg.strict_mode = baseline_it->second.strict_mode;
-    cfg.require_aux_param_proof = baseline_it->second.require_aux_param_proof;
-    cfg.fixed_k_i = fixture.fixed_k.at(self_id);
-    cfg.fixed_gamma_i = fixture.fixed_gamma.at(self_id);
-
     configs.push_back(std::move(cfg));
   }
-
   return configs;
 }
 
-std::vector<std::unique_ptr<SignSession>> BuildSignSessions(
-    const SignFixture& fixture,
-    const std::unordered_map<PartyIndex, KeygenResult>& keygen_results,
-    const Bytes& sign_session_id) {
-  std::vector<SignSessionConfig> configs =
-      BuildSignSessionConfigs(fixture, keygen_results, sign_session_id);
-
-  std::vector<std::unique_ptr<SignSession>> sessions;
-  sessions.reserve(configs.size());
-  for (SignSessionConfig& cfg : configs) {
-    sessions.push_back(std::make_unique<SignSession>(std::move(cfg)));
+SignPartyMap BuildSignParties(const SignFixture& fixture,
+                              const KeygenOutputs& keygen_results,
+                              const Bytes& sign_session_id,
+                              const Bytes& keygen_session_id) {
+  std::vector<SignConfig> configs = BuildSignConfigs(
+      fixture, keygen_results, sign_session_id, keygen_session_id);
+  SignPartyMap parties;
+  for (SignConfig& cfg : configs) {
+    parties.emplace(cfg.self_id, SignParty(std::move(cfg)));
   }
-  return sessions;
+  return parties;
 }
 
-bool DeliverSignEnvelope(const Envelope& envelope,
-                         const std::vector<PartyIndex>& signers,
-                         std::vector<std::unique_ptr<SignSession>>* sessions) {
-  bool ok = true;
+PeerMap<SignRound1Msg> CollectRound1Messages(
+    SignPartyMap* parties, const std::vector<PartyIndex>& signers) {
+  PeerMap<SignRound1Msg> round1;
+  for (PartyIndex signer : signers) {
+    round1.emplace(signer, parties->at(signer).MakeRound1());
+  }
+  return round1;
+}
 
-  if (envelope.to == tecdsa::kBroadcastPartyId) {
-    for (size_t idx = 0; idx < signers.size(); ++idx) {
-      if (signers[idx] == envelope.from) {
-        continue;
-      }
-      if (!(*sessions)[idx]->HandleEnvelope(envelope)) {
-        ok = false;
-      }
+std::vector<SignRound2Request> CollectRound2Requests(
+    SignPartyMap* parties, const std::vector<PartyIndex>& signers,
+    const PeerMap<SignRound1Msg>& round1) {
+  std::vector<SignRound2Request> out;
+  for (PartyIndex signer : signers) {
+    const auto peer_round1 = BuildPeerMapFor(signers, signer, round1);
+    const auto requests = parties->at(signer).MakeRound2Requests(peer_round1);
+    out.insert(out.end(), requests.begin(), requests.end());
+  }
+  return out;
+}
+
+std::vector<SignRound2Response> CollectRound2Responses(
+    SignPartyMap* parties, const std::vector<PartyIndex>& signers,
+    const std::vector<SignRound2Request>& round2_requests) {
+  const auto grouped = GroupRound2RequestsByRecipient(round2_requests);
+  std::vector<SignRound2Response> out;
+  for (PartyIndex signer : signers) {
+    const auto it = grouped.find(signer);
+    if (it == grouped.end()) {
+      throw std::runtime_error("missing round2 requests for signer");
     }
-    return ok;
+    const auto responses = parties->at(signer).MakeRound2Responses(it->second);
+    out.insert(out.end(), responses.begin(), responses.end());
   }
-
-  const size_t receiver_idx = FindPartyIndexOrThrow(signers, envelope.to);
-  if (!(*sessions)[receiver_idx]->HandleEnvelope(envelope)) {
-    ok = false;
-  }
-  return ok;
+  return out;
 }
 
-void DeliverSignEnvelopesOrThrow(
-    const std::vector<Envelope>& envelopes,
-    const std::vector<PartyIndex>& signers,
-    std::vector<std::unique_ptr<SignSession>>* sessions) {
-  for (const Envelope& envelope : envelopes) {
-    if (!DeliverSignEnvelope(envelope, signers, sessions)) {
-      throw std::runtime_error("Unexpected sign envelope delivery failure");
+PeerMap<SignRound3Msg> CollectRound3Messages(
+    SignPartyMap* parties, const std::vector<PartyIndex>& signers,
+    const std::vector<SignRound2Response>& round2_responses) {
+  const auto grouped = GroupRound2ResponsesByRecipient(round2_responses);
+  PeerMap<SignRound3Msg> round3;
+  for (PartyIndex signer : signers) {
+    const auto it = grouped.find(signer);
+    if (it == grouped.end()) {
+      throw std::runtime_error("missing round2 responses for signer");
     }
+    round3.emplace(signer, parties->at(signer).MakeRound3(it->second));
   }
+  return round3;
 }
 
-std::vector<Envelope> CollectPhase1Messages(
-    std::vector<std::unique_ptr<SignSession>>* sessions) {
-  std::vector<Envelope> out;
-  out.reserve(sessions->size());
-  for (auto& session : *sessions) {
-    out.push_back(session->BuildPhase1CommitEnvelope());
+PeerMap<SignRound4Msg> CollectRound4Messages(
+    SignPartyMap* parties, const std::vector<PartyIndex>& signers,
+    const PeerMap<SignRound3Msg>& round3) {
+  PeerMap<SignRound4Msg> round4;
+  for (PartyIndex signer : signers) {
+    round4.emplace(signer, parties->at(signer).MakeRound4(
+                               BuildPeerMapFor(signers, signer, round3)));
   }
-  return out;
+  return round4;
 }
 
-std::vector<Envelope> CollectPhase2Messages(
-    std::vector<std::unique_ptr<SignSession>>* sessions) {
-  std::vector<Envelope> out;
-  for (auto& session : *sessions) {
-    if (session->phase() != SignPhase::kPhase2) {
-      continue;
-    }
-    std::vector<Envelope> batch = session->BuildPhase2MtaEnvelopes();
-    out.insert(out.end(), batch.begin(), batch.end());
+PeerMap<SignRound5AMsg> CollectRound5AMessages(
+    SignPartyMap* parties, const std::vector<PartyIndex>& signers,
+    const PeerMap<SignRound4Msg>& round4) {
+  PeerMap<SignRound5AMsg> round5a;
+  for (PartyIndex signer : signers) {
+    round5a.emplace(signer, parties->at(signer).MakeRound5A(
+                                BuildPeerMapFor(signers, signer, round4)));
   }
-  return out;
+  return round5a;
 }
 
-std::vector<Envelope> CollectPhase3Messages(
-    std::vector<std::unique_ptr<SignSession>>* sessions) {
-  std::vector<Envelope> out;
-  out.reserve(sessions->size());
-  for (auto& session : *sessions) {
-    out.push_back(session->BuildPhase3DeltaEnvelope());
+PeerMap<SignRound5BMsg> CollectRound5BMessages(
+    SignPartyMap* parties, const std::vector<PartyIndex>& signers,
+    const PeerMap<SignRound5AMsg>& round5a) {
+  PeerMap<SignRound5BMsg> round5b;
+  for (PartyIndex signer : signers) {
+    round5b.emplace(signer, parties->at(signer).MakeRound5B(
+                                BuildPeerMapFor(signers, signer, round5a)));
   }
-  return out;
+  return round5b;
 }
 
-std::vector<Envelope> CollectPhase4Messages(
-    std::vector<std::unique_ptr<SignSession>>* sessions) {
-  std::vector<Envelope> out;
-  out.reserve(sessions->size());
-  for (auto& session : *sessions) {
-    out.push_back(session->BuildPhase4OpenGammaEnvelope());
+PeerMap<SignRound5CMsg> CollectRound5CMessages(
+    SignPartyMap* parties, const std::vector<PartyIndex>& signers,
+    const PeerMap<SignRound5BMsg>& round5b) {
+  PeerMap<SignRound5CMsg> round5c;
+  for (PartyIndex signer : signers) {
+    round5c.emplace(signer, parties->at(signer).MakeRound5C(
+                                BuildPeerMapFor(signers, signer, round5b)));
   }
-  return out;
+  return round5c;
 }
 
-std::vector<Envelope> CollectPhase5AMessages(
-    std::vector<std::unique_ptr<SignSession>>* sessions) {
-  std::vector<Envelope> out;
-  out.reserve(sessions->size());
-  for (auto& session : *sessions) {
-    out.push_back(session->BuildPhase5ACommitEnvelope());
+PeerMap<SignRound5DMsg> CollectRound5DMessages(
+    SignPartyMap* parties, const std::vector<PartyIndex>& signers,
+    const PeerMap<SignRound5CMsg>& round5c) {
+  PeerMap<SignRound5DMsg> round5d;
+  for (PartyIndex signer : signers) {
+    round5d.emplace(signer, parties->at(signer).MakeRound5D(
+                                BuildPeerMapFor(signers, signer, round5c)));
   }
-  return out;
+  return round5d;
 }
 
-std::vector<Envelope> CollectPhase5BMessages(
-    std::vector<std::unique_ptr<SignSession>>* sessions) {
-  std::vector<Envelope> out;
-  out.reserve(sessions->size());
-  for (auto& session : *sessions) {
-    out.push_back(session->BuildPhase5BOpenEnvelope());
+PeerMap<Scalar> CollectRound5EReveals(SignPartyMap* parties,
+                                      const std::vector<PartyIndex>& signers,
+                                      const PeerMap<SignRound5DMsg>& round5d) {
+  PeerMap<Scalar> round5e;
+  for (PartyIndex signer : signers) {
+    round5e.emplace(signer, parties->at(signer).RevealRound5E(
+                                BuildPeerMapFor(signers, signer, round5d)));
   }
-  return out;
+  return round5e;
 }
 
-std::vector<Envelope> CollectPhase5CMessages(
-    std::vector<std::unique_ptr<SignSession>>* sessions) {
-  std::vector<Envelope> out;
-  out.reserve(sessions->size());
-  for (auto& session : *sessions) {
-    out.push_back(session->BuildPhase5CCommitEnvelope());
+PeerMap<Signature> FinalizeSignatures(SignPartyMap* parties,
+                                      const std::vector<PartyIndex>& signers,
+                                      const PeerMap<Scalar>& round5e) {
+  PeerMap<Signature> signatures;
+  for (PartyIndex signer : signers) {
+    signatures.emplace(signer, parties->at(signer).Finalize(
+                                   BuildPeerMapFor(signers, signer, round5e)));
   }
-  return out;
-}
-
-std::vector<Envelope> CollectPhase5DMessages(
-    std::vector<std::unique_ptr<SignSession>>* sessions) {
-  std::vector<Envelope> out;
-  out.reserve(sessions->size());
-  for (auto& session : *sessions) {
-    out.push_back(session->BuildPhase5DOpenEnvelope());
-  }
-  return out;
-}
-
-std::vector<Envelope> CollectPhase5EMessages(
-    std::vector<std::unique_ptr<SignSession>>* sessions) {
-  std::vector<Envelope> out;
-  out.reserve(sessions->size());
-  for (auto& session : *sessions) {
-    out.push_back(session->BuildPhase5ERevealEnvelope());
-  }
-  return out;
-}
-
-void EnsureAllSessionsInPhase(
-    const std::vector<std::unique_ptr<SignSession>>& sessions, SignPhase phase,
-    SignPhase5Stage phase5_stage) {
-  for (size_t idx = 0; idx < sessions.size(); ++idx) {
-    Expect(sessions[idx]->status() == SessionStatus::kRunning,
-           "Sign session should be running before completion/abort");
-    Expect(sessions[idx]->phase() == phase,
-           "Sign session has unexpected protocol phase");
-    if (phase == SignPhase::kPhase5) {
-      Expect(sessions[idx]->phase5_stage() == phase5_stage,
-             "Sign session has unexpected phase5 sub-stage");
-    }
-  }
-}
-
-void RunToPhase4(std::vector<std::unique_ptr<SignSession>>* sessions,
-                 const std::vector<PartyIndex>& signers) {
-  DeliverSignEnvelopesOrThrow(CollectPhase1Messages(sessions), signers,
-                              sessions);
-  EnsureAllSessionsInPhase(*sessions, SignPhase::kPhase2);
-
-  for (size_t round = 0; round < 32; ++round) {
-    const std::vector<Envelope> phase2_messages =
-        CollectPhase2Messages(sessions);
-    if (phase2_messages.empty()) {
-      throw std::runtime_error("phase2 stalled before MtA/MtAwc completion");
-    }
-    DeliverSignEnvelopesOrThrow(phase2_messages, signers, sessions);
-
-    bool all_phase3 = true;
-    for (const auto& session : *sessions) {
-      if (session->phase() != SignPhase::kPhase3) {
-        all_phase3 = false;
-        break;
-      }
-    }
-    if (all_phase3) {
-      break;
-    }
-  }
-  EnsureAllSessionsInPhase(*sessions, SignPhase::kPhase3);
-
-  DeliverSignEnvelopesOrThrow(CollectPhase3Messages(sessions), signers,
-                              sessions);
-  EnsureAllSessionsInPhase(*sessions, SignPhase::kPhase4);
-}
-
-void RunToPhase5A(std::vector<std::unique_ptr<SignSession>>* sessions,
-                  const std::vector<PartyIndex>& signers) {
-  RunToPhase4(sessions, signers);
-
-  DeliverSignEnvelopesOrThrow(CollectPhase4Messages(sessions), signers,
-                              sessions);
-  EnsureAllSessionsInPhase(*sessions, SignPhase::kPhase5,
-                           SignPhase5Stage::kPhase5A);
-}
-
-void RunToPhase5B(std::vector<std::unique_ptr<SignSession>>* sessions,
-                  const std::vector<PartyIndex>& signers) {
-  RunToPhase5A(sessions, signers);
-  DeliverSignEnvelopesOrThrow(CollectPhase5AMessages(sessions), signers,
-                              sessions);
-  EnsureAllSessionsInPhase(*sessions, SignPhase::kPhase5,
-                           SignPhase5Stage::kPhase5B);
-}
-
-void RunToPhase5D(std::vector<std::unique_ptr<SignSession>>* sessions,
-                  const std::vector<PartyIndex>& signers) {
-  RunToPhase5B(sessions, signers);
-
-  DeliverSignEnvelopesOrThrow(CollectPhase5BMessages(sessions), signers,
-                              sessions);
-  EnsureAllSessionsInPhase(*sessions, SignPhase::kPhase5,
-                           SignPhase5Stage::kPhase5C);
-
-  DeliverSignEnvelopesOrThrow(CollectPhase5CMessages(sessions), signers,
-                              sessions);
-  EnsureAllSessionsInPhase(*sessions, SignPhase::kPhase5,
-                           SignPhase5Stage::kPhase5D);
-}
-
-uint32_t ReadU32Be(const Bytes& input, size_t offset) {
-  if (offset + 4 > input.size()) {
-    throw std::runtime_error("payload is too short to parse u32");
-  }
-  return (static_cast<uint32_t>(input[offset]) << 24) |
-         (static_cast<uint32_t>(input[offset + 1]) << 16) |
-         (static_cast<uint32_t>(input[offset + 2]) << 8) |
-         static_cast<uint32_t>(input[offset + 3]);
-}
-
-bool TamperPhase5BSchnorrProof(Envelope* envelope) {
-  if (envelope == nullptr) {
-    return false;
-  }
-  size_t offset = 0;
-  constexpr size_t kPointLen = 33;
-  constexpr size_t kScalarLen = 32;
-
-  if (envelope->payload.size() < kPointLen * 2 + 4 + kPointLen + kScalarLen) {
-    return false;
-  }
-  offset += kPointLen;  // V_i
-  offset += kPointLen;  // A_i
-  const uint32_t randomness_len = ReadU32Be(envelope->payload, offset);
-  offset += 4;
-  if (offset + randomness_len + kPointLen + kScalarLen >
-      envelope->payload.size()) {
-    return false;
-  }
-  offset += randomness_len;
-  offset += kPointLen;  // Schnorr A
-
-  envelope->payload[offset + kScalarLen - 1] ^= 0x01;  // Schnorr z
-  return true;
-}
-
-bool ReplacePhase4GammaPoint(Envelope* envelope,
-                             std::span<const uint8_t> replacement_point) {
-  constexpr size_t kPointLen = 33;
-  if (envelope == nullptr || replacement_point.size() != kPointLen ||
-      envelope->payload.size() < kPointLen) {
-    return false;
-  }
-  std::copy(replacement_point.begin(), replacement_point.end(),
-            envelope->payload.begin());
-  return true;
-}
-
-bool ReplacePhase5BVPoint(Envelope* envelope,
-                          std::span<const uint8_t> replacement_point) {
-  constexpr size_t kPointLen = 33;
-  if (envelope == nullptr || replacement_point.size() != kPointLen ||
-      envelope->payload.size() < kPointLen) {
-    return false;
-  }
-  std::copy(replacement_point.begin(), replacement_point.end(),
-            envelope->payload.begin());
-  return true;
+  return signatures;
 }
 
 }  // namespace tecdsa::sign_flow_test

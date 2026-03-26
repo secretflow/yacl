@@ -90,9 +90,13 @@ target_link_libraries(sign_flow_tests PRIVATE tecdsa_core)
 add_executable(proto_keygen_smoke_tests tests/proto_keygen_smoke_test.cc)
 target_link_libraries(proto_keygen_smoke_tests PRIVATE tecdsa_core)
 
+add_executable(proto_sign_smoke_tests tests/proto_sign_smoke_test.cc)
+target_link_libraries(proto_sign_smoke_tests PRIVATE tecdsa_core)
+
 enable_testing()
 add_test(NAME crypto_primitives_tests COMMAND crypto_primitives_tests)
 add_test(NAME protocol_infrastructure_tests COMMAND protocol_infrastructure_tests)
 add_test(NAME keygen_flow_tests COMMAND keygen_flow_tests)
 add_test(NAME sign_flow_tests COMMAND sign_flow_tests)
 add_test(NAME proto_keygen_smoke_tests COMMAND proto_keygen_smoke_tests)
+add_test(NAME proto_sign_smoke_tests COMMAND proto_sign_smoke_tests)

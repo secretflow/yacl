@@ -143,11 +143,18 @@ directly.
 
 ## Current landing scope
 
-This first landing implements Stage 1:
+The current tree implements Stage 1, Stage 2, and the test-switching part of
+Stage 3:
 
 - new design doc,
 - new `tecdsa::proto` shared types,
-- new `KeygenParty`,
-- initial `SignParty` constructor and round1 scaffold,
-- a new keygen smoke test,
-- build wiring for the new files.
+- new round-driven `KeygenParty`,
+- new round-driven `SignParty` through full signing completion,
+- new keygen and sign smoke tests,
+- `keygen_flow_tests` rewritten on top of `tecdsa::proto`,
+- `sign_flow_tests` rewritten on top of `tecdsa::proto`.
+
+The remaining Stage 3 cleanup is still pending:
+
+- delete `session/router/transport` and old protocol session files,
+- remove `protocol_infrastructure_tests`.
