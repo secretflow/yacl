@@ -42,7 +42,6 @@ deployment.
 ```text
 common/        # bytes/secure_zeroize/error helpers
 crypto/        # Scalar/ECPoint/Paillier/hash/commitment/encoding/transcript/proofs
-net/           # Envelope byte codec retained for low-level encoding tests
 protocol/      # Round-driven keygen/sign prototype API
 tests/
   crypto_primitives_test.cc
@@ -156,6 +155,6 @@ rg -n "#include <gmpxx.h>|\bmpz_class\b|\bmpz_" yacl/crypto/experimental/thresho
 
 ## Limitations
 
-- No real network or transport layer is implemented in the prototype API.
+- No real network or transport layer is implemented.
 - No claim of production security hardening.
 - Intended for protocol implementation study and testing.

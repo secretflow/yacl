@@ -29,20 +29,15 @@
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/random.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/scalar.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/transcript.h"
-#include "yacl/crypto/experimental/threshold_ecdsa/net/envelope.h"
-
 namespace {
 
 using tecdsa::BigInt;
 using tecdsa::Bytes;
 using tecdsa::CommitMessage;
 using tecdsa::ComputeCommitment;
-using tecdsa::DecodeEnvelope;
 using tecdsa::DecodeMpInt;
 using tecdsa::ECPoint;
-using tecdsa::EncodeEnvelope;
 using tecdsa::EncodeMpInt;
-using tecdsa::Envelope;
 using tecdsa::PaillierProvider;
 using tecdsa::Scalar;
 using tecdsa::Sha256;
@@ -248,36 +243,6 @@ void TestCsprng() {
          "Csprng::RandomScalar should return value in Z_q");
 }
 
-void TestEnvelopeRoundTrip() {
-  Envelope envelope;
-  envelope.session_id = Bytes{1, 2, 3, 4, 5, 6, 7, 8};
-  envelope.from = 1;
-  envelope.to = tecdsa::kBroadcastPartyId;
-  envelope.type = 42;
-  envelope.payload = Bytes{0xAA, 0xBB, 0xCC};
-
-  const Bytes encoded = EncodeEnvelope(envelope);
-  const Envelope decoded = DecodeEnvelope(encoded);
-
-  Expect(decoded.session_id == envelope.session_id,
-         "Envelope session_id round-trip");
-  Expect(decoded.from == envelope.from, "Envelope from round-trip");
-  Expect(decoded.to == envelope.to, "Envelope to round-trip");
-  Expect(decoded.type == envelope.type, "Envelope type round-trip");
-  Expect(decoded.payload == envelope.payload, "Envelope payload round-trip");
-
-  Bytes truncated = encoded;
-  truncated.pop_back();
-  ExpectThrow([&]() { (void)DecodeEnvelope(truncated); },
-              "Envelope rejects truncation");
-
-  Envelope too_large_session = envelope;
-  too_large_session.session_id.assign(40, 0x11);
-  const Bytes encoded_large_session = EncodeEnvelope(too_large_session);
-  ExpectThrow([&]() { (void)DecodeEnvelope(encoded_large_session); },
-              "Envelope rejects oversized session_id");
-}
-
 void TestTranscriptChallengeDeterminismAndOrder() {
   const Bytes first = {1, 2, 3};
   const Bytes second = {9, 8};
@@ -360,7 +325,6 @@ int main() {
     TestEcdsaVerifyRegression();
     TestHashAndCommitment();
     TestCsprng();
-    TestEnvelopeRoundTrip();
     TestTranscriptChallengeDeterminismAndOrder();
     TestPaillierNative();
   } catch (const std::exception& ex) {

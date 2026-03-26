@@ -20,14 +20,12 @@ TECDSA_COPTS = ["-std=gnu++20"]
 
 TECDSA_CORE_SRCS = glob([
     "crypto/*.cc",
-    "net/*.cc",
     "protocol/*.cc",
 ])
 
 TECDSA_CORE_HDRS = glob([
     "common/*.h",
     "crypto/*.h",
-    "net/*.h",
     "protocol/*.h",
 ])
 

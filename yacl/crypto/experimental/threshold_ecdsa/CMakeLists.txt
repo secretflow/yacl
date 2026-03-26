@@ -36,7 +36,6 @@ add_library(tecdsa_core
   crypto/strict_proofs_math.cc
   crypto/strict_proofs.cc
   crypto/transcript.cc
-  net/envelope.cc
   protocol/proto_common.cc
   protocol/proto_sign_internal.cc
   protocol/keygen.cc

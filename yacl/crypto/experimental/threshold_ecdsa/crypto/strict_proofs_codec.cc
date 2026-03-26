@@ -82,34 +82,6 @@ BigInt ReadMpIntField(std::span<const uint8_t> input, size_t* offset,
 
 }  // namespace
 
-Bytes EncodeSquareFreeStrictPayload(const SquareFreeStrictPayload& payload) {
-  Bytes out;
-  AppendSizedField(payload.nonce, &out);
-  AppendMpIntField(payload.y, &out);
-  AppendMpIntField(payload.t1, &out);
-  AppendMpIntField(payload.t2, &out);
-  AppendMpIntField(payload.z1, &out);
-  AppendMpIntField(payload.z2, &out);
-  return out;
-}
-
-SquareFreeStrictPayload DecodeSquareFreeStrictPayload(
-    std::span<const uint8_t> blob) {
-  size_t offset = 0;
-  SquareFreeStrictPayload payload;
-  payload.nonce =
-      ReadSizedField(blob, &offset, kMaxStrictNonceLen, "square-free nonce");
-  payload.y = ReadMpIntField(blob, &offset, "square-free y");
-  payload.t1 = ReadMpIntField(blob, &offset, "square-free t1");
-  payload.t2 = ReadMpIntField(blob, &offset, "square-free t2");
-  payload.z1 = ReadMpIntField(blob, &offset, "square-free z1");
-  payload.z2 = ReadMpIntField(blob, &offset, "square-free z2");
-  if (offset != blob.size()) {
-    TECDSA_THROW_ARGUMENT("square-free proof payload has trailing bytes");
-  }
-  return payload;
-}
-
 Bytes EncodeSquareFreeGmr98Payload(const SquareFreeGmr98Payload& payload) {
   if (payload.rounds == 0 || payload.rounds > kMaxSquareFreeGmr98Rounds) {
     TECDSA_THROW_ARGUMENT("square-free GMR98 rounds out of range");

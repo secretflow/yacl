@@ -26,8 +26,6 @@
 
 namespace tecdsa::strict_proofs_internal {
 
-inline constexpr char kSquareFreeProofIdStrict[] =
-    "GG2019/SquareFreeStrictAlgebraic/v1";
 inline constexpr char kSquareFreeProofIdGmr98[] = "GG2019/SquareFreeGMR98/v1";
 inline constexpr char kAuxParamProofIdStrict[] =
     "GG2019/AuxParamStrictAlgebraic/v1";
@@ -39,15 +37,6 @@ inline constexpr size_t kSquareFreeGmr98Rounds = 24;
 inline constexpr size_t kMaxSquareFreeGmr98Rounds = 128;
 inline constexpr size_t kMaxSquareFreeGmr98ChallengeAttempts = 64;
 inline constexpr size_t kMaxAuxParamGenerationAttempts = 128;
-
-struct SquareFreeStrictPayload {
-  Bytes nonce;
-  BigInt y;
-  BigInt t1;
-  BigInt t2;
-  BigInt z1;
-  BigInt z2;
-};
 
 struct SquareFreeGmr98Payload {
   Bytes nonce;
@@ -79,12 +68,6 @@ BigInt PowMod(const BigInt& base, const BigInt& exp, const BigInt& modulus);
 std::optional<BigInt> InvertMod(const BigInt& value, const BigInt& modulus);
 bool IsPerfectSquare(const BigInt& value);
 
-Scalar BuildSquareFreeStrictChallenge(const BigInt& modulus_n,
-                                      const StrictProofVerifierContext& context,
-                                      std::span<const uint8_t> nonce,
-                                      const BigInt& y, const BigInt& t1,
-                                      const BigInt& t2);
-
 AuxRsaParamsBigInt ToBigIntParams(const AuxRsaParams& params);
 
 Scalar BuildAuxParamStrictChallenge(const AuxRsaParamsBigInt& params,
@@ -97,10 +80,6 @@ BigInt DeriveSquareFreeGmr98Challenge(const BigInt& modulus_n,
                                       const StrictProofVerifierContext& context,
                                       std::span<const uint8_t> nonce,
                                       uint32_t round_idx);
-
-Bytes EncodeSquareFreeStrictPayload(const SquareFreeStrictPayload& payload);
-SquareFreeStrictPayload DecodeSquareFreeStrictPayload(
-    std::span<const uint8_t> blob);
 
 Bytes EncodeSquareFreeGmr98Payload(const SquareFreeGmr98Payload& payload);
 SquareFreeGmr98Payload DecodeSquareFreeGmr98Payload(

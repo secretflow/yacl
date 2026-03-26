@@ -141,28 +141,6 @@ bool IsPerfectSquare(const BigInt& value) {
   return false;
 }
 
-Scalar BuildSquareFreeStrictChallenge(const BigInt& modulus_n,
-                                      const StrictProofVerifierContext& context,
-                                      std::span<const uint8_t> nonce,
-                                      const BigInt& y, const BigInt& t1,
-                                      const BigInt& t2) {
-  Transcript transcript;
-  transcript.append_proof_id(kSquareFreeProofIdStrict);
-  AppendVerifierContext(&transcript, context);
-  const Bytes n_bytes = EncodeMpInt(modulus_n);
-  const Bytes y_bytes = EncodeMpInt(y);
-  const Bytes t1_bytes = EncodeMpInt(t1);
-  const Bytes t2_bytes = EncodeMpInt(t2);
-  transcript.append_fields({
-      TranscriptFieldRef{.label = "N", .data = n_bytes},
-      TranscriptFieldRef{.label = "nonce", .data = nonce},
-      TranscriptFieldRef{.label = "y", .data = y_bytes},
-      TranscriptFieldRef{.label = "t1", .data = t1_bytes},
-      TranscriptFieldRef{.label = "t2", .data = t2_bytes},
-  });
-  return transcript.challenge_scalar_mod_q();
-}
-
 AuxRsaParamsBigInt ToBigIntParams(const AuxRsaParams& params) {
   return AuxRsaParamsBigInt{
       .n_tilde = params.n_tilde,
