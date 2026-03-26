@@ -30,7 +30,6 @@
 namespace tecdsa::sign_internal {
 namespace {
 
-constexpr char kSchnorrProofId[] = "GG2019/Schnorr/v1";
 constexpr char kVRelationProofId[] = "GG2019/VRel/v1";
 constexpr char kA1RangeProofId[] = "GG2019/A1Range/v1";
 constexpr char kA2MtAwcProofId[] = "GG2019/A2MtAwc/v1";
