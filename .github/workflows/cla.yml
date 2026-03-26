@@ -20,8 +20,21 @@ on:
   pull_request_target:
     types: [opened, closed, synchronize]
 permissions:
+  contents: write
+  issues: write
   pull-requests: write
 jobs:
   CLAssistant:
-    uses: secretflow/.github/.github/workflows/cla.yml@main
-    secrets: inherit
+    runs-on: ubuntu-latest
+    steps:
+      - name: CLA Assistant
+        if: github.event_name == 'pull_request_target' || github.event.comment.body == 'recheck' || github.event.comment.body == 'I have read the CLA Document and I hereby sign the CLA'
+        uses: contributor-assistant/github-action@ca4a40a7d1004f18d9960b404b97e5f30a505a08
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          path-to-document: https://github.com/secretflow/.github/blob/main/CLA.md
+          path-to-signatures: signatures/version1/cla.json
+          branch: main
+          allowlist: test,renovate[bot],dependabot[bot],pre-commit-ci[bot],github-actions[bot],snyk-bot,Copilot
+          lock-pullrequest-aftermerge: true
