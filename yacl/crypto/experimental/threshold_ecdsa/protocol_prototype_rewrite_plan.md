@@ -94,11 +94,22 @@ class SignParty {
   explicit SignParty(SignConfig cfg);
 
   SignRound1Msg MakeRound1();
+  std::vector<SignRound2Request> MakeRound2Requests(
+      const PeerMap<SignRound1Msg>& peer_round1);
+  std::vector<SignRound2Response> MakeRound2Responses(
+      const PeerMap<SignRound2Request>& requests_for_self);
+  SignRound3Msg MakeRound3(
+      const PeerMap<SignRound2Response>& responses_for_self);
+  SignRound4Msg MakeRound4(const PeerMap<SignRound3Msg>& peer_round3);
+  SignRound5AMsg MakeRound5A(const PeerMap<SignRound4Msg>& peer_round4);
+  SignRound5BMsg MakeRound5B(const PeerMap<SignRound5AMsg>& peer_round5a);
+  SignRound5CMsg MakeRound5C(const PeerMap<SignRound5BMsg>& peer_round5b);
+  SignRound5DMsg MakeRound5D(const PeerMap<SignRound5CMsg>& peer_round5c);
+  Scalar RevealRound5E() const;
+  Signature Finalize(const PeerMap<SignRound5DMsg>& peer_round5d,
+                     const PeerMap<Scalar>& peer_round5e);
 };
 ```
-
-`SignParty` will be extended round by round after the new keygen path is
-landed and tested.
 
 ## Proof path simplification
 
@@ -138,13 +149,11 @@ directly.
 
 ### Stage 4
 
-- narrow `strict_proofs` public surface,
-- update README and build targets to describe the prototype layer as primary.
+- narrow `strict_proofs` public surface.
 
 ## Current landing scope
 
-The current tree implements Stage 1, Stage 2, and the test-switching part of
-Stage 3:
+The current tree implements Stage 1, Stage 2, and Stage 3:
 
 - new design doc,
 - new `tecdsa::proto` shared types,
@@ -152,9 +161,12 @@ Stage 3:
 - new round-driven `SignParty` through full signing completion,
 - new keygen and sign smoke tests,
 - `keygen_flow_tests` rewritten on top of `tecdsa::proto`,
-- `sign_flow_tests` rewritten on top of `tecdsa::proto`.
+- `sign_flow_tests` rewritten on top of `tecdsa::proto`,
+- deleted `session/router/transport` and old protocol session files,
+- removed `protocol_infrastructure_tests`,
+- updated README and build targets so the round-driven prototype layer is the
+  primary documented and tested path.
 
-The remaining Stage 3 cleanup is still pending:
+The remaining cleanup is Stage 4:
 
-- delete `session/router/transport` and old protocol session files,
-- remove `protocol_infrastructure_tests`.
+- narrow the public `strict_proofs` surface to the single prototype proof path.

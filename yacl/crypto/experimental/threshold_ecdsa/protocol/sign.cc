@@ -26,7 +26,7 @@
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/commitment.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/ecdsa_verify.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/random.h"
-#include "yacl/crypto/experimental/threshold_ecdsa/protocol/sign_session_internal.h"
+#include "yacl/crypto/experimental/threshold_ecdsa/protocol/proto_sign_internal.h"
 
 namespace tecdsa::proto {
 namespace {

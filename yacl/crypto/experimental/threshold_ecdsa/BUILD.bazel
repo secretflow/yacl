@@ -33,7 +33,7 @@ TECDSA_CORE_HDRS = glob([
 
 TECDSA_CORE_DEPS = [
     "//yacl/crypto/ecc/openssl:openssl",
-    # Big integer backend used across scalar/paillier/proof/session code paths.
+    # Big integer backend used across scalar/paillier/proof/protocol code paths.
     "//yacl/math/mpint",
 ]
 
@@ -55,13 +55,6 @@ alias(
 yacl_cc_binary(
     name = "crypto_primitives_tests",
     srcs = ["tests/crypto_primitives_test.cc"],
-    copts = TECDSA_COPTS,
-    deps = [":tecdsa_core"],
-)
-
-yacl_cc_binary(
-    name = "protocol_infrastructure_tests",
-    srcs = ["tests/protocol_infrastructure_test.cc"],
     copts = TECDSA_COPTS,
     deps = [":tecdsa_core"],
 )
