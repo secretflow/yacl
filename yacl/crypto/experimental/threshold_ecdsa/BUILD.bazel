@@ -84,3 +84,10 @@ yacl_cc_binary(
     copts = TECDSA_COPTS,
     deps = [":tecdsa_core"],
 )
+
+yacl_cc_binary(
+    name = "proto_keygen_smoke_tests",
+    srcs = ["tests/proto_keygen_smoke_test.cc"],
+    copts = TECDSA_COPTS,
+    deps = [":tecdsa_core"],
+)
