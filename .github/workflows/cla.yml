@@ -36,5 +36,5 @@ jobs:
           path-to-document: https://github.com/secretflow/.github/blob/main/CLA.md
           path-to-signatures: signatures/version1/cla.json
           branch: main
-          allowlist: test,renovate[bot],dependabot[bot],pre-commit-ci[bot],github-actions[bot],snyk-bot,Copilot
+          allowlist: jjllzhang,test,renovate[bot],dependabot[bot],pre-commit-ci[bot],github-actions[bot],snyk-bot,Copilot
           lock-pullrequest-aftermerge: true
