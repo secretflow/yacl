@@ -153,7 +153,7 @@ directly.
 
 ## Current landing scope
 
-The current tree implements Stage 1, Stage 2, and Stage 3:
+The current tree implements Stage 1 through Stage 4:
 
 - new design doc,
 - new `tecdsa::proto` shared types,
@@ -165,8 +165,5 @@ The current tree implements Stage 1, Stage 2, and Stage 3:
 - deleted `session/router/transport` and old protocol session files,
 - removed `protocol_infrastructure_tests`,
 - updated README and build targets so the round-driven prototype layer is the
-  primary documented and tested path.
-
-The remaining cleanup is Stage 4:
-
-- narrow the public `strict_proofs` surface to the single prototype proof path.
+  primary documented and tested path,
+- narrowed `strict_proofs` public surface to the single prototype proof path.

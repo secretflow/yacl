@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include <algorithm>
-#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -140,30 +139,6 @@ bool IsPerfectSquare(const BigInt& value) {
     }
   }
   return false;
-}
-
-Bytes BuildWeakDigestFromFields(
-    const char* proof_id, const StrictProofVerifierContext& context,
-    const std::array<std::pair<const char*, Bytes>, 1>& fields) {
-  Transcript transcript;
-  transcript.append_proof_id(proof_id);
-  AppendVerifierContext(&transcript, context);
-  for (const auto& [label, value] : fields) {
-    transcript.append(label, value);
-  }
-  return Sha256(transcript.bytes());
-}
-
-Bytes BuildWeakDigestFromFields(
-    const char* proof_id, const StrictProofVerifierContext& context,
-    const std::array<std::pair<const char*, Bytes>, 3>& fields) {
-  Transcript transcript;
-  transcript.append_proof_id(proof_id);
-  AppendVerifierContext(&transcript, context);
-  for (const auto& [label, value] : fields) {
-    transcript.append(label, value);
-  }
-  return Sha256(transcript.bytes());
 }
 
 Scalar BuildSquareFreeStrictChallenge(const BigInt& modulus_n,

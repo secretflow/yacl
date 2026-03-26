@@ -29,7 +29,7 @@ It is not a production-ready wallet or signing service.
   (`tecdsa::proto::KeygenParty`, 3 rounds).
 - Round-driven threshold signing (`tecdsa::proto::SignParty`, `Phase1` through
   `Phase5E`).
-- Strict and dev proof validation for square-free and auxiliary-parameter proof
+- Fixed prototype proof validation for square-free and auxiliary-parameter
   artifacts.
 
 ### Current Engineering Goal
