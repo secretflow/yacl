@@ -18,11 +18,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <exception>
-#include <utility>
 
 #include "yacl/crypto/experimental/threshold_ecdsa/common/errors.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/bigint_utils.h"
-#include "yacl/crypto/experimental/threshold_ecdsa/crypto/encoding.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/random.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/scalar.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/strict_proofs_internal.h"
@@ -34,98 +32,41 @@ bool IsZnStarElement(const BigInt& value, const BigInt& modulus) {
   if (modulus <= 2 || value <= 0 || value >= modulus) {
     return false;
   }
-  const BigInt gcd = BigInt::Gcd(value, modulus);
-  return gcd == 1;
+  return BigInt::Gcd(value, modulus) == 1;
 }
 
 bool ValidateAuxRsaParams(const AuxRsaParams& params) {
-  if (params.n_tilde <= 2) {
+  if (params.n_tilde <= 2 || params.h1 == params.h2) {
     return false;
   }
-  if (params.h1 == params.h2) {
-    return false;
-  }
-  if (!IsZnStarElement(params.h1, params.n_tilde) ||
-      !IsZnStarElement(params.h2, params.n_tilde)) {
-    return false;
-  }
-  return true;
+  return IsZnStarElement(params.h1, params.n_tilde) &&
+         IsZnStarElement(params.h2, params.n_tilde);
 }
 
-bool IsStrictProofScheme(StrictProofScheme scheme) {
-  return scheme == StrictProofScheme::kStrictAlgebraicV1 ||
-         scheme == StrictProofScheme::kStrictExternalV1 ||
-         scheme == StrictProofScheme::kSquareFreeGmr98V1;
-}
-
-bool IsDevProofScheme(StrictProofScheme scheme) {
-  return scheme == StrictProofScheme::kDevDigestBindingV1;
-}
-
-bool HasProofCapability(const ProofMetadata& metadata,
-                        uint32_t capability_mask) {
-  return (metadata.capability_flags & capability_mask) == capability_mask;
-}
-
-bool IsProofMetadataCompatible(const ProofMetadata& expected,
-                               const ProofMetadata& candidate,
-                               bool require_strict_scheme) {
-  if (require_strict_scheme && !IsStrictProofScheme(candidate.scheme)) {
-    return false;
-  }
-
-  if (expected.scheme != StrictProofScheme::kUnknown &&
-      candidate.scheme != expected.scheme) {
-    return false;
-  }
-  if (expected.version != 0 && candidate.version < expected.version) {
-    return false;
-  }
-  if (!expected.scheme_id.empty() &&
-      candidate.scheme_id != expected.scheme_id) {
-    return false;
-  }
-  if (expected.capability_flags != kProofCapabilityNone &&
-      !HasProofCapability(candidate, expected.capability_flags)) {
-    return false;
-  }
-  return true;
-}
-
-Bytes EncodeSquareFreeProof(const SquareFreeProof& proof) {
-  return spi::EncodeProofWire(proof.metadata, proof.blob);
-}
+Bytes EncodeSquareFreeProof(const SquareFreeProof& proof) { return proof.blob; }
 
 SquareFreeProof DecodeSquareFreeProof(std::span<const uint8_t> encoded,
                                       size_t max_len) {
-  auto [metadata, blob] = spi::DecodeProofWire(encoded, max_len);
-  return SquareFreeProof{
-      .metadata = std::move(metadata),
-      .blob = std::move(blob),
-  };
+  if (encoded.size() > max_len) {
+    TECDSA_THROW_ARGUMENT("square-free proof blob exceeds maximum length");
+  }
+  return SquareFreeProof{.blob = Bytes(encoded.begin(), encoded.end())};
 }
 
 Bytes EncodeAuxRsaParamProof(const AuxRsaParamProof& proof) {
-  return spi::EncodeProofWire(proof.metadata, proof.blob);
+  return proof.blob;
 }
 
 AuxRsaParamProof DecodeAuxRsaParamProof(std::span<const uint8_t> encoded,
                                         size_t max_len) {
-  auto [metadata, blob] = spi::DecodeProofWire(encoded, max_len);
-  return AuxRsaParamProof{
-      .metadata = std::move(metadata),
-      .blob = std::move(blob),
-  };
+  if (encoded.size() > max_len) {
+    TECDSA_THROW_ARGUMENT("aux-param proof blob exceeds maximum length");
+  }
+  return AuxRsaParamProof{.blob = Bytes(encoded.begin(), encoded.end())};
 }
 
 bool IsLikelySquareFreeModulus(const BigInt& modulus_n) {
-  if (modulus_n <= 2) {
-    return false;
-  }
-  if (modulus_n.IsEven()) {
-    return false;
-  }
-  if (spi::IsPerfectSquare(modulus_n)) {
+  if (modulus_n <= 2 || modulus_n.IsEven() || spi::IsPerfectSquare(modulus_n)) {
     return false;
   }
 
@@ -205,185 +146,6 @@ AuxRsaParams GenerateAuxRsaParams(uint32_t modulus_bits, PartyIndex party_id) {
   TECDSA_THROW("failed to generate likely square-free auxiliary RSA params");
 }
 
-AuxRsaParams DeriveAuxRsaParamsFromModulus(const BigInt& modulus_n,
-                                           PartyIndex party_id) {
-  if (modulus_n <= 2) {
-    TECDSA_THROW_ARGUMENT("aux RSA modulus must be > 2");
-  }
-
-  const BigInt h1 =
-      spi::PickCoprimeDeterministic(modulus_n, BigInt(2 + 2 * party_id));
-  BigInt h2 =
-      spi::PickCoprimeDeterministic(modulus_n, BigInt(3 + 2 * party_id));
-  if (h1 == h2) {
-    h2 = spi::PickCoprimeDeterministic(modulus_n, h1 + 1);
-  }
-
-  AuxRsaParams params{
-      .n_tilde = modulus_n,
-      .h1 = h1,
-      .h2 = h2,
-  };
-  if (!ValidateAuxRsaParams(params)) {
-    TECDSA_THROW("failed to derive valid auxiliary RSA params");
-  }
-  return params;
-}
-
-SquareFreeProof BuildSquareFreeProofWeak(
-    const BigInt& modulus_n, const StrictProofVerifierContext& context) {
-  SquareFreeProof proof;
-  proof.metadata = spi::MakeWeakMetadata(spi::kSquareFreeSchemeIdWeak);
-  proof.blob = spi::BuildWeakDigestFromFields(
-      spi::kSquareFreeProofIdWeak, context,
-      std::array<std::pair<const char*, Bytes>, 1>{
-          {{"N", EncodeMpInt(modulus_n)}},
-      });
-  return proof;
-}
-
-SquareFreeProof BuildSquareFreeProofStrict(
-    const BigInt& modulus_n, const StrictProofVerifierContext& context) {
-  if (modulus_n <= 2) {
-    TECDSA_THROW_ARGUMENT("square-free proof requires modulus N > 2");
-  }
-  if (!IsLikelySquareFreeModulus(modulus_n)) {
-    TECDSA_THROW_ARGUMENT(
-        "square-free strict proof requires likely square-free modulus");
-  }
-
-  const BigInt n2 = modulus_n * modulus_n;
-  const BigInt witness = spi::RandomZnStar(modulus_n);
-  const BigInt r1 = spi::RandomZnStar(modulus_n);
-  const BigInt r2 = spi::RandomZnStar(modulus_n);
-
-  const BigInt y = spi::PowMod(witness, modulus_n, n2);
-  const BigInt t1 = spi::PowMod(r1, modulus_n, n2);
-  const BigInt t2 = spi::PowMod(r2, modulus_n, n2);
-  const Bytes nonce = Csprng::RandomBytes(spi::kStrictNonceLen);
-  const BigInt e =
-      spi::BuildSquareFreeStrictChallenge(modulus_n, context, nonce, y, t1, t2)
-          .mp_value();
-
-  const BigInt z1 =
-      spi::MulMod(r1, spi::PowMod(witness, e, modulus_n), modulus_n);
-  const BigInt z2 =
-      spi::MulMod(r2, spi::PowMod(witness, e + 1, modulus_n), modulus_n);
-
-  SquareFreeProof proof;
-  proof.metadata =
-      spi::MakeStrictMetadata(spi::kSquareFreeSchemeIdStrict, context);
-  proof.metadata.capability_flags |= kProofCapabilityHeuristicChecks;
-  proof.blob = spi::EncodeSquareFreeStrictPayload(spi::SquareFreeStrictPayload{
-      .nonce = nonce,
-      .y = y,
-      .t1 = t1,
-      .t2 = t2,
-      .z1 = z1,
-      .z2 = z2,
-  });
-  return proof;
-}
-
-bool VerifySquareFreeProofWeak(const BigInt& modulus_n,
-                               const SquareFreeProof& proof,
-                               const StrictProofVerifierContext& context) {
-  if (proof.blob.empty()) {
-    return false;
-  }
-  if (!IsLikelySquareFreeModulus(modulus_n)) {
-    return false;
-  }
-
-  if (proof.metadata.scheme == StrictProofScheme::kUnknown &&
-      proof.metadata.version == 0) {
-    const SquareFreeProof expected =
-        BuildSquareFreeProofWeak(modulus_n, context);
-    return proof.blob == expected.blob;
-  }
-
-  if (!IsDevProofScheme(proof.metadata.scheme) ||
-      proof.metadata.version != spi::kDevProofVersion) {
-    return false;
-  }
-  if (!proof.metadata.scheme_id.empty() &&
-      proof.metadata.scheme_id != spi::kSquareFreeSchemeIdWeak) {
-    return false;
-  }
-  const SquareFreeProof expected = BuildSquareFreeProofWeak(modulus_n, context);
-  return proof.blob == expected.blob;
-}
-
-bool VerifySquareFreeProofStrict(const BigInt& modulus_n,
-                                 const SquareFreeProof& proof,
-                                 const StrictProofVerifierContext& context) {
-  if (!IsLikelySquareFreeModulus(modulus_n)) {
-    return false;
-  }
-  if (proof.blob.empty()) {
-    return false;
-  }
-  if (!IsStrictProofScheme(proof.metadata.scheme)) {
-    return false;
-  }
-  if (proof.metadata.scheme != StrictProofScheme::kStrictAlgebraicV1) {
-    return false;
-  }
-  if (proof.metadata.version != spi::kStrictAlgebraicVersion) {
-    return false;
-  }
-  if (!proof.metadata.scheme_id.empty() &&
-      proof.metadata.scheme_id != spi::kSquareFreeSchemeIdStrict) {
-    return false;
-  }
-  if (!HasProofCapability(proof.metadata,
-                          kProofCapabilityStrictReady |
-                              kProofCapabilityAlgebraicChecks |
-                              kProofCapabilityFreshRandomness |
-                              kProofCapabilityHeuristicChecks)) {
-    return false;
-  }
-  if (spi::HasContextBinding(context) &&
-      !HasProofCapability(proof.metadata, kProofCapabilityContextBinding)) {
-    return false;
-  }
-
-  const BigInt n2 = modulus_n * modulus_n;
-  spi::SquareFreeStrictPayload payload;
-  try {
-    payload = spi::DecodeSquareFreeStrictPayload(proof.blob);
-  } catch (const std::exception&) {
-    return false;
-  }
-  if (payload.nonce.size() != spi::kStrictNonceLen) {
-    return false;
-  }
-  if (!spi::IsZnStarResidue(payload.y, n2) ||
-      !spi::IsZnStarResidue(payload.t1, n2) ||
-      !spi::IsZnStarResidue(payload.t2, n2) ||
-      !spi::IsZnStarResidue(payload.z1, modulus_n) ||
-      !spi::IsZnStarResidue(payload.z2, modulus_n)) {
-    return false;
-  }
-
-  const BigInt e =
-      spi::BuildSquareFreeStrictChallenge(modulus_n, context, payload.nonce,
-                                          payload.y, payload.t1, payload.t2)
-          .mp_value();
-
-  const BigInt lhs1 = spi::PowMod(payload.z1, modulus_n, n2);
-  const BigInt rhs1 =
-      spi::MulMod(payload.t1, spi::PowMod(payload.y, e, n2), n2);
-  if (lhs1 != rhs1) {
-    return false;
-  }
-
-  const BigInt lhs2 = spi::PowMod(payload.z2, modulus_n, n2);
-  const BigInt rhs2 =
-      spi::MulMod(payload.t2, spi::PowMod(payload.y, e + 1, n2), n2);
-  return lhs2 == rhs2;
-}
-
 SquareFreeProof BuildSquareFreeProofGmr98(
     const BigInt& modulus_n, const BigInt& lambda_n,
     const StrictProofVerifierContext& context) {
@@ -419,57 +181,20 @@ SquareFreeProof BuildSquareFreeProofGmr98(
     if (!spi::IsZnStarResidue(root, modulus_n)) {
       TECDSA_THROW("square-free GMR98 proof generated invalid root");
     }
-    const BigInt check = spi::PowMod(root, modulus_n, modulus_n);
-    if (check != challenge) {
+    if (spi::PowMod(root, modulus_n, modulus_n) != challenge) {
       TECDSA_THROW(
           "square-free GMR98 proof generated inconsistent root equation");
     }
     payload.roots.push_back(root);
   }
 
-  SquareFreeProof proof;
-  proof.metadata = spi::MakeSquareFreeGmr98Metadata(context);
-  proof.blob = spi::EncodeSquareFreeGmr98Payload(payload);
-  return proof;
-}
-
-SquareFreeProof BuildSquareFreeProofGmr98(
-    const BigInt& modulus_n, const StrictProofVerifierContext& context) {
-  return BuildSquareFreeProofStrict(modulus_n, context);
+  return SquareFreeProof{.blob = spi::EncodeSquareFreeGmr98Payload(payload)};
 }
 
 bool VerifySquareFreeProofGmr98(const BigInt& modulus_n,
                                 const SquareFreeProof& proof,
                                 const StrictProofVerifierContext& context) {
-  if (proof.metadata.scheme == StrictProofScheme::kStrictAlgebraicV1) {
-    return VerifySquareFreeProofStrict(modulus_n, proof, context);
-  }
-
-  if (!IsLikelySquareFreeModulus(modulus_n)) {
-    return false;
-  }
-  if (proof.blob.empty()) {
-    return false;
-  }
-  if (proof.metadata.scheme != StrictProofScheme::kSquareFreeGmr98V1) {
-    return false;
-  }
-  if (proof.metadata.version != spi::kSquareFreeGmr98Version) {
-    return false;
-  }
-  if (!proof.metadata.scheme_id.empty() &&
-      proof.metadata.scheme_id != spi::kSquareFreeSchemeIdGmr98) {
-    return false;
-  }
-  if (!HasProofCapability(proof.metadata,
-                          kProofCapabilityStrictReady |
-                              kProofCapabilityAlgebraicChecks |
-                              kProofCapabilityFreshRandomness |
-                              kProofCapabilityHeuristicChecks)) {
-    return false;
-  }
-  if (spi::HasContextBinding(context) &&
-      !HasProofCapability(proof.metadata, kProofCapabilityContextBinding)) {
+  if (!IsLikelySquareFreeModulus(modulus_n) || proof.blob.empty()) {
     return false;
   }
 
@@ -479,13 +204,9 @@ bool VerifySquareFreeProofGmr98(const BigInt& modulus_n,
   } catch (const std::exception&) {
     return false;
   }
-  if (payload.nonce.size() != spi::kStrictNonceLen) {
-    return false;
-  }
-  if (payload.rounds != spi::kSquareFreeGmr98Rounds) {
-    return false;
-  }
-  if (payload.roots.size() != payload.rounds) {
+  if (payload.nonce.size() != spi::kStrictNonceLen ||
+      payload.rounds != spi::kSquareFreeGmr98Rounds ||
+      payload.roots.size() != payload.rounds) {
     return false;
   }
 
@@ -496,46 +217,11 @@ bool VerifySquareFreeProofGmr98(const BigInt& modulus_n,
     }
     const BigInt challenge = spi::DeriveSquareFreeGmr98Challenge(
         modulus_n, context, payload.nonce, round);
-    const BigInt lhs = spi::PowMod(root, modulus_n, modulus_n);
-    if (lhs != challenge) {
+    if (spi::PowMod(root, modulus_n, modulus_n) != challenge) {
       return false;
     }
   }
   return true;
-}
-
-SquareFreeProof BuildSquareFreeProof(
-    const BigInt& modulus_n, const StrictProofVerifierContext& context) {
-  return BuildSquareFreeProofGmr98(modulus_n, context);
-}
-
-bool VerifySquareFreeProof(const BigInt& modulus_n,
-                           const SquareFreeProof& proof,
-                           const StrictProofVerifierContext& context) {
-  if (IsStrictProofScheme(proof.metadata.scheme)) {
-    return VerifySquareFreeProofGmr98(modulus_n, proof, context);
-  }
-  return VerifySquareFreeProofWeak(modulus_n, proof, context);
-}
-
-AuxRsaParamProof BuildAuxRsaParamProofWeak(
-    const AuxRsaParams& params, const StrictProofVerifierContext& context) {
-  if (!ValidateAuxRsaParams(params)) {
-    TECDSA_THROW_ARGUMENT(
-        "cannot build aux param proof from invalid parameters");
-  }
-
-  const spi::AuxRsaParamsBigInt params_big = spi::ToBigIntParams(params);
-  AuxRsaParamProof proof;
-  proof.metadata = spi::MakeWeakMetadata(spi::kAuxParamSchemeIdWeak);
-  proof.blob = spi::BuildWeakDigestFromFields(
-      spi::kAuxParamProofIdWeak, context,
-      std::array<std::pair<const char*, Bytes>, 3>{
-          {{"Ntilde", EncodeMpInt(params_big.n_tilde)},
-           {"h1", EncodeMpInt(params_big.h1)},
-           {"h2", EncodeMpInt(params_big.h2)}},
-      });
-  return proof;
 }
 
 AuxRsaParamProof BuildAuxRsaParamProofStrict(
@@ -569,48 +255,16 @@ AuxRsaParamProof BuildAuxRsaParamProofStrict(
                        .mp_value();
   const BigInt z = r + (e * alpha);
 
-  AuxRsaParamProof proof;
-  proof.metadata =
-      spi::MakeStrictMetadata(spi::kAuxParamSchemeIdStrict, context);
-  proof.metadata.capability_flags |= kProofCapabilityHeuristicChecks;
-  proof.blob = spi::EncodeAuxParamStrictPayload(spi::AuxParamStrictPayload{
-      .nonce = nonce,
-      .c1 = c1,
-      .c2 = c2,
-      .t1 = t1,
-      .t2 = t2,
-      .z = z,
-  });
-  return proof;
-}
-
-bool VerifyAuxRsaParamProofWeak(const AuxRsaParams& params,
-                                const AuxRsaParamProof& proof,
-                                const StrictProofVerifierContext& context) {
-  if (proof.blob.empty()) {
-    return false;
-  }
-  if (!ValidateAuxRsaParams(params)) {
-    return false;
-  }
-
-  if (proof.metadata.scheme == StrictProofScheme::kUnknown &&
-      proof.metadata.version == 0) {
-    const AuxRsaParamProof expected =
-        BuildAuxRsaParamProofWeak(params, context);
-    return proof.blob == expected.blob;
-  }
-
-  if (!IsDevProofScheme(proof.metadata.scheme) ||
-      proof.metadata.version != spi::kDevProofVersion) {
-    return false;
-  }
-  if (!proof.metadata.scheme_id.empty() &&
-      proof.metadata.scheme_id != spi::kAuxParamSchemeIdWeak) {
-    return false;
-  }
-  const AuxRsaParamProof expected = BuildAuxRsaParamProofWeak(params, context);
-  return proof.blob == expected.blob;
+  return AuxRsaParamProof{
+      .blob = spi::EncodeAuxParamStrictPayload(spi::AuxParamStrictPayload{
+          .nonce = nonce,
+          .c1 = c1,
+          .c2 = c2,
+          .t1 = t1,
+          .t2 = t2,
+          .z = z,
+      }),
+  };
 }
 
 bool VerifyAuxRsaParamProofStrict(const AuxRsaParams& params,
@@ -620,34 +274,7 @@ bool VerifyAuxRsaParamProofStrict(const AuxRsaParams& params,
     return false;
   }
   const spi::AuxRsaParamsBigInt params_big = spi::ToBigIntParams(params);
-  if (!IsLikelySquareFreeModulus(params_big.n_tilde)) {
-    return false;
-  }
-  if (proof.blob.empty()) {
-    return false;
-  }
-  if (!IsStrictProofScheme(proof.metadata.scheme)) {
-    return false;
-  }
-  if (proof.metadata.scheme != StrictProofScheme::kStrictAlgebraicV1) {
-    return false;
-  }
-  if (proof.metadata.version != spi::kStrictAlgebraicVersion) {
-    return false;
-  }
-  if (!proof.metadata.scheme_id.empty() &&
-      proof.metadata.scheme_id != spi::kAuxParamSchemeIdStrict) {
-    return false;
-  }
-  if (!HasProofCapability(proof.metadata,
-                          kProofCapabilityStrictReady |
-                              kProofCapabilityAlgebraicChecks |
-                              kProofCapabilityFreshRandomness |
-                              kProofCapabilityHeuristicChecks)) {
-    return false;
-  }
-  if (spi::HasContextBinding(context) &&
-      !HasProofCapability(proof.metadata, kProofCapabilityContextBinding)) {
+  if (!IsLikelySquareFreeModulus(params_big.n_tilde) || proof.blob.empty()) {
     return false;
   }
 
@@ -657,10 +284,7 @@ bool VerifyAuxRsaParamProofStrict(const AuxRsaParams& params,
   } catch (const std::exception&) {
     return false;
   }
-  if (payload.nonce.size() != spi::kStrictNonceLen) {
-    return false;
-  }
-  if (payload.z < 0) {
+  if (payload.nonce.size() != spi::kStrictNonceLen || payload.z < 0) {
     return false;
   }
   if (!IsZnStarElement(payload.c1, params_big.n_tilde) ||
@@ -688,20 +312,6 @@ bool VerifyAuxRsaParamProofStrict(const AuxRsaParams& params,
       spi::MulMod(payload.t2, spi::PowMod(payload.c2, e, params_big.n_tilde),
                   params_big.n_tilde);
   return lhs2 == rhs2;
-}
-
-AuxRsaParamProof BuildAuxRsaParamProof(
-    const AuxRsaParams& params, const StrictProofVerifierContext& context) {
-  return BuildAuxRsaParamProofStrict(params, context);
-}
-
-bool VerifyAuxRsaParamProof(const AuxRsaParams& params,
-                            const AuxRsaParamProof& proof,
-                            const StrictProofVerifierContext& context) {
-  if (IsStrictProofScheme(proof.metadata.scheme)) {
-    return VerifyAuxRsaParamProofStrict(params, proof, context);
-  }
-  return VerifyAuxRsaParamProofWeak(params, proof, context);
 }
 
 }  // namespace tecdsa

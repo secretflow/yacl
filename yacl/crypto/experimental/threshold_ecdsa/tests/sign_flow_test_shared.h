@@ -14,41 +14,42 @@
 
 #pragma once
 
-#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <memory>
-#include <span>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-#include "yacl/crypto/experimental/threshold_ecdsa/net/envelope.h"
-#include "yacl/crypto/experimental/threshold_ecdsa/protocol/keygen_session.h"
-#include "yacl/crypto/experimental/threshold_ecdsa/protocol/sign_session.h"
+#include "yacl/crypto/experimental/threshold_ecdsa/protocol/keygen.h"
+#include "yacl/crypto/experimental/threshold_ecdsa/protocol/sign.h"
 
 namespace tecdsa::sign_flow_test {
 
 using ::tecdsa::Bytes;
-using ::tecdsa::Envelope;
-using ::tecdsa::KeygenPhase;
-using ::tecdsa::KeygenResult;
-using ::tecdsa::KeygenSession;
-using ::tecdsa::KeygenSessionConfig;
-using ::tecdsa::PaillierPublicKey;
 using ::tecdsa::PartyIndex;
 using ::tecdsa::Scalar;
-using ::tecdsa::SessionStatus;
-using ::tecdsa::SignPhase;
-using ::tecdsa::SignPhase5Stage;
-using ::tecdsa::SignSession;
-using ::tecdsa::SignSessionConfig;
+using ::tecdsa::proto::KeygenOutput;
+using ::tecdsa::proto::PeerMap;
+using ::tecdsa::proto::Signature;
+using ::tecdsa::proto::SignConfig;
+using ::tecdsa::proto::SignParty;
+using ::tecdsa::proto::SignRound1Msg;
+using ::tecdsa::proto::SignRound2Request;
+using ::tecdsa::proto::SignRound2Response;
+using ::tecdsa::proto::SignRound3Msg;
+using ::tecdsa::proto::SignRound4Msg;
+using ::tecdsa::proto::SignRound5AMsg;
+using ::tecdsa::proto::SignRound5BMsg;
+using ::tecdsa::proto::SignRound5CMsg;
+using ::tecdsa::proto::SignRound5DMsg;
+
+using KeygenOutputs = std::unordered_map<PartyIndex, KeygenOutput>;
+using SignPartyMap = std::unordered_map<PartyIndex, SignParty>;
 
 struct SignFixture {
   std::vector<PartyIndex> signers;
   Bytes msg32;
-  std::unordered_map<PartyIndex, Scalar> fixed_k;
-  std::unordered_map<PartyIndex, Scalar> fixed_gamma;
 };
 
 void Expect(bool condition, const std::string& message);
@@ -58,77 +59,53 @@ std::vector<PartyIndex> BuildParticipants(uint32_t n);
 size_t FindPartyIndexOrThrow(const std::vector<PartyIndex>& parties,
                              PartyIndex party_id);
 
-std::vector<std::unique_ptr<KeygenSession>> BuildKeygenSessions(
-    uint32_t n, uint32_t t, const Bytes& session_id);
-bool DeliverKeygenEnvelope(
-    const Envelope& envelope,
-    std::vector<std::unique_ptr<KeygenSession>>* sessions);
-void DeliverKeygenEnvelopesOrThrow(
-    const std::vector<Envelope>& envelopes,
-    std::vector<std::unique_ptr<KeygenSession>>* sessions);
-std::unordered_map<PartyIndex, KeygenResult> RunKeygenAndCollectResults(
-    uint32_t n, uint32_t t, const Bytes& session_id);
-
+KeygenOutputs RunKeygenAndCollectResults(uint32_t n, uint32_t t,
+                                         const Bytes& session_id);
 SignFixture BuildSignFixture(const std::vector<PartyIndex>& signers);
 tecdsa::StrictProofVerifierContext BuildKeygenProofContext(
     const Bytes& keygen_session_id, PartyIndex prover_id);
 
-std::vector<SignSessionConfig> BuildSignSessionConfigs(
-    const SignFixture& fixture,
-    const std::unordered_map<PartyIndex, KeygenResult>& keygen_results,
-    const Bytes& sign_session_id);
+std::vector<SignConfig> BuildSignConfigs(const SignFixture& fixture,
+                                         const KeygenOutputs& keygen_results,
+                                         const Bytes& sign_session_id,
+                                         const Bytes& keygen_session_id);
+SignPartyMap BuildSignParties(const SignFixture& fixture,
+                              const KeygenOutputs& keygen_results,
+                              const Bytes& sign_session_id,
+                              const Bytes& keygen_session_id);
 
-std::vector<std::unique_ptr<SignSession>> BuildSignSessions(
-    const SignFixture& fixture,
-    const std::unordered_map<PartyIndex, KeygenResult>& keygen_results,
-    const Bytes& sign_session_id);
-
-bool DeliverSignEnvelope(const Envelope& envelope,
-                         const std::vector<PartyIndex>& signers,
-                         std::vector<std::unique_ptr<SignSession>>* sessions);
-void DeliverSignEnvelopesOrThrow(
-    const std::vector<Envelope>& envelopes,
-    const std::vector<PartyIndex>& signers,
-    std::vector<std::unique_ptr<SignSession>>* sessions);
-
-std::vector<Envelope> CollectPhase1Messages(
-    std::vector<std::unique_ptr<SignSession>>* sessions);
-std::vector<Envelope> CollectPhase2Messages(
-    std::vector<std::unique_ptr<SignSession>>* sessions);
-std::vector<Envelope> CollectPhase3Messages(
-    std::vector<std::unique_ptr<SignSession>>* sessions);
-std::vector<Envelope> CollectPhase4Messages(
-    std::vector<std::unique_ptr<SignSession>>* sessions);
-std::vector<Envelope> CollectPhase5AMessages(
-    std::vector<std::unique_ptr<SignSession>>* sessions);
-std::vector<Envelope> CollectPhase5BMessages(
-    std::vector<std::unique_ptr<SignSession>>* sessions);
-std::vector<Envelope> CollectPhase5CMessages(
-    std::vector<std::unique_ptr<SignSession>>* sessions);
-std::vector<Envelope> CollectPhase5DMessages(
-    std::vector<std::unique_ptr<SignSession>>* sessions);
-std::vector<Envelope> CollectPhase5EMessages(
-    std::vector<std::unique_ptr<SignSession>>* sessions);
-
-void EnsureAllSessionsInPhase(
-    const std::vector<std::unique_ptr<SignSession>>& sessions, SignPhase phase,
-    SignPhase5Stage phase5_stage = SignPhase5Stage::kPhase5A);
-
-void RunToPhase4(std::vector<std::unique_ptr<SignSession>>* sessions,
-                 const std::vector<PartyIndex>& signers);
-void RunToPhase5A(std::vector<std::unique_ptr<SignSession>>* sessions,
-                  const std::vector<PartyIndex>& signers);
-void RunToPhase5B(std::vector<std::unique_ptr<SignSession>>* sessions,
-                  const std::vector<PartyIndex>& signers);
-void RunToPhase5D(std::vector<std::unique_ptr<SignSession>>* sessions,
-                  const std::vector<PartyIndex>& signers);
-
-uint32_t ReadU32Be(const Bytes& input, size_t offset);
-bool TamperPhase5BSchnorrProof(Envelope* envelope);
-bool ReplacePhase4GammaPoint(Envelope* envelope,
-                             std::span<const uint8_t> replacement_point);
-bool ReplacePhase5BVPoint(Envelope* envelope,
-                          std::span<const uint8_t> replacement_point);
+PeerMap<SignRound1Msg> CollectRound1Messages(
+    SignPartyMap* parties, const std::vector<PartyIndex>& signers);
+std::vector<SignRound2Request> CollectRound2Requests(
+    SignPartyMap* parties, const std::vector<PartyIndex>& signers,
+    const PeerMap<SignRound1Msg>& round1);
+std::vector<SignRound2Response> CollectRound2Responses(
+    SignPartyMap* parties, const std::vector<PartyIndex>& signers,
+    const std::vector<SignRound2Request>& round2_requests);
+PeerMap<SignRound3Msg> CollectRound3Messages(
+    SignPartyMap* parties, const std::vector<PartyIndex>& signers,
+    const std::vector<SignRound2Response>& round2_responses);
+PeerMap<SignRound4Msg> CollectRound4Messages(
+    SignPartyMap* parties, const std::vector<PartyIndex>& signers,
+    const PeerMap<SignRound3Msg>& round3);
+PeerMap<SignRound5AMsg> CollectRound5AMessages(
+    SignPartyMap* parties, const std::vector<PartyIndex>& signers,
+    const PeerMap<SignRound4Msg>& round4);
+PeerMap<SignRound5BMsg> CollectRound5BMessages(
+    SignPartyMap* parties, const std::vector<PartyIndex>& signers,
+    const PeerMap<SignRound5AMsg>& round5a);
+PeerMap<SignRound5CMsg> CollectRound5CMessages(
+    SignPartyMap* parties, const std::vector<PartyIndex>& signers,
+    const PeerMap<SignRound5BMsg>& round5b);
+PeerMap<SignRound5DMsg> CollectRound5DMessages(
+    SignPartyMap* parties, const std::vector<PartyIndex>& signers,
+    const PeerMap<SignRound5CMsg>& round5c);
+PeerMap<Scalar> CollectRound5EReveals(SignPartyMap* parties,
+                                      const std::vector<PartyIndex>& signers,
+                                      const PeerMap<SignRound5DMsg>& round5d);
+PeerMap<Signature> FinalizeSignatures(SignPartyMap* parties,
+                                      const std::vector<PartyIndex>& signers,
+                                      const PeerMap<Scalar>& round5e);
 
 void TestStage4SignConstructorRejectsSmallPaillierModulus();
 void TestStage6SignConstructorRejectsMissingKeygenProofArtifacts();
