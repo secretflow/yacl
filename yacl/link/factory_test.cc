@@ -14,6 +14,7 @@
 
 #include "yacl/link/factory.h"
 
+#include <atomic>
 #include <future>
 #include <limits>
 #include <unordered_map>
@@ -38,6 +39,8 @@ enum class SslMode {
   RSA_SHA256,  // mode = 1
   SM2_SM3,     // mode = 2
 };
+
+constexpr int kFactoryTestBasePort = 45000;
 
 inline std::pair<std::string, std::string> GenCertFiles(
     const std::string& prefix, const SslMode mode) {
@@ -87,15 +90,21 @@ inline std::pair<std::string, std::string> GenCertFiles(
 inline ContextDesc MakeDesc(int count, const SslMode mode) {
   ContextDesc desc;
   desc.id = fmt::format("world_{}", count);
-  desc.parties.push_back(ContextDesc::Party("alice", "127.0.0.1:63927"));
-  desc.parties.push_back(ContextDesc::Party("bob", "127.0.0.1:63921"));
+  const int alice_port = kFactoryTestBasePort + count * 2;
+  const int bob_port = alice_port + 1;
+  desc.parties.push_back(
+      ContextDesc::Party("alice", fmt::format("127.0.0.1:{}", alice_port)));
+  desc.parties.push_back(
+      ContextDesc::Party("bob", fmt::format("127.0.0.1:{}", bob_port)));
   if (mode != SslMode::NONE) {
     desc.enable_ssl = true;
     desc.server_ssl_opts.ciphers = "";  // auto detect
 
     // export rsa keys to files
-    auto [server_sk_path, server_cer_path] = GenCertFiles("server", mode);
-    auto [client_sk_path, client_cer_path] = GenCertFiles("client", mode);
+    auto [server_sk_path, server_cer_path] =
+        GenCertFiles(fmt::format("server_{}", count), mode);
+    auto [client_sk_path, client_cer_path] =
+        GenCertFiles(fmt::format("client_{}", count), mode);
 
     desc.server_ssl_opts.cert.certificate_path = server_cer_path;
     desc.server_ssl_opts.cert.private_key_path = server_sk_path;
@@ -110,9 +119,11 @@ template <typename M>
 class FactoryTest : public ::testing::Test {
  public:
   void SetUp() override {
-    static int desc_count = 0;
+    static std::atomic<int> desc_count{0};
     contexts_.resize(2);
-    auto desc = MakeDesc(desc_count++, SslMode(M::get_mode()));
+    auto desc =
+        MakeDesc(desc_count.fetch_add(1, std::memory_order_relaxed),
+                 SslMode(M::get_mode()));
 
     auto create_brpc = [&](int self_rank) {
       contexts_[self_rank] = M::get_t_instance().CreateContext(desc, self_rank);
@@ -139,6 +150,8 @@ class FactoryTest : public ::testing::Test {
     for (auto& f : waits) {
       f.get();
     }
+
+    contexts_.clear();
   }
 
   std::vector<std::shared_ptr<Context>> contexts_;
