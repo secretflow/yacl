@@ -207,8 +207,8 @@ void KosOtExtSend(const std::shared_ptr<link::Context>& ctx,
   auto batch1 = VecXorMonochrome(absl::MakeSpan(q_ext), delta);
 
   if (!cot) {
-    ParaCrHashInplace_128(absl::MakeSpan(batch0));
-    ParaCrHashInplace_128(absl::MakeSpan(batch1));
+    ParaTccrHashInplace_128(absl::MakeSpan(batch0), 0);
+    ParaTccrHashInplace_128(absl::MakeSpan(batch1), 0);
   }
 
   for (size_t i = 0; i < ot_num_valid; i++) {
@@ -303,7 +303,7 @@ void KosOtExtRecv(const std::shared_ptr<link::Context>& ctx,
 
   t_ext.resize(ot_num_valid);
   if (!cot) {
-    ParaCrHashInplace_128(absl::MakeSpan(t_ext));
+    ParaTccrHashInplace_128(absl::MakeSpan(t_ext), 0);
   }
   for (size_t i = 0; i < ot_num_valid; i++) {
     recv_blocks[i] = t_ext[i];
