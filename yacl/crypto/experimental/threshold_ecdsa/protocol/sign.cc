@@ -31,9 +31,6 @@
 namespace tecdsa::proto {
 namespace {
 
-using InternalA1RangeProof = tecdsa::sign_internal::A1RangeProof;
-using InternalA2MtAwcProof = tecdsa::sign_internal::A2MtAwcProof;
-using InternalA3MtAProof = tecdsa::sign_internal::A3MtAProof;
 using InternalMtaProofContext = tecdsa::sign_internal::MtaProofContext;
 
 bool IsPeer(const std::vector<PartyIndex>& peers, PartyIndex party) {
@@ -64,98 +61,14 @@ InternalMtaProofContext BuildMtaContext(const Bytes& session_id,
   };
 }
 
-InternalA1RangeProof ToInternal(const A1RangeProof& proof) {
-  return InternalA1RangeProof{
-      .z = proof.z,
-      .u = proof.u,
-      .w = proof.w,
-      .s = proof.s,
-      .s1 = proof.s1,
-      .s2 = proof.s2,
-  };
-}
-
-A1RangeProof FromInternal(const InternalA1RangeProof& proof) {
-  return A1RangeProof{
-      .z = proof.z,
-      .u = proof.u,
-      .w = proof.w,
-      .s = proof.s,
-      .s1 = proof.s1,
-      .s2 = proof.s2,
-  };
-}
-
-InternalA2MtAwcProof ToInternal(const A2MtAwcProof& proof) {
-  return InternalA2MtAwcProof{
-      .u = proof.u,
-      .z = proof.z,
-      .z2 = proof.z2,
-      .t = proof.t,
-      .v = proof.v,
-      .w = proof.w,
-      .s = proof.s,
-      .s1 = proof.s1,
-      .s2 = proof.s2,
-      .t1 = proof.t1,
-      .t2 = proof.t2,
-  };
-}
-
-A2MtAwcProof FromInternal(const InternalA2MtAwcProof& proof) {
-  return A2MtAwcProof{
-      .u = proof.u,
-      .z = proof.z,
-      .z2 = proof.z2,
-      .t = proof.t,
-      .v = proof.v,
-      .w = proof.w,
-      .s = proof.s,
-      .s1 = proof.s1,
-      .s2 = proof.s2,
-      .t1 = proof.t1,
-      .t2 = proof.t2,
-  };
-}
-
-InternalA3MtAProof ToInternal(const A3MtAProof& proof) {
-  return InternalA3MtAProof{
-      .z = proof.z,
-      .z2 = proof.z2,
-      .t = proof.t,
-      .v = proof.v,
-      .w = proof.w,
-      .s = proof.s,
-      .s1 = proof.s1,
-      .s2 = proof.s2,
-      .t1 = proof.t1,
-      .t2 = proof.t2,
-  };
-}
-
-A3MtAProof FromInternal(const InternalA3MtAProof& proof) {
-  return A3MtAProof{
-      .z = proof.z,
-      .z2 = proof.z2,
-      .t = proof.t,
-      .v = proof.v,
-      .w = proof.w,
-      .s = proof.s,
-      .s1 = proof.s1,
-      .s2 = proof.s2,
-      .t1 = proof.t1,
-      .t2 = proof.t2,
-  };
-}
-
 A1RangeProof ProveA1Range(const Bytes& session_id, PartyIndex initiator_id,
                           PartyIndex responder_id, const Bytes& instance_id,
                           const BigInt& n, const AuxRsaParams& verifier_aux,
                           const BigInt& c, const BigInt& witness_m,
                           const BigInt& witness_r) {
-  return FromInternal(tecdsa::sign_internal::ProveA1Range(
+  return tecdsa::sign_internal::ProveA1Range(
       BuildMtaContext(session_id, initiator_id, responder_id, instance_id), n,
-      verifier_aux, c, witness_m, witness_r));
+      verifier_aux, c, witness_m, witness_r);
 }
 
 bool VerifyA1Range(const Bytes& session_id, PartyIndex initiator_id,
@@ -164,7 +77,7 @@ bool VerifyA1Range(const Bytes& session_id, PartyIndex initiator_id,
                    const BigInt& c, const A1RangeProof& proof) {
   return tecdsa::sign_internal::VerifyA1Range(
       BuildMtaContext(session_id, initiator_id, responder_id, instance_id), n,
-      verifier_aux, c, ToInternal(proof));
+      verifier_aux, c, proof);
 }
 
 A2MtAwcProof ProveA2MtAwc(const Bytes& session_id, PartyIndex initiator_id,
@@ -173,9 +86,9 @@ A2MtAwcProof ProveA2MtAwc(const Bytes& session_id, PartyIndex initiator_id,
                           const BigInt& c1, const BigInt& c2,
                           const ECPoint& statement_x, const BigInt& witness_x,
                           const BigInt& witness_y, const BigInt& witness_r) {
-  return FromInternal(tecdsa::sign_internal::ProveA2MtAwc(
+  return tecdsa::sign_internal::ProveA2MtAwc(
       BuildMtaContext(session_id, initiator_id, responder_id, instance_id), n,
-      verifier_aux, c1, c2, statement_x, witness_x, witness_y, witness_r));
+      verifier_aux, c1, c2, statement_x, witness_x, witness_y, witness_r);
 }
 
 bool VerifyA2MtAwc(const Bytes& session_id, PartyIndex initiator_id,
@@ -185,7 +98,7 @@ bool VerifyA2MtAwc(const Bytes& session_id, PartyIndex initiator_id,
                    const ECPoint& statement_x, const A2MtAwcProof& proof) {
   return tecdsa::sign_internal::VerifyA2MtAwc(
       BuildMtaContext(session_id, initiator_id, responder_id, instance_id), n,
-      verifier_aux, c1, c2, statement_x, ToInternal(proof));
+      verifier_aux, c1, c2, statement_x, proof);
 }
 
 A3MtAProof ProveA3MtA(const Bytes& session_id, PartyIndex initiator_id,
@@ -194,9 +107,9 @@ A3MtAProof ProveA3MtA(const Bytes& session_id, PartyIndex initiator_id,
                       const BigInt& c1, const BigInt& c2,
                       const BigInt& witness_x, const BigInt& witness_y,
                       const BigInt& witness_r) {
-  return FromInternal(tecdsa::sign_internal::ProveA3MtA(
+  return tecdsa::sign_internal::ProveA3MtA(
       BuildMtaContext(session_id, initiator_id, responder_id, instance_id), n,
-      verifier_aux, c1, c2, witness_x, witness_y, witness_r));
+      verifier_aux, c1, c2, witness_x, witness_y, witness_r);
 }
 
 bool VerifyA3MtA(const Bytes& session_id, PartyIndex initiator_id,
@@ -205,7 +118,7 @@ bool VerifyA3MtA(const Bytes& session_id, PartyIndex initiator_id,
                  const BigInt& c1, const BigInt& c2, const A3MtAProof& proof) {
   return tecdsa::sign_internal::VerifyA3MtA(
       BuildMtaContext(session_id, initiator_id, responder_id, instance_id), n,
-      verifier_aux, c1, c2, ToInternal(proof));
+      verifier_aux, c1, c2, proof);
 }
 
 VRelationProof BuildVRelationProof(const Bytes& session_id,
@@ -330,7 +243,7 @@ SignParty::SignParty(SignConfig cfg)
   if (self_pk_it == cfg_.public_keygen_data.all_paillier_public.end()) {
     TECDSA_THROW_ARGUMENT("missing self Paillier public key");
   }
-  if (self_pk_it->second.n != cfg_.local_key_share.paillier->modulus_n()) {
+  if (self_pk_it->second.n != cfg_.local_key_share.paillier->modulus_n_bigint()) {
     TECDSA_THROW_ARGUMENT(
         "self Paillier public key does not match local provider");
   }

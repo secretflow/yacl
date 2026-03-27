@@ -18,6 +18,7 @@
 
 #include "yacl/crypto/experimental/threshold_ecdsa/common/errors.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/hash.h"
+#include "yacl/crypto/experimental/threshold_ecdsa/crypto/byte_io.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/random.h"
 
 namespace tecdsa {
@@ -25,19 +26,8 @@ namespace {
 
 constexpr char kCommitPrefix[] = "GG2019/commit/v1";
 
-void AppendU32Be(uint32_t value, Bytes* out) {
-  out->push_back(static_cast<uint8_t>((value >> 24) & 0xFF));
-  out->push_back(static_cast<uint8_t>((value >> 16) & 0xFF));
-  out->push_back(static_cast<uint8_t>((value >> 8) & 0xFF));
-  out->push_back(static_cast<uint8_t>(value & 0xFF));
-}
-
 void AppendField(std::span<const uint8_t> field, Bytes* out) {
-  if (field.size() > UINT32_MAX) {
-    TECDSA_THROW_ARGUMENT("Commitment field exceeds uint32 length");
-  }
-  AppendU32Be(static_cast<uint32_t>(field.size()), out);
-  out->insert(out->end(), field.begin(), field.end());
+  AppendSizedField(field, out, "Commitment field exceeds uint32 length");
 }
 
 Bytes BuildCommitPreimage(const std::string& domain,

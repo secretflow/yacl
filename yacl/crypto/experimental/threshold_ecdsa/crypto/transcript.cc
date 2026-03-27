@@ -14,31 +14,14 @@
 
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/transcript.h"
 
-#include <openssl/sha.h>
-
 #include <array>
-#include <stdexcept>
 
 #include "yacl/crypto/experimental/threshold_ecdsa/common/errors.h"
+#include "yacl/crypto/experimental/threshold_ecdsa/crypto/hash.h"
+#include "yacl/crypto/experimental/threshold_ecdsa/crypto/byte_io.h"
 
 namespace tecdsa {
 namespace {
-
-void AppendU32Be(uint32_t value, Bytes* out) {
-  out->push_back(static_cast<uint8_t>((value >> 24) & 0xFF));
-  out->push_back(static_cast<uint8_t>((value >> 16) & 0xFF));
-  out->push_back(static_cast<uint8_t>((value >> 8) & 0xFF));
-  out->push_back(static_cast<uint8_t>(value & 0xFF));
-}
-
-std::array<uint8_t, SHA256_DIGEST_LENGTH> Sha256(
-    std::span<const uint8_t> input) {
-  std::array<uint8_t, SHA256_DIGEST_LENGTH> digest{};
-  if (SHA256(input.data(), input.size(), digest.data()) == nullptr) {
-    TECDSA_THROW("SHA256 failed");
-  }
-  return digest;
-}
 
 std::span<const uint8_t> AsByteSpan(std::string_view value) {
   return std::span<const uint8_t>(
@@ -89,8 +72,7 @@ void Transcript::append_fields(
 }
 
 Scalar Transcript::challenge_scalar_mod_q() const {
-  const auto digest = Sha256(transcript_);
-  return Scalar::FromBigEndianModQ(digest);
+  return Scalar::FromBigEndianModQ(Sha256(transcript_));
 }
 
 const Bytes& Transcript::bytes() const { return transcript_; }

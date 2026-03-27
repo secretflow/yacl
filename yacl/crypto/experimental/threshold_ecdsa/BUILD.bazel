@@ -59,7 +59,11 @@ yacl_cc_binary(
 
 yacl_cc_binary(
     name = "keygen_flow_tests",
-    srcs = ["tests/keygen_flow_test.cc"],
+    srcs = [
+        "tests/keygen_flow_test.cc",
+        "tests/sign_flow_test_shared.h",
+        "tests/sign_flow_test_support.cc",
+    ],
     copts = TECDSA_COPTS,
     deps = [":tecdsa_core"],
 )
@@ -72,20 +76,6 @@ yacl_cc_binary(
         "tests/sign_flow_test_shared.h",
         "tests/sign_flow_test_support.cc",
     ],
-    copts = TECDSA_COPTS,
-    deps = [":tecdsa_core"],
-)
-
-yacl_cc_binary(
-    name = "proto_keygen_smoke_tests",
-    srcs = ["tests/proto_keygen_smoke_test.cc"],
-    copts = TECDSA_COPTS,
-    deps = [":tecdsa_core"],
-)
-
-yacl_cc_binary(
-    name = "proto_sign_smoke_tests",
-    srcs = ["tests/proto_sign_smoke_test.cc"],
     copts = TECDSA_COPTS,
     deps = [":tecdsa_core"],
 )

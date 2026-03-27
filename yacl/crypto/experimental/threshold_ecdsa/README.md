@@ -40,7 +40,7 @@ deployment.
 ## Repository Layout
 
 ```text
-common/        # bytes/secure_zeroize/error helpers
+common/        # bytes/error helpers
 crypto/        # Scalar/ECPoint/Paillier/hash/commitment/encoding/transcript/proofs
 protocol/      # Round-driven keygen/sign prototype API
 tests/
@@ -50,8 +50,6 @@ tests/
   sign_flow_test_cases.cc
   sign_flow_test_shared.h
   sign_flow_test_support.cc
-  proto_keygen_smoke_test.cc
-  proto_sign_smoke_test.cc
 ```
 
 ## Reproducibility
@@ -99,8 +97,6 @@ Run individual CMake executables:
 ./build/crypto_primitives_tests
 ./build/keygen_flow_tests
 ./build/sign_flow_tests
-./build/proto_keygen_smoke_tests
-./build/proto_sign_smoke_tests
 ```
 
 Run Bazel test binaries:
@@ -109,8 +105,6 @@ Run Bazel test binaries:
 bazelisk run //yacl/crypto/experimental/threshold_ecdsa:crypto_primitives_tests
 bazelisk run //yacl/crypto/experimental/threshold_ecdsa:keygen_flow_tests
 bazelisk run //yacl/crypto/experimental/threshold_ecdsa:sign_flow_tests
-bazelisk run //yacl/crypto/experimental/threshold_ecdsa:proto_keygen_smoke_tests
-bazelisk run //yacl/crypto/experimental/threshold_ecdsa:proto_sign_smoke_tests
 ```
 
 Migration sanity check (should be zero hits in code files):
@@ -122,8 +116,6 @@ rg -n "#include <gmpxx.h>|\bmpz_class\b|\bmpz_" yacl/crypto/experimental/thresho
 ### Test Coverage Summary
 
 - `crypto_primitives_tests`: basic crypto primitives and wire format checks.
-- `proto_keygen_smoke_tests`: direct round-driven keygen smoke coverage.
-- `proto_sign_smoke_tests`: direct round-driven sign smoke coverage.
 - `keygen_flow_tests`: end-to-end keygen, proof validation, and adversarial
   tampering.
 - `sign_flow_tests`: end-to-end signing, proof checks, and adversarial failure

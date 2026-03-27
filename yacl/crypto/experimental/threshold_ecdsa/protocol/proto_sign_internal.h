@@ -20,11 +20,7 @@
 #include <string>
 #include <vector>
 
-#include "yacl/crypto/experimental/threshold_ecdsa/common/bytes.h"
-#include "yacl/crypto/experimental/threshold_ecdsa/crypto/ec_point.h"
-#include "yacl/crypto/experimental/threshold_ecdsa/crypto/scalar.h"
-#include "yacl/crypto/experimental/threshold_ecdsa/crypto/strict_proofs.h"
-#include "yacl/crypto/experimental/threshold_ecdsa/protocol/types.h"
+#include "yacl/crypto/experimental/threshold_ecdsa/protocol/messages.h"
 
 namespace tecdsa::sign_internal {
 
@@ -35,48 +31,15 @@ inline constexpr char kPhase5ACommitDomain[] = "GG2019/sign/phase5A";
 inline constexpr char kPhase5CCommitDomain[] = "GG2019/sign/phase5C";
 
 using AuxRsaParams = tecdsa::AuxRsaParams;
+using A1RangeProof = tecdsa::proto::A1RangeProof;
+using A2MtAwcProof = tecdsa::proto::A2MtAwcProof;
+using A3MtAProof = tecdsa::proto::A3MtAProof;
 
 struct MtaProofContext {
   Bytes session_id;
   PartyIndex initiator_id = 0;
   PartyIndex responder_id = 0;
   Bytes mta_instance_id;
-};
-
-struct A1RangeProof {
-  BigInt z = BigInt(0);
-  BigInt u = BigInt(0);
-  BigInt w = BigInt(0);
-  BigInt s = BigInt(0);
-  BigInt s1 = BigInt(0);
-  BigInt s2 = BigInt(0);
-};
-
-struct A2MtAwcProof {
-  ECPoint u;
-  BigInt z = BigInt(0);
-  BigInt z2 = BigInt(0);
-  BigInt t = BigInt(0);
-  BigInt v = BigInt(0);
-  BigInt w = BigInt(0);
-  BigInt s = BigInt(0);
-  BigInt s1 = BigInt(0);
-  BigInt s2 = BigInt(0);
-  BigInt t1 = BigInt(0);
-  BigInt t2 = BigInt(0);
-};
-
-struct A3MtAProof {
-  BigInt z = BigInt(0);
-  BigInt z2 = BigInt(0);
-  BigInt t = BigInt(0);
-  BigInt v = BigInt(0);
-  BigInt w = BigInt(0);
-  BigInt s = BigInt(0);
-  BigInt s1 = BigInt(0);
-  BigInt s2 = BigInt(0);
-  BigInt t1 = BigInt(0);
-  BigInt t2 = BigInt(0);
 };
 
 std::string BytesToKey(const Bytes& bytes);

@@ -62,11 +62,6 @@ class PaillierProvider {
 
   bool VerifyKeyPair() const;
 
-  BigInt modulus_n() const;
-  BigInt modulus_n2() const;
-  BigInt generator() const;
-  BigInt private_lambda() const;
-
  private:
   void GenerateKeyPair(unsigned long modulus_bits);
   static BigInt NormalizeMod(const BigInt& value, const BigInt& modulus);

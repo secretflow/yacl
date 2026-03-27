@@ -19,54 +19,11 @@
 
 #include "yacl/crypto/experimental/threshold_ecdsa/common/errors.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/encoding.h"
+#include "yacl/crypto/experimental/threshold_ecdsa/crypto/byte_io.h"
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/strict_proofs_internal.h"
 
 namespace tecdsa::strict_proofs_internal {
 namespace {
-
-void AppendU32Be(uint32_t value, Bytes* out) {
-  out->push_back(static_cast<uint8_t>((value >> 24) & 0xFF));
-  out->push_back(static_cast<uint8_t>((value >> 16) & 0xFF));
-  out->push_back(static_cast<uint8_t>((value >> 8) & 0xFF));
-  out->push_back(static_cast<uint8_t>(value & 0xFF));
-}
-
-uint32_t ReadU32Be(std::span<const uint8_t> input, size_t* offset) {
-  if (*offset + 4 > input.size()) {
-    TECDSA_THROW_ARGUMENT("Not enough bytes to read u32");
-  }
-
-  const size_t i = *offset;
-  *offset += 4;
-  return (static_cast<uint32_t>(input[i]) << 24) |
-         (static_cast<uint32_t>(input[i + 1]) << 16) |
-         (static_cast<uint32_t>(input[i + 2]) << 8) |
-         static_cast<uint32_t>(input[i + 3]);
-}
-
-void AppendSizedField(std::span<const uint8_t> field, Bytes* out) {
-  if (field.size() > UINT32_MAX) {
-    TECDSA_THROW_ARGUMENT("sized field exceeds uint32 length");
-  }
-  AppendU32Be(static_cast<uint32_t>(field.size()), out);
-  out->insert(out->end(), field.begin(), field.end());
-}
-
-Bytes ReadSizedField(std::span<const uint8_t> input, size_t* offset,
-                     size_t max_len, const char* field_name) {
-  const uint32_t len = ReadU32Be(input, offset);
-  if (len > max_len) {
-    TECDSA_THROW_ARGUMENT(std::string(field_name) + " exceeds maximum length");
-  }
-  if (*offset + len > input.size()) {
-    TECDSA_THROW_ARGUMENT(std::string(field_name) + " has inconsistent length");
-  }
-
-  Bytes out(input.begin() + static_cast<std::ptrdiff_t>(*offset),
-            input.begin() + static_cast<std::ptrdiff_t>(*offset + len));
-  *offset += len;
-  return out;
-}
 
 void AppendMpIntField(const BigInt& value, Bytes* out) {
   const Bytes encoded = EncodeMpInt(value);

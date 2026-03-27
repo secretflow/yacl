@@ -21,19 +21,6 @@
 namespace tecdsa::sign_flow_test {
 namespace {
 
-template <typename T>
-PeerMap<T> BuildPeerMapFor(const std::vector<PartyIndex>& signers,
-                           PartyIndex self_id, const PeerMap<T>& all_messages) {
-  PeerMap<T> peer_map;
-  for (PartyIndex peer : signers) {
-    if (peer == self_id) {
-      continue;
-    }
-    peer_map.emplace(peer, all_messages.at(peer));
-  }
-  return peer_map;
-}
-
 std::unordered_map<PartyIndex, std::vector<SignRound2Request>>
 GroupRound2RequestsByRecipient(const std::vector<SignRound2Request>& requests) {
   std::unordered_map<PartyIndex, std::vector<SignRound2Request>> grouped;
@@ -92,59 +79,86 @@ size_t FindPartyIndexOrThrow(const std::vector<PartyIndex>& parties,
   throw std::runtime_error("party not found in test vector");
 }
 
-KeygenOutputs RunKeygenAndCollectResults(uint32_t n, uint32_t t,
-                                         const Bytes& session_id) {
-  using tecdsa::proto::KeygenConfig;
-  using tecdsa::proto::KeygenParty;
-  using tecdsa::proto::KeygenRound1Msg;
-  using tecdsa::proto::KeygenRound2Broadcast;
-
+KeygenPartyMap BuildParties(uint32_t n, uint32_t t, const Bytes& session_id) {
   const std::vector<PartyIndex> participants = BuildParticipants(n);
-  std::unordered_map<PartyIndex, KeygenParty> parties;
+  KeygenPartyMap parties;
   for (PartyIndex party : participants) {
-    KeygenConfig cfg;
+    tecdsa::proto::KeygenConfig cfg;
     cfg.session_id = session_id;
     cfg.self_id = party;
     cfg.participants = participants;
     cfg.threshold = t;
     parties.emplace(party, KeygenParty(std::move(cfg)));
   }
+  return parties;
+}
 
-  std::unordered_map<PartyIndex, KeygenRound1Msg> round1;
+PeerMap<KeygenRound1Msg> CollectRound1(
+    KeygenPartyMap* parties, const std::vector<PartyIndex>& participants) {
+  PeerMap<KeygenRound1Msg> round1;
   for (PartyIndex party : participants) {
-    round1.emplace(party, parties.at(party).MakeRound1());
+    round1.emplace(party, parties->at(party).MakeRound1());
   }
+  return round1;
+}
 
-  std::unordered_map<PartyIndex, KeygenRound2Broadcast> round2_broadcasts;
-  std::unordered_map<PartyIndex, PeerMap<Scalar>> round2_shares;
+void CollectRound2(KeygenPartyMap* parties,
+                   const std::vector<PartyIndex>& participants,
+                   const PeerMap<KeygenRound1Msg>& round1,
+                   PeerMap<KeygenRound2Broadcast>* broadcasts,
+                   KeygenRound2Shares* shares) {
   for (PartyIndex party : participants) {
-    PeerMap<KeygenRound1Msg> peer_round1 =
-        BuildPeerMapFor(participants, party, round1);
-    const auto round2 = parties.at(party).MakeRound2(peer_round1);
-    round2_broadcasts.emplace(party, round2.broadcast);
-    round2_shares.emplace(party, round2.shares_for_peers);
+    const auto peer_round1 = BuildPeerMapFor(participants, party, round1);
+    const auto round2 = parties->at(party).MakeRound2(peer_round1);
+    broadcasts->emplace(party, round2.broadcast);
+    shares->emplace(party, round2.shares_for_peers);
   }
+}
 
-  std::unordered_map<PartyIndex, tecdsa::proto::KeygenRound3Msg> round3;
+PeerMap<KeygenRound3Msg> CollectRound3(
+    KeygenPartyMap* parties, const std::vector<PartyIndex>& participants,
+    const PeerMap<KeygenRound2Broadcast>& broadcasts,
+    const KeygenRound2Shares& shares) {
+  PeerMap<KeygenRound3Msg> round3;
   for (PartyIndex party : participants) {
-    PeerMap<KeygenRound2Broadcast> peer_round2 =
-        BuildPeerMapFor(participants, party, round2_broadcasts);
+    const auto peer_round2 = BuildPeerMapFor(participants, party, broadcasts);
     PeerMap<Scalar> shares_for_self;
     for (PartyIndex peer : participants) {
       if (peer != party) {
-        shares_for_self.emplace(peer, round2_shares.at(peer).at(party));
+        shares_for_self.emplace(peer, shares.at(peer).at(party));
       }
     }
     round3.emplace(party,
-                   parties.at(party).MakeRound3(peer_round2, shares_for_self));
+                   parties->at(party).MakeRound3(peer_round2, shares_for_self));
   }
+  return round3;
+}
 
+KeygenOutputs FinalizeOutputs(KeygenPartyMap* parties,
+                              const std::vector<PartyIndex>& participants,
+                              const PeerMap<KeygenRound3Msg>& round3) {
   KeygenOutputs outputs;
   for (PartyIndex party : participants) {
     const auto peer_round3 = BuildPeerMapFor(participants, party, round3);
-    outputs.emplace(party, parties.at(party).Finalize(peer_round3));
+    outputs.emplace(party, parties->at(party).Finalize(peer_round3));
   }
   return outputs;
+}
+
+KeygenOutputs RunKeygenAndCollectResults(uint32_t n, uint32_t t,
+                                         const Bytes& session_id) {
+  auto parties = BuildParties(n, t, session_id);
+  const std::vector<PartyIndex> participants = BuildParticipants(n);
+  const auto round1 = CollectRound1(&parties, participants);
+
+  PeerMap<KeygenRound2Broadcast> round2_broadcasts;
+  KeygenRound2Shares round2_shares;
+  CollectRound2(&parties, participants, round1, &round2_broadcasts,
+                &round2_shares);
+
+  const auto round3 =
+      CollectRound3(&parties, participants, round2_broadcasts, round2_shares);
+  return FinalizeOutputs(&parties, participants, round3);
 }
 
 SignFixture BuildSignFixture(const std::vector<PartyIndex>& signers) {

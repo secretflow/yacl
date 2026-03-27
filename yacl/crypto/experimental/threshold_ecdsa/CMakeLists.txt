@@ -58,7 +58,10 @@ add_library(tecdsa_m0 ALIAS tecdsa_core)
 add_executable(crypto_primitives_tests tests/crypto_primitives_test.cc)
 target_link_libraries(crypto_primitives_tests PRIVATE tecdsa_core)
 
-add_executable(keygen_flow_tests tests/keygen_flow_test.cc)
+add_executable(keygen_flow_tests
+  tests/keygen_flow_test.cc
+  tests/sign_flow_test_support.cc
+)
 target_link_libraries(keygen_flow_tests PRIVATE tecdsa_core)
 
 add_executable(sign_flow_tests
@@ -68,15 +71,7 @@ add_executable(sign_flow_tests
 )
 target_link_libraries(sign_flow_tests PRIVATE tecdsa_core)
 
-add_executable(proto_keygen_smoke_tests tests/proto_keygen_smoke_test.cc)
-target_link_libraries(proto_keygen_smoke_tests PRIVATE tecdsa_core)
-
-add_executable(proto_sign_smoke_tests tests/proto_sign_smoke_test.cc)
-target_link_libraries(proto_sign_smoke_tests PRIVATE tecdsa_core)
-
 enable_testing()
 add_test(NAME crypto_primitives_tests COMMAND crypto_primitives_tests)
 add_test(NAME keygen_flow_tests COMMAND keygen_flow_tests)
 add_test(NAME sign_flow_tests COMMAND sign_flow_tests)
-add_test(NAME proto_keygen_smoke_tests COMMAND proto_keygen_smoke_tests)
-add_test(NAME proto_sign_smoke_tests COMMAND proto_sign_smoke_tests)

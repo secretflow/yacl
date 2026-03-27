@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -30,6 +31,10 @@ using ::tecdsa::Bytes;
 using ::tecdsa::PartyIndex;
 using ::tecdsa::Scalar;
 using ::tecdsa::proto::KeygenOutput;
+using ::tecdsa::proto::KeygenParty;
+using ::tecdsa::proto::KeygenRound1Msg;
+using ::tecdsa::proto::KeygenRound2Broadcast;
+using ::tecdsa::proto::KeygenRound3Msg;
 using ::tecdsa::proto::PeerMap;
 using ::tecdsa::proto::Signature;
 using ::tecdsa::proto::SignConfig;
@@ -45,7 +50,22 @@ using ::tecdsa::proto::SignRound5CMsg;
 using ::tecdsa::proto::SignRound5DMsg;
 
 using KeygenOutputs = std::unordered_map<PartyIndex, KeygenOutput>;
+using KeygenPartyMap = std::unordered_map<PartyIndex, KeygenParty>;
+using KeygenRound2Shares = std::unordered_map<PartyIndex, PeerMap<Scalar>>;
 using SignPartyMap = std::unordered_map<PartyIndex, SignParty>;
+
+template <typename T>
+PeerMap<T> BuildPeerMapFor(const std::vector<PartyIndex>& parties,
+                           PartyIndex self_id,
+                           const std::unordered_map<PartyIndex, T>& all_msgs) {
+  PeerMap<T> out;
+  for (PartyIndex peer : parties) {
+    if (peer != self_id) {
+      out.emplace(peer, all_msgs.at(peer));
+    }
+  }
+  return out;
+}
 
 struct SignFixture {
   std::vector<PartyIndex> signers;
@@ -59,8 +79,24 @@ std::vector<PartyIndex> BuildParticipants(uint32_t n);
 size_t FindPartyIndexOrThrow(const std::vector<PartyIndex>& parties,
                              PartyIndex party_id);
 
+KeygenPartyMap BuildParties(uint32_t n, uint32_t t, const Bytes& session_id);
+PeerMap<KeygenRound1Msg> CollectRound1(
+    KeygenPartyMap* parties, const std::vector<PartyIndex>& participants);
+void CollectRound2(KeygenPartyMap* parties,
+                   const std::vector<PartyIndex>& participants,
+                   const PeerMap<KeygenRound1Msg>& round1,
+                   PeerMap<KeygenRound2Broadcast>* broadcasts,
+                   KeygenRound2Shares* shares);
+PeerMap<KeygenRound3Msg> CollectRound3(
+    KeygenPartyMap* parties, const std::vector<PartyIndex>& participants,
+    const PeerMap<KeygenRound2Broadcast>& broadcasts,
+    const KeygenRound2Shares& shares);
+KeygenOutputs FinalizeOutputs(KeygenPartyMap* parties,
+                              const std::vector<PartyIndex>& participants,
+                              const PeerMap<KeygenRound3Msg>& round3);
 KeygenOutputs RunKeygenAndCollectResults(uint32_t n, uint32_t t,
                                          const Bytes& session_id);
+
 SignFixture BuildSignFixture(const std::vector<PartyIndex>& signers);
 tecdsa::StrictProofVerifierContext BuildKeygenProofContext(
     const Bytes& keygen_session_id, PartyIndex prover_id);

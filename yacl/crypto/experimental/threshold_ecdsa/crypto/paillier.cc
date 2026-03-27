@@ -190,16 +190,6 @@ BigInt PaillierProvider::private_lambda_bigint() const {
   return lambda_;
 }
 
-BigInt PaillierProvider::modulus_n() const { return modulus_n_bigint(); }
-
-BigInt PaillierProvider::modulus_n2() const { return modulus_n2_bigint(); }
-
-BigInt PaillierProvider::generator() const { return generator_bigint(); }
-
-BigInt PaillierProvider::private_lambda() const {
-  return private_lambda_bigint();
-}
-
 void PaillierProvider::GenerateKeyPair(unsigned long modulus_bits) {
   const size_t p_bits =
       std::max<size_t>(2, (static_cast<size_t>(modulus_bits) + 1) / 2 + 1);

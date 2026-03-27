@@ -12,15 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cstdint>
-#include <functional>
 #include <iostream>
-#include <stdexcept>
-#include <unordered_map>
-#include <vector>
 
 #include "yacl/crypto/experimental/threshold_ecdsa/crypto/strict_proofs.h"
-#include "yacl/crypto/experimental/threshold_ecdsa/protocol/keygen.h"
+#include "sign_flow_test_shared.h"
 
 namespace {
 
@@ -29,128 +24,25 @@ using tecdsa::Bytes;
 using tecdsa::PartyIndex;
 using tecdsa::Scalar;
 using tecdsa::proto::BuildProofContext;
-using tecdsa::proto::KeygenConfig;
 using tecdsa::proto::KeygenOutput;
-using tecdsa::proto::KeygenParty;
-using tecdsa::proto::KeygenRound1Msg;
 using tecdsa::proto::KeygenRound2Broadcast;
-using tecdsa::proto::KeygenRound3Msg;
 using tecdsa::proto::PeerMap;
+using tecdsa::sign_flow_test::BuildParticipants;
+using tecdsa::sign_flow_test::BuildParties;
+using tecdsa::sign_flow_test::BuildPeerMapFor;
+using tecdsa::sign_flow_test::CollectRound1;
+using tecdsa::sign_flow_test::CollectRound2;
+using tecdsa::sign_flow_test::CollectRound3;
+using tecdsa::sign_flow_test::Expect;
+using tecdsa::sign_flow_test::ExpectThrow;
+using tecdsa::sign_flow_test::FinalizeOutputs;
+using tecdsa::sign_flow_test::KeygenOutputs;
+using tecdsa::sign_flow_test::KeygenRound2Shares;
+using tecdsa::sign_flow_test::RunKeygenAndCollectResults;
 
-void Expect(bool condition, const std::string& message) {
-  if (!condition) {
-    throw std::runtime_error("Test failed: " + message);
-  }
-}
-
-void ExpectThrow(const std::function<void()>& fn, const std::string& message) {
-  bool threw = false;
-  try {
-    fn();
-  } catch (const std::exception&) {
-    threw = true;
-  }
-  if (!threw) {
-    throw std::runtime_error("Test failed: " + message);
-  }
-}
-
-std::vector<PartyIndex> BuildParticipants(uint32_t n) {
-  std::vector<PartyIndex> out;
-  out.reserve(n);
-  for (PartyIndex id = 1; id <= n; ++id) {
-    out.push_back(id);
-  }
-  return out;
-}
-
-template <typename T>
-PeerMap<T> BuildPeerMapFor(const std::vector<PartyIndex>& participants,
-                           PartyIndex self_id,
-                           const std::unordered_map<PartyIndex, T>& all_msgs) {
-  PeerMap<T> out;
-  for (PartyIndex peer : participants) {
-    if (peer != self_id) {
-      out.emplace(peer, all_msgs.at(peer));
-    }
-  }
-  return out;
-}
-
-std::unordered_map<PartyIndex, KeygenParty> BuildParties(
-    uint32_t n, uint32_t t, const Bytes& session_id) {
-  const std::vector<PartyIndex> participants = BuildParticipants(n);
-  std::unordered_map<PartyIndex, KeygenParty> parties;
-  for (PartyIndex party : participants) {
-    KeygenConfig cfg;
-    cfg.session_id = session_id;
-    cfg.self_id = party;
-    cfg.participants = participants;
-    cfg.threshold = t;
-    parties.emplace(party, KeygenParty(std::move(cfg)));
-  }
-  return parties;
-}
-
-std::unordered_map<PartyIndex, KeygenRound1Msg> CollectRound1(
-    std::unordered_map<PartyIndex, KeygenParty>* parties,
-    const std::vector<PartyIndex>& participants) {
-  std::unordered_map<PartyIndex, KeygenRound1Msg> round1;
-  for (PartyIndex party : participants) {
-    round1.emplace(party, parties->at(party).MakeRound1());
-  }
-  return round1;
-}
-
-void CollectRound2(
-    std::unordered_map<PartyIndex, KeygenParty>* parties,
-    const std::vector<PartyIndex>& participants,
-    const std::unordered_map<PartyIndex, KeygenRound1Msg>& round1,
-    std::unordered_map<PartyIndex, KeygenRound2Broadcast>* broadcasts,
-    std::unordered_map<PartyIndex, PeerMap<Scalar>>* shares) {
-  for (PartyIndex party : participants) {
-    const auto peer_round1 = BuildPeerMapFor(participants, party, round1);
-    const auto round2 = parties->at(party).MakeRound2(peer_round1);
-    broadcasts->emplace(party, round2.broadcast);
-    shares->emplace(party, round2.shares_for_peers);
-  }
-}
-
-std::unordered_map<PartyIndex, KeygenRound3Msg> CollectRound3(
-    std::unordered_map<PartyIndex, KeygenParty>* parties,
-    const std::vector<PartyIndex>& participants,
-    const std::unordered_map<PartyIndex, KeygenRound2Broadcast>& broadcasts,
-    const std::unordered_map<PartyIndex, PeerMap<Scalar>>& shares) {
-  std::unordered_map<PartyIndex, KeygenRound3Msg> round3;
-  for (PartyIndex party : participants) {
-    const auto peer_round2 = BuildPeerMapFor(participants, party, broadcasts);
-    PeerMap<Scalar> shares_for_self;
-    for (PartyIndex peer : participants) {
-      if (peer != party) {
-        shares_for_self.emplace(peer, shares.at(peer).at(party));
-      }
-    }
-    round3.emplace(party,
-                   parties->at(party).MakeRound3(peer_round2, shares_for_self));
-  }
-  return round3;
-}
-
-std::unordered_map<PartyIndex, KeygenOutput> FinalizeOutputs(
-    std::unordered_map<PartyIndex, KeygenParty>* parties,
-    const std::vector<PartyIndex>& participants,
-    const std::unordered_map<PartyIndex, KeygenRound3Msg>& round3) {
-  std::unordered_map<PartyIndex, KeygenOutput> outputs;
-  for (PartyIndex party : participants) {
-    const auto peer_round3 = BuildPeerMapFor(participants, party, round3);
-    outputs.emplace(party, parties->at(party).Finalize(peer_round3));
-  }
-  return outputs;
-}
-
-void AssertKeygenOutputsConsistent(
-    const std::unordered_map<PartyIndex, KeygenOutput>& outputs,
-    const std::vector<PartyIndex>& participants, const Bytes& session_id) {
+void AssertKeygenOutputsConsistent(const KeygenOutputs& outputs,
+                                   const std::vector<PartyIndex>& participants,
+                                   const Bytes& session_id) {
   const auto& baseline = outputs.at(participants.front());
   Expect(baseline.local_key_share.paillier != nullptr,
          "baseline result must expose local Paillier provider");
@@ -191,10 +83,9 @@ void AssertKeygenOutputsConsistent(
       Expect(current.public_keygen_data.all_paillier_public.at(peer).n ==
                  baseline.public_keygen_data.all_paillier_public.at(peer).n,
              "all parties must agree on Paillier public keys");
-      Expect(
-          current.public_keygen_data.all_aux_rsa_params.at(peer).n_tilde ==
-              baseline.public_keygen_data.all_aux_rsa_params.at(peer).n_tilde,
-          "all parties must agree on aux n_tilde");
+      Expect(current.public_keygen_data.all_aux_rsa_params.at(peer).n_tilde ==
+                 baseline.public_keygen_data.all_aux_rsa_params.at(peer).n_tilde,
+             "all parties must agree on aux n_tilde");
       Expect(current.public_keygen_data.all_aux_rsa_params.at(peer).h1 ==
                  baseline.public_keygen_data.all_aux_rsa_params.at(peer).h1,
              "all parties must agree on aux h1");
@@ -222,15 +113,8 @@ void AssertKeygenOutputsConsistent(
 
 void RunHonestKeygenAndAssertConsistency(uint32_t n, uint32_t t,
                                          const Bytes& session_id) {
-  auto parties = BuildParties(n, t, session_id);
   const std::vector<PartyIndex> participants = BuildParticipants(n);
-  const auto round1 = CollectRound1(&parties, participants);
-
-  std::unordered_map<PartyIndex, KeygenRound2Broadcast> broadcasts;
-  std::unordered_map<PartyIndex, PeerMap<Scalar>> shares;
-  CollectRound2(&parties, participants, round1, &broadcasts, &shares);
-  const auto round3 = CollectRound3(&parties, participants, broadcasts, shares);
-  const auto outputs = FinalizeOutputs(&parties, participants, round3);
+  const auto outputs = RunKeygenAndCollectResults(n, t, session_id);
   AssertKeygenOutputsConsistent(outputs, participants, session_id);
 }
 
@@ -249,8 +133,8 @@ void TestTamperedPhase2ShareAbortsReceiver() {
   const std::vector<PartyIndex> participants = BuildParticipants(3);
   const auto round1 = CollectRound1(&parties, participants);
 
-  std::unordered_map<PartyIndex, KeygenRound2Broadcast> broadcasts;
-  std::unordered_map<PartyIndex, PeerMap<Scalar>> shares;
+  PeerMap<KeygenRound2Broadcast> broadcasts;
+  KeygenRound2Shares shares;
   CollectRound2(&parties, participants, round1, &broadcasts, &shares);
 
   const auto peer_round2 =
@@ -284,8 +168,8 @@ void TestTamperedPhase3SchnorrAbortsPeers() {
   const std::vector<PartyIndex> participants = BuildParticipants(3);
   const auto round1 = CollectRound1(&parties, participants);
 
-  std::unordered_map<PartyIndex, KeygenRound2Broadcast> broadcasts;
-  std::unordered_map<PartyIndex, PeerMap<Scalar>> shares;
+  PeerMap<KeygenRound2Broadcast> broadcasts;
+  KeygenRound2Shares shares;
   CollectRound2(&parties, participants, round1, &broadcasts, &shares);
   auto round3 = CollectRound3(&parties, participants, broadcasts, shares);
   round3.at(1).proof.z = round3.at(1).proof.z + Scalar::FromUint64(1);
@@ -333,8 +217,8 @@ void TestStrictModeMissingPhase3SquareFreeProofAbortsReceiver() {
   const std::vector<PartyIndex> participants = BuildParticipants(3);
   const auto round1 = CollectRound1(&parties, participants);
 
-  std::unordered_map<PartyIndex, KeygenRound2Broadcast> broadcasts;
-  std::unordered_map<PartyIndex, PeerMap<Scalar>> shares;
+  PeerMap<KeygenRound2Broadcast> broadcasts;
+  KeygenRound2Shares shares;
   CollectRound2(&parties, participants, round1, &broadcasts, &shares);
   auto round3 = CollectRound3(&parties, participants, broadcasts, shares);
   round3.at(1).square_free_proof.blob.clear();
@@ -349,8 +233,8 @@ void TestStrictModeTamperedPhase3SquareFreeProofAbortsReceiver() {
   const std::vector<PartyIndex> participants = BuildParticipants(3);
   const auto round1 = CollectRound1(&parties, participants);
 
-  std::unordered_map<PartyIndex, KeygenRound2Broadcast> broadcasts;
-  std::unordered_map<PartyIndex, PeerMap<Scalar>> shares;
+  PeerMap<KeygenRound2Broadcast> broadcasts;
+  KeygenRound2Shares shares;
   CollectRound2(&parties, participants, round1, &broadcasts, &shares);
   auto round3 = CollectRound3(&parties, participants, broadcasts, shares);
   round3.at(1).square_free_proof.blob.back() ^= 0x01;

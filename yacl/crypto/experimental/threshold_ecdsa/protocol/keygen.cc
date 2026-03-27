@@ -126,7 +126,7 @@ void KeygenParty::EnsureLocalProofsPrepared() {
   local_aux_rsa_params_ =
       GenerateAuxRsaParams(cfg_.aux_rsa_modulus_bits, cfg_.self_id);
   local_square_free_proof_ = BuildSquareFreeProofGmr98(
-      local_paillier_public_.n, local_paillier_->private_lambda(), context);
+      local_paillier_public_.n, local_paillier_->private_lambda_bigint(), context);
   local_aux_param_proof_ =
       BuildAuxRsaParamProofStrict(local_aux_rsa_params_, context);
 
