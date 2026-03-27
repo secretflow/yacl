@@ -152,7 +152,7 @@ void ParaCcrHashInplace_128(absl::Span<uint128_t> inout) {
 // See GKWY20 paper (https://eprint.iacr.org/2019/074.pdf) Sec 7.4
 // TccrHash(x,i) = RP(RP(x) ^ i) ^ RP(x)
 uint128_t TccrHash_128(uint128_t x, uint128_t i) {
-    const auto& RP = GetCrHashDefaultRP();  // RP为ECB模式的AES
+    const auto& RP = GetCrHashDefaultRP();
     uint128_t tmp = RP.Gen(x);  // tmp = RP(x)
     return RP.Gen(tmp ^ i) ^ tmp;
 }
@@ -161,7 +161,7 @@ uint128_t TccrHash_128(uint128_t x, uint128_t i) {
 std::vector<uint128_t> ParaTccrHash_128(absl::Span<const uint128_t> x, uint128_t begin_index) {
     std::vector<uint128_t> out(x.size());
     std::vector<uint128_t> tmp(x.size());
-    const auto& RP = GetCrHashDefaultRP();  // RP为ECB模式的AES
+    const auto& RP = GetCrHashDefaultRP(); 
     // out = RP(x)
     RP.GenForMultiInputs(x, absl::MakeSpan(out));  
     // tmp = RP(x)
