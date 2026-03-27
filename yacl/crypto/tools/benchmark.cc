@@ -26,7 +26,7 @@ void BM_DefaultArguments(benchmark::internal::Benchmark* b) {
       ->Arg(16777216);  // 2^24
 }
 
-// Register benchmarks for (Circular) CrHash
+// Register benchmarks for (Tweakable) (Circular) CrHash
 BENCHMARK_REGISTER_F(TheoreticalToolBench, RO)->Apply(BM_DefaultArguments);
 BENCHMARK_REGISTER_F(TheoreticalToolBench, RP)->Apply(BM_DefaultArguments);
 BENCHMARK_REGISTER_F(TheoreticalToolBench, CRHASH)->Apply(BM_DefaultArguments);
@@ -34,6 +34,9 @@ BENCHMARK_REGISTER_F(TheoreticalToolBench, CRHASH_INPLACE)
     ->Apply(BM_DefaultArguments);
 BENCHMARK_REGISTER_F(TheoreticalToolBench, CCRHASH)->Apply(BM_DefaultArguments);
 BENCHMARK_REGISTER_F(TheoreticalToolBench, CCRHASH_INPLACE)
+    ->Apply(BM_DefaultArguments);
+BENCHMARK_REGISTER_F(TheoreticalToolBench, TCCRHASH)->Apply(BM_DefaultArguments);
+BENCHMARK_REGISTER_F(TheoreticalToolBench, TCCRHASH_INPLACE)
     ->Apply(BM_DefaultArguments);
 
 BENCHMARK_REGISTER_F(PrgBench, PrgAesEcb)->Apply(BM_DefaultArguments);

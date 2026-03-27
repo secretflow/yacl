@@ -64,7 +64,13 @@ void MpfssSend(const std::shared_ptr<link::Context>& ctx,
 
     GywzOtExtSend(ctx, ot_slice, this_size, this_span);
     // Break the correlation
-    ParaCrHashInplace_128(this_span);
+    // use TCCR hash for malicious security, or CR for semi-honest
+    if (param.is_mal_) {
+      ParaTccrHashInplace_128(this_span, i * batch_size);
+	}
+	else {
+	  ParaCrHashInplace_128(this_span);
+	}
     send_msgs[i] =
         std::reduce(this_span.begin(), this_span.end(), send_msgs[i], op.add);
   }
@@ -101,7 +107,13 @@ void MpfssRecv(const std::shared_ptr<link::Context>& ctx,
         i * math::Log2Ceil(batch_size),
         i * math::Log2Ceil(batch_size) + math::Log2Ceil(this_size));
     GywzOtExtRecv(ctx, ot_slice, this_size, indexes[i], this_span);
-    ParaCrHashInplace_128(this_span);
+    // use TCCR hash for malicious security, or CR for semi-honest
+    if (param.is_mal_) {
+      ParaTccrHashInplace_128(this_span, i * batch_size);
+	}
+	else {
+	  ParaCrHashInplace_128(this_span);
+	}
     dpf_sum[i] =
         std::reduce(this_span.begin(), this_span.end(), dpf_sum[i], op.add);
   }
@@ -157,7 +169,13 @@ void MpfssSend(const std::shared_ptr<link::Context>& ctx,
         i * math::Log2Ceil(batch_size) + math::Log2Ceil(this_size));
 
     GywzOtExtSend(ctx, ot_slice, this_size, this_span);
-    ParaCrHashInplace_128(this_span);
+    // use TCCR hash for malicious security, or CR for semi-honest
+    if (param.is_mal_) {
+      ParaTccrHashInplace_128(this_span, i * batch_size);
+	}
+	else {
+	  ParaCrHashInplace_128(this_span);
+	}
 
     // Break the correlation
     std::transform(
@@ -206,7 +224,13 @@ void MpfssRecv(const std::shared_ptr<link::Context>& ctx,
         i * math::Log2Ceil(batch_size),
         i * math::Log2Ceil(batch_size) + math::Log2Ceil(this_size));
     GywzOtExtRecv(ctx, ot_slice, this_size, indexes[i], this_span);
-    ParaCrHashInplace_128(this_span);
+    // use TCCR hash for malicious security, or CR for semi-honest
+    if (param.is_mal_) {
+      ParaTccrHashInplace_128(this_span, i * batch_size);
+	}
+	else {
+	  ParaCrHashInplace_128(this_span);
+	}
 
     std::transform(
         this_span.begin(), this_span.end(), output.data() + i * batch_size,
@@ -284,7 +308,13 @@ void MpfssSend_fixed_index(const std::shared_ptr<link::Context>& ctx,
       // GywzOtExt is single-point COT
       GywzOtExtSend_fixed_index(ot_slice, this_size, this_span, send_span);
       // Use CrHash to break the correlation
-      ParaCrHashInplace_128(this_span);
+      // use TCCR hash for malicious security, or CR for semi-honest
+      if (param.is_mal_) {
+        ParaTccrHashInplace_128(this_span, batch_idx * batch_size);
+	  }
+	  else {
+	    ParaCrHashInplace_128(this_span);
+	  }  
       // this_span xor
       dpf_sum[batch_idx] = std::reduce(this_span.begin(), this_span.end(),
                                        dpf_sum[batch_idx], op.add);
@@ -372,7 +402,13 @@ void MpfssRecv_fixed_index(const std::shared_ptr<link::Context>& ctx,
       // GywzOtExt is single-point COT
       GywzOtExtRecv_fixed_index(ot_slice, this_size, this_span, recv_span);
       // Use CrHash to break the correlation
-      ParaCrHashInplace_128(this_span);
+      // use TCCR hash for malicious security, or CR for semi-honest
+      if (param.is_mal_) {
+        ParaTccrHashInplace_128(this_span, batch_idx * batch_size);
+	  }
+	  else {
+	    ParaCrHashInplace_128(this_span);
+	  }  
       // this_span xor
       dpf_sum[batch_idx] = std::reduce(this_span.begin(), this_span.end(),
                                        dpf_sum[batch_idx], op.add);
@@ -455,7 +491,13 @@ void MpfssSend_fixed_index(const std::shared_ptr<link::Context>& ctx,
       // GywzOtExt is single-point COT
       GywzOtExtSend_fixed_index(ot_slice, full_size, this_span, send_span);
       // Use CrHash to break the correlation
-      ParaCrHashInplace_128(this_span.subspan(0, this_size));
+      // use TCCR hash for malicious security, or CR for semi-honest
+      if (param.is_mal_) {
+        ParaTccrHashInplace_128(this_span.subspan(0, this_size), batch_idx * batch_size);
+	  }
+	  else {
+	    ParaCrHashInplace_128(this_span.subspan(0, this_size));
+	  }
       // convert to uint64_t
       std::transform(this_span.begin(), this_span.begin() + this_size,
                      output.data() + batch_idx * batch_size,
@@ -560,7 +602,13 @@ void MpfssRecv_fixed_index(const std::shared_ptr<link::Context>& ctx,
       // GywzOtExt is single-point COT
       GywzOtExtRecv_fixed_index(ot_slice, full_size, this_span, recv_span);
       // Use CrHash to break the correlation
-      ParaCrHashInplace_128(this_span.subspan(0, this_size));
+      // use TCCR hash for malicious security, or CR for semi-honest
+      if (param.is_mal_) {
+        ParaTccrHashInplace_128(this_span.subspan(0, this_size), batch_idx * batch_size);
+	  }
+	  else {
+	    ParaCrHashInplace_128(this_span.subspan(0, this_size));
+	  }
       // convert to uint64_t
       std::transform(this_span.begin(), this_span.begin() + this_size,
                      output.data() + batch_idx * batch_size,
