@@ -167,8 +167,9 @@ std::vector<uint128_t> ParaTccrHash_128(absl::Span<const uint128_t> x, uint128_t
     // tmp = RP(x)
     std::memcpy(tmp.data(), out.data(), x.size() * sizeof(uint128_t));
     // tmp = RP(x) ^ i
-    for(uint64_t i = 0; i < tmp.size(); i++) 
+    for(uint64_t i = 0; i < tmp.size(); i++) {
         tmp[i] ^= (i + begin_index);
+    }
     // tmp = RP(tmp) = RP(RP(x) ^ i)
     RP.GenForMultiInputsInplace(absl::MakeSpan(tmp));
     // out = tmp ^ out = RP(RP(x) ^ i) ^ RP(x)
