@@ -670,12 +670,12 @@ void SoftspokenOtExtSender::Send(
       // 4. perform CrHash to break the correlation if cot flag is false
       if (!cot) {
       	// use TCCR hash for malicious security, or CR for semi-honest
-      	if (mal_) {
+        if (mal_) {
           ParaTccrHashInplace_128(absl::MakeSpan(V[s]), t * super_batch_size + s * kBatchSize);
           ParaTccrHashInplace_128(absl::MakeSpan(V_xor_delta[s]), t * super_batch_size + s * kBatchSize);
 		} 
 		else {
-		  ParaCrHashInplace_128(absl::MakeSpan(V[s]));
+          ParaCrHashInplace_128(absl::MakeSpan(V[s]));
           ParaCrHashInplace_128(absl::MakeSpan(V_xor_delta[s]));
 		}
       }
@@ -712,11 +712,11 @@ void SoftspokenOtExtSender::Send(
       if (!cot) {
       	// use TCCR hash for malicious security, or CR for semi-honest
       	if (mal_) {
-      	  ParaTccrHashInplace_128(absl::MakeSpan(V[t]), batch_offset + t * kBatchSize);
+          ParaTccrHashInplace_128(absl::MakeSpan(V[t]), batch_offset + t * kBatchSize);
           ParaTccrHashInplace_128(absl::MakeSpan(V_xor_delta[t]), batch_offset + t * kBatchSize);	
 		}
 		else {
-		  ParaCrHashInplace_128(absl::MakeSpan(V[t]));
+          ParaCrHashInplace_128(absl::MakeSpan(V[t]));
           ParaCrHashInplace_128(absl::MakeSpan(V_xor_delta[t]));
 		}
       }
@@ -1053,11 +1053,11 @@ void SoftspokenOtExtReceiver::Recv(const std::shared_ptr<link::Context>& ctx,
       // 4. perform CrHash to break the correlation if cot flag is false
       if (!cot) {
       	// use TCCR hash for malicious security, or CR for semi-honest
-      	if (mal_) {
-      	  ParaTccrHashInplace_128(absl::MakeSpan(W[s]), t * super_batch_size + s * batch_size);
+        if (mal_) {
+          ParaTccrHashInplace_128(absl::MakeSpan(W[s]), t * super_batch_size + s * batch_size);
 		}
 		else {
-		  ParaCrHashInplace_128(absl::MakeSpan(W[s]));
+          ParaCrHashInplace_128(absl::MakeSpan(W[s]));
 		}
       }
       for (uint64_t j = 0; j < kBatchSize; ++j) {
@@ -1090,10 +1090,10 @@ void SoftspokenOtExtReceiver::Recv(const std::shared_ptr<link::Context>& ctx,
       if (!cot) {
       	// use TCCR hash for malicious security, or CR for semi-honest
       	if (mal_) {
-      	  ParaTccrHashInplace_128(absl::MakeSpan(W[t]), batch_offset + t * kBatchSize);
+          ParaTccrHashInplace_128(absl::MakeSpan(W[t]), batch_offset + t * kBatchSize);
 		} 
 		else {
-		  ParaCrHashInplace_128(absl::MakeSpan(W[t]));
+          ParaCrHashInplace_128(absl::MakeSpan(W[t]));
 		}
       }
       for (uint64_t j = 0; j < limit; ++j) {

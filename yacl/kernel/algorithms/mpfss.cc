@@ -66,10 +66,10 @@ void MpfssSend(const std::shared_ptr<link::Context>& ctx,
     // Break the correlation
     // use TCCR hash for malicious security, or CR for semi-honest
     if (param.is_mal_) {
-    	ParaTccrHashInplace_128(this_span, i * batch_size);
+      ParaTccrHashInplace_128(this_span, i * batch_size);
 	}
 	else {
-		ParaCrHashInplace_128(this_span);
+	  ParaCrHashInplace_128(this_span);
 	}
     send_msgs[i] =
         std::reduce(this_span.begin(), this_span.end(), send_msgs[i], op.add);
@@ -109,10 +109,10 @@ void MpfssRecv(const std::shared_ptr<link::Context>& ctx,
     GywzOtExtRecv(ctx, ot_slice, this_size, indexes[i], this_span);
     // use TCCR hash for malicious security, or CR for semi-honest
     if (param.is_mal_) {
-    	ParaTccrHashInplace_128(this_span, i * batch_size);
+      ParaTccrHashInplace_128(this_span, i * batch_size);
 	}
 	else {
-		ParaCrHashInplace_128(this_span);
+	  ParaCrHashInplace_128(this_span);
 	}
     dpf_sum[i] =
         std::reduce(this_span.begin(), this_span.end(), dpf_sum[i], op.add);
@@ -171,10 +171,10 @@ void MpfssSend(const std::shared_ptr<link::Context>& ctx,
     GywzOtExtSend(ctx, ot_slice, this_size, this_span);
     // use TCCR hash for malicious security, or CR for semi-honest
     if (param.is_mal_) {
-    	ParaTccrHashInplace_128(this_span, i * batch_size);
+      ParaTccrHashInplace_128(this_span, i * batch_size);
 	}
 	else {
-		ParaCrHashInplace_128(this_span);
+	  ParaCrHashInplace_128(this_span);
 	}
 
     // Break the correlation
@@ -226,10 +226,10 @@ void MpfssRecv(const std::shared_ptr<link::Context>& ctx,
     GywzOtExtRecv(ctx, ot_slice, this_size, indexes[i], this_span);
     // use TCCR hash for malicious security, or CR for semi-honest
     if (param.is_mal_) {
-    	ParaTccrHashInplace_128(this_span, i * batch_size);
+      ParaTccrHashInplace_128(this_span, i * batch_size);
 	}
 	else {
-		ParaCrHashInplace_128(this_span);
+	  ParaCrHashInplace_128(this_span);
 	}
 
     std::transform(
@@ -310,10 +310,10 @@ void MpfssSend_fixed_index(const std::shared_ptr<link::Context>& ctx,
       // Use CrHash to break the correlation
       // use TCCR hash for malicious security, or CR for semi-honest
       if (param.is_mal_) {
-    	  ParaTccrHashInplace_128(this_span, batch_idx * batch_length);
+        ParaTccrHashInplace_128(this_span, batch_idx * batch_size);
 	  }
 	  else {
-		  ParaCrHashInplace_128(this_span);
+	    ParaCrHashInplace_128(this_span);
 	  }  
       // this_span xor
       dpf_sum[batch_idx] = std::reduce(this_span.begin(), this_span.end(),
@@ -404,10 +404,10 @@ void MpfssRecv_fixed_index(const std::shared_ptr<link::Context>& ctx,
       // Use CrHash to break the correlation
       // use TCCR hash for malicious security, or CR for semi-honest
       if (param.is_mal_) {
-    	  ParaTccrHashInplace_128(this_span, batch_idx * batch_length);
+        ParaTccrHashInplace_128(this_span, batch_idx * batch_size);
 	  }
 	  else {
-		  ParaCrHashInplace_128(this_span);
+	    ParaCrHashInplace_128(this_span);
 	  }  
       // this_span xor
       dpf_sum[batch_idx] = std::reduce(this_span.begin(), this_span.end(),
@@ -493,10 +493,10 @@ void MpfssSend_fixed_index(const std::shared_ptr<link::Context>& ctx,
       // Use CrHash to break the correlation
       // use TCCR hash for malicious security, or CR for semi-honest
       if (param.is_mal_) {
-    	  ParaTccrHashInplace_128(this_span.subspan(0, this_size), 0);
+        ParaTccrHashInplace_128(this_span.subspan(0, this_size), batch_idx * batch_size);
 	  }
 	  else {
-	  	  ParaCrHashInplace_128(this_span.subspan(0, this_size));
+	    ParaCrHashInplace_128(this_span.subspan(0, this_size));
 	  }
       // convert to uint64_t
       std::transform(this_span.begin(), this_span.begin() + this_size,
@@ -604,10 +604,10 @@ void MpfssRecv_fixed_index(const std::shared_ptr<link::Context>& ctx,
       // Use CrHash to break the correlation
       // use TCCR hash for malicious security, or CR for semi-honest
       if (param.is_mal_) {
-    	  ParaTccrHashInplace_128(this_span.subspan(0, this_size), 0);
+        ParaTccrHashInplace_128(this_span.subspan(0, this_size), batch_idx * batch_size);
 	  }
 	  else {
-	  	  ParaCrHashInplace_128(this_span.subspan(0, this_size));
+	    ParaCrHashInplace_128(this_span.subspan(0, this_size));
 	  }
       // convert to uint64_t
       std::transform(this_span.begin(), this_span.begin() + this_size,
