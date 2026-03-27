@@ -183,10 +183,10 @@ void ParaTccrHashInplace_128(absl::Span<uint128_t> inout, uint128_t begin_index)
   // TODO: add dynamic batch size
   alignas(32) std::array<uint128_t, kBatchSize> tmp;  
   auto tmp_span = absl::MakeSpan(tmp);
-  const uint64_t size = inout.size();
+  const uint128_t size = inout.size();
   uint128_t i;
 
-  uint64_t offset = 0;
+  uint128_t offset = 0;
   for (; offset + kBatchSize <= size; offset += kBatchSize) {
     auto inout_span = inout.subspan(offset, kBatchSize);
     // inout_span = RP(x)
@@ -194,8 +194,9 @@ void ParaTccrHashInplace_128(absl::Span<uint128_t> inout, uint128_t begin_index)
     // tmp_span = RP(x)
     std::memcpy(tmp_span.data(), inout_span.data(), kBatchSize * sizeof(uint128_t));
     // tmp_span = RP(x) ^ i
-    for(i = offset; i < offset + tmp_span.size(); i++) 
-        tmp_span[i] = tmp_span[i] ^ (i + begin_index);  
+    for(i = 0; i < kBatchSize; i++) {
+    	tmp_span[i] ^= (i + offset + begin_index);
+	}   
     // tmp_span = RP(RP(x) ^ i)
     RP.GenForMultiInputsInplace(tmp_span);
     // inout_span = tmp_span ^ inout_span = RP(RP(x) ^ i) ^ RP(x)
@@ -203,13 +204,14 @@ void ParaTccrHashInplace_128(absl::Span<uint128_t> inout, uint128_t begin_index)
                    inout_span.begin(), inout_span.begin(),
                    std::bit_xor<uint128_t>());
   }
-  uint64_t remain = size - offset;
+  uint128_t remain = size - offset;
   if (remain > 0) {
       auto inout_span = inout.subspan(offset, remain);
       RP.GenForMultiInputsInplace(inout_span);
       std::memcpy(tmp_span.data(), inout_span.data(), remain * sizeof(uint128_t));
-      for(i = offset; i < offset + remain; i++) 
-          tmp_span[i] = tmp_span[i] ^ (i + begin_index);  
+      for(i = 0; i < remain; i++) {
+    	tmp_span[i] ^= (i + offset + begin_index);
+	  }    
       RP.GenForMultiInputsInplace(tmp_span.subspan(0, remain));
       std::transform(tmp_span.begin(), tmp_span.begin() + remain,
                      inout_span.begin(), inout_span.begin(),
