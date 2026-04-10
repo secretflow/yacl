@@ -67,8 +67,7 @@ void MpfssSend(const std::shared_ptr<link::Context>& ctx,
     // use TCCR hash for malicious security, or CR for semi-honest
     if (param.is_mal_) {
       ParaTccrHashInplace_128(this_span, i * batch_size);
-	}
-	else {
+	} else {
 	  ParaCrHashInplace_128(this_span);
 	}
     send_msgs[i] =
@@ -110,8 +109,7 @@ void MpfssRecv(const std::shared_ptr<link::Context>& ctx,
     // use TCCR hash for malicious security, or CR for semi-honest
     if (param.is_mal_) {
       ParaTccrHashInplace_128(this_span, i * batch_size);
-	}
-	else {
+	} else {
 	  ParaCrHashInplace_128(this_span);
 	}
     dpf_sum[i] =
@@ -172,8 +170,7 @@ void MpfssSend(const std::shared_ptr<link::Context>& ctx,
     // use TCCR hash for malicious security, or CR for semi-honest
     if (param.is_mal_) {
       ParaTccrHashInplace_128(this_span, i * batch_size);
-	}
-	else {
+	} else {
 	  ParaCrHashInplace_128(this_span);
 	}
 
@@ -227,8 +224,7 @@ void MpfssRecv(const std::shared_ptr<link::Context>& ctx,
     // use TCCR hash for malicious security, or CR for semi-honest
     if (param.is_mal_) {
       ParaTccrHashInplace_128(this_span, i * batch_size);
-	}
-	else {
+	} else {
 	  ParaCrHashInplace_128(this_span);
 	}
 
@@ -311,8 +307,7 @@ void MpfssSend_fixed_index(const std::shared_ptr<link::Context>& ctx,
       // use TCCR hash for malicious security, or CR for semi-honest
       if (param.is_mal_) {
         ParaTccrHashInplace_128(this_span, batch_idx * batch_size);
-	  }
-	  else {
+	  } else {
 	    ParaCrHashInplace_128(this_span);
 	  }  
       // this_span xor
@@ -405,8 +400,7 @@ void MpfssRecv_fixed_index(const std::shared_ptr<link::Context>& ctx,
       // use TCCR hash for malicious security, or CR for semi-honest
       if (param.is_mal_) {
         ParaTccrHashInplace_128(this_span, batch_idx * batch_size);
-	  }
-	  else {
+	  } else {
 	    ParaCrHashInplace_128(this_span);
 	  }  
       // this_span xor
@@ -494,8 +488,7 @@ void MpfssSend_fixed_index(const std::shared_ptr<link::Context>& ctx,
       // use TCCR hash for malicious security, or CR for semi-honest
       if (param.is_mal_) {
         ParaTccrHashInplace_128(this_span.subspan(0, this_size), batch_idx * batch_size);
-	  }
-	  else {
+	  } else {
 	    ParaCrHashInplace_128(this_span.subspan(0, this_size));
 	  }
       // convert to uint64_t
@@ -605,8 +598,7 @@ void MpfssRecv_fixed_index(const std::shared_ptr<link::Context>& ctx,
       // use TCCR hash for malicious security, or CR for semi-honest
       if (param.is_mal_) {
         ParaTccrHashInplace_128(this_span.subspan(0, this_size), batch_idx * batch_size);
-	  }
-	  else {
+	  } else {
 	    ParaCrHashInplace_128(this_span.subspan(0, this_size));
 	  }
       // convert to uint64_t

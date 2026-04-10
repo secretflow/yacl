@@ -673,8 +673,7 @@ void SoftspokenOtExtSender::Send(
         if (mal_) {
           ParaTccrHashInplace_128(absl::MakeSpan(V[s]), t * super_batch_size + s * kBatchSize);
           ParaTccrHashInplace_128(absl::MakeSpan(V_xor_delta[s]), t * super_batch_size + s * kBatchSize);
-		} 
-		else {
+		} else {
           ParaCrHashInplace_128(absl::MakeSpan(V[s]));
           ParaCrHashInplace_128(absl::MakeSpan(V_xor_delta[s]));
 		}
@@ -714,8 +713,7 @@ void SoftspokenOtExtSender::Send(
       	if (mal_) {
           ParaTccrHashInplace_128(absl::MakeSpan(V[t]), batch_offset + t * kBatchSize);
           ParaTccrHashInplace_128(absl::MakeSpan(V_xor_delta[t]), batch_offset + t * kBatchSize);	
-		}
-		else {
+		} else {
           ParaCrHashInplace_128(absl::MakeSpan(V[t]));
           ParaCrHashInplace_128(absl::MakeSpan(V_xor_delta[t]));
 		}
@@ -1055,8 +1053,7 @@ void SoftspokenOtExtReceiver::Recv(const std::shared_ptr<link::Context>& ctx,
       	// use TCCR hash for malicious security, or CR for semi-honest
         if (mal_) {
           ParaTccrHashInplace_128(absl::MakeSpan(W[s]), t * super_batch_size + s * batch_size);
-		}
-		else {
+		} else {
           ParaCrHashInplace_128(absl::MakeSpan(W[s]));
 		}
       }
@@ -1091,8 +1088,7 @@ void SoftspokenOtExtReceiver::Recv(const std::shared_ptr<link::Context>& ctx,
       	// use TCCR hash for malicious security, or CR for semi-honest
       	if (mal_) {
           ParaTccrHashInplace_128(absl::MakeSpan(W[t]), batch_offset + t * kBatchSize);
-		} 
-		else {
+		} else {
           ParaCrHashInplace_128(absl::MakeSpan(W[t]));
 		}
       }
