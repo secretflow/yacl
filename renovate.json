@@ -11,5 +11,6 @@
   ],
   "reviewers": [
     "team:yacl-dev"
-  ]
+  ],
+  "minimumReleaseAge": "7 days"
 }
