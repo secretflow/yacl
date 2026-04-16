@@ -669,8 +669,14 @@ void SoftspokenOtExtSender::Send(
       XorBlock(absl::MakeSpan(V[s]), absl::MakeSpan(V_xor_delta[s]), delta);
       // 4. perform CrHash to break the correlation if cot flag is false
       if (!cot) {
-        ParaCrHashInplace_128(absl::MakeSpan(V[s]));
-        ParaCrHashInplace_128(absl::MakeSpan(V_xor_delta[s]));
+      	// use TCCR hash for malicious security, or CR for semi-honest
+        if (mal_) {
+          ParaTccrHashInplace_128(absl::MakeSpan(V[s]), t * super_batch_size + s * kBatchSize);
+          ParaTccrHashInplace_128(absl::MakeSpan(V_xor_delta[s]), t * super_batch_size + s * kBatchSize);
+		} else {
+          ParaCrHashInplace_128(absl::MakeSpan(V[s]));
+          ParaCrHashInplace_128(absl::MakeSpan(V_xor_delta[s]));
+		}
       }
 
       for (uint64_t j = 0; j < kBatchSize; ++j) {
@@ -703,8 +709,14 @@ void SoftspokenOtExtSender::Send(
       XorBlock(absl::MakeSpan(V[t]), absl::MakeSpan(V_xor_delta[t]), delta);
       // 4. perform CrHash to break the correlation if cot flag is false
       if (!cot) {
-        ParaCrHashInplace_128(absl::MakeSpan(V[t]));
-        ParaCrHashInplace_128(absl::MakeSpan(V_xor_delta[t]));
+      	// use TCCR hash for malicious security, or CR for semi-honest
+      	if (mal_) {
+          ParaTccrHashInplace_128(absl::MakeSpan(V[t]), batch_offset + t * kBatchSize);
+          ParaTccrHashInplace_128(absl::MakeSpan(V_xor_delta[t]), batch_offset + t * kBatchSize);	
+		} else {
+          ParaCrHashInplace_128(absl::MakeSpan(V[t]));
+          ParaCrHashInplace_128(absl::MakeSpan(V_xor_delta[t]));
+		}
       }
 
       const uint64_t limit =
@@ -928,7 +940,7 @@ void SoftspokenOtExtReceiver::Recv(const std::shared_ptr<link::Context>& ctx,
     }
   }
 
-  // deal with normal bathc
+  // deal with normal batch 
   for (uint64_t t = 0; t < batch_num; ++t) {
     // The same as IKNP OTe
     // 1. smallfield/subspace VOLE
@@ -1038,7 +1050,12 @@ void SoftspokenOtExtReceiver::Recv(const std::shared_ptr<link::Context>& ctx,
       MatrixTranspose128(&W[s]);
       // 4. perform CrHash to break the correlation if cot flag is false
       if (!cot) {
-        ParaCrHashInplace_128(absl::MakeSpan(W[s]));
+      	// use TCCR hash for malicious security, or CR for semi-honest
+        if (mal_) {
+          ParaTccrHashInplace_128(absl::MakeSpan(W[s]), t * super_batch_size + s * batch_size);
+		} else {
+          ParaCrHashInplace_128(absl::MakeSpan(W[s]));
+		}
       }
       for (uint64_t j = 0; j < kBatchSize; ++j) {
         recv_blocks[t * super_batch_size + s * batch_size + j] = W[s][j];
@@ -1046,7 +1063,7 @@ void SoftspokenOtExtReceiver::Recv(const std::shared_ptr<link::Context>& ctx,
     }
   }
 
-  // deal with normal bathc
+  // deal with normal batch
   for (uint64_t t = 0; t < batch_num; ++t) {
     // The same as IKNP OTe
     // 1. smallfield/subspace VOLE
@@ -1068,7 +1085,12 @@ void SoftspokenOtExtReceiver::Recv(const std::shared_ptr<link::Context>& ctx,
           std::min(kBatchSize, numOt - batch_offset - t * kBatchSize);
       // 4. perform CrHash to break the correlation if cot flag is false
       if (!cot) {
-        ParaCrHashInplace_128(absl::MakeSpan(W[t]));
+      	// use TCCR hash for malicious security, or CR for semi-honest
+      	if (mal_) {
+          ParaTccrHashInplace_128(absl::MakeSpan(W[t]), batch_offset + t * kBatchSize);
+		} else {
+          ParaCrHashInplace_128(absl::MakeSpan(W[t]));
+		}
       }
       for (uint64_t j = 0; j < limit; ++j) {
         recv_blocks[batch_offset + t * kBatchSize + j] = W[t][j];

@@ -108,4 +108,46 @@ TEST(RPTest, ParaCcrHashInplaceWorks) {
   EXPECT_EQ(absl::MakeSpan(inout), absl::MakeSpan(inout_copy));
 }
 
+TEST(RPTest, TccrHashWorks) {
+  uint128_t x = FastRandU128();
+  uint128_t y = FastRandU128();
+  uint128_t id1 = FastRandU128();
+  uint128_t id2 = FastRandU128();
+
+  EXPECT_NE(x, y);
+  EXPECT_NE(id1, id2);
+  EXPECT_NE(TccrHash_128(x, id1), 0);  
+  EXPECT_EQ(TccrHash_128(x, id1), TccrHash_128(x, id1));
+  EXPECT_NE(TccrHash_128(x, id1), TccrHash_128(y, id1));
+  /* when id1 != id2, expect Hash(x, id1) != Hash(x, id2) */
+  EXPECT_NE(TccrHash_128(x, id1), TccrHash_128(x, id2));  
+}
+
+TEST(RPTest, ParaTccrHashWorks) {
+  const auto size = 20;
+
+  std::vector<uint128_t> zeros(size, 0);
+  auto input = RandomBlocks(size);
+  auto output = ParaTccrHash_128(absl::MakeSpan(input), 0);
+
+  EXPECT_NE(absl::MakeSpan(output), absl::MakeSpan(zeros));
+  EXPECT_NE(absl::MakeSpan(output), absl::MakeSpan(input));
+  EXPECT_EQ(absl::MakeSpan(output), ParaTccrHash_128(absl::MakeSpan(input), 0));
+}
+
+TEST(RPTest, ParaTccrHashInplaceWorks) {
+  const auto size = 20;
+
+  std::vector<uint128_t> zeros(size, 0);
+  auto inout = RandomBlocks(size);
+  auto inout_copy = inout;
+
+  ParaTccrHashInplace_128(absl::MakeSpan(inout), 0);
+  EXPECT_NE(absl::MakeSpan(inout), absl::MakeSpan(zeros));
+  EXPECT_NE(absl::MakeSpan(inout), absl::MakeSpan(inout_copy));
+
+  ParaTccrHashInplace_128(absl::MakeSpan(inout_copy), 0);
+  EXPECT_EQ(absl::MakeSpan(inout), absl::MakeSpan(inout_copy));
+}
+
 }  // namespace yacl::crypto

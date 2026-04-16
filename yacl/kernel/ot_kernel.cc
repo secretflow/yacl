@@ -42,7 +42,7 @@ using OtMsg = uint128_t;
 using OtMsgPair = std::array<OtMsg, 2>;
 using OtChoices = dynamic_bitset<uint128_t>;
 
-// Inplace-conversion from cot to rot
+// Inplace-conversion from cot to rot (sender function)
 void naive_cot2rot(const OtSendStore& cot_store, OtSendStore* rot_store) {
   YACL_ENFORCE(cot_store.Size() == rot_store->Size());     // size should match
   YACL_ENFORCE(cot_store.Type() == OtStoreType::Compact);  // compact mode
@@ -50,13 +50,13 @@ void naive_cot2rot(const OtSendStore& cot_store, OtSendStore* rot_store) {
   const uint32_t ot_num = cot_store.Size();  // warning: narrow conversion
   parallel_for(0, ot_num, 1, [&](uint64_t beg, uint64_t end) {
     for (uint64_t i = beg; i < end; ++i) {
-      rot_store->SetNormalBlock(i, 0, CrHash_128(cot_store.GetBlock(i, 0)));
-      rot_store->SetNormalBlock(i, 1, CrHash_128(cot_store.GetBlock(i, 1)));
+      rot_store->SetNormalBlock(i, 0, TccrHash_128(cot_store.GetBlock(i, 0), i));
+      rot_store->SetNormalBlock(i, 1, TccrHash_128(cot_store.GetBlock(i, 1), i));
     }
   });
 }
 
-// Inplace-conversion from cot to rot
+// Inplace-conversion from cot to rot (receiver function)
 void naive_cot2rot(const OtRecvStore& cot_store, OtRecvStore* rot_store) {
   const uint32_t ot_num = cot_store.Size();  // warning: narrow conversion
   YACL_ENFORCE(cot_store.Type() == OtStoreType::Compact);  // compact mode
@@ -66,7 +66,7 @@ void naive_cot2rot(const OtRecvStore& cot_store, OtRecvStore* rot_store) {
 
   parallel_for(0, ot_num, 1, [&](uint64_t beg, uint64_t end) {
     for (uint64_t i = beg; i < end; ++i) {
-      rot_store->SetBlock(i, CrHash_128(cot_store.GetBlock(i)));
+      rot_store->SetBlock(i, TccrHash_128(cot_store.GetBlock(i), i));
     }
   });
 }
