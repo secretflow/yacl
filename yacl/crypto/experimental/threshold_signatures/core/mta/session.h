@@ -19,6 +19,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -26,6 +27,7 @@
 #include "yacl/crypto/experimental/threshold_signatures/common/errors.h"
 #include "yacl/crypto/experimental/threshold_signatures/core/mta/messages.h"
 #include "yacl/crypto/experimental/threshold_signatures/core/paillier/paillier.h"
+#include "yacl/crypto/experimental/threshold_signatures/core/protocol/message_store.h"
 #include "yacl/crypto/experimental/threshold_signatures/core/suite/group_context.h"
 #include "yacl/crypto/experimental/threshold_signatures/core/suite/suite.h"
 
@@ -37,58 +39,35 @@ using PaillierCiphertextWithRandomBigInt =
 
 Bytes RandomMtaInstanceId();
 std::string BytesToKey(const Bytes& bytes);
-std::string MakeResponderRequestKey(PartyIndex initiator, MtaType type);
-
-inline bool IsPeer(std::span<const PartyIndex> peers, PartyIndex party) {
-  for (PartyIndex peer : peers) {
-    if (peer == party) {
-      return true;
-    }
-  }
-  return false;
-}
+std::string MtaTypeKey(MtaType type);
 
 template <typename Request, typename ToCoreRequest>
 void RequireExactlyOneRequestPerPeerAndType(
     const std::vector<Request>& requests, std::span<const PartyIndex> peers,
     PartyIndex self_id, std::span<const MtaType> expected_types,
     ToCoreRequest to_core_request, const std::string& message_name) {
-  if (requests.size() != peers.size() * expected_types.size()) {
-    TECDSA_THROW_ARGUMENT(message_name +
-                          " must contain exactly one request per peer/type");
-  }
-
-  std::unordered_set<std::string> expected_type_keys;
+  std::vector<std::string> expected_type_storage;
+  std::vector<std::string_view> expected_type_keys;
+  expected_type_storage.reserve(expected_types.size());
   expected_type_keys.reserve(expected_types.size());
   for (MtaType type : expected_types) {
-    expected_type_keys.insert(std::to_string(static_cast<int>(type)));
+    expected_type_storage.push_back(MtaTypeKey(type));
+    expected_type_keys.push_back(expected_type_storage.back());
   }
+  tecdsa::core::protocol::PeerTypeMessageStore peer_type_messages(
+      peers, self_id, expected_type_keys, message_name);
+  peer_type_messages.RequireExpectedCount(requests.size());
 
-  std::unordered_set<std::string> seen_request_keys;
   std::unordered_set<std::string> seen_instance_keys;
-  seen_request_keys.reserve(requests.size());
   seen_instance_keys.reserve(requests.size());
   for (const auto& request : requests) {
     const PairwiseProductRequest core_request = to_core_request(request);
-    if (!IsPeer(peers, core_request.from)) {
-      TECDSA_THROW_ARGUMENT(message_name + " sender is not a peer");
-    }
-    if (core_request.to != self_id) {
-      TECDSA_THROW_ARGUMENT(message_name + " must target self");
-    }
-    if (!expected_type_keys.contains(
-            std::to_string(static_cast<int>(core_request.type)))) {
-      TECDSA_THROW_ARGUMENT(message_name + " has unexpected type");
-    }
+    peer_type_messages.Add(core_request.from, core_request.to,
+                           MtaTypeKey(core_request.type));
     if (core_request.instance_id.size() != kMtaInstanceIdLen) {
       TECDSA_THROW_ARGUMENT(message_name + " instance id has invalid length");
     }
 
-    const std::string request_key =
-        MakeResponderRequestKey(core_request.from, core_request.type);
-    if (!seen_request_keys.insert(request_key).second) {
-      TECDSA_THROW_ARGUMENT("duplicate " + message_name + " for sender/type");
-    }
     const std::string instance_key = BytesToKey(core_request.instance_id);
     if (!seen_instance_keys.insert(instance_key).second) {
       TECDSA_THROW_ARGUMENT("duplicate " + message_name + " instance id");
@@ -123,20 +102,26 @@ class PairwiseProductSession {
     std::shared_ptr<const GroupContext> group;
   };
 
-  struct CreateRequestArgs {
+  struct InitiatorInitArgs {
     PartyIndex responder_id = 0;
-    MtaType type = MtaType::kMta;
     const PaillierProvider* initiator_paillier = nullptr;
     const AuxRsaParams* responder_aux = nullptr;
     Scalar initiator_secret;
   };
 
-  struct ConsumeRequestArgs {
+  struct ResponderMidArgs {
     BigInt initiator_modulus_n = BigInt(0);
     const AuxRsaParams* responder_aux = nullptr;
     const AuxRsaParams* initiator_aux = nullptr;
     Scalar responder_secret;
-    std::optional<ECPoint> public_witness_point;
+  };
+
+  struct ResponderMidWithCheckArgs {
+    BigInt initiator_modulus_n = BigInt(0);
+    const AuxRsaParams* responder_aux = nullptr;
+    const AuxRsaParams* initiator_aux = nullptr;
+    Scalar responder_secret;
+    const ECPoint& public_witness_point;
   };
 
   struct ConsumeRequestResult {
@@ -144,10 +129,15 @@ class PairwiseProductSession {
     Scalar responder_share;
   };
 
-  struct ConsumeResponseArgs {
+  struct InitiatorEndArgs {
     const PaillierProvider* initiator_paillier = nullptr;
     const AuxRsaParams* initiator_aux = nullptr;
-    std::optional<ECPoint> public_witness_point;
+  };
+
+  struct InitiatorEndWithCheckArgs {
+    const PaillierProvider* initiator_paillier = nullptr;
+    const AuxRsaParams* initiator_aux = nullptr;
+    const ECPoint& public_witness_point;
   };
 
   struct ConsumeResponseResult {
@@ -159,14 +149,32 @@ class PairwiseProductSession {
   const PairwiseProductInitiatorInstance& GetInitiatorInstance(
       const Bytes& instance_id) const;
 
-  PairwiseProductRequest CreateRequest(const CreateRequestArgs& args);
-  ConsumeRequestResult ConsumeRequest(const PairwiseProductRequest& request,
-                                      const ConsumeRequestArgs& args);
-  ConsumeResponseResult ConsumeResponse(
+  PairwiseProductRequest InitiatorInit(const InitiatorInitArgs& args);
+  PairwiseProductRequest InitiatorInitWithCheck(
+      const InitiatorInitArgs& args);
+  ConsumeRequestResult ResponderMid(const PairwiseProductRequest& request,
+                                    const ResponderMidArgs& args);
+  ConsumeRequestResult ResponderMidWithCheck(
+      const PairwiseProductRequest& request,
+      const ResponderMidWithCheckArgs& args);
+  ConsumeResponseResult InitiatorEnd(const PairwiseProductResponse& response,
+                                     const InitiatorEndArgs& args);
+  ConsumeResponseResult InitiatorEndWithCheck(
       const PairwiseProductResponse& response,
-      const ConsumeResponseArgs& args);
+      const InitiatorEndWithCheckArgs& args);
 
  private:
+  PairwiseProductRequest CreateRequestImpl(MtaType type,
+                                           const InitiatorInitArgs& args);
+  ConsumeRequestResult ConsumeRequestImpl(
+      const PairwiseProductRequest& request, MtaType expected_type,
+      const BigInt& initiator_modulus_n, const AuxRsaParams* responder_aux,
+      const AuxRsaParams* initiator_aux, const Scalar& responder_secret,
+      const ECPoint* public_witness_point);
+  ConsumeResponseResult ConsumeResponseImpl(
+      const PairwiseProductResponse& response, MtaType expected_type,
+      const PaillierProvider* initiator_paillier,
+      const AuxRsaParams* initiator_aux, const ECPoint* public_witness_point);
   Bytes ReserveFreshInstanceId();
   void RegisterInitiatorInstance(PairwiseProductInitiatorInstance instance);
 
@@ -194,7 +202,7 @@ void RequireExactlyOneResponsePerInitiatorInstance(
   seen_instance_keys.reserve(responses.size());
   for (const auto& response : responses) {
     const PairwiseProductResponse core_response = to_core_response(response);
-    if (!IsPeer(peers, core_response.from)) {
+    if (!tecdsa::core::protocol::IsPeer(peers, core_response.from)) {
       TECDSA_THROW_ARGUMENT(message_name + " sender is not a peer");
     }
     if (core_response.to != self_id) {
@@ -218,7 +226,8 @@ void RequireExactlyOneResponsePerInitiatorInstance(
       TECDSA_THROW_ARGUMENT(message_name + " type mismatch");
     }
     const std::string request_key =
-        MakeResponderRequestKey(core_response.from, core_response.type);
+        tecdsa::core::protocol::MakePeerTypeKey(
+            core_response.from, MtaTypeKey(core_response.type));
     if (!seen_request_keys.insert(request_key).second) {
       TECDSA_THROW_ARGUMENT("duplicate " + message_name + " for sender/type");
     }

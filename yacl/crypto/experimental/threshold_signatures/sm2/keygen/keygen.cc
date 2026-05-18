@@ -229,9 +229,8 @@ std::vector<KeygenRound3Request> KeygenParty::MakeRound3Requests(
   std::vector<KeygenRound3Request> out;
   out.reserve(peers_.size());
   for (PartyIndex peer : peers_) {
-    out.push_back(sigma_session_.CreateRequest({
+    out.push_back(sigma_session_.InitiatorInit({
         .responder_id = peer,
-        .type = mta::MtaType::kMta,
         .initiator_paillier = local_paillier_.get(),
         .responder_aux = &all_aux_rsa_params_.at(peer),
         .initiator_secret = local_gamma_i_,
@@ -269,13 +268,12 @@ KeygenParty::TryMakeRound3Responses(
   Scalar responder_sum = sigma_responder_sum_;
   for (const auto& request : requests_for_self) {
     try {
-      const auto consume = sigma_session_.ConsumeRequest(
+      const auto consume = sigma_session_.ResponderMid(
           request,
           {.initiator_modulus_n = all_paillier_public_.at(request.from).n,
            .responder_aux = &all_aux_rsa_params_.at(cfg_.self_id),
            .initiator_aux = &all_aux_rsa_params_.at(request.from),
-           .responder_secret = local_secret_z_i_,
-           .public_witness_point = std::nullopt});
+           .responder_secret = local_secret_z_i_});
       responder_sum = responder_sum + consume.responder_share;
       out.push_back(consume.response);
     } catch (const std::exception& ex) {
@@ -306,11 +304,10 @@ KeygenRound4Msg KeygenParty::MakeRound4(
       std::identity{}, "SM2 keygen response");
 
   for (const auto& response : responses_for_self) {
-    const auto consume = sigma_session_.ConsumeResponse(
+    const auto consume = sigma_session_.InitiatorEnd(
         response,
         {.initiator_paillier = local_paillier_.get(),
-         .initiator_aux = &all_aux_rsa_params_.at(cfg_.self_id),
-         .public_witness_point = std::nullopt});
+         .initiator_aux = &all_aux_rsa_params_.at(cfg_.self_id)});
     sigma_initiator_sum_ = sigma_initiator_sum_ + consume.initiator_share;
   }
 

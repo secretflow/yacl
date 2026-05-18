@@ -14,14 +14,27 @@
 
 #include "yacl/crypto/experimental/threshold_signatures/core/suite/suite.h"
 
-#include <openssl/sha.h>
-
-#include <array>
-
 #include "yacl/crypto/experimental/threshold_signatures/common/errors.h"
-#include "yacl/crypto/hash/hash_utils.h"
+#include "yacl/crypto/hash/ssl_hash.h"
 
 namespace tecdsa::core {
+
+namespace {
+
+yacl::crypto::HashAlgorithm ToYaclHashAlgorithm(HashId hash_id) {
+  switch (hash_id) {
+    case HashId::kSha256:
+      return yacl::crypto::HashAlgorithm::SHA256;
+    case HashId::kSha512:
+      return yacl::crypto::HashAlgorithm::SHA512;
+    case HashId::kSm3:
+      return yacl::crypto::HashAlgorithm::SM3;
+  }
+
+  TECDSA_THROW_ARGUMENT("Unsupported hash id");
+}
+
+}  // namespace
 
 const ThresholdSuite& DefaultEcdsaSuite() {
   static const ThresholdSuite kDefault = []() {
@@ -54,29 +67,9 @@ const ThresholdSuite& DefaultSm2Suite() {
 }
 
 Bytes Hash(HashId hash_id, std::span<const uint8_t> data) {
-  switch (hash_id) {
-    case HashId::kSha256: {
-      std::array<uint8_t, SHA256_DIGEST_LENGTH> digest{};
-      if (SHA256(data.data(), data.size(), digest.data()) == nullptr) {
-        TECDSA_THROW("SHA256 failed");
-      }
-      return Bytes(digest.begin(), digest.end());
-    }
-    case HashId::kSha512: {
-      std::array<uint8_t, SHA512_DIGEST_LENGTH> digest{};
-      if (SHA512(data.data(), data.size(), digest.data()) == nullptr) {
-        TECDSA_THROW("SHA512 failed");
-      }
-      return Bytes(digest.begin(), digest.end());
-    }
-    case HashId::kSm3: {
-      const auto digest =
-          yacl::crypto::Sm3(yacl::ByteContainerView(data.data(), data.size()));
-      return Bytes(digest.begin(), digest.end());
-    }
-  }
-
-  TECDSA_THROW_ARGUMENT("Unsupported hash id");
+  yacl::crypto::SslHash hash(ToYaclHashAlgorithm(hash_id));
+  return hash.Update(yacl::ByteContainerView(data.data(), data.size()))
+      .CumulativeHash();
 }
 
 }  // namespace tecdsa::core

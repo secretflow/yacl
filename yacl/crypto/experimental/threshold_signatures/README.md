@@ -1,95 +1,98 @@
-# threshold_signatures
+# Threshold Signatures
 
-C++20 prototype implementation of the signing protocols from:
+## Introduction
 
-- `threshold-ecdsa.pdf`: threshold ECDSA.
-- `threshold-SM2.pdf`: threshold SM2.
+This directory contains experimental C++20 implementations of threshold ECDSA
+and threshold SM2. The two schemes have independent protocol flows and share
+common cryptographic building blocks through `core/`.
 
-The directory was named `threshold_signatures` because the implementation now
-contains two scheme-specific protocol flows, ECDSA and SM2, over a small shared
-threshold-signature toolkit.
+The code is intended for protocol review and integration experiments. It does
+not include transport, persistent storage, wallet integration, or production
+hardening.
 
-This is a research prototype for protocol review and testing. It is not a
-production wallet, network service, or hardened signing system.
+## Implementation
 
-## Scope
+### Code Structure
 
-Implemented pieces:
+1. `common/` defines shared aliases, participant ids, peer maps, and error
+   helpers.
+2. `core/` contains the shared primitives used by both schemes:
+   - `algebra/`: curve point and scalar wrappers over YACL ECC.
+   - `bigint/`: protocol-facing `MPInt` encoding and validation helpers.
+   - `commitment/`, `transcript/`, `proof/`, `vss/`: commitment,
+     Fiat-Shamir transcript, Schnorr proof, and Feldman VSS helpers.
+   - `mta/`: semantic MtA/MtAwc session API and the corresponding proof
+     primitives.
+   - `paillier/`: Paillier provider, auxiliary RSA setup, and paper proof
+     helpers.
+   - `protocol/`: peer-message checks and a simple linear round driver.
+   - `random/`, `suite/`: threshold-signature random helpers, suite
+     descriptors, group contexts, and hash dispatch.
+3. `ecdsa/` implements threshold ECDSA key generation, signing, relation
+   proofs, and signature verification.
+4. `sm2/` implements threshold SM2 key generation, offline presigning, online
+   signing, identifiable-abort data types, SM2-specific proofs, ZID binding,
+   and signature verification.
+5. `tests/` contains executable ECDSA and SM2 flow tests.
 
-- Shared protocol primitives in `core/`: curve/scalar wrappers, Feldman VSS,
-  commitments, transcripts, Schnorr proofs, Paillier, auxiliary RSA setup and
-  MtA/MtAwc proof checks.
-- Common protocol types in `common/`.
-- Threshold ECDSA in `ecdsa/`: key generation, signing, relation proofs, and
-  final ECDSA signature verification.
-- Threshold SM2 in `sm2/`: ZID binding, key generation, offline presigning,
-  online signing, identifiable-abort evidence, and final SM2 signature
-  verification.
-- Minimal flow tests in `tests/` for ECDSA and SM2 happy paths plus tamper
-  smoke checks.
+### Threshold ECDSA
 
-Out of scope:
+1. Key generation uses dealerless Feldman VSS, Paillier parameters, auxiliary
+   RSA parameters, square-free/auxiliary proofs, and public-share checks.
+2. `VerifiedPublicKeygenData` validates and owns the public keygen data consumed
+   by signing.
+3. Signing is exposed as explicit round methods on `SignParty`. The large
+   signing flow is split by round, and `SigningMtaExchange` hides pairwise
+   MtA/MtAwc message and proof details from the scheme-level round code.
+4. Finalization verifies the produced ECDSA signature before returning it.
 
-- Real transport, storage, session orchestration, or wallet integration.
-- Production hardening claims.
-- Compatibility wrappers for older experimental APIs.
-
-## Layout
-
-```text
-common/  # shared ids, aliases, and error helpers
-core/    # reusable threshold-signature primitives
-ecdsa/   # threshold ECDSA keygen/sign/verify protocol code
-sm2/     # threshold SM2 keygen/offline/online/verify protocol code
-tests/   # compact ECDSA and SM2 flow tests
-```
-
-## Bazel Targets
-
-The supported in-repo build path is Bazel. The module exposes three libraries
-and two executable flow-test targets:
-
-```bash
-bazelisk --batch --output_user_root=/tmp/bazel_zjl_phase_slim build //yacl/crypto/experimental/threshold_signatures:all
-bazelisk --batch --output_user_root=/tmp/bazel_zjl_phase_slim build //yacl/crypto/experimental/threshold_signatures:tsig_core
-bazelisk --batch --output_user_root=/tmp/bazel_zjl_phase_slim build //yacl/crypto/experimental/threshold_signatures:tsig_ecdsa
-bazelisk --batch --output_user_root=/tmp/bazel_zjl_phase_slim build //yacl/crypto/experimental/threshold_signatures:tsig_sm2
-```
-
-Run the flow tests with `bazelisk run`; these are `yacl_cc_binary` targets, not
-`cc_test` targets:
-
-```bash
-bazelisk --batch --output_user_root=/tmp/bazel_zjl_phase_slim run //yacl/crypto/experimental/threshold_signatures:sign_flow_tests
-bazelisk --batch --output_user_root=/tmp/bazel_zjl_phase_slim run //yacl/crypto/experimental/threshold_signatures:sm2_sign_flow_tests
-```
-
-## Protocol Shape
-
-Threshold ECDSA:
-
-1. Dealerless key generation uses Feldman VSS commitments, Paillier public
-   parameters, auxiliary RSA parameters, square-free proofs, and Schnorr proofs
-   for the final local public shares.
-2. Signing uses a threshold-plus-one signer set, Lagrange-remapped signing
-   shares, pairwise MtA/MtAwc, commitment openings, relation proofs, and final
-   ECDSA signature verification.
-
-Threshold SM2:
+### Threshold SM2
 
 1. Key generation derives SM2 public-key material from distributed `z_i` shares,
-   pairwise MtA sigma shares, group relation proofs, and Paillier proof
-   artifacts.
+   pairwise MtA sigma shares, group relation proofs, square-free proofs, and
+   Paillier auxiliary proof artifacts.
 2. Offline presigning computes nonce/product state with MtAwc and validates the
    aggregate product relation.
 3. Online signing binds the SM2 ZID digest, computes partial signatures, and
-   returns identifiable abort evidence for invalid partials when possible.
+   returns identifiable-abort evidence for invalid partials when possible.
+
+## Build / Test
+
+Build all threshold-signature targets:
+
+```bash
+bazel build //yacl/crypto/experimental/threshold_signatures:all
+```
+
+Build individual libraries:
+
+```bash
+bazel build //yacl/crypto/experimental/threshold_signatures:tsig_core
+bazel build //yacl/crypto/experimental/threshold_signatures:tsig_ecdsa
+bazel build //yacl/crypto/experimental/threshold_signatures:tsig_sm2
+```
+
+Run the executable flow tests:
+
+```bash
+bazel run //yacl/crypto/experimental/threshold_signatures:sign_flow_tests
+bazel run //yacl/crypto/experimental/threshold_signatures:sm2_sign_flow_tests
+```
+
+## Dependencies
+
+- Elliptic-curve operations use YACL ECC support.
+- Big integer operations use YACL `MPInt`.
+- Random bytes are sourced through `yacl::crypto::SecureRandBytes`.
+- Hashing is routed through YACL hash abstractions such as `SslHash` and
+  `HashAlgorithm`.
 
 ## Notes
 
-- The code intentionally follows the paper round structure rather than exposing
-  a generic signing framework.
-- `core/` is shared only where both protocols need the same primitive; ECDSA
-  and SM2 keep separate scheme-level message and round semantics.
-- The implementation uses YACL/OpenSSL curve support and YACL `MPInt`; it does
-  not introduce GMP/GMPXX or another third-party big-integer dependency.
+- The module keeps ECDSA and SM2 protocol messages separate and shares only
+  primitives that are common to both schemes.
+- Scheme-level code calls semantic MtA APIs such as `InitiatorInit`,
+  `ResponderMid`, and `InitiatorEnd`; low-level proof construction and
+  verification remain inside `core/mta`.
+- `core/bigint` is a protocol adapter for encoding and validation. It should
+  not be expanded into a mirror of the full `MPInt` API.

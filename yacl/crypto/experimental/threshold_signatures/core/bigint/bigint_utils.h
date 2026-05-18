@@ -26,6 +26,9 @@ namespace tecdsa::bigint {
 
 using MPInt = yacl::math::MPInt;
 
+// Keep this file as a protocol-facing adapter, not a mirror of MPInt. Prefer
+// direct MPInt calls unless the helper adds encoding, validation, or
+// protocol-domain semantics needed by threshold signing.
 MPInt FromBigEndian(std::span<const uint8_t> bytes);
 Bytes ToBigEndian(const MPInt& value);
 Bytes ToFixedWidth(const MPInt& value, size_t width);

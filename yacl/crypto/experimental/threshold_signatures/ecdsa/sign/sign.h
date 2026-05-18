@@ -18,9 +18,11 @@
 #include <string>
 #include <vector>
 
-#include "yacl/crypto/experimental/threshold_signatures/core/mta/session.h"
 #include "yacl/crypto/experimental/threshold_signatures/ecdsa/keygen/messages.h"
+#include "yacl/crypto/experimental/threshold_signatures/ecdsa/keygen/verified_data.h"
 #include "yacl/crypto/experimental/threshold_signatures/ecdsa/sign/messages.h"
+#include "yacl/crypto/experimental/threshold_signatures/ecdsa/sign/mta_exchange.h"
+#include "yacl/crypto/experimental/threshold_signatures/ecdsa/sign/state.h"
 
 namespace tecdsa::ecdsa::sign {
 
@@ -62,53 +64,15 @@ class SignParty {
   void EnsureRound5ASharePrepared();
 
   SignConfig cfg_;
+  keygen::VerifiedPublicKeygenData verified_keygen_data_;
   std::vector<PartyIndex> peers_;
+  SigningMtaExchange phase2_mta_;
+  SigningState state_;
 
   Scalar message_scalar_;
   PeerMap<Scalar> lagrange_coefficients_;
   PeerMap<ECPoint> w_points_;
   Scalar local_w_i_;
-
-  Scalar local_k_i_;
-  Scalar local_gamma_i_;
-  ECPoint local_Gamma_i_;
-  Bytes local_round1_randomness_;
-  PeerMap<Bytes> phase1_commitments_;
-  core::mta::PairwiseProductSession phase2_session_;
-  Scalar phase2_mta_initiator_sum_;
-  Scalar phase2_mta_responder_sum_;
-  Scalar phase2_mtawc_initiator_sum_;
-  Scalar phase2_mtawc_responder_sum_;
-  Scalar local_delta_i_;
-  Scalar local_sigma_i_;
-  Scalar delta_inv_;
-  ECPoint gamma_;
-  ECPoint R_;
-  Scalar r_;
-  Scalar local_s_i_;
-  Scalar local_l_i_;
-  Scalar local_rho_i_;
-  ECPoint local_V_i_;
-  ECPoint local_A_i_;
-  Bytes local_round5a_randomness_;
-  PeerMap<Bytes> phase5a_commitments_;
-  ECPoint V_;
-  ECPoint A_;
-  ECPoint local_U_i_;
-  ECPoint local_T_i_;
-  Bytes local_round5c_randomness_;
-  PeerMap<Bytes> phase5c_commitments_;
-
-  bool round1_done_ = false;
-  bool round2_requests_done_ = false;
-  bool round2_responses_done_ = false;
-  bool round3_done_ = false;
-  bool round4_done_ = false;
-  bool round5a_done_ = false;
-  bool round5b_done_ = false;
-  bool round5c_done_ = false;
-  bool round5d_done_ = false;
-  bool round5e_done_ = false;
 };
 
 }  // namespace tecdsa::ecdsa::sign

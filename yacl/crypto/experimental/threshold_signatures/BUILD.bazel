@@ -48,7 +48,8 @@ yacl_cc_library(
     copts = TECDSA_COPTS,
     deps = TSIG_COMMON_DEPS + [
         "//yacl/base:exception",
-        "//yacl/crypto/hash:hash_utils",
+        "//yacl/crypto/hash:ssl_hash",
+        "//yacl/crypto/rand",
     ],
 )
 

@@ -12,32 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "yacl/crypto/experimental/threshold_signatures/core/random/csprng.h"
+#include "yacl/crypto/experimental/threshold_signatures/ecdsa/sign/sign.h"
 
-#include <cstdint>
-#include <stdexcept>
+#include "yacl/crypto/experimental/threshold_signatures/common/errors.h"
 
-#include "yacl/crypto/rand/rand.h"
+namespace tecdsa::ecdsa::sign {
 
-namespace tecdsa {
-
-Bytes Csprng::RandomBytes(size_t size) {
-  if (size == 0) {
-    return {};
+SignRound1Msg SignParty::MakeRound1() {
+  if (state_.rounds.HasReached(SignStep::kRound1Done)) {
+    TECDSA_THROW_LOGIC("MakeRound1 must not be called twice");
   }
-
-  return yacl::crypto::SecureRandBytes(static_cast<uint64_t>(size));
+  EnsurePhase1Prepared();
+  return SignRound1Msg{
+      .commitment = state_.round1.commitments.at(cfg_.self_id)};
 }
 
-core::Scalar Csprng::RandomScalar() {
-  while (true) {
-    const Bytes bytes = RandomBytes(32);
-    try {
-      return core::Scalar::FromCanonicalBytes(bytes);
-    } catch (const std::invalid_argument&) {
-      continue;
-    }
-  }
-}
-
-}  // namespace tecdsa
+}  // namespace tecdsa::ecdsa::sign

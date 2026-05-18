@@ -122,9 +122,8 @@ std::vector<Round2Request> OfflineParty::MakeRound2Requests(
   out.reserve(peers_.size());
   for (PartyIndex peer : peers_) {
     phase1_commitments_[peer] = peer_round1.at(peer).commitment;
-    out.push_back(delta_session_.CreateRequest({
+    out.push_back(delta_session_.InitiatorInitWithCheck({
         .responder_id = peer,
-        .type = mta::MtaType::kMtAwc,
         .initiator_paillier = cfg_.local_key_share.paillier.get(),
         .responder_aux = &cfg_.public_keygen_data.all_aux_rsa_params.at(peer),
         .initiator_secret = local_k_i_,
@@ -162,7 +161,7 @@ OfflineParty::TryMakeRound2Responses(
   Scalar responder_sum = delta_responder_sum_;
   for (const auto& request : requests_for_self) {
     try {
-      const auto consume = delta_session_.ConsumeRequest(
+      const auto consume = delta_session_.ResponderMidWithCheck(
           request,
           {.initiator_modulus_n =
                cfg_.public_keygen_data.all_paillier_public.at(request.from).n,
@@ -200,7 +199,7 @@ Round3Msg OfflineParty::MakeRound3(
       responses_for_self, peers_, peers_.size(), cfg_.self_id, delta_session_,
       std::identity{}, "SM2 offline response");
   for (const auto& response : responses_for_self) {
-    const auto consume = delta_session_.ConsumeResponse(
+    const auto consume = delta_session_.InitiatorEndWithCheck(
         response,
         {.initiator_paillier = cfg_.local_key_share.paillier.get(),
          .initiator_aux = &cfg_.public_keygen_data.all_aux_rsa_params.at(cfg_.self_id),

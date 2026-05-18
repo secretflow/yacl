@@ -36,13 +36,9 @@ std::shared_ptr<const GroupContext> ResolveGroup(
 }
 
 void ValidateMtAwcSecretPointOrThrow(
-    const Scalar& responder_secret,
-    const std::optional<ECPoint>& public_witness_point) {
-  if (!public_witness_point.has_value()) {
-    TECDSA_THROW_ARGUMENT("MtAwc requires a public witness point");
-  }
+    const Scalar& responder_secret, const ECPoint& public_witness_point) {
   try {
-    if (ECPoint::GeneratorMultiply(responder_secret) != *public_witness_point) {
+    if (ECPoint::GeneratorMultiply(responder_secret) != public_witness_point) {
       TECDSA_THROW_ARGUMENT(
           "MtAwc public witness point does not match responder secret");
     }
@@ -53,18 +49,25 @@ void ValidateMtAwcSecretPointOrThrow(
 }
 
 void ValidatePublicWitnessPointPresenceOrThrow(
-    MtaType type, const std::optional<ECPoint>& public_witness_point,
+    MtaType type, const ECPoint* public_witness_point,
     const char* context_name) {
   if (RequiresPublicPoint(type)) {
-    if (!public_witness_point.has_value()) {
+    if (public_witness_point == nullptr) {
       TECDSA_THROW_ARGUMENT(std::string(context_name) +
                             " requires a public witness point");
     }
     return;
   }
-  if (public_witness_point.has_value()) {
+  if (public_witness_point != nullptr) {
     TECDSA_THROW_ARGUMENT(std::string(context_name) +
                           " does not use a public witness point");
+  }
+}
+
+void ValidateExpectedMtaTypeOrThrow(MtaType actual, MtaType expected,
+                                    const char* context_name) {
+  if (actual != expected) {
+    TECDSA_THROW_ARGUMENT(std::string(context_name) + " type mismatch");
   }
 }
 
@@ -76,15 +79,14 @@ std::string BytesToKey(const Bytes& bytes) {
   return std::string(reinterpret_cast<const char*>(bytes.data()), bytes.size());
 }
 
-std::string MakeResponderRequestKey(PartyIndex initiator, MtaType type) {
-  std::string out;
-  out.reserve(8);
-  out.push_back(static_cast<char>((initiator >> 24) & 0xFF));
-  out.push_back(static_cast<char>((initiator >> 16) & 0xFF));
-  out.push_back(static_cast<char>((initiator >> 8) & 0xFF));
-  out.push_back(static_cast<char>(initiator & 0xFF));
-  out.push_back(static_cast<char>(type));
-  return out;
+std::string MtaTypeKey(MtaType type) {
+  switch (type) {
+    case MtaType::kMta:
+      return "mta";
+    case MtaType::kMtAwc:
+      return "mtawc";
+  }
+  TECDSA_THROW_ARGUMENT("unknown MtaType");
 }
 
 PairwiseProductSession::PairwiseProductSession(Config cfg)
@@ -123,8 +125,18 @@ PairwiseProductSession::GetInitiatorInstance(const Bytes& instance_id) const {
   return it->second;
 }
 
-PairwiseProductRequest PairwiseProductSession::CreateRequest(
-    const CreateRequestArgs& args) {
+PairwiseProductRequest PairwiseProductSession::InitiatorInit(
+    const InitiatorInitArgs& args) {
+  return CreateRequestImpl(MtaType::kMta, args);
+}
+
+PairwiseProductRequest PairwiseProductSession::InitiatorInitWithCheck(
+    const InitiatorInitArgs& args) {
+  return CreateRequestImpl(MtaType::kMtAwc, args);
+}
+
+PairwiseProductRequest PairwiseProductSession::CreateRequestImpl(
+    MtaType type, const InitiatorInitArgs& args) {
   if (args.initiator_paillier == nullptr) {
     TECDSA_THROW_ARGUMENT("initiator Paillier provider must be present");
   }
@@ -149,14 +161,14 @@ PairwiseProductRequest PairwiseProductSession::CreateRequest(
 
   RegisterInitiatorInstance(PairwiseProductInitiatorInstance{
       .responder = args.responder_id,
-      .type = args.type,
+      .type = type,
       .instance_id = instance_id,
       .c1 = encrypted.ciphertext,
   });
   return PairwiseProductRequest{
       .from = cfg_.self_id,
       .to = args.responder_id,
-      .type = args.type,
+      .type = type,
       .instance_id = instance_id,
       .c1 = encrypted.ciphertext,
       .a1_proof = a1_proof,
@@ -164,12 +176,35 @@ PairwiseProductRequest PairwiseProductSession::CreateRequest(
 }
 
 PairwiseProductSession::ConsumeRequestResult
-PairwiseProductSession::ConsumeRequest(const PairwiseProductRequest& request,
-                                       const ConsumeRequestArgs& args) {
-  if (args.responder_aux == nullptr) {
+PairwiseProductSession::ResponderMid(const PairwiseProductRequest& request,
+                                     const ResponderMidArgs& args) {
+  return ConsumeRequestImpl(request, MtaType::kMta, args.initiator_modulus_n,
+                            args.responder_aux, args.initiator_aux,
+                            args.responder_secret, nullptr);
+}
+
+PairwiseProductSession::ConsumeRequestResult
+PairwiseProductSession::ResponderMidWithCheck(
+    const PairwiseProductRequest& request,
+    const ResponderMidWithCheckArgs& args) {
+  return ConsumeRequestImpl(request, MtaType::kMtAwc,
+                            args.initiator_modulus_n, args.responder_aux,
+                            args.initiator_aux, args.responder_secret,
+                            &args.public_witness_point);
+}
+
+PairwiseProductSession::ConsumeRequestResult
+PairwiseProductSession::ConsumeRequestImpl(
+    const PairwiseProductRequest& request, MtaType expected_type,
+    const BigInt& initiator_modulus_n, const AuxRsaParams* responder_aux,
+    const AuxRsaParams* initiator_aux, const Scalar& responder_secret,
+    const ECPoint* public_witness_point) {
+  ValidateExpectedMtaTypeOrThrow(request.type, expected_type,
+                                 "pairwise product request");
+  if (responder_aux == nullptr) {
     TECDSA_THROW_ARGUMENT("responder auxiliary parameters must be present");
   }
-  if (args.initiator_aux == nullptr) {
+  if (initiator_aux == nullptr) {
     TECDSA_THROW_ARGUMENT("initiator auxiliary parameters must be present");
   }
   if (request.to != cfg_.self_id) {
@@ -188,7 +223,7 @@ PairwiseProductSession::ConsumeRequest(const PairwiseProductRequest& request,
     TECDSA_THROW_ARGUMENT("duplicate pairwise product request instance id");
   }
 
-  const BigInt n = args.initiator_modulus_n;
+  const BigInt n = initiator_modulus_n;
   const BigInt n2 = n * n;
   if (request.c1 < 0 || request.c1 >= n2) {
     TECDSA_THROW_ARGUMENT("pairwise product request ciphertext c1 is out of range");
@@ -197,23 +232,23 @@ PairwiseProductSession::ConsumeRequest(const PairwiseProductRequest& request,
   if (!VerifyA1Range(
           BuildProofContext(cfg_.session_id, request.from, cfg_.self_id,
                             request.instance_id, *cfg_.suite, cfg_.group),
-          n, *args.responder_aux, request.c1, request.a1_proof)) {
+          n, *responder_aux, request.c1, request.a1_proof)) {
     TECDSA_THROW_ARGUMENT("pairwise product A1 proof verification failed");
   }
 
   ValidatePublicWitnessPointPresenceOrThrow(request.type,
-                                            args.public_witness_point,
+                                            public_witness_point,
                                             "pairwise product responder input");
   if (request.type == MtaType::kMtAwc) {
-    ValidateMtAwcSecretPointOrThrow(args.responder_secret,
-                                    args.public_witness_point);
+    ValidateMtAwcSecretPointOrThrow(responder_secret,
+                                    *public_witness_point);
   }
 
   const BigInt y = RandomBelow(QPow5(cfg_.group));
   const BigInt r_b = SampleZnStar(n);
   const BigInt gamma = n + BigInt(1);
   const BigInt c1_pow_x =
-      PowMod(request.c1, args.responder_secret.mp_value(), n2);
+      PowMod(request.c1, responder_secret.mp_value(), n2);
   const BigInt gamma_pow_y = PowMod(gamma, y, n2);
   const BigInt r_pow_n = PowMod(r_b, n, n2);
   const BigInt c2 =
@@ -233,14 +268,14 @@ PairwiseProductSession::ConsumeRequest(const PairwiseProductRequest& request,
     response.a3_proof = ProveA3MtA(
         BuildProofContext(cfg_.session_id, request.from, cfg_.self_id,
                           request.instance_id, *cfg_.suite, cfg_.group),
-        n, *args.initiator_aux, request.c1, c2,
-        args.responder_secret.mp_value(), y, r_b);
+        n, *initiator_aux, request.c1, c2,
+        responder_secret.mp_value(), y, r_b);
   } else {
     response.a2_proof = ProveA2MtAwc(
         BuildProofContext(cfg_.session_id, request.from, cfg_.self_id,
                           request.instance_id, *cfg_.suite, cfg_.group),
-        n, *args.initiator_aux, request.c1, c2, *args.public_witness_point,
-        args.responder_secret.mp_value(), y, r_b);
+        n, *initiator_aux, request.c1, c2, *public_witness_point,
+        responder_secret.mp_value(), y, r_b);
   }
 
   consumed_request_keys_.insert(instance_key);
@@ -251,12 +286,32 @@ PairwiseProductSession::ConsumeRequest(const PairwiseProductRequest& request,
 }
 
 PairwiseProductSession::ConsumeResponseResult
-PairwiseProductSession::ConsumeResponse(const PairwiseProductResponse& response,
-                                        const ConsumeResponseArgs& args) {
-  if (args.initiator_paillier == nullptr) {
+PairwiseProductSession::InitiatorEnd(const PairwiseProductResponse& response,
+                                     const InitiatorEndArgs& args) {
+  return ConsumeResponseImpl(response, MtaType::kMta, args.initiator_paillier,
+                             args.initiator_aux, nullptr);
+}
+
+PairwiseProductSession::ConsumeResponseResult
+PairwiseProductSession::InitiatorEndWithCheck(
+    const PairwiseProductResponse& response,
+    const InitiatorEndWithCheckArgs& args) {
+  return ConsumeResponseImpl(response, MtaType::kMtAwc,
+                             args.initiator_paillier, args.initiator_aux,
+                             &args.public_witness_point);
+}
+
+PairwiseProductSession::ConsumeResponseResult
+PairwiseProductSession::ConsumeResponseImpl(
+    const PairwiseProductResponse& response, MtaType expected_type,
+    const PaillierProvider* initiator_paillier,
+    const AuxRsaParams* initiator_aux, const ECPoint* public_witness_point) {
+  ValidateExpectedMtaTypeOrThrow(response.type, expected_type,
+                                 "pairwise product response");
+  if (initiator_paillier == nullptr) {
     TECDSA_THROW_ARGUMENT("initiator Paillier provider must be present");
   }
-  if (args.initiator_aux == nullptr) {
+  if (initiator_aux == nullptr) {
     TECDSA_THROW_ARGUMENT("initiator auxiliary parameters must be present");
   }
   if (response.to != cfg_.self_id) {
@@ -282,14 +337,14 @@ PairwiseProductSession::ConsumeResponse(const PairwiseProductResponse& response,
     TECDSA_THROW_ARGUMENT("pairwise product response type mismatch");
   }
 
-  const BigInt n = args.initiator_paillier->modulus_n_bigint();
+  const BigInt n = initiator_paillier->modulus_n_bigint();
   const BigInt n2 = n * n;
   if (response.c2 < 0 || response.c2 >= n2) {
     TECDSA_THROW_ARGUMENT("pairwise product response ciphertext c2 is out of range");
   }
 
   ValidatePublicWitnessPointPresenceOrThrow(response.type,
-                                            args.public_witness_point,
+                                            public_witness_point,
                                             "pairwise product response input");
 
   if (response.type == MtaType::kMta) {
@@ -299,7 +354,7 @@ PairwiseProductSession::ConsumeResponse(const PairwiseProductResponse& response,
     if (!VerifyA3MtA(
             BuildProofContext(cfg_.session_id, cfg_.self_id, response.from,
                               response.instance_id, *cfg_.suite, cfg_.group),
-            n, *args.initiator_aux, instance.c1, response.c2,
+            n, *initiator_aux, instance.c1, response.c2,
             *response.a3_proof)) {
       TECDSA_THROW_ARGUMENT("pairwise product A3 proof verification failed");
     }
@@ -310,14 +365,14 @@ PairwiseProductSession::ConsumeResponse(const PairwiseProductResponse& response,
     if (!VerifyA2MtAwc(
             BuildProofContext(cfg_.session_id, cfg_.self_id, response.from,
                               response.instance_id, *cfg_.suite, cfg_.group),
-            n, *args.initiator_aux, instance.c1, response.c2,
-            *args.public_witness_point, *response.a2_proof)) {
+            n, *initiator_aux, instance.c1, response.c2,
+            *public_witness_point, *response.a2_proof)) {
       TECDSA_THROW_ARGUMENT("pairwise product A2 proof verification failed");
     }
   }
 
   const Scalar initiator_share(
-      args.initiator_paillier->DecryptBigInt(response.c2), cfg_.group);
+      initiator_paillier->DecryptBigInt(response.c2), cfg_.group);
   pending_initiator_instances_.erase(instance_it);
   return ConsumeResponseResult{.initiator_share = initiator_share};
 }
