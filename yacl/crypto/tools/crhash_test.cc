@@ -32,7 +32,7 @@ inline auto RandomBlocks(size_t length) {
   return rand_inputs;
 }
 
-}  // namespace
+} // namespace
 
 TEST(RPTest, CrHashWorks) {
   uint128_t x = FastRandU128();
@@ -116,11 +116,11 @@ TEST(RPTest, TccrHashWorks) {
 
   EXPECT_NE(x, y);
   EXPECT_NE(id1, id2);
-  EXPECT_NE(TccrHash_128(x, id1), 0);  
+  EXPECT_NE(TccrHash_128(x, id1), 0);
   EXPECT_EQ(TccrHash_128(x, id1), TccrHash_128(x, id1));
   EXPECT_NE(TccrHash_128(x, id1), TccrHash_128(y, id1));
   /* when id1 != id2, expect Hash(x, id1) != Hash(x, id2) */
-  EXPECT_NE(TccrHash_128(x, id1), TccrHash_128(x, id2));  
+  EXPECT_NE(TccrHash_128(x, id1), TccrHash_128(x, id2));
 }
 
 TEST(RPTest, ParaTccrHashWorks) {
@@ -150,4 +150,4 @@ TEST(RPTest, ParaTccrHashInplaceWorks) {
   EXPECT_EQ(absl::MakeSpan(inout), absl::MakeSpan(inout_copy));
 }
 
-}  // namespace yacl::crypto
+} // namespace yacl::crypto

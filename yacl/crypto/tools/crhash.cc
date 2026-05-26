@@ -34,7 +34,7 @@ constexpr uint64_t kBatchSize = 1024;
 // CcrHash = RP(Sigma(x)) ^ Sigma(x)
 // Sigma(x) = (x.left ^ x.right) || x.left
 inline uint128_t Sigma(uint128_t x) {
-  auto _x = _mm_loadu_si128(reinterpret_cast<__m128i*>(&x));
+  auto _x = _mm_loadu_si128(reinterpret_cast<__m128i *>(&x));
   auto exchange = _mm_shuffle_epi32(_x, 0b01001110);
   auto left = _mm_unpackhi_epi64(_x, _mm_setzero_si128());
   return reinterpret_cast<uint128_t>(_mm_xor_si128(exchange, left));
@@ -45,11 +45,11 @@ inline std::vector<uint128_t> Sigma(absl::Span<const uint128_t> x) {
 
   std::vector<uint128_t> ret(num);
   auto zero = _mm_setzero_si128();
-  auto* dst = reinterpret_cast<__m128i*>(ret.data());
-  const auto* src = reinterpret_cast<const __m128i*>(x.data());
-  const auto* end = src + num;
+  auto *dst = reinterpret_cast<__m128i *>(ret.data());
+  const auto *src = reinterpret_cast<const __m128i *>(x.data());
+  const auto *end = src + num;
   for (; src != end; ++src, ++dst) {
-    auto _xi = _mm_loadu_si128(src);  // _xi = x[i]
+    auto _xi = _mm_loadu_si128(src); // _xi = x[i]
     // exchange = _xi.right || _xi.left
     auto exchange = _mm_shuffle_epi32(_xi, 0b01001110);
     // high  = _xi.left || zero
@@ -63,10 +63,10 @@ inline std::vector<uint128_t> Sigma(absl::Span<const uint128_t> x) {
 inline void SigmaInplace(absl::Span<uint128_t> x) {
   const uint32_t num = x.size();
   auto zero = _mm_setzero_si128();
-  auto* ptr = reinterpret_cast<__m128i*>(x.data());
-  auto* end = ptr + num;
+  auto *ptr = reinterpret_cast<__m128i *>(x.data());
+  auto *end = ptr + num;
   for (; ptr != end; ++ptr) {
-    auto _xi = _mm_loadu_si128(ptr);  // _xi = x[i]
+    auto _xi = _mm_loadu_si128(ptr); // _xi = x[i]
     // exchange = _xi.right || _xi.left
     auto exchange = _mm_shuffle_epi32(_xi, 0b01001110);
     // high  = _xi.left || zero
@@ -76,22 +76,22 @@ inline void SigmaInplace(absl::Span<uint128_t> x) {
   }
 }
 
-RP& GetCrHashDefaultRP() {
+RP &GetCrHashDefaultRP() {
   static RP rp(RP::Ctype::AES128_ECB, RP::kDefaultRpKey, RP::kDefaultRpIV);
   return rp;
 }
 
-}  // namespace
+} // namespace
 
 uint128_t CrHash_128(uint128_t x) {
-  const auto& RP = GetCrHashDefaultRP();
+  const auto &RP = GetCrHashDefaultRP();
   return RP.Gen(x) ^ x;
 }
 
 // FIXME: Rename to BatchCrHash_128
 std::vector<uint128_t> ParaCrHash_128(absl::Span<const uint128_t> x) {
   std::vector<uint128_t> out(x.size());
-  const auto& RP = GetCrHashDefaultRP();
+  const auto &RP = GetCrHashDefaultRP();
   RP.GenForMultiInputs(x, absl::MakeSpan(out));
   std::transform(x.begin(), x.end(), out.begin(), out.begin(),
                  std::bit_xor<uint128_t>());
@@ -100,7 +100,7 @@ std::vector<uint128_t> ParaCrHash_128(absl::Span<const uint128_t> x) {
 
 // FIXME: Rename to BatchCrHashInplace_128
 void ParaCrHashInplace_128(absl::Span<uint128_t> inout) {
-  const auto& RP = GetCrHashDefaultRP();
+  const auto &RP = GetCrHashDefaultRP();
   // TODO: add dynamic batch size
   alignas(32) std::array<uint128_t, kBatchSize> tmp;
   auto tmp_span = absl::MakeSpan(tmp);
@@ -148,28 +148,29 @@ void ParaCcrHashInplace_128(absl::Span<uint128_t> inout) {
   ParaCrHashInplace_128(inout_span.subspan(offset, remain));
 }
 
-// Tweakable Circular Correlation Robust (TCCR) Hash function 
+// Tweakable Circular Correlation Robust (TCCR) Hash function
 // See GKWY20 paper (https://eprint.iacr.org/2019/074.pdf) Sec 7.4
 // TccrHash(x,i) = RP(RP(x) ^ i) ^ RP(x)
 uint128_t TccrHash_128(uint128_t x, uint64_t i) {
-  const auto& RP = GetCrHashDefaultRP();
-  uint128_t tmp = RP.Gen(x);  // tmp = RP(x)
+  const auto &RP = GetCrHashDefaultRP();
+  uint128_t tmp = RP.Gen(x); // tmp = RP(x)
   return RP.Gen(tmp ^ i) ^ tmp;
 }
 
 // TccrHash(x,i) for elements in x, i begins with begin_index, return the result
-std::vector<uint128_t> ParaTccrHash_128(absl::Span<const uint128_t> x, uint64_t begin_index) {
+std::vector<uint128_t> ParaTccrHash_128(absl::Span<const uint128_t> x,
+                                        uint64_t begin_index) {
   std::vector<uint128_t> out(x.size());
   std::vector<uint128_t> tmp(x.size());
-  const auto& RP = GetCrHashDefaultRP(); 
+  const auto &RP = GetCrHashDefaultRP();
   // out = RP(x)
-  RP.GenForMultiInputs(x, absl::MakeSpan(out));  
+  RP.GenForMultiInputs(x, absl::MakeSpan(out));
   // tmp = RP(x)
   std::memcpy(tmp.data(), out.data(), x.size() * sizeof(uint128_t));
   // tmp = RP(x) ^ i
-  for(uint64_t i = 0; i < tmp.size(); i++) {
+  for (uint64_t i = 0; i < tmp.size(); i++) {
     tmp[i] ^= (i + begin_index);
-  } 
+  }
   // tmp = RP(tmp) = RP(RP(x) ^ i)
   RP.GenForMultiInputsInplace(absl::MakeSpan(tmp));
   // out = tmp ^ out = RP(RP(x) ^ i) ^ RP(x)
@@ -179,10 +180,11 @@ std::vector<uint128_t> ParaTccrHash_128(absl::Span<const uint128_t> x, uint64_t 
 }
 
 // TccrHash(x,i) for elements in inout (inplace), i begins with begin_index
-void ParaTccrHashInplace_128(absl::Span<uint128_t> inout, uint64_t begin_index) {
-  const auto& RP = GetCrHashDefaultRP();  
+void ParaTccrHashInplace_128(absl::Span<uint128_t> inout,
+                             uint64_t begin_index) {
+  const auto &RP = GetCrHashDefaultRP();
   // TODO: add dynamic batch size
-  alignas(32) std::array<uint128_t, kBatchSize> tmp;  
+  alignas(32) std::array<uint128_t, kBatchSize> tmp;
   auto tmp_span = absl::MakeSpan(tmp);
   const uint64_t size = inout.size();
   uint64_t i;
@@ -193,11 +195,12 @@ void ParaTccrHashInplace_128(absl::Span<uint128_t> inout, uint64_t begin_index) 
     // inout_span = RP(x)
     RP.GenForMultiInputsInplace(inout_span);
     // tmp_span = RP(x)
-    std::memcpy(tmp_span.data(), inout_span.data(), kBatchSize * sizeof(uint128_t));
+    std::memcpy(tmp_span.data(), inout_span.data(),
+                kBatchSize * sizeof(uint128_t));
     // tmp_span = RP(x) ^ i
-    for(i = 0; i < kBatchSize; i++) {
+    for (i = 0; i < kBatchSize; i++) {
       tmp_span[i] ^= (i + offset + begin_index);
-	}   
+    }
     // tmp_span = RP(RP(x) ^ i)
     RP.GenForMultiInputsInplace(tmp_span);
     // inout_span = tmp_span ^ inout_span = RP(RP(x) ^ i) ^ RP(x)
@@ -210,14 +213,14 @@ void ParaTccrHashInplace_128(absl::Span<uint128_t> inout, uint64_t begin_index) 
     auto inout_span = inout.subspan(offset, remain);
     RP.GenForMultiInputsInplace(inout_span);
     std::memcpy(tmp_span.data(), inout_span.data(), remain * sizeof(uint128_t));
-    for(i = 0; i < remain; i++) {
+    for (i = 0; i < remain; i++) {
       tmp_span[i] ^= (i + offset + begin_index);
-	}    
+    }
     RP.GenForMultiInputsInplace(tmp_span.subspan(0, remain));
     std::transform(tmp_span.begin(), tmp_span.begin() + remain,
                    inout_span.begin(), inout_span.begin(),
                    std::bit_xor<uint128_t>());
-  }  
+  }
 }
 
-}  // namespace yacl::crypto
+} // namespace yacl::crypto
