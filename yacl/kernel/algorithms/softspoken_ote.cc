@@ -48,10 +48,9 @@ namespace {
 
 constexpr uint64_t kBatchSize = 128;
 constexpr uint64_t kKappa = 128;
-constexpr size_t kS = 64;  // statistical security parameter
+constexpr size_t kS = 64; // statistical security parameter
 
-template <typename T = uint64_t>
-struct CheckMsg {
+template <typename T = uint64_t> struct CheckMsg {
   T x = 0;
   std::array<T, kKappa> t{0};
 
@@ -70,8 +69,8 @@ struct CheckMsg {
   }
 };
 
-inline dynamic_bitset<uint128_t> ExtendChoice(
-    const dynamic_bitset<uint128_t>& choices, size_t final_size) {
+inline dynamic_bitset<uint128_t>
+ExtendChoice(const dynamic_bitset<uint128_t> &choices, size_t final_size) {
   // Extend choices to batch_num * kBlockNum bits
   // 1st part (valid_ot_num bits): original ot choices
   // 2nd part (verify_ot_num bits): rand bits used for checking
@@ -92,7 +91,7 @@ inline dynamic_bitset<uint128_t> ExtendChoice(
 inline void XorBlock(absl::Span<const uint128_t> in, absl::Span<uint128_t> out,
                      const uint128_t block) {
   YACL_ENFORCE(out.size() >= in.size());
-  auto reg_block = _mm_load_si128(reinterpret_cast<const __m128i*>(&block));
+  auto reg_block = _mm_load_si128(reinterpret_cast<const __m128i *>(&block));
   for (uint64_t i = 0; i < in.size(); ++i) {
     out[i] = reinterpret_cast<uint128_t>(
         _mm_xor_si128(reinterpret_cast<__m128i>(in[i]), reg_block));
@@ -102,8 +101,7 @@ inline void XorBlock(absl::Span<const uint128_t> in, absl::Span<uint128_t> out,
 // XorReduce
 // Implementation mostly from:
 // https://github.com/osu-crypto/libOTe/blob/master/libOTe/Vole/SoftSpokenOT/SmallFieldVole.cpp
-template <uint64_t k>
-inline void XorReduce(absl::Span<uint128_t> inout) {
+template <uint64_t k> inline void XorReduce(absl::Span<uint128_t> inout) {
   XorReduce<k - 1>(inout);
   const uint64_t buf_size = inout.size();
   constexpr uint64_t stride = 1 << (k - 1);
@@ -137,9 +135,9 @@ inline void XorReduce(uint64_t k, absl::Span<uint128_t> inout) {
 
 inline void XorReduceImpl(uint64_t k, absl::Span<uint128_t> inout) {
   switch (k) {
-#define SWITCH_CASE(n)   \
-  case n:                \
-    XorReduce<n>(inout); \
+#define SWITCH_CASE(n)                                                         \
+  case n:                                                                      \
+    XorReduce<n>(inout);                                                       \
     break;
 
     SWITCH_CASE(1);
@@ -152,17 +150,17 @@ inline void XorReduceImpl(uint64_t k, absl::Span<uint128_t> inout) {
     SWITCH_CASE(8);
 
 #undef SWITCH_CASE
-    default:
-      XorReduce(k, inout);
-      break;
+  default:
+    XorReduce(k, inout);
+    break;
   }
 }
 
-}  // namespace
+} // namespace
 
-void SoftspokenOtExtSend(const std::shared_ptr<link::Context>& ctx,
-                         /* rot */ const OtRecvStore& base_ot,
-                         /* cot */ OtSendStore* out, uint64_t k, uint64_t step,
+void SoftspokenOtExtSend(const std::shared_ptr<link::Context> &ctx,
+                         /* rot */ const OtRecvStore &base_ot,
+                         /* cot */ OtSendStore *out, uint64_t k, uint64_t step,
                          bool mal) {
   std::vector<std::array<uint128_t, 2>> send_blocks(out->Size());
   auto send =
@@ -171,10 +169,10 @@ void SoftspokenOtExtSend(const std::shared_ptr<link::Context>& ctx,
   send.Send(ctx, out);
 }
 
-void SoftspokenOtExtRecv(const std::shared_ptr<link::Context>& ctx,
-                         /* rot */ const OtSendStore& base_ot,
-                         const dynamic_bitset<uint128_t>& choices,
-                         /* cot */ OtRecvStore* out, uint64_t k, uint64_t step,
+void SoftspokenOtExtRecv(const std::shared_ptr<link::Context> &ctx,
+                         /* rot */ const OtSendStore &base_ot,
+                         const dynamic_bitset<uint128_t> &choices,
+                         /* cot */ OtRecvStore *out, uint64_t k, uint64_t step,
                          bool mal) {
   auto recv = SoftspokenOtExtReceiver(k, step, mal,
                                       out->Type() == OtStoreType::Compact);
@@ -237,7 +235,7 @@ SoftspokenOtExtReceiver::SoftspokenOtExtReceiver(uint64_t k, uint64_t step,
 }
 
 void SoftspokenOtExtSender::OneTimeSetup(
-    const std::shared_ptr<link::Context>& ctx) {
+    const std::shared_ptr<link::Context> &ctx) {
   if (inited_) {
     return;
   }
@@ -250,7 +248,7 @@ void SoftspokenOtExtSender::OneTimeSetup(
 }
 
 void SoftspokenOtExtSender::OneTimeSetup(
-    const std::shared_ptr<link::Context>& ctx, const OtRecvStore& base_ot) {
+    const std::shared_ptr<link::Context> &ctx, const OtRecvStore &base_ot) {
   if (inited_) {
     return;
   }
@@ -293,9 +291,9 @@ void SoftspokenOtExtSender::OneTimeSetup(
     // set mask as all zero otherwise.
     for (uint64_t j = 0; j < k_limit; ++j) {
       if (punctured_idx_[i] & (1 << j)) {
-        p_idx_mask_[i * k_ + j] = Uint128Max();  // all one
+        p_idx_mask_[i * k_ + j] = Uint128Max(); // all one
       } else {
-        p_idx_mask_[i * k_ + j] = Uint128Min();  // all zero
+        p_idx_mask_[i * k_ + j] = Uint128Min(); // all zero
       }
     }
     // move leaves[0] to punctured entry
@@ -313,7 +311,7 @@ void SoftspokenOtExtSender::OneTimeSetup(
 }
 
 void SoftspokenOtExtReceiver::OneTimeSetup(
-    const std::shared_ptr<link::Context>& ctx) {
+    const std::shared_ptr<link::Context> &ctx) {
   if (inited_) {
     return;
   }
@@ -324,7 +322,7 @@ void SoftspokenOtExtReceiver::OneTimeSetup(
 }
 
 void SoftspokenOtExtReceiver::OneTimeSetup(
-    const std::shared_ptr<link::Context>& ctx, const OtSendStore& base_ot) {
+    const std::shared_ptr<link::Context> &ctx, const OtSendStore &base_ot) {
   if (inited_) {
     return;
   }
@@ -361,8 +359,8 @@ void SoftspokenOtExtReceiver::OneTimeSetup(
   inited_ = true;
 }
 
-void SoftspokenOtExtSender::GenRot(const std::shared_ptr<link::Context>& ctx,
-                                   uint64_t num_ot, OtSendStore* out) {
+void SoftspokenOtExtSender::GenRot(const std::shared_ptr<link::Context> &ctx,
+                                   uint64_t num_ot, OtSendStore *out) {
   YACL_ENFORCE(out->Size() == num_ot);
   YACL_ENFORCE(out->Type() == OtStoreType::Normal);
   std::vector<std::array<uint128_t, 2>> send_blocks(num_ot);
@@ -373,8 +371,8 @@ void SoftspokenOtExtSender::GenRot(const std::shared_ptr<link::Context>& ctx,
   }
 }
 
-void SoftspokenOtExtSender::GenCot(const std::shared_ptr<link::Context>& ctx,
-                                   uint64_t num_ot, OtSendStore* out) {
+void SoftspokenOtExtSender::GenCot(const std::shared_ptr<link::Context> &ctx,
+                                   uint64_t num_ot, OtSendStore *out) {
   YACL_ENFORCE(out->Size() == num_ot);
   YACL_ENFORCE(out->Type() == OtStoreType::Compact);
   std::vector<std::array<uint128_t, 2>> send_blocks(num_ot);
@@ -385,22 +383,24 @@ void SoftspokenOtExtSender::GenCot(const std::shared_ptr<link::Context>& ctx,
   }
 }
 
-OtSendStore SoftspokenOtExtSender::GenRot(
-    const std::shared_ptr<link::Context>& ctx, uint64_t num_ot) {
+OtSendStore
+SoftspokenOtExtSender::GenRot(const std::shared_ptr<link::Context> &ctx,
+                              uint64_t num_ot) {
   OtSendStore out(num_ot, OtStoreType::Normal);
   GenRot(ctx, num_ot, &out);
   return out;
 }
 
-OtSendStore SoftspokenOtExtSender::GenCot(
-    const std::shared_ptr<link::Context>& ctx, uint64_t num_ot) {
+OtSendStore
+SoftspokenOtExtSender::GenCot(const std::shared_ptr<link::Context> &ctx,
+                              uint64_t num_ot) {
   OtSendStore out(num_ot, OtStoreType::Compact);
   GenCot(ctx, num_ot, &out);
   return out;
 }
 
-void SoftspokenOtExtReceiver::GenRot(const std::shared_ptr<link::Context>& ctx,
-                                     uint64_t num_ot, OtRecvStore* out) {
+void SoftspokenOtExtReceiver::GenRot(const std::shared_ptr<link::Context> &ctx,
+                                     uint64_t num_ot, OtRecvStore *out) {
   YACL_ENFORCE(out->Size() == num_ot);
   YACL_ENFORCE(out->Type() == OtStoreType::Normal);
   auto choices = SecureRandBits<dynamic_bitset<uint128_t>>(num_ot);
@@ -415,9 +415,9 @@ void SoftspokenOtExtReceiver::GenRot(const std::shared_ptr<link::Context>& ctx,
   }
 }
 
-void SoftspokenOtExtReceiver::GenRot(const std::shared_ptr<link::Context>& ctx,
-                                     const dynamic_bitset<uint128_t>& choices,
-                                     OtRecvStore* out) {
+void SoftspokenOtExtReceiver::GenRot(const std::shared_ptr<link::Context> &ctx,
+                                     const dynamic_bitset<uint128_t> &choices,
+                                     OtRecvStore *out) {
   const uint64_t num_ot = choices.size();
   YACL_ENFORCE(out->Size() == num_ot);
   YACL_ENFORCE(out->Type() == OtStoreType::Normal);
@@ -432,15 +432,15 @@ void SoftspokenOtExtReceiver::GenRot(const std::shared_ptr<link::Context>& ctx,
   }
 }
 
-void SoftspokenOtExtReceiver::GenCot(const std::shared_ptr<link::Context>& ctx,
-                                     uint64_t num_ot, OtRecvStore* out) {
+void SoftspokenOtExtReceiver::GenCot(const std::shared_ptr<link::Context> &ctx,
+                                     uint64_t num_ot, OtRecvStore *out) {
   auto choices = SecureRandBits<dynamic_bitset<uint128_t>>(num_ot);
   GenCot(ctx, choices, out);
 }
 
-void SoftspokenOtExtReceiver::GenCot(const std::shared_ptr<link::Context>& ctx,
-                                     const dynamic_bitset<uint128_t>& choices,
-                                     OtRecvStore* out) {
+void SoftspokenOtExtReceiver::GenCot(const std::shared_ptr<link::Context> &ctx,
+                                     const dynamic_bitset<uint128_t> &choices,
+                                     OtRecvStore *out) {
   const uint64_t num_ot = choices.size();
   YACL_ENFORCE(out->Size() == num_ot);
   YACL_ENFORCE(out->Type() ==
@@ -462,17 +462,18 @@ void SoftspokenOtExtReceiver::GenCot(const std::shared_ptr<link::Context>& ctx,
 }
 
 // OtStore-style interface
-OtRecvStore SoftspokenOtExtReceiver::GenRot(
-    const std::shared_ptr<link::Context>& ctx, uint64_t num_ot) {
+OtRecvStore
+SoftspokenOtExtReceiver::GenRot(const std::shared_ptr<link::Context> &ctx,
+                                uint64_t num_ot) {
   OtRecvStore out(num_ot, OtStoreType::Normal);
   // [Warning] low efficiency.
   GenRot(ctx, num_ot, &out);
   return out;
 }
 
-OtRecvStore SoftspokenOtExtReceiver::GenRot(
-    const std::shared_ptr<link::Context>& ctx,
-    const dynamic_bitset<uint128_t>& choices) {
+OtRecvStore
+SoftspokenOtExtReceiver::GenRot(const std::shared_ptr<link::Context> &ctx,
+                                const dynamic_bitset<uint128_t> &choices) {
   OtRecvStore out(choices.size(), OtStoreType::Normal);
   // [Warning] low efficiency.
   GenRot(ctx, choices, &out);
@@ -480,8 +481,9 @@ OtRecvStore SoftspokenOtExtReceiver::GenRot(
 }
 
 // OtStore-style interface
-OtRecvStore SoftspokenOtExtReceiver::GenCot(
-    const std::shared_ptr<link::Context>& ctx, uint64_t num_ot) {
+OtRecvStore
+SoftspokenOtExtReceiver::GenCot(const std::shared_ptr<link::Context> &ctx,
+                                uint64_t num_ot) {
   OtRecvStore out(num_ot, OtStoreType::Normal);
   if (compact_) {
     out = OtRecvStore(num_ot, OtStoreType::Compact);
@@ -494,9 +496,9 @@ OtRecvStore SoftspokenOtExtReceiver::GenCot(
 // Generate Smallfield VOLE and Subspace VOLE
 // Reference: https://eprint.iacr.org/2022/192.pdf Figure 7 & Figure 8
 // s.t.  W = choice * delta + V
-OtRecvStore SoftspokenOtExtReceiver::GenCot(
-    const std::shared_ptr<link::Context>& ctx,
-    const dynamic_bitset<uint128_t>& choices) {
+OtRecvStore
+SoftspokenOtExtReceiver::GenCot(const std::shared_ptr<link::Context> &ctx,
+                                const dynamic_bitset<uint128_t> &choices) {
   OtRecvStore out(choices.size(), OtStoreType::Normal);
   if (compact_) {
     out = OtRecvStore(choices.size(), OtStoreType::Compact);
@@ -533,14 +535,14 @@ void SoftspokenOtExtSender::GenSfVole(absl::Span<uint128_t> hash_buff,
     for (uint64_t i = 0; i < pprf_num_; ++i) {
       const auto limit = std::min(range, hash_size - hash_offset);
       for (uint64_t j = 0; j < limit; ++j) {
-        xor_buff[xor_offset + 1 + j] = hash_buff[hash_offset + j];  // copy
+        xor_buff[xor_offset + 1 + j] = hash_buff[hash_offset + j]; // copy
       }
       xor_buff[xor_offset] = Uint128Min();
       std::swap(
           xor_buff[xor_offset],
-          xor_buff[xor_offset + punctured_idx_[i]]);  // recover punctured entry
-      hash_offset += range;                           // hash_offset = i * range
-      xor_offset += pprf_range_;  // xor_offset = i * pprf_range
+          xor_buff[xor_offset + punctured_idx_[i]]); // recover punctured entry
+      hash_offset += range;                          // hash_offset = i * range
+      xor_offset += pprf_range_; // xor_offset = i * pprf_range
     }
   }
 
@@ -560,8 +562,8 @@ void SoftspokenOtExtSender::GenSfVole(absl::Span<uint128_t> hash_buff,
         V[V_offset + j] =
             xor_buff[xor_offset + 1 + j] ^ (u[i] & p_idx_mask_[V_offset + j]);
       }
-      V_offset += k_;             // V_offset = i * k
-      xor_offset += pprf_range_;  // hash_offset = i * pprf_range
+      V_offset += k_;            // V_offset = i * k
+      xor_offset += pprf_range_; // hash_offset = i * pprf_range
     }
   }
 
@@ -603,8 +605,8 @@ void SoftspokenOtExtReceiver::GenSfVole(const uint128_t choice,
       for (uint64_t j = 0; j < k_limit; ++j) {
         W[W_offset + j] = xor_buff[xor_offset + 1 + j];
       }
-      W_offset += k_;             // W_offset = i * k;
-      xor_offset += pprf_range_;  // xor_offset = i * pprf_range;
+      W_offset += k_;            // W_offset = i * k;
+      xor_offset += pprf_range_; // xor_offset = i * pprf_range;
     }
   }
   if (compact_) {
@@ -614,14 +616,14 @@ void SoftspokenOtExtReceiver::GenSfVole(const uint128_t choice,
 
 // old style interface
 void SoftspokenOtExtSender::Send(
-    const std::shared_ptr<link::Context>& ctx,
+    const std::shared_ptr<link::Context> &ctx,
     absl::Span<std::array<uint128_t, 2>> send_blocks, bool cot) {
   if (!inited_) {
     OneTimeSetup(ctx);
   }
 
-  const uint64_t& step = step_;
-  const auto& delta = delta_;
+  const uint64_t &step = step_;
+  const auto &delta = delta_;
   const uint64_t batch_size = kBatchSize;
   const uint64_t super_batch_size = step * batch_size;
   const uint64_t numOt = send_blocks.size();
@@ -651,7 +653,7 @@ void SoftspokenOtExtSender::Send(
     // The same as IKNP OTe, see `yacl/crypto/primitive/ot/iknp_ote_cc`
     // 1. receive the masked choices
     auto recv_buff = ctx->Recv(ctx->NextRank(), "softspoken_switch_u");
-    auto recv_U = absl::MakeSpan(static_cast<uint128_t*>(recv_buff.data()),
+    auto recv_U = absl::MakeSpan(static_cast<uint128_t *>(recv_buff.data()),
                                  recv_buff.size() / sizeof(uint128_t));
     YACL_ENFORCE(recv_U.size() == step * pprf_num_);
 
@@ -669,14 +671,16 @@ void SoftspokenOtExtSender::Send(
       XorBlock(absl::MakeSpan(V[s]), absl::MakeSpan(V_xor_delta[s]), delta);
       // 4. perform CrHash to break the correlation if cot flag is false
       if (!cot) {
-      	// use TCCR hash for malicious security, or CR for semi-honest
+        // use TCCR hash for malicious security, or CR for semi-honest
         if (mal_) {
-          ParaTccrHashInplace_128(absl::MakeSpan(V[s]), t * super_batch_size + s * kBatchSize);
-          ParaTccrHashInplace_128(absl::MakeSpan(V_xor_delta[s]), t * super_batch_size + s * kBatchSize);
-		} else {
+          ParaTccrHashInplace_128(absl::MakeSpan(V[s]),
+                                  t * super_batch_size + s * kBatchSize);
+          ParaTccrHashInplace_128(absl::MakeSpan(V_xor_delta[s]),
+                                  t * super_batch_size + s * kBatchSize);
+        } else {
           ParaCrHashInplace_128(absl::MakeSpan(V[s]));
           ParaCrHashInplace_128(absl::MakeSpan(V_xor_delta[s]));
-		}
+        }
       }
 
       for (uint64_t j = 0; j < kBatchSize; ++j) {
@@ -692,7 +696,7 @@ void SoftspokenOtExtSender::Send(
     // The same as IKNP OTe
     // 1. receive the masked choices
     auto recv_buff = ctx->Recv(ctx->NextRank(), "softspoken_switch_u");
-    auto recv_U = absl::MakeSpan(static_cast<uint128_t*>(recv_buff.data()),
+    auto recv_U = absl::MakeSpan(static_cast<uint128_t *>(recv_buff.data()),
                                  recv_buff.size() / sizeof(uint128_t));
     YACL_ENFORCE(recv_U.size() == pprf_num_);
 
@@ -709,14 +713,16 @@ void SoftspokenOtExtSender::Send(
       XorBlock(absl::MakeSpan(V[t]), absl::MakeSpan(V_xor_delta[t]), delta);
       // 4. perform CrHash to break the correlation if cot flag is false
       if (!cot) {
-      	// use TCCR hash for malicious security, or CR for semi-honest
-      	if (mal_) {
-          ParaTccrHashInplace_128(absl::MakeSpan(V[t]), batch_offset + t * kBatchSize);
-          ParaTccrHashInplace_128(absl::MakeSpan(V_xor_delta[t]), batch_offset + t * kBatchSize);	
-		} else {
+        // use TCCR hash for malicious security, or CR for semi-honest
+        if (mal_) {
+          ParaTccrHashInplace_128(absl::MakeSpan(V[t]),
+                                  batch_offset + t * kBatchSize);
+          ParaTccrHashInplace_128(absl::MakeSpan(V_xor_delta[t]),
+                                  batch_offset + t * kBatchSize);
+        } else {
           ParaCrHashInplace_128(absl::MakeSpan(V[t]));
           ParaCrHashInplace_128(absl::MakeSpan(V_xor_delta[t]));
-		}
+        }
       }
 
       const uint64_t limit =
@@ -741,7 +747,8 @@ void SoftspokenOtExtSender::Send(
       for (size_t k = 0; k < kKappa; ++k) {
         check_msgs.t[k] ^= math::Gf64ClMul(
             absl::MakeSpan(rand_samples.data() + i * 2, 2),
-            absl::MakeSpan(reinterpret_cast<uint64_t*>(allV[i].data() + k), 2));
+            absl::MakeSpan(reinterpret_cast<uint64_t *>(allV[i].data() + k),
+                           2));
       }
     }
 
@@ -760,15 +767,15 @@ void SoftspokenOtExtSender::Send(
   }
 }
 
-void SoftspokenOtExtSender::Send(const std::shared_ptr<link::Context>& ctx,
-                                 OtSendStore* out) {
+void SoftspokenOtExtSender::Send(const std::shared_ptr<link::Context> &ctx,
+                                 OtSendStore *out) {
   YACL_ENFORCE(out->Type() == OtStoreType::Compact);
 
   if (!inited_) {
     OneTimeSetup(ctx);
   }
 
-  const uint64_t& step = step_;
+  const uint64_t &step = step_;
   const uint64_t batch_size = kBatchSize;
   const uint64_t super_batch_size = step * batch_size;
   const uint64_t numOt = out->Size();
@@ -800,7 +807,7 @@ void SoftspokenOtExtSender::Send(const std::shared_ptr<link::Context>& ctx,
     // The same as IKNP OTe, see `yacl/crypto/primitive/ot/iknp_ote_cc`
     // 1. receive the masked choices
     auto recv_buff = ctx->Recv(ctx->NextRank(), "softspoken_switch_u");
-    auto recv_U = absl::MakeSpan(static_cast<uint128_t*>(recv_buff.data()),
+    auto recv_U = absl::MakeSpan(static_cast<uint128_t *>(recv_buff.data()),
                                  recv_buff.size() / sizeof(uint128_t));
     YACL_ENFORCE(recv_U.size() == step * pprf_num_);
 
@@ -828,7 +835,7 @@ void SoftspokenOtExtSender::Send(const std::shared_ptr<link::Context>& ctx,
     // The same as IKNP OTe
     // 1. receive the masked choices
     auto recv_buff = ctx->Recv(ctx->NextRank(), "softspoken_switch_u");
-    auto recv_U = absl::MakeSpan(static_cast<uint128_t*>(recv_buff.data()),
+    auto recv_U = absl::MakeSpan(static_cast<uint128_t *>(recv_buff.data()),
                                  recv_buff.size() / sizeof(uint128_t));
     YACL_ENFORCE(recv_U.size() == pprf_num_);
 
@@ -864,7 +871,8 @@ void SoftspokenOtExtSender::Send(const std::shared_ptr<link::Context>& ctx,
       for (size_t k = 0; k < kKappa; ++k) {
         check_msgs.t[k] ^= math::Gf64ClMul(
             absl::MakeSpan(rand_samples.data() + i * 2, 2),
-            absl::MakeSpan(reinterpret_cast<uint64_t*>(allV[i].data() + k), 2));
+            absl::MakeSpan(reinterpret_cast<uint64_t *>(allV[i].data() + k),
+                           2));
       }
     }
 
@@ -883,9 +891,9 @@ void SoftspokenOtExtSender::Send(const std::shared_ptr<link::Context>& ctx,
   }
 }
 
-void SoftspokenOtExtReceiver::Recv(const std::shared_ptr<link::Context>& ctx,
-                                   const dynamic_bitset<uint128_t>& choices,
-                                   /* compact cot */ OtRecvStore* out) {
+void SoftspokenOtExtReceiver::Recv(const std::shared_ptr<link::Context> &ctx,
+                                   const dynamic_bitset<uint128_t> &choices,
+                                   /* compact cot */ OtRecvStore *out) {
   YACL_ENFORCE(out->Type() == OtStoreType::Compact);
 
   if (!inited_) {
@@ -893,7 +901,7 @@ void SoftspokenOtExtReceiver::Recv(const std::shared_ptr<link::Context>& ctx,
   }
 
   YACL_ENFORCE(choices.size() == out->Size());
-  const uint64_t& step = step_;
+  const uint64_t &step = step_;
   const uint64_t batch_size = kBatchSize;
   const uint64_t super_batch_size = step * batch_size;
   const uint64_t numOt = out->Size();
@@ -940,7 +948,7 @@ void SoftspokenOtExtReceiver::Recv(const std::shared_ptr<link::Context>& ctx,
     }
   }
 
-  // deal with normal batch 
+  // deal with normal batch
   for (uint64_t t = 0; t < batch_num; ++t) {
     // The same as IKNP OTe
     // 1. smallfield/subspace VOLE
@@ -976,14 +984,15 @@ void SoftspokenOtExtReceiver::Recv(const std::shared_ptr<link::Context>& ctx,
 
     CheckMsg<uint128_t> check_msgs;
     auto choice_span = absl::MakeSpan(
-        reinterpret_cast<uint64_t*>(choice_ext.data()), all_batch_num * 2);
+        reinterpret_cast<uint64_t *>(choice_ext.data()), all_batch_num * 2);
     check_msgs.x ^= math::Gf64ClMul(absl::MakeSpan(rand_samples), choice_span);
 
     for (size_t i = 0; i < all_batch_num; ++i) {
       for (size_t k = 0; k < kKappa; ++k) {
         check_msgs.t[k] ^= math::Gf64ClMul(
             absl::MakeSpan(rand_samples.data() + i * 2, 2),
-            absl::MakeSpan(reinterpret_cast<uint64_t*>(allW[i].data() + k), 2));
+            absl::MakeSpan(reinterpret_cast<uint64_t *>(allW[i].data() + k),
+                           2));
       }
     }
 
@@ -998,8 +1007,8 @@ void SoftspokenOtExtReceiver::Recv(const std::shared_ptr<link::Context>& ctx,
 }
 
 // old style interface
-void SoftspokenOtExtReceiver::Recv(const std::shared_ptr<link::Context>& ctx,
-                                   const dynamic_bitset<uint128_t>& choices,
+void SoftspokenOtExtReceiver::Recv(const std::shared_ptr<link::Context> &ctx,
+                                   const dynamic_bitset<uint128_t> &choices,
                                    absl::Span<uint128_t> recv_blocks,
                                    bool cot) {
   if (!inited_) {
@@ -1007,7 +1016,7 @@ void SoftspokenOtExtReceiver::Recv(const std::shared_ptr<link::Context>& ctx,
   }
 
   YACL_ENFORCE(choices.size() == recv_blocks.size());
-  const uint64_t& step = step_;
+  const uint64_t &step = step_;
   const uint64_t batch_size = kBatchSize;
   const uint64_t super_batch_size = step * batch_size;
   const uint64_t numOt = recv_blocks.size();
@@ -1050,12 +1059,13 @@ void SoftspokenOtExtReceiver::Recv(const std::shared_ptr<link::Context>& ctx,
       MatrixTranspose128(&W[s]);
       // 4. perform CrHash to break the correlation if cot flag is false
       if (!cot) {
-      	// use TCCR hash for malicious security, or CR for semi-honest
+        // use TCCR hash for malicious security, or CR for semi-honest
         if (mal_) {
-          ParaTccrHashInplace_128(absl::MakeSpan(W[s]), t * super_batch_size + s * batch_size);
-		} else {
+          ParaTccrHashInplace_128(absl::MakeSpan(W[s]),
+                                  t * super_batch_size + s * batch_size);
+        } else {
           ParaCrHashInplace_128(absl::MakeSpan(W[s]));
-		}
+        }
       }
       for (uint64_t j = 0; j < kBatchSize; ++j) {
         recv_blocks[t * super_batch_size + s * batch_size + j] = W[s][j];
@@ -1085,12 +1095,13 @@ void SoftspokenOtExtReceiver::Recv(const std::shared_ptr<link::Context>& ctx,
           std::min(kBatchSize, numOt - batch_offset - t * kBatchSize);
       // 4. perform CrHash to break the correlation if cot flag is false
       if (!cot) {
-      	// use TCCR hash for malicious security, or CR for semi-honest
-      	if (mal_) {
-          ParaTccrHashInplace_128(absl::MakeSpan(W[t]), batch_offset + t * kBatchSize);
-		} else {
+        // use TCCR hash for malicious security, or CR for semi-honest
+        if (mal_) {
+          ParaTccrHashInplace_128(absl::MakeSpan(W[t]),
+                                  batch_offset + t * kBatchSize);
+        } else {
           ParaCrHashInplace_128(absl::MakeSpan(W[t]));
-		}
+        }
       }
       for (uint64_t j = 0; j < limit; ++j) {
         recv_blocks[batch_offset + t * kBatchSize + j] = W[t][j];
@@ -1108,14 +1119,15 @@ void SoftspokenOtExtReceiver::Recv(const std::shared_ptr<link::Context>& ctx,
 
     CheckMsg<uint128_t> check_msgs;
     auto choice_span = absl::MakeSpan(
-        reinterpret_cast<uint64_t*>(choice_ext.data()), all_batch_num * 2);
+        reinterpret_cast<uint64_t *>(choice_ext.data()), all_batch_num * 2);
     check_msgs.x ^= math::Gf64ClMul(absl::MakeSpan(rand_samples), choice_span);
 
     for (size_t i = 0; i < all_batch_num; ++i) {
       for (size_t k = 0; k < kKappa; ++k) {
         check_msgs.t[k] ^= math::Gf64ClMul(
             absl::MakeSpan(rand_samples.data() + i * 2, 2),
-            absl::MakeSpan(reinterpret_cast<uint64_t*>(allW[i].data() + k), 2));
+            absl::MakeSpan(reinterpret_cast<uint64_t *>(allW[i].data() + k),
+                           2));
       }
     }
 
@@ -1129,4 +1141,4 @@ void SoftspokenOtExtReceiver::Recv(const std::shared_ptr<link::Context>& ctx,
   }
 }
 
-}  // namespace yacl::crypto
+} // namespace yacl::crypto

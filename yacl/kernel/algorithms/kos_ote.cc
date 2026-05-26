@@ -68,7 +68,7 @@ inline std::vector<uint128_t> VecXorMonochrome(absl::Span<const uint128_t> in,
 
 inline std::pair<std::array<std::vector<uint128_t>, kKappa>,
                  std::array<std::vector<uint128_t>, kKappa>>
-ExtendBaseOt(const OtSendStore& base_ot, size_t block_num) {
+ExtendBaseOt(const OtSendStore &base_ot, size_t block_num) {
   std::array<std::vector<uint128_t>, kKappa> base_ot_ext0;
   std::array<std::vector<uint128_t>, kKappa> base_ot_ext1;
   for (size_t k = 0; k < base_ot.Size(); ++k) {
@@ -80,8 +80,8 @@ ExtendBaseOt(const OtSendStore& base_ot, size_t block_num) {
   return std::make_pair(base_ot_ext0, base_ot_ext1);
 }
 
-inline std::array<std::vector<uint128_t>, kKappa> ExtendBaseOt(
-    const OtRecvStore& base_ot, size_t block_num) {
+inline std::array<std::vector<uint128_t>, kKappa>
+ExtendBaseOt(const OtRecvStore &base_ot, size_t block_num) {
   std::array<std::vector<uint128_t>, kKappa> base_ot_ext;
   for (size_t k = 0; k < base_ot.Size(); ++k) {
     base_ot_ext[k].resize(block_num);
@@ -90,8 +90,8 @@ inline std::array<std::vector<uint128_t>, kKappa> ExtendBaseOt(
   return base_ot_ext;
 }
 
-inline dynamic_bitset<uint128_t> ExtendChoice(
-    const dynamic_bitset<uint128_t>& choices, size_t final_size) {
+inline dynamic_bitset<uint128_t>
+ExtendChoice(const dynamic_bitset<uint128_t> &choices, size_t final_size) {
   // Extend choices to batch_num * kBlockNum bits
   // 1st part (valid_ot_num bits): original ot choices
   // 2nd part (verify_ot_num bits): rand bits used for checking
@@ -109,20 +109,19 @@ inline dynamic_bitset<uint128_t> ExtendChoice(
   return choices_ext;
 }
 
-}  // namespace
+} // namespace
 
-void KosOtExtSend(const std::shared_ptr<link::Context>& ctx,
-                  const OtRecvStore& base_ot,
+void KosOtExtSend(const std::shared_ptr<link::Context> &ctx,
+                  const OtRecvStore &base_ot,
                   absl::Span<std::array<uint128_t, 2>> send_blocks, bool cot) {
-  static_assert(kS == 64,
-                "Currently, KOS only support statistical "
-                "security = 64 bit");
+  static_assert(kS == 64, "Currently, KOS only support statistical "
+                          "security = 64 bit");
   YACL_ENFORCE(ctx->WorldSize() == 2);
   YACL_ENFORCE(base_ot.Size() == kKappa);
   YACL_ENFORCE(!send_blocks.empty());
 
   const size_t ot_num_valid = send_blocks.size();
-  const size_t ot_num_ext = ot_num_valid + kS;  // without batch padding
+  const size_t ot_num_ext = ot_num_valid + kS; // without batch padding
   const size_t batch_num = (ot_num_ext + kBatchSize - 1) / kBatchSize;
   const size_t block_num = batch_num * kBatchSize / 128;
 
@@ -135,10 +134,10 @@ void KosOtExtSend(const std::shared_ptr<link::Context>& ctx,
   // For every batch
   for (size_t i = 0; i < batch_num; ++i) {
     // std::array<uint128_t, kBatchSize> recv_msg;
-    const size_t offset = i * kBatchSize / 128;  // block offsets
+    const size_t offset = i * kBatchSize / 128; // block offsets
 
     auto buf = ctx->Recv(ctx->NextRank(), fmt::format("KOS:{}", i));
-    auto recv_msg = absl::MakeSpan(reinterpret_cast<uint128_t*>(buf.data()),
+    auto recv_msg = absl::MakeSpan(reinterpret_cast<uint128_t *>(buf.data()),
                                    buf.size() / sizeof(uint128_t));
     // Q = (u & s) ^ G(K_s) = ((G(K_0) ^ G(K_1) ^ r)) & s) ^ G(K_s)
     // Q = G(K_0) when s is 0
@@ -164,7 +163,7 @@ void KosOtExtSend(const std::shared_ptr<link::Context>& ctx,
   // =================== CONSISTENCY CHECK ===================
   for (size_t k = 0; k < kKappa; ++k) {
     auto k_msg_span = absl::MakeSpan(
-        reinterpret_cast<uint64_t*>(ot_ext[k].data()), 2 * batch_num);
+        reinterpret_cast<uint64_t *>(ot_ext[k].data()), 2 * batch_num);
     q_check[k] = math::Gf64Mul(absl::MakeSpan(rand_samples), k_msg_span);
   }
 
@@ -185,10 +184,10 @@ void KosOtExtSend(const std::shared_ptr<link::Context>& ctx,
   for (size_t i = 0; i < batch_num; ++i) {
     // AVX need to be aligned to 32 bytes.
     alignas(32) std::array<uint128_t, kBatchSize> recv_msg;
-    const size_t offset = i * kBatchSize / 128;  // block offsets
+    const size_t offset = i * kBatchSize / 128; // block offsets
 
     for (size_t k = 0; k < kKappa; ++k) {
-      const auto& ot_slice = ot_ext[k][offset];
+      const auto &ot_slice = ot_ext[k][offset];
       recv_msg[k] = ot_slice;
     }
 
@@ -203,12 +202,12 @@ void KosOtExtSend(const std::shared_ptr<link::Context>& ctx,
 
   uint128_t delta = static_cast<uint128_t>(*base_ot.CopyBitBuf().data());
   q_ext.resize(ot_num_valid);
-  auto& batch0 = q_ext;
+  auto &batch0 = q_ext;
   auto batch1 = VecXorMonochrome(absl::MakeSpan(q_ext), delta);
 
   if (!cot) {
-  	// 0 is the beginning index of OT message pairs (0,1,2,3,...) 
-  	// For every pair of OT messages m0 and m1, they use the same tweak (index)
+    // 0 is the beginning index of OT message pairs (0,1,2,3,...)
+    // For every pair of OT messages m0 and m1, they use the same tweak (index)
     ParaTccrHashInplace_128(absl::MakeSpan(batch0), 0);
     ParaTccrHashInplace_128(absl::MakeSpan(batch1), 0);
   }
@@ -219,20 +218,19 @@ void KosOtExtSend(const std::shared_ptr<link::Context>& ctx,
   }
 }
 
-void KosOtExtRecv(const std::shared_ptr<link::Context>& ctx,
-                  const OtSendStore& base_ot,
-                  const dynamic_bitset<uint128_t>& choices,
+void KosOtExtRecv(const std::shared_ptr<link::Context> &ctx,
+                  const OtSendStore &base_ot,
+                  const dynamic_bitset<uint128_t> &choices,
                   absl::Span<uint128_t> recv_blocks, bool cot) {
-  static_assert(kS == 64,
-                "Currently, KOS only support statistical "
-                "security = 64 bit");
-  YACL_ENFORCE(ctx->WorldSize() == 2);     // Check OT has two parties
-  YACL_ENFORCE(base_ot.Size() == kKappa);  // Check base OT size
+  static_assert(kS == 64, "Currently, KOS only support statistical "
+                          "security = 64 bit");
+  YACL_ENFORCE(ctx->WorldSize() == 2);    // Check OT has two parties
+  YACL_ENFORCE(base_ot.Size() == kKappa); // Check base OT size
   YACL_ENFORCE(recv_blocks.size() == choices.size());
   YACL_ENFORCE(!recv_blocks.empty());
 
   const size_t ot_num_valid = recv_blocks.size();
-  const size_t ot_num_ext = ot_num_valid + kS;  // without batch padding
+  const size_t ot_num_ext = ot_num_valid + kS; // without batch padding
   const size_t batch_num = (ot_num_ext + kBatchSize - 1) / kBatchSize;
   const size_t block_num = batch_num * kBatchSize / 128;
 
@@ -246,12 +244,12 @@ void KosOtExtRecv(const std::shared_ptr<link::Context>& ctx,
   // yacl/crypto-primitives/ot/extension/kkrt_ote.cc For a task of
   // generating 129 OTs, we actually generates 128 * 2 = 256 OTs.
   for (size_t i = 0; i < batch_num; ++i) {
-    const size_t offset = i * kBatchSize / 128;  // block offsets
+    const size_t offset = i * kBatchSize / 128; // block offsets
     uint128_t choice_slice = *(choice_ext.data() + offset);
     std::array<uint128_t, kKappa> send_msg;
     for (size_t k = 0; k < kKappa; ++k) {
-      const auto& ot_slice0 = ot_ext.first[k][offset];
-      const auto& ot_slice1 = ot_ext.second[k][offset];
+      const auto &ot_slice0 = ot_ext.first[k][offset];
+      const auto &ot_slice1 = ot_ext.second[k][offset];
       send_msg[k] = ot_slice0 ^ ot_slice1 ^ choice_slice;
     }
     ctx->SendAsync(
@@ -271,13 +269,13 @@ void KosOtExtRecv(const std::shared_ptr<link::Context>& ctx,
 
   // =================== CONSISTENCY CHECK ===================
   auto choice_span = absl::MakeSpan(
-      reinterpret_cast<uint64_t*>(choice_ext.data()), batch_num * 2);
+      reinterpret_cast<uint64_t *>(choice_ext.data()), batch_num * 2);
   check_msgs.x = math::Gf64Mul(absl::MakeSpan(rand_samples), choice_span);
 
   for (size_t k = 0; k < kKappa; ++k) {
     check_msgs.t[k] = math::Gf64Mul(
         absl::MakeSpan(rand_samples),
-        absl::MakeSpan(reinterpret_cast<uint64_t*>(ot_ext.first[k].data()),
+        absl::MakeSpan(reinterpret_cast<uint64_t *>(ot_ext.first[k].data()),
                        batch_num * 2));
   }
 
@@ -288,7 +286,7 @@ void KosOtExtRecv(const std::shared_ptr<link::Context>& ctx,
   for (size_t i = 0; i < batch_num; ++i) {
     // AVX need to be aligned to 32 bytes.
     alignas(32) std::array<uint128_t, kKappa> t;
-    const size_t offset = i * kBatchSize / 128;  // block offsets
+    const size_t offset = i * kBatchSize / 128; // block offsets
     for (size_t k = 0; k < kKappa; ++k) {
       t[k] = ot_ext.first[k][offset];
     }
@@ -311,4 +309,4 @@ void KosOtExtRecv(const std::shared_ptr<link::Context>& ctx,
     recv_blocks[i] = t_ext[i];
   }
 }
-}  // namespace yacl::crypto
+} // namespace yacl::crypto
