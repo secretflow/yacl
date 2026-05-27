@@ -32,18 +32,18 @@ namespace {
 constexpr uint32_t kSuperBatch = 16;
 }
 
-void MpfssSend(const std::shared_ptr<link::Context>& ctx,
-               const OtSendStore& /*cot*/ send_ot, const MpFssParam& param,
+void MpfssSend(const std::shared_ptr<link::Context> &ctx,
+               const OtSendStore & /*cot*/ send_ot, const MpFssParam &param,
                absl::Span<const uint128_t> w, absl::Span<uint128_t> output,
-               const MpfssOp<uint128_t>& op) {
+               const MpfssOp<uint128_t> &op) {
   YACL_ENFORCE(param.assumption_ == LpnNoiseAsm::RegularNoise);
   YACL_ENFORCE(output.size() >= param.mp_vole_size_);
   YACL_ENFORCE(w.size() >= param.noise_num_);
   YACL_ENFORCE(send_ot.Size() >= param.require_ot_num_);
 
-  const auto& batch_num = param.noise_num_;
-  const auto& batch_size = param.sp_vole_size_;
-  const auto& last_batch_size = param.last_sp_vole_size_;
+  const auto &batch_num = param.noise_num_;
+  const auto &batch_size = param.sp_vole_size_;
+  const auto &last_batch_size = param.last_sp_vole_size_;
 
   UninitAlignedVector<uint128_t> send_msgs(batch_num, 0);
   std::transform(send_msgs.cbegin(), send_msgs.cend(), w.cbegin(),
@@ -58,13 +58,18 @@ void MpfssSend(const std::shared_ptr<link::Context>& ctx,
     // which might cause unexpected error.
     // It would be better to use "NextSlice" here, but it's not a const
     // function.
-    auto ot_slice = send_ot.Slice(
-        i * math::Log2Ceil(batch_size),
-        i * math::Log2Ceil(batch_size) + math::Log2Ceil(this_size));
+    auto ot_slice = send_ot.Slice(i * math::Log2Ceil(batch_size),
+                                  i * math::Log2Ceil(batch_size) +
+                                      math::Log2Ceil(this_size));
 
     GywzOtExtSend(ctx, ot_slice, this_size, this_span);
     // Break the correlation
-    ParaCrHashInplace_128(this_span);
+    // use TCCR hash for malicious security, or CR for semi-honest
+    if (param.is_mal_) {
+      ParaTccrHashInplace_128(this_span, i * batch_size);
+    } else {
+      ParaCrHashInplace_128(this_span);
+    }
     send_msgs[i] =
         std::reduce(this_span.begin(), this_span.end(), send_msgs[i], op.add);
   }
@@ -74,17 +79,17 @@ void MpfssSend(const std::shared_ptr<link::Context>& ctx,
       "MpVole_msg");
 }
 
-void MpfssRecv(const std::shared_ptr<link::Context>& ctx,
-               const OtRecvStore& /*cot*/ recv_ot, const MpFssParam& param,
-               absl::Span<uint128_t> output, const MpfssOp<uint128_t>& op) {
+void MpfssRecv(const std::shared_ptr<link::Context> &ctx,
+               const OtRecvStore & /*cot*/ recv_ot, const MpFssParam &param,
+               absl::Span<uint128_t> output, const MpfssOp<uint128_t> &op) {
   YACL_ENFORCE(param.assumption_ == LpnNoiseAsm::RegularNoise);
   YACL_ENFORCE(output.size() >= param.mp_vole_size_);
   YACL_ENFORCE(recv_ot.Size() >= param.require_ot_num_);
 
-  const auto& batch_num = param.noise_num_;
-  const auto& batch_size = param.sp_vole_size_;
-  const auto& last_batch_size = param.last_sp_vole_size_;
-  const auto& indexes = param.indexes_;
+  const auto &batch_num = param.noise_num_;
+  const auto &batch_size = param.sp_vole_size_;
+  const auto &last_batch_size = param.last_sp_vole_size_;
+  const auto &indexes = param.indexes_;
 
   UninitAlignedVector<uint128_t> dpf_sum(batch_num, 0);
 
@@ -97,11 +102,16 @@ void MpfssRecv(const std::shared_ptr<link::Context>& ctx,
     // which might cause unexpected error.
     // It would be better to use "NextSlice" here, but it's not a const
     // function.
-    auto ot_slice = recv_ot.Slice(
-        i * math::Log2Ceil(batch_size),
-        i * math::Log2Ceil(batch_size) + math::Log2Ceil(this_size));
+    auto ot_slice = recv_ot.Slice(i * math::Log2Ceil(batch_size),
+                                  i * math::Log2Ceil(batch_size) +
+                                      math::Log2Ceil(this_size));
     GywzOtExtRecv(ctx, ot_slice, this_size, indexes[i], this_span);
-    ParaCrHashInplace_128(this_span);
+    // use TCCR hash for malicious security, or CR for semi-honest
+    if (param.is_mal_) {
+      ParaTccrHashInplace_128(this_span, i * batch_size);
+    } else {
+      ParaCrHashInplace_128(this_span);
+    }
     dpf_sum[i] =
         std::reduce(this_span.begin(), this_span.end(), dpf_sum[i], op.add);
   }
@@ -110,8 +120,8 @@ void MpfssRecv(const std::shared_ptr<link::Context>& ctx,
   YACL_ENFORCE(static_cast<uint64_t>(recv_buff.size()) >=
                batch_num * sizeof(uint128_t));
 
-  auto recv_msgs =
-      absl::MakeSpan(reinterpret_cast<uint128_t*>(recv_buff.data()), batch_num);
+  auto recv_msgs = absl::MakeSpan(
+      reinterpret_cast<uint128_t *>(recv_buff.data()), batch_num);
   for (uint32_t i = 0; i < batch_num; ++i) {
     auto tmp = op.sub(recv_msgs[i], dpf_sum[i]);
     output[i * batch_size + indexes[i]] =
@@ -119,18 +129,18 @@ void MpfssRecv(const std::shared_ptr<link::Context>& ctx,
   }
 }
 
-void MpfssSend(const std::shared_ptr<link::Context>& ctx,
-               const OtSendStore& /*cot*/ send_ot, const MpFssParam& param,
+void MpfssSend(const std::shared_ptr<link::Context> &ctx,
+               const OtSendStore & /*cot*/ send_ot, const MpFssParam &param,
                absl::Span<const uint64_t> w, absl::Span<uint64_t> output,
-               const MpfssOp<uint64_t>& op) {
+               const MpfssOp<uint64_t> &op) {
   YACL_ENFORCE(param.assumption_ == LpnNoiseAsm::RegularNoise);
   YACL_ENFORCE(output.size() >= param.mp_vole_size_);
   YACL_ENFORCE(w.size() >= param.noise_num_);
   YACL_ENFORCE(send_ot.Size() >= param.require_ot_num_);
 
-  const auto& batch_num = param.noise_num_;
-  const auto& batch_size = param.sp_vole_size_;
-  const auto& last_batch_size = param.last_sp_vole_size_;
+  const auto &batch_num = param.noise_num_;
+  const auto &batch_size = param.sp_vole_size_;
+  const auto &last_batch_size = param.last_sp_vole_size_;
 
   UninitAlignedVector<uint64_t> send_msgs(batch_num, 0);
   std::transform(send_msgs.cbegin(), send_msgs.cend(), w.cbegin(),
@@ -152,17 +162,22 @@ void MpfssSend(const std::shared_ptr<link::Context>& ctx,
     // which might cause unexpected error.
     // It would be better to use "NextSlice" here, but it's not a const
     // function.
-    auto ot_slice = send_ot.Slice(
-        i * math::Log2Ceil(batch_size),
-        i * math::Log2Ceil(batch_size) + math::Log2Ceil(this_size));
+    auto ot_slice = send_ot.Slice(i * math::Log2Ceil(batch_size),
+                                  i * math::Log2Ceil(batch_size) +
+                                      math::Log2Ceil(this_size));
 
     GywzOtExtSend(ctx, ot_slice, this_size, this_span);
-    ParaCrHashInplace_128(this_span);
+    // use TCCR hash for malicious security, or CR for semi-honest
+    if (param.is_mal_) {
+      ParaTccrHashInplace_128(this_span, i * batch_size);
+    } else {
+      ParaCrHashInplace_128(this_span);
+    }
 
     // Break the correlation
     std::transform(
         this_span.begin(), this_span.end(), output.data() + i * batch_size,
-        [](const uint128_t& val) { return static_cast<uint64_t>(val); });
+        [](const uint128_t &val) { return static_cast<uint64_t>(val); });
 
     send_msgs[i] = std::reduce(output.data() + i * batch_size,
                                output.data() + i * batch_size + this_size,
@@ -174,17 +189,17 @@ void MpfssSend(const std::shared_ptr<link::Context>& ctx,
       "MpVole_msg");
 }
 
-void MpfssRecv(const std::shared_ptr<link::Context>& ctx,
-               const OtRecvStore& /*cot*/ recv_ot, const MpFssParam& param,
-               absl::Span<uint64_t> output, const MpfssOp<uint64_t>& op) {
+void MpfssRecv(const std::shared_ptr<link::Context> &ctx,
+               const OtRecvStore & /*cot*/ recv_ot, const MpFssParam &param,
+               absl::Span<uint64_t> output, const MpfssOp<uint64_t> &op) {
   YACL_ENFORCE(param.assumption_ == LpnNoiseAsm::RegularNoise);
   YACL_ENFORCE(output.size() >= param.mp_vole_size_);
   YACL_ENFORCE(recv_ot.Size() >= param.require_ot_num_);
 
-  const auto& batch_num = param.noise_num_;
-  const auto& batch_size = param.sp_vole_size_;
-  const auto& last_batch_size = param.last_sp_vole_size_;
-  const auto& indexes = param.indexes_;
+  const auto &batch_num = param.noise_num_;
+  const auto &batch_size = param.sp_vole_size_;
+  const auto &last_batch_size = param.last_sp_vole_size_;
+  const auto &indexes = param.indexes_;
 
   auto dpf_buf =
       Buffer(std::max(batch_size, last_batch_size) * sizeof(uint128_t));
@@ -202,15 +217,20 @@ void MpfssRecv(const std::shared_ptr<link::Context>& ctx,
     // which might cause unexpected error.
     // It would be better to use "NextSlice" here, but it's not a const
     // function.
-    auto ot_slice = recv_ot.Slice(
-        i * math::Log2Ceil(batch_size),
-        i * math::Log2Ceil(batch_size) + math::Log2Ceil(this_size));
+    auto ot_slice = recv_ot.Slice(i * math::Log2Ceil(batch_size),
+                                  i * math::Log2Ceil(batch_size) +
+                                      math::Log2Ceil(this_size));
     GywzOtExtRecv(ctx, ot_slice, this_size, indexes[i], this_span);
-    ParaCrHashInplace_128(this_span);
+    // use TCCR hash for malicious security, or CR for semi-honest
+    if (param.is_mal_) {
+      ParaTccrHashInplace_128(this_span, i * batch_size);
+    } else {
+      ParaCrHashInplace_128(this_span);
+    }
 
     std::transform(
         this_span.begin(), this_span.end(), output.data() + i * batch_size,
-        [](const uint128_t& val) { return static_cast<uint64_t>(val); });
+        [](const uint128_t &val) { return static_cast<uint64_t>(val); });
     dpf_sum[i] = std::reduce(output.data() + i * batch_size,
                              output.data() + i * batch_size + this_size,
                              dpf_sum[i], op.add);
@@ -221,7 +241,7 @@ void MpfssRecv(const std::shared_ptr<link::Context>& ctx,
                batch_num * sizeof(uint64_t));
 
   auto recv_msgs =
-      absl::MakeSpan(reinterpret_cast<uint64_t*>(recv_buff.data()), batch_num);
+      absl::MakeSpan(reinterpret_cast<uint64_t *>(recv_buff.data()), batch_num);
   for (uint32_t i = 0; i < batch_num; ++i) {
     auto tmp = op.sub(recv_msgs[i], dpf_sum[i]);
     output[i * batch_size + indexes[i]] =
@@ -229,19 +249,19 @@ void MpfssRecv(const std::shared_ptr<link::Context>& ctx,
   }
 }
 
-void MpfssSend_fixed_index(const std::shared_ptr<link::Context>& ctx,
-                           const OtSendStore& /*cot*/ send_ot,
-                           MpFssParam& param, absl::Span<const uint128_t> w,
+void MpfssSend_fixed_index(const std::shared_ptr<link::Context> &ctx,
+                           const OtSendStore & /*cot*/ send_ot,
+                           MpFssParam &param, absl::Span<const uint128_t> w,
                            absl::Span<uint128_t> output,
-                           const MpfssOp<uint128_t>& op) {
+                           const MpfssOp<uint128_t> &op) {
   YACL_ENFORCE(param.assumption_ == LpnNoiseAsm::RegularNoise);
   YACL_ENFORCE(output.size() >= param.mp_vole_size_);
   YACL_ENFORCE(w.size() >= param.noise_num_);
   YACL_ENFORCE(send_ot.Size() >= param.require_ot_num_);
 
-  const auto& batch_num = param.noise_num_;
-  const auto& batch_size = param.sp_vole_size_;
-  const auto& last_batch_size = param.last_sp_vole_size_;
+  const auto &batch_num = param.noise_num_;
+  const auto &batch_size = param.sp_vole_size_;
+  const auto &last_batch_size = param.last_sp_vole_size_;
   const auto batch_length = math::Log2Ceil(batch_size);
   const auto last_batch_length = math::Log2Ceil(last_batch_size);
 
@@ -284,7 +304,12 @@ void MpfssSend_fixed_index(const std::shared_ptr<link::Context>& ctx,
       // GywzOtExt is single-point COT
       GywzOtExtSend_fixed_index(ot_slice, this_size, this_span, send_span);
       // Use CrHash to break the correlation
-      ParaCrHashInplace_128(this_span);
+      // use TCCR hash for malicious security, or CR for semi-honest
+      if (param.is_mal_) {
+        ParaTccrHashInplace_128(this_span, batch_idx * batch_size);
+      } else {
+        ParaCrHashInplace_128(this_span);
+      }
       // this_span xor
       dpf_sum[batch_idx] = std::reduce(this_span.begin(), this_span.end(),
                                        dpf_sum[batch_idx], op.add);
@@ -297,33 +322,33 @@ void MpfssSend_fixed_index(const std::shared_ptr<link::Context>& ctx,
                                    sizeof(uint128_t) * total_ot_msg_num),
                  "GYWZ_OTE: messages");
 
-  auto& send_msgs = dpf_sum;
+  auto &send_msgs = dpf_sum;
   ctx->SendAsync(
       ctx->NextRank(),
       ByteContainerView(send_msgs.data(), send_msgs.size() * sizeof(uint128_t)),
       "MPVOLE:messages");
 }
 
-void MpfssRecv_fixed_index(const std::shared_ptr<link::Context>& ctx,
-                           const OtRecvStore& /*cot*/ recv_ot,
-                           MpFssParam& param, absl::Span<uint128_t> output,
-                           const MpfssOp<uint128_t>& op) {
+void MpfssRecv_fixed_index(const std::shared_ptr<link::Context> &ctx,
+                           const OtRecvStore & /*cot*/ recv_ot,
+                           MpFssParam &param, absl::Span<uint128_t> output,
+                           const MpfssOp<uint128_t> &op) {
   YACL_ENFORCE(param.assumption_ == LpnNoiseAsm::RegularNoise);
   YACL_ENFORCE(output.size() >= param.mp_vole_size_);
   YACL_ENFORCE(recv_ot.Size() >= param.require_ot_num_);
 
-  const auto& batch_num = param.noise_num_;
-  const auto& batch_size = param.sp_vole_size_;
-  const auto& last_batch_size = param.last_sp_vole_size_;
+  const auto &batch_num = param.noise_num_;
+  const auto &batch_size = param.sp_vole_size_;
+  const auto &last_batch_size = param.last_sp_vole_size_;
   const auto batch_length = math::Log2Ceil(batch_size);
   const auto last_batch_length = math::Log2Ceil(last_batch_size);
 
-  auto& indexes = param.indexes_;
+  auto &indexes = param.indexes_;
   auto all_gywz_recv_buf = ctx->Recv(ctx->NextRank(), "GYWZ_OTE: messages");
   YACL_ENFORCE(all_gywz_recv_buf.size() ==
                static_cast<int64_t>(param.require_ot_num_ * sizeof(uint128_t)));
   auto all_gywz_recv_span =
-      absl::MakeSpan(reinterpret_cast<uint128_t*>(all_gywz_recv_buf.data()),
+      absl::MakeSpan(reinterpret_cast<uint128_t *>(all_gywz_recv_buf.data()),
                      param.require_ot_num_);
   int64_t ot_msg_offset = 0;
 
@@ -372,7 +397,12 @@ void MpfssRecv_fixed_index(const std::shared_ptr<link::Context>& ctx,
       // GywzOtExt is single-point COT
       GywzOtExtRecv_fixed_index(ot_slice, this_size, this_span, recv_span);
       // Use CrHash to break the correlation
-      ParaCrHashInplace_128(this_span);
+      // use TCCR hash for malicious security, or CR for semi-honest
+      if (param.is_mal_) {
+        ParaTccrHashInplace_128(this_span, batch_idx * batch_size);
+      } else {
+        ParaCrHashInplace_128(this_span);
+      }
       // this_span xor
       dpf_sum[batch_idx] = std::reduce(this_span.begin(), this_span.end(),
                                        dpf_sum[batch_idx], op.add);
@@ -384,8 +414,8 @@ void MpfssRecv_fixed_index(const std::shared_ptr<link::Context>& ctx,
   auto recv_buff = ctx->Recv(ctx->NextRank(), "MPVOLE:messages");
   YACL_ENFORCE(static_cast<uint64_t>(recv_buff.size()) ==
                batch_num * sizeof(uint128_t));
-  auto recv_msgs =
-      absl::MakeSpan(reinterpret_cast<uint128_t*>(recv_buff.data()), batch_num);
+  auto recv_msgs = absl::MakeSpan(
+      reinterpret_cast<uint128_t *>(recv_buff.data()), batch_num);
 
   for (uint32_t i = 0; i < batch_num; ++i) {
     auto tmp = op.sub(recv_msgs[i], dpf_sum[i]);
@@ -394,19 +424,19 @@ void MpfssRecv_fixed_index(const std::shared_ptr<link::Context>& ctx,
   }
 }
 
-void MpfssSend_fixed_index(const std::shared_ptr<link::Context>& ctx,
-                           const OtSendStore& /*cot*/ send_ot,
-                           MpFssParam& param, absl::Span<const uint64_t> w,
+void MpfssSend_fixed_index(const std::shared_ptr<link::Context> &ctx,
+                           const OtSendStore & /*cot*/ send_ot,
+                           MpFssParam &param, absl::Span<const uint64_t> w,
                            absl::Span<uint64_t> output,
-                           const MpfssOp<uint64_t>& op) {
+                           const MpfssOp<uint64_t> &op) {
   YACL_ENFORCE(param.assumption_ == LpnNoiseAsm::RegularNoise);
   YACL_ENFORCE(output.size() >= param.mp_vole_size_);
   YACL_ENFORCE(w.size() >= param.noise_num_);
   YACL_ENFORCE(send_ot.Size() >= param.require_ot_num_);
 
-  const auto& batch_num = param.noise_num_;
-  const auto& batch_size = param.sp_vole_size_;
-  const auto& last_batch_size = param.last_sp_vole_size_;
+  const auto &batch_num = param.noise_num_;
+  const auto &batch_size = param.sp_vole_size_;
+  const auto &last_batch_size = param.last_sp_vole_size_;
   const auto batch_length = math::Log2Ceil(batch_size);
   const auto last_batch_length = math::Log2Ceil(last_batch_size);
 
@@ -455,7 +485,13 @@ void MpfssSend_fixed_index(const std::shared_ptr<link::Context>& ctx,
       // GywzOtExt is single-point COT
       GywzOtExtSend_fixed_index(ot_slice, full_size, this_span, send_span);
       // Use CrHash to break the correlation
-      ParaCrHashInplace_128(this_span.subspan(0, this_size));
+      // use TCCR hash for malicious security, or CR for semi-honest
+      if (param.is_mal_) {
+        ParaTccrHashInplace_128(this_span.subspan(0, this_size),
+                                batch_idx * batch_size);
+      } else {
+        ParaCrHashInplace_128(this_span.subspan(0, this_size));
+      }
       // convert to uint64_t
       std::transform(this_span.begin(), this_span.begin() + this_size,
                      output.data() + batch_idx * batch_size,
@@ -477,28 +513,28 @@ void MpfssSend_fixed_index(const std::shared_ptr<link::Context>& ctx,
                    "GYWZ_OTE: messages");
   }
 
-  auto& send_msgs = dpf_sum;
+  auto &send_msgs = dpf_sum;
   ctx->SendAsync(
       ctx->NextRank(),
       ByteContainerView(send_msgs.data(), send_msgs.size() * sizeof(uint64_t)),
       "MPVOLE:messages");
 }
 
-void MpfssRecv_fixed_index(const std::shared_ptr<link::Context>& ctx,
-                           const OtRecvStore& /*cot*/ recv_ot,
-                           MpFssParam& param, absl::Span<uint64_t> output,
-                           const MpfssOp<uint64_t>& op) {
+void MpfssRecv_fixed_index(const std::shared_ptr<link::Context> &ctx,
+                           const OtRecvStore & /*cot*/ recv_ot,
+                           MpFssParam &param, absl::Span<uint64_t> output,
+                           const MpfssOp<uint64_t> &op) {
   YACL_ENFORCE(param.assumption_ == LpnNoiseAsm::RegularNoise);
   YACL_ENFORCE(output.size() >= param.mp_vole_size_);
   YACL_ENFORCE(recv_ot.Size() >= param.require_ot_num_);
 
-  const auto& batch_num = param.noise_num_;
-  const auto& batch_size = param.sp_vole_size_;
-  const auto& last_batch_size = param.last_sp_vole_size_;
+  const auto &batch_num = param.noise_num_;
+  const auto &batch_size = param.sp_vole_size_;
+  const auto &last_batch_size = param.last_sp_vole_size_;
   const auto batch_length = math::Log2Ceil(batch_size);
   const auto last_batch_length = math::Log2Ceil(last_batch_size);
 
-  auto& indexes = param.indexes_;
+  auto &indexes = param.indexes_;
 
   const auto super_batch_num = math::DivCeil(batch_num, kSuperBatch);
 
@@ -524,7 +560,7 @@ void MpfssRecv_fixed_index(const std::shared_ptr<link::Context>& ctx,
     YACL_ENFORCE(gywz_recv_buf.size() ==
                  static_cast<int64_t>(msg_length * sizeof(uint128_t)));
     auto gywz_recv_msgs = absl::MakeSpan(
-        reinterpret_cast<uint128_t*>(gywz_recv_buf.data()), msg_length);
+        reinterpret_cast<uint128_t *>(gywz_recv_buf.data()), msg_length);
 
     for (uint32_t i = 0; i < bound; ++i) {
       auto this_size = batch_size;
@@ -560,7 +596,13 @@ void MpfssRecv_fixed_index(const std::shared_ptr<link::Context>& ctx,
       // GywzOtExt is single-point COT
       GywzOtExtRecv_fixed_index(ot_slice, full_size, this_span, recv_span);
       // Use CrHash to break the correlation
-      ParaCrHashInplace_128(this_span.subspan(0, this_size));
+      // use TCCR hash for malicious security, or CR for semi-honest
+      if (param.is_mal_) {
+        ParaTccrHashInplace_128(this_span.subspan(0, this_size),
+                                batch_idx * batch_size);
+      } else {
+        ParaCrHashInplace_128(this_span.subspan(0, this_size));
+      }
       // convert to uint64_t
       std::transform(this_span.begin(), this_span.begin() + this_size,
                      output.data() + batch_idx * batch_size,
@@ -577,7 +619,7 @@ void MpfssRecv_fixed_index(const std::shared_ptr<link::Context>& ctx,
   YACL_ENFORCE(static_cast<uint64_t>(recv_buff.size()) ==
                batch_num * sizeof(uint64_t));
   auto recv_msgs =
-      absl::MakeSpan(reinterpret_cast<uint64_t*>(recv_buff.data()), batch_num);
+      absl::MakeSpan(reinterpret_cast<uint64_t *>(recv_buff.data()), batch_num);
 
   for (uint32_t i = 0; i < batch_num; ++i) {
     auto tmp = op.sub(recv_msgs[i], dpf_sum[i]);
@@ -586,4 +628,4 @@ void MpfssRecv_fixed_index(const std::shared_ptr<link::Context>& ctx,
   }
 }
 
-}  // namespace yacl::crypto
+} // namespace yacl::crypto

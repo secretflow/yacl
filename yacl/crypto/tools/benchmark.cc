@@ -18,15 +18,15 @@
 
 namespace yacl::crypto {
 
-void BM_DefaultArguments(benchmark::internal::Benchmark* b) {
+void BM_DefaultArguments(benchmark::internal::Benchmark *b) {
   b->Unit(benchmark::kMillisecond)
       ->Arg(1 << 10)
       ->Arg(1 << 15)
       ->Arg(1 << 20)
-      ->Arg(16777216);  // 2^24
+      ->Arg(16777216); // 2^24
 }
 
-// Register benchmarks for (Circular) CrHash
+// Register benchmarks for (Tweakable) (Circular) CrHash
 BENCHMARK_REGISTER_F(TheoreticalToolBench, RO)->Apply(BM_DefaultArguments);
 BENCHMARK_REGISTER_F(TheoreticalToolBench, RP)->Apply(BM_DefaultArguments);
 BENCHMARK_REGISTER_F(TheoreticalToolBench, CRHASH)->Apply(BM_DefaultArguments);
@@ -34,6 +34,10 @@ BENCHMARK_REGISTER_F(TheoreticalToolBench, CRHASH_INPLACE)
     ->Apply(BM_DefaultArguments);
 BENCHMARK_REGISTER_F(TheoreticalToolBench, CCRHASH)->Apply(BM_DefaultArguments);
 BENCHMARK_REGISTER_F(TheoreticalToolBench, CCRHASH_INPLACE)
+    ->Apply(BM_DefaultArguments);
+BENCHMARK_REGISTER_F(TheoreticalToolBench, TCCRHASH)
+    ->Apply(BM_DefaultArguments);
+BENCHMARK_REGISTER_F(TheoreticalToolBench, TCCRHASH_INPLACE)
     ->Apply(BM_DefaultArguments);
 
 BENCHMARK_REGISTER_F(PrgBench, PrgAesEcb)->Apply(BM_DefaultArguments);
@@ -45,4 +49,4 @@ BENCHMARK_REGISTER_F(FillPRandBench, FillPRand_AES128_ECB)
 BENCHMARK_REGISTER_F(FillPRandBench, FillPRandWithMersennePrime_AES128_ECB)
     ->Apply(BM_DefaultArguments);
 
-}  // namespace yacl::crypto
+} // namespace yacl::crypto
