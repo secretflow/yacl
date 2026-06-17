@@ -121,6 +121,33 @@ BENCHMARK_DEFINE_F(TheoreticalToolBench, CCRHASH_INPLACE)
   }
 }
 
+BENCHMARK_DEFINE_F(TheoreticalToolBench, TCCRHASH)(benchmark::State& state) {
+  std::vector<uint128_t> input;
+  for (auto _ : state) {
+    state.PauseTiming();
+    size_t n = state.range(0);
+    input.resize(n);
+    std::fill(input.begin(), input.end(), 0);
+
+    state.ResumeTiming();
+    ParaTccrHash_128(absl::MakeSpan(input), 0);
+  }
+}
+
+BENCHMARK_DEFINE_F(TheoreticalToolBench, TCCRHASH_INPLACE)
+(benchmark::State& state) {
+  std::vector<uint128_t> input;
+  for (auto _ : state) {
+    state.PauseTiming();
+    size_t n = state.range(0);
+    input.resize(n);
+    std::fill(input.begin(), input.end(), 0);
+
+    state.ResumeTiming();
+    ParaTccrHashInplace_128(absl::MakeSpan(input), 0);
+  }
+}
+
 // 1st arg = numer of desired outputs
 BENCHMARK_DEFINE_F(PrgBench, PrgAesEcb)
 (benchmark::State& state) {
