@@ -53,7 +53,7 @@ struct MpFssParam {
   LpnNoiseAsm assumption_ = LpnNoiseAsm::RegularNoise;
   std::vector<uint32_t> indexes_ = std::vector<uint32_t>(0);  // size zero
 
-  bool is_mal_{false};
+  bool is_mal_ = false;
 
   MpFssParam() : MpFssParam(1, 2, LpnNoiseAsm::RegularNoise, false) {}
 
