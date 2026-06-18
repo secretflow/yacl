@@ -199,10 +199,11 @@ FpPolynomial FpPolynomial::Derivative() const {
   FpPolynomial r(F);
   r.c_.assign(c_.size() - 1, F.Zero());
 
+  Fp ii = F.Zero();
+  const Fp one = F.One();
   for (size_type i = 1; i < c_.size(); ++i) {
     // (a_i * i) x^{i-1}
-    Fp ii = F.FromUint64(
-        static_cast<u64>(i));  // 自动 i mod p（特征 p 的情况也正确）
+    ii = F.Add(ii, one);
     r.c_[i - 1] = F.Mul(c_[i], ii);
   }
   r.Trim();

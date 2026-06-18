@@ -185,10 +185,10 @@ struct FpContext {
     const std::size_t n = vec.size();
     if (n == 0) return;
 
-    // Check non-zero and canonicalize (defensive)
-    for (auto& x : vec) {
-      x.v %= p;
-      YACL_ENFORCE(x.v != 0, "FpContext::BatchInv: zero element in batch");
+    // BatchInv is a hot path and expects canonical field elements.
+    for (const auto& x : vec) {
+      YACL_ENFORCE(x.v != 0 && x.v < p,
+                   "FpContext::BatchInv: invalid or zero element in batch");
     }
 
     // prefix products: pref[i] = vec[0]*...*vec[i]

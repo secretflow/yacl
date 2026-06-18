@@ -1102,7 +1102,12 @@ mp_size_t pack_poly_bits(std::vector<mp_limb_t>& out,
     const std::size_t limb_count = coeffs.size() * (std::size_t)limbs_per_coeff;
     out.assign(limb_count, 0);
     for (std::size_t i = 0; i < coeffs.size(); ++i) {
-      out[i * (std::size_t)limbs_per_coeff] = (mp_limb_t)coeffs[i].v;
+      u64 val = coeffs[i].v;
+      for (unsigned t = 0; t < limbs_per_coeff; ++t) {
+        const unsigned bit = t * limb_bits;
+        if (bit >= 64) break;
+        out[i * (std::size_t)limbs_per_coeff + t] = (mp_limb_t)(val >> bit);
+      }
     }
     mp_size_t used = (mp_size_t)limb_count;
     while (used > 0 && out[(std::size_t)used - 1] == 0) --used;
