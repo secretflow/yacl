@@ -92,6 +92,9 @@ class SendTask {
       if (exit_if_async_error_) {
         exit(-1);
       }
+      // With exit disabled, remember the cause: waiting callers rethrow
+      // it when the channel aborts (see OnSendThreadDead).
+      channel_->SetFirstAsyncError(std::current_exception());
     }
   }
 
@@ -105,6 +108,10 @@ class SendTask {
       if (task->exit_if_async_error_) {
         exit(-1);
       }
+      // With exit disabled the error is swallowed for THIS caller, but
+      // it must not be lost: the send thread's death notice and every
+      // abort wake-up rethrow it as the root cause.
+      task->channel_->SetFirstAsyncError(std::current_exception());
     }
 
     return nullptr;
@@ -120,6 +127,12 @@ void Channel::StartSendThread() {
       if (exit_if_async_error_) {
         exit(-1);
       }
+      // Death notice: nobody will ever serve send_msgs_ again. Broadcast
+      // the abort (minus the join -- this IS the send thread) so every
+      // caller blocked in WaitSeqIdSendFinished / ThrottleWindowWait /
+      // Recv wakes up immediately with the original cause, instead of
+      // hanging forever on a dead queue.
+      OnSendThreadDead(std::current_exception());
     }
   });
 }
@@ -184,7 +197,13 @@ class SendChunkedWindow
     YACL_ENFORCE(parallel_limit_ > 0);
   }
 
-  void OnPushDone(std::unique_ptr<std::exception> e) noexcept {
+  // NOTE: the error is carried as std::exception_ptr and rethrown with
+  // std::rethrow_exception. It was previously a unique_ptr<std::exception>
+  // rethrown by value (`throw(*async_exception_)`), which sliced every
+  // chunk failure down to a bare std::exception -- logs and callers lost
+  // the original brpc error entirely (observed as "SendImpl error
+  // std::exception" with an empty what()).
+  void OnPushDone(std::exception_ptr e) noexcept {
     std::unique_lock<bthread::Mutex> lock(mutex_);
     running_push_--;
 
@@ -199,7 +218,7 @@ class SendChunkedWindow
     while (running_push_ != 0) {
       cond_.wait(lock);
       if (async_exception_) {
-        throw yacl::Exception(async_exception_->what());
+        std::rethrow_exception(async_exception_);
       }
     }
   }
@@ -209,17 +228,17 @@ class SendChunkedWindow
     explicit Token(std::shared_ptr<SendChunkedWindow> window)
         : window_(std::move(window)) {}
 
-    void SetException(std::unique_ptr<std::exception> e) {
+    void SetException(std::exception_ptr e) {
       if (e) {
         exception_ = std::move(e);
       }
     }
 
-    ~Token() { window_->OnPushDone(std::move(exception_)); }
+    ~Token() { window_->OnPushDone(exception_); }
 
    private:
     std::shared_ptr<SendChunkedWindow> window_;
-    std::unique_ptr<std::exception> exception_;
+    std::exception_ptr exception_;
   };
 
   std::unique_ptr<Token> GetToken() {
@@ -229,7 +248,7 @@ class SendChunkedWindow
     while (running_push_ > parallel_limit_) {
       cond_.wait(lock);
       if (async_exception_) {
-        throw(*async_exception_);
+        std::rethrow_exception(async_exception_);
       }
     }
 
@@ -241,7 +260,7 @@ class SendChunkedWindow
   int64_t running_push_ = 0;
   bthread::Mutex mutex_;
   bthread::ConditionVariable cond_;
-  std::unique_ptr<std::exception> async_exception_;
+  std::exception_ptr async_exception_;
 };
 
 class SendChunkedTask {
@@ -259,15 +278,13 @@ class SendChunkedTask {
 
   static void* Proc(void* param) {
     std::unique_ptr<SendChunkedTask> task(static_cast<SendChunkedTask*>(param));
-    std::unique_ptr<std::exception> except;
     try {
       task->channel_->SendRequestWithRetry(*(task->request_), 0);
-    } catch (const Exception& e) {
-      except = std::make_unique<Exception>(e);
-      task->token_->SetException(std::move(except));
-    } catch (const std::exception& e) {
-      except = std::make_unique<std::exception>(e);
-      task->token_->SetException(std::move(except));
+    } catch (...) {
+      // Propagate the ORIGINAL exception (type + message) to the chunk
+      // window waiters via exception_ptr; catching std::exception by value
+      // here and copying it sliced the error away.
+      task->token_->SetException(std::current_exception());
     }
     return nullptr;
   }
@@ -324,6 +341,8 @@ void Channel::SendRequestWithRetry(const ::google::protobuf::Message& request,
   uint32_t retry_count = 0;
   while (true) {
     if (aborting_.load()) {
+      RethrowFirstAsyncErrorIfSet();
+      RethrowFirstAsyncErrorIfSet();
       YACL_THROW_LINK_ABORTED("channel is aborting");
     }
     try {
@@ -387,6 +406,8 @@ void Channel::SendTaskSynchronizer::WaitSeqIdSendFinished(size_t seq_id) {
   std::unique_lock<bthread::Mutex> lock(mutex_);
   while (!finished_ids_.Contains(seq_id)) {
     if (task_aborting_.load()) {
+      // The LinkAborted thrown here is upgraded by Channel::Send with the
+      // recorded root cause (see its catch of LinkAborted).
       YACL_THROW_LINK_ABORTED("aborting task, skip waiting");
     }
     finished_cond_.wait(lock);
@@ -402,6 +423,7 @@ void Channel::SendTaskSynchronizer::WaitAllSendFinished() {
 
 Buffer Channel::Recv(const std::string& msg_key) {
   if (aborting_.load()) {
+    RethrowFirstAsyncErrorIfSet();
     YACL_THROW_LINK_ABORTED("Recv is not allowed when aborting channel");
   }
   NormalMessageKeyEnforce(msg_key);
@@ -575,6 +597,7 @@ void Channel::MessageQueue::Push(Message&& msg) {
 
 void Channel::SendAsync(const std::string& msg_key, Buffer value) {
   if (aborting_.load()) {
+    RethrowFirstAsyncErrorIfSet();
     YACL_THROW_LINK_ABORTED(
         "SendAsync is not allowed when channel is aborting");
   }
@@ -595,6 +618,7 @@ void Channel::SendAsync(const std::string& msg_key, Buffer value) {
 
 void Channel::Send(const std::string& msg_key, ByteContainerView value) {
   if (aborting_.load()) {
+    RethrowFirstAsyncErrorIfSet();
     YACL_THROW_LINK_ABORTED("Send is not allowed when channel is aborting");
   }
   if (YACL_UNLIKELY(disable_msg_seq_id_)) {
@@ -607,11 +631,20 @@ void Channel::Send(const std::string& msg_key, ByteContainerView value) {
   size_t seq_id = msg_seq_id_.fetch_add(1) + 1;
   auto key = BuildChannelKey(msg_key, seq_id);
   send_msgs_.Push(Message(seq_id, std::move(key), value));
-  send_sync_.WaitSeqIdSendFinished(seq_id);
+  try {
+    send_sync_.WaitSeqIdSendFinished(seq_id);
+  } catch (const LinkAborted&) {
+    // Send-thread death or an explicit Abort(): surface the recorded
+    // root cause (brpc error / window timeout) when present, so the
+    // caller sees WHY the link died instead of a bare "aborting".
+    RethrowFirstAsyncErrorIfSet();
+    throw;
+  }
 }
 
 void Channel::SendAsyncThrottled(const std::string& msg_key, Buffer value) {
   if (aborting_.load()) {
+    RethrowFirstAsyncErrorIfSet();
     YACL_THROW_LINK_ABORTED(
         "SendAsyncThrottled is not allowed when channel is aborting");
   }
@@ -630,6 +663,7 @@ void Channel::SendAsyncThrottled(const std::string& msg_key, Buffer value) {
 
 void Channel::TestSend(uint32_t timeout) {
   if (aborting_.load()) {
+    RethrowFirstAsyncErrorIfSet();
     YACL_THROW_LINK_ABORTED("TestSend is not allowed when channel is aborting");
   }
   YACL_ENFORCE(!waiting_finish_.load(),
@@ -653,6 +687,8 @@ void Channel::ThrottleWindowWait(size_t wait_count) {
   while ((throttle_window_size_ != 0) &&
          (received_ack_ids_.Count() + throttle_window_size_ <= wait_count)) {
     if (aborting_.load()) {
+      // Prefer the recorded root cause over a bare "aborting".
+      RethrowFirstAsyncErrorIfSet();
       YACL_THROW_LINK_ABORTED("Aborting channel, skip waiting");
     }
     //                               timeout_us
@@ -766,9 +802,43 @@ void Channel::Abort() {
   SPDLOG_INFO("channel aborted");
 }
 
+void Channel::SetFirstAsyncError(std::exception_ptr ep) noexcept {
+  if (!ep) {
+    return;
+  }
+  std::lock_guard<std::mutex> guard(first_error_mu_);
+  if (!first_async_error_) {
+    first_async_error_ = std::move(ep);
+  }
+}
+
+void Channel::OnSendThreadDead(std::exception_ptr first_error) noexcept {
+  SetFirstAsyncError(std::move(first_error));
+  // Same wake-ups as Abort(), minus send_thread_.join(): this runs ON the
+  // send thread. The channel is permanently unusable afterwards, which is
+  // correct -- its only sender is gone.
+  aborting_.store(true);
+  msg_db_cond_.notify_all();
+  ack_fin_cond_.notify_all();
+  send_sync_.Abort();
+  send_msgs_.EmptyNotify();
+}
+
+void Channel::RethrowFirstAsyncErrorIfSet() const {
+  std::exception_ptr ep;
+  {
+    std::lock_guard<std::mutex> guard(first_error_mu_);
+    ep = first_async_error_;
+  }
+  if (ep) {
+    std::rethrow_exception(ep);
+  }
+}
+
 void Channel::OnRequest(const ::google::protobuf::Message& request,
                         ::google::protobuf::Message* response) {
   if (aborting_.load()) {
+    RethrowFirstAsyncErrorIfSet();
     YACL_THROW_LINK_ABORTED("OnRequest is not allowed when aborting channel");
   }
   YACL_ENFORCE(response != nullptr, "response should not be null");
