@@ -15,6 +15,7 @@
 #pragma once
 #include <atomic>
 #include <condition_variable>
+#include <exception>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -198,6 +199,29 @@ class Channel : public IChannel, public std::enable_shared_from_this<Channel> {
   // yacl::LinkAborted.
   void Abort() final;
 
+  // ---- Background-send death notice (exit_if_async_error = false) ----
+  //
+  // When a background send failure kills the send thread without exiting
+  // the process, callers blocked on this channel would hang forever:
+  // WaitSeqIdSendFinished / ThrottleWindowWait wait on conditions that
+  // only the (now dead) send thread would notify. The send thread
+  // therefore broadcasts its own death before exiting -- record the
+  // first async error and wake every waiter, so they fail fast with the
+  // original cause instead of hanging on a queue nobody serves.
+  // Runs ON the send thread's failure path, so unlike Abort() it must
+  // NOT join the send thread.
+  void OnSendThreadDead(std::exception_ptr first_error) noexcept;
+
+  // Remember the first error seen by a background sender (SendTask::Proc,
+  // ~SendTask). Later errors are dropped: the first one is the cause.
+  void SetFirstAsyncError(std::exception_ptr ep) noexcept;
+
+  // If a background async error was recorded, rethrow it (preserving type
+  // and message). Used on the abort wake-up paths so callers see the
+  // original error (brpc E112 / window timeout) rather than a bare
+  // "aborting" without cause.
+  void RethrowFirstAsyncErrorIfSet() const;
+
   void SetThrottleWindowSize(size_t size) final {
     throttle_window_size_ = size;
   }
@@ -367,6 +391,12 @@ class Channel : public IChannel, public std::enable_shared_from_this<Channel> {
   bthread::ConditionVariable ack_fin_cond_;
 
   const bool exit_if_async_error_;
+
+  // first error observed by a background sender; guarded by
+  // first_error_mu_. Retthrown by waiting callers when the channel
+  // aborts because that sender (or the send thread) died.
+  mutable std::mutex first_error_mu_;
+  std::exception_ptr first_async_error_;
 
   std::shared_ptr<TransportLink> link_;
 
