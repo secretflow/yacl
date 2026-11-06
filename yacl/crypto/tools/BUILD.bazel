@@ -91,6 +91,7 @@ yacl_cc_library(
         ":rp",
         "//yacl/crypto/aes:aes_intrinsics",
         "//yacl/crypto/rand",
+        "//yacl/math/galois_field:gf_intrinsic",
     ],
 )
 
