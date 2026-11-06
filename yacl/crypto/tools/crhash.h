@@ -22,6 +22,7 @@
 
 /* submodules */
 #include "yacl/crypto/tools/rp.h"
+#include "yacl/math/galois_field/gf_intrinsic.h"
 
 namespace yacl::crypto {
 
@@ -49,15 +50,16 @@ std::vector<uint128_t> ParaCcrHash_128(absl::Span<const uint128_t> x);
 void ParaCcrHashInplace_128(absl::Span<uint128_t> inout);
 
 // Tweakable Circular Correlation Robust (TCCR) Hash function
-// See GKWY20 paper (https://eprint.iacr.org/2019/074.pdf) Sec 7.4
-// tccrhash for a single block, TccrHash(x,i) = RP(RP(x) ^ i) ^ RP(x)
+// First proposed by GKWY (https://eprint.iacr.org/2019/074.pdf) Sec 7.4
+// We apply the more efficient construction proposed by Chen & Tessaro
+// See https://eprint.iacr.org/2022/080.pdf
 uint128_t TccrHash_128(uint128_t x, uint64_t i);
 
 // parallel tccrhash for multiple blocks
 std::vector<uint128_t> ParaTccrHash_128(absl::Span<const uint128_t> x,
                                         uint64_t begin_index);
 
-// inplace parallel tccrhash for many blocks
+// inplace parallel tccrhash for multiple blocks
 void ParaTccrHashInplace_128(absl::Span<uint128_t> inout, uint64_t begin_index);
 
 }  // namespace yacl::crypto
