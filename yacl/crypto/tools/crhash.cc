@@ -14,6 +14,8 @@
 
 #include "yacl/crypto/tools/crhash.h"
 
+#include "yacl/math/galois_field/gf_intrinsic.h"
+
 #ifndef __aarch64__
 // sse
 #include <emmintrin.h>
@@ -148,13 +150,18 @@ void ParaCcrHashInplace_128(absl::Span<uint128_t> inout) {
   ParaCrHashInplace_128(inout_span.subspan(offset, remain));
 }
 
-// Tweakable Circular Correlation Robust (TCCR) Hash function
-// See GKWY20 paper (https://eprint.iacr.org/2019/074.pdf) Sec 7.4
-// TccrHash(x,i) = RP(RP(x) ^ i) ^ RP(x)
+// Tweakable Circular Correlation Robust (TCCR) hash function
+// We apply the more efficient construction proposed by Chen & Tessaro
+// See https://eprint.iacr.org/2022/080.pdf
 uint128_t TccrHash_128(uint128_t x, uint64_t i) {
   const auto& RP = GetCrHashDefaultRP();
-  uint128_t tmp = RP.Gen(x);  // tmp = RP(x)
-  return RP.Gen(tmp ^ i) ^ tmp;
+  // This construction requires tweak != 0, 1 to satisfy TCCR.
+  // We encode the tweak as t = 2^64 + i.
+  const uint128_t tweak = yacl::MakeUint128(1, i);
+  const uint128_t tmp = yacl::math::Gf128Mul(x, tweak);
+  // TccrHash(x,t) = RP(x * t) ^ (x * t),
+  // where * denotes multiplication in GF(2^128).
+  return RP.Gen(tmp) ^ tmp;
 }
 
 // TccrHash(x,i) for elements in x, i begins with begin_index, return the result
@@ -163,17 +170,16 @@ std::vector<uint128_t> ParaTccrHash_128(absl::Span<const uint128_t> x,
   std::vector<uint128_t> out(x.size());
   std::vector<uint128_t> tmp(x.size());
   const auto& RP = GetCrHashDefaultRP();
-  // out = RP(x)
-  RP.GenForMultiInputs(x, absl::MakeSpan(out));
-  // tmp = RP(x)
-  std::memcpy(tmp.data(), out.data(), x.size() * sizeof(uint128_t));
-  // tmp = RP(x) ^ i
+
+  // Encode the tweak t = 2^64 + i to ensure t != 0, 1.
+  // tmp = x * t
   for (uint64_t i = 0; i < tmp.size(); i++) {
-    tmp[i] ^= (i + begin_index);
+    const uint128_t tweak = MakeUint128(1, begin_index + i);
+    tmp[i] = yacl::math::Gf128Mul(x[i], tweak);
   }
-  // tmp = RP(tmp) = RP(RP(x) ^ i)
-  RP.GenForMultiInputsInplace(absl::MakeSpan(tmp));
-  // out = tmp ^ out = RP(RP(x) ^ i) ^ RP(x)
+  // out = RP(tmp) = RP(x * t)
+  RP.GenForMultiInputs(absl::MakeSpan(tmp), absl::MakeSpan(out));
+  // out = tmp ^ out = RP(x * t) ^ (x * t)
   std::transform(tmp.begin(), tmp.end(), out.begin(), out.begin(),
                  std::bit_xor<uint128_t>());
   return out;
@@ -192,30 +198,29 @@ void ParaTccrHashInplace_128(absl::Span<uint128_t> inout,
   uint64_t offset = 0;
   for (; offset + kBatchSize <= size; offset += kBatchSize) {
     auto inout_span = inout.subspan(offset, kBatchSize);
-    // inout_span = RP(x)
-    RP.GenForMultiInputsInplace(inout_span);
-    // tmp_span = RP(x)
+    // inout_span = x * t, where t = 2^64 + begin_index + offset + i
+    for (i = 0; i < kBatchSize; i++) {
+      const uint128_t tweak = MakeUint128(1, begin_index + offset + i);
+      inout_span[i] = yacl::math::Gf128Mul(inout_span[i], tweak);
+    }
+    // tmp = x * t
     std::memcpy(tmp_span.data(), inout_span.data(),
                 kBatchSize * sizeof(uint128_t));
-    // tmp_span = RP(x) ^ i
-    for (i = 0; i < kBatchSize; i++) {
-      tmp_span[i] ^= (i + offset + begin_index);
-    }
-    // tmp_span = RP(RP(x) ^ i)
+    // tmp = RP(x * t)
     RP.GenForMultiInputsInplace(tmp_span);
-    // inout_span = tmp_span ^ inout_span = RP(RP(x) ^ i) ^ RP(x)
-    std::transform(tmp_span.begin(), tmp_span.begin() + kBatchSize,
-                   inout_span.begin(), inout_span.begin(),
-                   std::bit_xor<uint128_t>());
+    // inout_span = RP(x * t) ^ (x * t)
+    std::transform(tmp_span.begin(), tmp_span.end(), inout_span.begin(),
+                   inout_span.begin(), std::bit_xor<uint128_t>());
   }
+
   uint64_t remain = size - offset;
   if (remain > 0) {
     auto inout_span = inout.subspan(offset, remain);
-    RP.GenForMultiInputsInplace(inout_span);
-    std::memcpy(tmp_span.data(), inout_span.data(), remain * sizeof(uint128_t));
     for (i = 0; i < remain; i++) {
-      tmp_span[i] ^= (i + offset + begin_index);
+      const uint128_t tweak = MakeUint128(1, begin_index + offset + i);
+      inout_span[i] = yacl::math::Gf128Mul(inout_span[i], tweak);
     }
+    std::memcpy(tmp_span.data(), inout_span.data(), remain * sizeof(uint128_t));
     RP.GenForMultiInputsInplace(tmp_span.subspan(0, remain));
     std::transform(tmp_span.begin(), tmp_span.begin() + remain,
                    inout_span.begin(), inout_span.begin(),
