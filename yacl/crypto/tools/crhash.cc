@@ -14,8 +14,6 @@
 
 #include "yacl/crypto/tools/crhash.h"
 
-#include "yacl/math/galois_field/gf_intrinsic.h"
-
 #ifndef __aarch64__
 // sse
 #include <emmintrin.h>

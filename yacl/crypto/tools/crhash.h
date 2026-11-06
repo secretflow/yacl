@@ -22,6 +22,7 @@
 
 /* submodules */
 #include "yacl/crypto/tools/rp.h"
+#include "yacl/math/galois_field/gf_intrinsic.h"
 
 namespace yacl::crypto {
 
